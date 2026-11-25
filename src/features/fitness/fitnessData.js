@@ -206,6 +206,19 @@ export async function notifyProgram(id) {
   } catch {}
 }
 
+// Sporcular sekmesindeki "Hatırlat": bugünkü antrenmanını yapmayan sporcuya tek bildirim (sunucu antrenman başına bir kez gönderir).
+// Gönderilen cihaz sayısı (0: telefonuna gitmedi), hata olursa false
+export async function nudgeFit(orgId, planId) {
+  try {
+    const r = await authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ event: "fitNudge", id: planId }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return false;
+    return Number(j.sent) || 0;
+  } catch {
+    return false;
+  }
+}
+
 // Tek seferlik antrenman (programsız gün: "bugün 30 dakika koştum")
 export async function addSession(orgId, uid, { date, title = "Fitness", fit }, by = {}) {
   const ref = doc(collection(db, "orgs", orgId, "plans"));

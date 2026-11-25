@@ -32,6 +32,8 @@ import { FoodView } from "./FoodView";
 import { DOW, FitPhoto, WeekBoxes } from "./FitDark";
 import { FitReview } from "./FitReview";
 import { useRouter, useSearchParams } from "next/navigation";
+import { ScrollBar } from "@/components/ui/ScrollBar";
+import { nudgeFit } from "./fitnessData";
 
 // Fitness sayfası (yalnız ana hesap), sade: bugünkü antrenman (Başla), bu hafta (7 gün), "Programım" satırı (pencerede günler, düzenle,
 // planlara ekle, profil) ve kapalı "Gelişim ve geçmiş" (halka, seri, gelişim, bu ay, geçmiş; parçalar FitDashboard.jsx). Takip planlardan hesaplanır (ek okuma yok); programlar tek sorgu.
@@ -457,7 +459,6 @@ export function FitnessHome() {
   }
 
   const todayRows = dayRows(fitOthers, athletes, today, today);
-  const wk = rows.reduce((t, r) => ({ done: t.done + r.week.done, planned: t.planned + r.week.planned, missed: t.missed + r.week.missed }), { done: 0, planned: 0, missed: 0 });
   const headBtns = (
     <>
       <button type="button" onClick={() => setMenuOpen(true)} aria-label="Diğer" data-press className="btn btn-round size-10 text-fg">
@@ -483,13 +484,76 @@ export function FitnessHome() {
         ? [["Atladın"]]
         : [[`${moves.length} hareket`], [`${moves.reduce((t, it) => t + (+it.sets || 1), 0)} set`]];
 
+  const menuSheet = (
+    <>
+      <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title="Fitness">
+        {tab === "ath" && <MenuRow icon="cal" title="Gün gün" sub="Sporcuların günlük antrenmanı" onClick={() => (setMenuOpen(false), setDayDate(today), setDayOpen(true))} />}
+        <MenuRow icon="video" title="Hareketler" sub={libCount.n ? `${libCount.n} hareket · ${libCount.v} videolu` : "Fotoğraf ve videolar"} onClick={() => (setMenuOpen(false), setLibOpen(true))} />
+        <MenuRow icon="user" title="Profilim" sub="Boy, kilo, seviye" onClick={() => (setMenuOpen(false), setProfOpen(true))} />
+        {(list?.length > 0 || all.length > 0 || fitOthers.length > 0) && (
+          <button
+            type="button"
+            disabled={!!busy}
+            onClick={() => {
+              setMenuOpen(false);
+              reset();
+            }}
+            data-press className="btn btn-danger mt-3 w-full"
+          >
+            {busy === "reset" ? "Sıfırlanıyor…" : "Fitness'ı sıfırla"}
+          </button>
+        )}
+      </Sheet>
+
+      <DaySheet open={dayOpen} onClose={() => setDayOpen(false)} date={dayDate} setDate={setDayDate} today={today} rows={dayRows(fitOthers, athletes, dayDate, today)} onOpen={(p) => (setDayOpen(false), open(p))} />
+    </>
+  );
+
+  // Sporcular (Seyhun 2026-11-25 "B · Kokpit", örnek fitness-sade/ornek.html): açık sayfa, üstte lacivert kokpit (bugün kaç sporcu, durum çubuğu),
+  // altta sporcular duruma göre gruplu: Yapmadı (Hatırlat) · Bekliyor · Yaptı · Atladı · Bugün yok · Programı yok
+  if (tab === "ath") {
+    return (
+      <main className="acik relative mx-auto min-h-dvh max-w-[30rem] pb-[calc(var(--stage-h,6rem)+2rem)]">
+        <ScrollBar title="Fitness">
+          <button type="button" onClick={() => newFor("")} aria-label="Program hazırla" data-press className="btn btn-round size-9">
+            <Icon name="plus" className="size-5" />
+          </button>
+        </ScrollBar>
+        <AthTab
+          today={today}
+          todayRows={todayRows}
+          rows={rows}
+          rest={rest}
+          orgId={orgId}
+          top={
+            <>
+              <div className="flex items-center gap-2.5 pb-4 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+                <BackButton href="/" className="-my-0.5 touch-manipulation" />
+                <h1 className="min-w-0 flex-1 truncate num text-[2rem] font-bold leading-tight tracking-[-.025em]">Fitness</h1>
+                <button type="button" onClick={() => setMenuOpen(true)} aria-label="Diğer" data-press className="btn btn-round size-10">
+                  <Icon name="more" className="size-5" />
+                </button>
+                <button type="button" onClick={() => newFor("")} data-press className="btn btn-primary btn-sm">
+                  + Program
+                </button>
+              </div>
+              <Tabs tab={tab} setTab={setTab} withAth dark />
+            </>
+          }
+          onAth={(uid) => (setRevOpen(false), setAth(uid))}
+          onNew={newFor}
+        />
+        {menuSheet}
+        {sheets}
+      </main>
+    );
+  }
+
   return (
     <main data-theme="dark" className={darkMain}>
       {darkTop(headBtns)}
 
-      {tab === "ath" ? (
-        <AthTab today={today} todayRows={todayRows} wk={wk} rows={rows} rest={rest} onDay={() => (setDayDate(today), setDayOpen(true))} onAth={(uid) => (setRevOpen(false), setAth(uid))} onOpen={open} onNew={newFor} />
-      ) : list && !prog && !todays.length && !all.length ? (
+      {list && !prog && !todays.length && !all.length ? (
         <section className="relative mt-4">
           <b className="block text-[1.625rem] font-bold leading-tight tracking-[-.02em]">Kendi programın yok</b>
           <Button full onClick={() => newFor("")} className="mt-4 [--acc:#3d7bff]">
@@ -566,25 +630,7 @@ export function FitnessHome() {
         </div>
       )}
 
-      <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title="Fitness">
-        <MenuRow icon="video" title="Hareketler" sub={libCount.n ? `${libCount.n} hareket · ${libCount.v} videolu` : "Fotoğraf ve videolar"} onClick={() => (setMenuOpen(false), setLibOpen(true))} />
-        <MenuRow icon="user" title="Profilim" sub="Boy, kilo, seviye" onClick={() => (setMenuOpen(false), setProfOpen(true))} />
-        {(list?.length > 0 || all.length > 0 || fitOthers.length > 0) && (
-          <button
-            type="button"
-            disabled={!!busy}
-            onClick={() => {
-              setMenuOpen(false);
-              reset();
-            }}
-            data-press className="btn btn-danger mt-3 w-full"
-          >
-            {busy === "reset" ? "Sıfırlanıyor…" : "Fitness'ı sıfırla"}
-          </button>
-        )}
-      </Sheet>
-
-      <DaySheet open={dayOpen} onClose={() => setDayOpen(false)} date={dayDate} setDate={setDayDate} today={today} rows={dayRows(fitOthers, athletes, dayDate, today)} onOpen={(p) => (setDayOpen(false), open(p))} />
+      {menuSheet}
 
       <Sheet open={growOpen} onClose={() => setGrowOpen(false)} title="Gelişim">
         <WeekCard week={week} strip={strip} today={today} onOpen={(p) => (setGrowOpen(false), open(p))} />
@@ -628,7 +674,7 @@ function Tabs({ tab, setTab, withAth, dark }) {
   return (
     <div className={`relative mb-3 grid gap-1 rounded-full p-1 ${dark ? "bg-white/10 ring-1 ring-white/15" : "bg-card shadow-[0_1px_3px_rgba(38,40,44,.08)]"} ${tabs.length === 3 ? "grid-cols-3" : "grid-cols-2"}`}>
       {tabs.map(([k, n]) => (
-        <button key={k} type="button" onClick={() => setTab(k)} className={`h-10 rounded-full text-[0.9375rem] font-semibold transition-colors ${tab === k ? (dark ? "bg-[#3d7bff] text-[#06283a]" : "bg-acc text-white") : dark ? "text-white/70" : "text-mut"}`}>
+        <button key={k} type="button" onClick={() => setTab(k)} className={`h-10 rounded-full text-[0.9375rem] font-semibold transition-colors ${tab === k ? (dark ? "bg-white text-[#0b1a33]" : "bg-acc text-white") : dark ? "text-white/70" : "text-mut"}`}>
           {n}
         </button>
       ))}
@@ -666,131 +712,158 @@ function ProfileSheet({ open, onClose, value, onSave }) {
 const initialsOf = (s) => String(s || "").split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toLocaleUpperCase("tr-TR");
 const shortDay = (d) => new Date(`${d}T12:00`).toLocaleDateString("tr-TR", { weekday: "short", day: "numeric", month: "short" }).replace(/\./g, "");
 
-// Sporcular sekmesi (koyu): bugünün özeti (kaç sporcu, yaptı/bekliyor, bu hafta çubuğu, Gün gün), sporcu kartları, programı olmayanlar
-function AthTab({ today, todayRows, wk, rows, rest, onDay, onAth, onOpen, onNew }) {
-  const c = (k) => todayRows.filter((r) => r.st === k).length;
-  const wait = c("today") + c("next");
+// Sporcular sekmesi ("B · Kokpit", 2026-11-25): lacivert üstte bugünün dev rakamı ve durum çubuğu; altta sporcular duruma göre gruplu.
+// Yapmayan en üstte, "Hatırlat" ile sporcuya tek bildirim (antrenman başına bir kez). Satıra dokununca sporcunun sayfası açılır.
+const ST_COL = { done: "#4fd39a", wait: "#3d7bff", missed: "#ff7a7f", skip: "rgb(255 255 255 / .3)" };
+function AthTab({ today, todayRows, rows, rest, orgId, top, onAth, onNew }) {
+  const toast = useToast();
+  const [sent, setSent] = useState({});
+  const grp = (k) => todayRows.filter((r) => (k === "wait" ? r.st === "today" || r.st === "next" : r.st === k));
+  const by = { missed: grp("missed"), wait: grp("wait"), done: grp("done"), skip: grp("skip") };
+  const off = rows.filter((r) => !todayRows.some((t) => t.uid === r.uid));
+  const wkOf = (uid) => rows.find((r) => r.uid === uid)?.week;
+  const count = (uid, cls) => {
+    const w = wkOf(uid);
+    return w?.planned ? <span className={`num shrink-0 text-[1rem] font-semibold ${cls}`}>{`${w.done}/${w.planned}`}</span> : null;
+  };
+  const nameOf = (r) => r.plan?.fit?.name || r.plan?.title || "Antrenman";
+  const nudge = async (r) => {
+    setSent((x) => ({ ...x, [r.plan.id]: 1 }));
+    const n = await nudgeFit(orgId, r.plan.id);
+    if (!n) setSent((x) => ({ ...x, [r.plan.id]: 0 }));
+    toast(n ? `${r.name.split(" ")[0]} için hatırlatma gitti` : n === 0 ? "Telefonuna bildirim gitmedi" : "Gönderilemedi");
+  };
   const parts = [
-    c("done") && [`${c("done")} yaptı`, "text-[#9fe7c6]"],
-    wait && [`${wait} bekliyor`, ""],
-    c("missed") && [`${c("missed")} yapmadı`, "text-[#f3a39a]"],
-    c("skip") && [`${c("skip")} atladı`, ""],
-  ].filter(Boolean);
+    ["done", "yaptı"],
+    ["wait", "bekliyor"],
+    ["missed", "yapmadı"],
+    ["skip", "atladı"],
+  ].filter(([k]) => by[k].length);
+  const date = new Date(`${today}T12:00`).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" });
   return (
-    <div className="relative">
-      <section className="mt-4">
-        <small className="text-[0.75rem] font-bold tracking-[.06em] text-white/60">{`BUGÜN · ${shortDay(today).toLocaleUpperCase("tr-TR")}`}</small>
-        <b className="mt-0.5 block text-[1.625rem] font-bold leading-tight tracking-[-.02em]">{todayRows.length ? `${todayRows.length} sporcu antrenmanda` : "Bugün antrenman yok"}</b>
-        {parts.length > 0 && (
-          <p className="mt-1 text-[0.875rem] text-white/75">
-            {parts.map(([t, cl], i) => (
-              <span key={t} className={cl}>
-                {i ? " · " : ""}
-                {t}
+    <>
+      <section className="ck px-5 pb-12">
+        {top}
+        <p className="mt-1 text-[1rem] font-semibold text-[#8fb3ff]">{`Bugün · ${date}`}</p>
+        {todayRows.length ? (
+          <>
+            <div className="mt-1 flex items-end gap-3">
+              <b className="num text-[5.5rem] font-bold leading-[.85] tracking-[-.05em]">{todayRows.length}</b>
+              <span className="pb-1.5 text-[1.25rem] font-semibold leading-tight">
+                sporcu
+                <br />
+                antrenmanda
               </span>
-            ))}
-          </p>
+            </div>
+            <div className="mt-5 flex h-3 gap-1">
+              {parts.map(([k]) => (
+                <i key={k} className="rounded" style={{ flex: by[k].length, background: ST_COL[k] }} />
+              ))}
+            </div>
+            <div className="mt-2.5 flex justify-between gap-3 text-[0.9375rem] font-medium text-white/85">
+              {parts.map(([k, t]) => (
+                <span key={k}>
+                  <b className="num mr-1 text-[1.15rem] font-bold text-white">{by[k].length}</b>
+                  {t}
+                </span>
+              ))}
+            </div>
+          </>
+        ) : (
+          <b className="mt-1 block text-[1.75rem] font-bold leading-tight tracking-[-.02em]">Bugün antrenman yok</b>
         )}
-        {wk.planned > 0 && (
-          <div className="mt-3.5 flex items-center gap-2.5 text-[0.8125rem]">
-            <span className="text-white/75">Bu hafta</span>
-            <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/15">
-              <span className="block h-full rounded-full bg-[#8fb3ff]" style={{ width: `${Math.round((wk.done / wk.planned) * 100)}%` }} />
-            </span>
-            <b className="tabular-nums">{`${wk.done}/${wk.planned}`}</b>
-          </div>
-        )}
-        <button type="button" onClick={onDay} data-press className="ck-glass mt-3.5 h-10 rounded-xl px-4 text-[0.875rem] font-semibold active:scale-[.97]">
-          Gün gün
-        </button>
       </section>
 
-      {rows.length > 0 && (
-        <>
-          <SecHead title="Sporcular" n={rows.length} />
-          <div className="space-y-3">
-            {rows.map((r) => (
-              <AthCard key={r.uid} row={r} today={today} onAth={() => onAth(r.uid)} onOpen={onOpen} />
-            ))}
-          </div>
-        </>
-      )}
-
-      {rest.length > 0 && (
-        <>
-          <SecHead title="Programı yok" n={rest.length} />
-          <ul className="divide-y divide-white/[.08] overflow-hidden rounded-[1.375rem] border border-white/[.08] bg-[#11223c]">
-            {rest.map((a) => (
-              <li key={a.uid} className="flex items-center gap-3 px-3.5 py-2.5">
-                <span className="grid size-9 shrink-0 place-items-center rounded-full bg-white/[.08] text-[0.8125rem] font-bold text-[#c5d2e6]">{initialsOf(a.name)}</span>
-                <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{a.name}</span>
-                <button type="button" onClick={() => onNew(a.uid)} className="h-9 shrink-0 rounded-full bg-[#8fb3ff]/15 px-3.5 text-[0.875rem] font-semibold text-[#8fb3ff]">
-                  + Program
+      <div className="relative -mt-7 space-y-6 rounded-t-[1.75rem] bg-bg px-4 pt-5">
+        <Group title="Yapmadı" n={by.missed.length}>
+          {by.missed.map((r) => (
+            <AthRow key={r.uid} name={r.name} sub={nameOf(r)} onClick={() => onAth(r.uid)}>
+              {r.plan.fitNudgeAt || sent[r.plan.id] ? (
+                <span className="shrink-0 text-[0.9375rem] font-semibold text-mut">Gönderildi</span>
+              ) : (
+                <button type="button" onClick={() => nudge(r)} data-press className="btn btn-secondary btn-sm shrink-0">
+                  Hatırlat
                 </button>
-              </li>
-            ))}
-          </ul>
-        </>
+              )}
+            </AthRow>
+          ))}
+        </Group>
+        <Group title="Bekliyor" n={by.wait.length}>
+          {by.wait.map((r) => (
+            <AthRow key={r.uid} name={r.name} sub={[nameOf(r), r.plan.time].filter(Boolean).join(" · ")} onClick={() => onAth(r.uid)}>
+              {count(r.uid, "text-acc")}
+            </AthRow>
+          ))}
+        </Group>
+        <Group title="Yaptı" n={by.done.length}>
+          {by.done.map((r) => (
+            <AthRow key={r.uid} name={r.name} sub={[nameOf(r), r.plan.fit?.res?.min && `${r.plan.fit.res.min} dk`].filter(Boolean).join(" · ")} onClick={() => onAth(r.uid)}>
+              {count(r.uid, "text-ok")}
+            </AthRow>
+          ))}
+        </Group>
+        <Group title="Atladı" n={by.skip.length}>
+          {by.skip.map((r) => (
+            <AthRow key={r.uid} name={r.name} sub={nameOf(r)} onClick={() => onAth(r.uid)}>
+              {count(r.uid, "text-mut")}
+            </AthRow>
+          ))}
+        </Group>
+        <Group title={todayRows.length ? "Bugün antrenmanı yok" : "Sporcular"} n={off.length}>
+          {off.map((r) => (
+            <AthRow key={r.uid} name={r.name} sub={r.next ? `Sıradaki ${shortDay(r.next.date)}` : "Bu hafta antrenman yok"} onClick={() => onAth(r.uid)}>
+              {count(r.uid, "text-mut")}
+            </AthRow>
+          ))}
+        </Group>
+        <Group title="Programı yok" n={rest.length}>
+          {rest.map((a) => (
+            <AthRow key={a.uid} name={a.name}>
+              <button type="button" onClick={() => onNew(a.uid)} data-press className="btn btn-secondary btn-sm shrink-0">
+                + Program
+              </button>
+            </AthRow>
+          ))}
+        </Group>
+      </div>
+    </>
+  );
+}
+
+function Group({ title, n, children }) {
+  if (!n) return null;
+  return (
+    <section>
+      <div className="mx-1 mb-2.5 flex items-baseline justify-between text-[1.125rem] font-bold">
+        {title}
+        <span className="text-[1rem] font-medium text-mut tabular-nums">{n}</span>
+      </div>
+      <div className="overflow-hidden rounded-[1.375rem] border border-line bg-card">{children}</div>
+    </section>
+  );
+}
+
+// Sporcu satırı: büyük ad ve tek alt satır; sağda tek şey (haftalık sayı ya da düğme). Ada dokununca sporcu sayfası
+function AthRow({ name, sub, onClick, children }) {
+  const body = (
+    <>
+      <span className="grid size-11 shrink-0 place-items-center rounded-full bg-[var(--fill,#eeeef2)] text-[0.9375rem] font-bold text-[#3a3a3c]">{initialsOf(name)}</span>
+      <span className="min-w-0 flex-1">
+        <b className="block truncate text-[1.0625rem] font-semibold">{name}</b>
+        {sub && <small className="block truncate text-[0.9375rem] text-mut">{sub}</small>}
+      </span>
+    </>
+  );
+  return (
+    <div className="flex min-h-[4.125rem] items-center gap-3 border-t border-line px-4 py-2.5 first:border-t-0">
+      {onClick ? (
+        <button type="button" onClick={onClick} data-press="row" className="flex min-w-0 flex-1 items-center gap-3 text-left">
+          {body}
+        </button>
+      ) : (
+        <span className="flex min-w-0 flex-1 items-center gap-3">{body}</span>
       )}
-    </div>
-  );
-}
-
-function SecHead({ title, n }) {
-  return (
-    <div className="mx-1 mb-2.5 mt-7 flex items-center justify-between text-[1rem] font-semibold">
-      {title}
-      <span className="font-medium text-white/55 tabular-nums">{n}</span>
-    </div>
-  );
-}
-
-// Kartın orta satırı: bugünün antrenmanı, yoksa bu haftanın kaçırılanı, yoksa sıradaki; sağda durumu (ad ile durum tekrar edilmez)
-function athLine(r, today) {
-  const t = r.week.days.find((d) => d.date === today);
-  const plan = (d) => d && r.plans.find((p) => p.id === d.id);
-  if (t) return { text: `Bugün · ${t.name}`, tag: { done: ["Yaptı", "ok"], skip: ["Atladı", "skip"], missed: ["Yapmadı", "miss"] }[t.st] || ["Bekliyor", "wait"], plan: plan(t) };
-  const miss = r.week.days.filter((d) => d.st === "missed").at(-1);
-  if (miss) return { text: `${DOW[dowOf(miss.date) - 1]} · ${miss.name}`, tag: ["Yapmadı", "miss"], plan: plan(miss) };
-  const all = r.week.planned > 0 && r.week.done === r.week.planned;
-  if (r.next) return { text: `Sıradaki · ${shortDay(r.next.date)}`, tag: all ? ["Hafta tamam", "ok"] : null, plan: r.next };
-  if (all) return { text: "Bu hafta", tag: ["Tamam", "ok"] };
-  return { text: "Bu hafta antrenman yok", tag: null };
-}
-const TAG = { ok: "bg-[#9fe7c6]/15 text-[#9fe7c6]", miss: "bg-[#f3a39a]/15 text-[#f3a39a]", wait: "bg-[#8fb3ff]/15 text-[#8fb3ff]", skip: "bg-white/10 text-white/70" };
-
-// Sporcu kartı: üstte baş harfler, ad, hedef · kaçıncı hafta, sağda bu haftanın halkası (dokununca sporcu sayfası);
-// ortada bugünün ya da kaçırılan günün antrenmanı ve durumu; altta Pzt–Paz: ✓ yaptı, ✕ yapmadı, – atladı, çerçeveli bugün,
-// rakam sıradaki, nokta antrenmansız. Antrenmanlı güne ya da orta satıra dokununca o antrenman açılır.
-function AthCard({ row, today, onAth, onOpen }) {
-  const prog = row.prog;
-  const pw = prog && progWeek(prog, today);
-  const sub = [labelOf(GOALS, prog?.goal) || prog?.title, pw && pw.n ? `${Math.min(pw.n, pw.of)}. hafta / ${pw.of}` : ""].filter(Boolean).join(" · ");
-  const pct = row.week.planned ? Math.round((row.week.done / row.week.planned) * 100) : 0;
-  const line = athLine(row, today);
-  const openDay = (d) => {
-    const plan = row.plans.find((p) => p.id === d.id);
-    if (plan) onOpen(plan);
-  };
-  return (
-    <div className="rounded-[1.5rem] border border-white/[.08] bg-[#11223c] p-4">
-      <button type="button" onClick={onAth} className="flex w-full items-center gap-3 text-left">
-        <span className="grid size-12 shrink-0 place-items-center rounded-full bg-[#8fb3ff]/15 text-[1rem] font-bold text-[#8fb3ff]">{initialsOf(row.name)}</span>
-        <span className="min-w-0 flex-1">
-          <b className="block truncate text-[1.0625rem] font-semibold">{row.name}</b>
-          {sub && <small className="block truncate text-[0.8125rem] text-[#9fadc6]">{sub}</small>}
-        </span>
-        {row.week.planned > 0 && (
-          <span className="grid size-[3.25rem] shrink-0 place-items-center rounded-full" style={{ background: `conic-gradient(#8fb3ff ${pct}%, rgb(255 255 255 / .12) 0)` }}>
-            <span className="grid size-[2.625rem] place-items-center rounded-full bg-[#11223c] text-[0.875rem] font-bold tabular-nums">{`${row.week.done}/${row.week.planned}`}</span>
-          </span>
-        )}
-      </button>
-      <button type="button" disabled={!line.plan} onClick={() => line.plan && onOpen(line.plan)} className="mt-3 flex w-full items-center justify-between gap-2 rounded-2xl bg-white/[.06] px-3 py-2.5 text-left">
-        <b className="min-w-0 truncate text-[0.875rem] font-semibold">{line.text}</b>
-        {line.tag && <span className={`shrink-0 rounded-full px-2.5 py-1 text-[0.75rem] font-bold ${TAG[line.tag[1]]}`}>{line.tag[0]}</span>}
-      </button>
-      <WeekBoxes days={row.week.days} today={today} onOpen={openDay} className="mt-3" />
+      {children}
     </div>
   );
 }
