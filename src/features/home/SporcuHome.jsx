@@ -176,7 +176,6 @@ function Today({ tr }) {
   const { w } = useWeather();
   const { open } = usePlanOpen();
   const at = tr?.time && dayHours(w, todayStr())?.find((r) => r.hh === tr.time.slice(0, 2));
-  const dur = durText(tr?.durationMin);
   return (
     <section className="sh-hero" aria-label="Bugün">
       <svg className="sh-sail" viewBox="0 0 60 80" aria-hidden="true">
@@ -194,9 +193,10 @@ function Today({ tr }) {
                 Rüzgâr<b className="num">{Math.round(at.wind ?? 0)} kn</b>
               </span>
             )}
-            {dur && (
+            {/* Süre yazılmaz, yalnız başlama saati (Seyhun 2026-11-25 "süreyi yazmayalım, 15:00 kalsın sadece") */}
+            {tr.time && (
               <span>
-                Süre<b className="num">{dur}</b>
+                Saat<b className="num">{tr.time.slice(0, 5)}</b>
               </span>
             )}
             {tr.place && (
