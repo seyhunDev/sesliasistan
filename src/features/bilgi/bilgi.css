@@ -758,3 +758,12 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 .bzy-tst + .bzy-cezab { margin-left: 0; }
 .bzy-cezal { display: grid; gap: 0.5rem; }
 .bzy-cezal button { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; min-height: 3rem; padding: 0 1rem; border: 1px solid #2e2e33; border-radius: 0.875rem; background: #1f1f22; color: #fff; font-size: 1rem; font-weight: 600; text-align: left; }
+
+/* Önerilen cümleler (2026-11-25): sesli kalıp kaydında dokunulan cümle büyük yazılır */
+.bzy-kcum { display: block; text-align: center; font: 800 1.75rem/1.1 var(--sc, system-ui); text-transform: none; color: var(--fg, #fff); }
+.bzy-kon { display: grid; gap: 0.75rem; }
+.bzy-kon small { display: block; margin: 0 0 0.375rem 0.25rem; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--mut, #a1a1aa); }
+.bzy-kon div { display: flex; flex-wrap: wrap; gap: 0.375rem; }
+.bzy-kon button { height: 2.25rem; padding: 0 0.75rem; border: 1px solid var(--line, #2e2e33); border-radius: 999px; background: var(--fill, #1f1f22); color: var(--fg, #fff); font-size: 0.875rem; font-weight: 600; }
+.bzy-kon button[data-ok] { color: #d4ff3a; }
+.bzy-kon button[aria-pressed="true"] { background: #fff; color: #111; }

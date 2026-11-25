@@ -549,7 +549,7 @@ export const logGelen = (org, g, ctx) => logSent(org, { kind: "gelen", dur: g.du
 // Hazır kalıplar (Seyhun 2026-11-25 örnek "Yönet hazır kalıplar"): kaydedilmiş bas-konuş sesi. Liste orgs/{org}/bilgi/kaliplar { list: [{ id, name,
 // dur, type, at, used, n }] } (Yönet açılınca tek okuma), ses orgs/{org}/bilgi/k-{id} { type, dur, data } ve linkin kopyası bilgiAcik/{anahtar}/ses/k-{id}.
 // Gönderince bilgi/ses belgesine yalnız kalıp kimliği yazılır; sporcu ekranı sesi ilk sefer indirip saklar.
-export const KALIP_MAX = 30;
+export const KALIP_MAX = 60;
 const kalipRef = (org) => ref(org, "kaliplar");
 export function useKaliplar(org) {
   const [v, setV] = useState({ org: "", list: null });
@@ -569,6 +569,16 @@ export function useKaliplar(org) {
 }
 // Yazılı kalıp (Seyhun 2026-11-25 "Google seslendirmesini kullanarak"): { id, name, text } (ses yok); gönderilince yazılı mesaj gibi gider,
 // sporcunun ekranı asistan sesiyle okur (aynı cümlenin sesi sunucuda saklı). Sesli kalıp: { id, name, dur, type } + k-{id} belgesinde ses.
+// Önerilen cümleler (Seyhun 2026-11-25 "Optimist sınıfı yelkencilere verilen komutlar"): antrenör söyleyip kendi sesiyle kalıp yapar
+export const KALIP_ONERI = [
+  ["Yelken ayarı", ["İskotayı çek", "İskotayı boşalt", "Vangı sık", "Vangı gevşet", "Tüylere bak", "Yelkeni düzelt"]],
+  ["Oturuş ve denge", ["Öne otur", "Arkaya otur", "Tekneyi düz tut", "Tekneyi biraz yatır", "Kayışa asıl", "Omuzları dışarı"]],
+  ["Dümen ve rota", ["Hedefe bak", "Orsa çık", "Biraz boşla", "Dümeni yumuşak kullan", "Hızını koru"]],
+  ["Rüzgâr", ["Rüzgâr dönüyor", "Basınç geliyor, hazırlan", "Sol tarafa geç", "Sağ tarafa geç"]],
+  ["Manevra", ["Tramola hazırla", "Kavança hazırla", "Şamandıraya geniş gir, dar çık", "Şamandırayı yakın dön"]],
+  ["Start", ["Hatta yaklaş", "Hattın gerisinde kal", "Yerini koru", "Boşluk bırak", "Hızlan, çık"]],
+  ["Genel", ["Bana gel", "Kıyıya dönüyoruz", "Arkadaşını bekle", "Su iç", "Aferin, çok iyi", "Aynen böyle devam"]],
+];
 export const KALIP_HAZIR = ["İskota ayarına bak", "Tüyleri kontrol et", "Hedefi kontrol et", "İskota çek", "İskotayı boşalt", "Daha fazla trapeze çık", "Omuzları uzat"];
 const kalipText = (s) =>
   String(s || "")
@@ -602,7 +612,9 @@ export async function saveKalip(org, list, { blob, dur, name }) {
   await setDoc(ref(org, `k-${id}`), d);
   mirror(org, d, "ses", `k-${id}`);
   const item = { id, name: kalipName(name), dur: Math.round(dur), type, at: Date.now(), used: Date.now(), n: 0 };
-  await setDoc(kalipRef(org), { list: [item, ...(list || [])].slice(0, KALIP_MAX) }, { merge: true });
+  // Aynı cümlenin yazılı kalıbı varsa yerini kendi sesi alır (önerilen cümleler, 2026-11-25)
+  const rest = (list || []).filter((x) => !(x.text && x.text.toLocaleLowerCase("tr") === item.name.toLocaleLowerCase("tr")));
+  await setDoc(kalipRef(org), { list: [item, ...rest].slice(0, KALIP_MAX) }, { merge: true });
   return item;
 }
 // Yazılı kalıpta ad = okunacak cümle
