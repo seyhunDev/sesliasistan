@@ -36,11 +36,13 @@ const voiceId = (v) => {
 let geminiOffUntil = 0;
 const mem = new Map(); // süreç içi önbellek: anahtar → { audio, type, engine }
 
-async function cloudTts(body, ms) {
+// Gemini-TTS (Vertex) kimlik ister: düz API anahtarı 403 "aiplatform.endpoints.predict denied" alır. Bunun için
+// servis hesabına bağlı (rolü Vertex AI User) ayrı bir anahtar GEMINI_TTS_KEY; yoksa GOOGLE_TTS_KEY denenir.
+async function cloudTts(body, ms, key = process.env.GOOGLE_TTS_KEY) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), ms);
   try {
-    const res = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${encodeURIComponent(process.env.GOOGLE_TTS_KEY)}`, {
+    const res = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${encodeURIComponent(key)}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
@@ -71,6 +73,7 @@ async function gemini({ text, voice, lang, style, rate, timeoutMs }) {
       audioConfig: { audioEncoding: "MP3" },
     },
     timeoutMs,
+    process.env.GEMINI_TTS_KEY || process.env.GOOGLE_TTS_KEY,
   );
 }
 

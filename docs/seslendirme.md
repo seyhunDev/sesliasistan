@@ -18,6 +18,7 @@ Velora Sailing (`seyhunDev/velora-sailing`, `scripts/tts.mjs`) aynı modeli ve s
 | Değişken | Ne işe yarar |
 |---|---|
 | `GOOGLE_TTS_KEY` | Google Cloud API anahtarı (proje 828345188662). Gemini-TTS için aynı projede **Vertex AI API** açık olmalı. |
+| `GEMINI_TTS_KEY` | Gemini-TTS için anahtar. Düz API anahtarı Vertex'te 403 "aiplatform.endpoints.predict denied" alır; servis hesabına bağlı (rolü **Vertex AI User**) bir API anahtarı gerekir. Yoksa `GOOGLE_TTS_KEY` denenir, o da reddedilirse Chirp. Velora Sailing'de de aynı ad. |
 | `TTS_GEMINI_MODEL` | İsteğe bağlı, varsayılan `gemini-2.5-flash-tts` (`gemini-2.5-pro-tts` daha iyi, daha pahalı). |
 | `TTS_ENGINE=chirp` | Gemini'yi kapatır, yalnız Chirp. (`device`: anahtar yoksa doğrudan cihaz sesi.) |
 

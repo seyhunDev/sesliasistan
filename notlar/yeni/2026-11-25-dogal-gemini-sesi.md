@@ -4,6 +4,7 @@
 - Önbellek: `cache: true` → Firebase Storage `tts-cache/`. Kullanım sayacı `tts-gem` (Ayarlar › Kullanım'da tahmini $). Kılavuz: `docs/seslendirme.md`. Test: `npm run test:ses` "Ortak seslendirme".
 
 ## Sıradaki işler
+00. Netlify'a `GEMINI_TTS_KEY` ekle (servis hesabına bağlı, Vertex AI User rollü API anahtarı; düz anahtar 403 alıyor). Eklenmeden Gemini denenir, reddedilince Chirp ile okur.
 0. Telefonda dene: asistan cevabı doğal ses mi, gecikme kabul edilebilir mi (yavaşsa Netlify'da `TTS_ENGINE=chirp` ile eskiye döner).
 1. Fitness yeniden tasarımında anlatım `sayWith(audio, metin, { style: "fitness", cache: true })` ile yapılsın.
 
