@@ -24,6 +24,7 @@ import { getPlace, placeLabel, searchPlaces, setPlace } from "@/features/weather
 import { Badge, Btn, Chips, Row, Switch } from "./ui";
 import { useRaceHome } from "@/features/athletes/raceHome";
 import { canSeeAthletes } from "@/features/athletes/access";
+import { saveTekneKim, useTekneKim } from "@/features/bilgi/bilgiStore";
 import { WA_GROUP_MAX, WA_GROUP_NAMES, cleanWaGroups, cleanWaLink } from "@/lib/waGroups";
 
 // Ayarlar sayfasının satırları. Sayfa bunları Genel, Bildirimler, Asistan, Hesap olarak dizer; seyrek kullanılanlar
@@ -681,6 +682,45 @@ export function PasswordRow() {
         <input type="password" autoComplete="new-password" placeholder="Yeni şifre (en az 6 karakter)" value={next} onChange={(e) => setNext(e.target.value)} required className="h-11 w-full rounded-xl bg-bg px-3 text-base outline-none ring-1 ring-line focus:ring-acc" />
         <Btn type="submit" disabled={busy || !cur || next.length < 6}>
           {busy ? "Bekleyin…" : "Şifreyi değiştir"}
+        </Btn>
+      </form>
+    </Fold>
+  );
+}
+
+// Tekne ekranı kimliği (Seyhun 2026-11-25): bilgi ekranında sorulmaz; isim hesabın adı, yelken no sporcu kaydından. Buradan değiştirilir
+// (users.bilgiKim; boş bırakılan alan hesaptaki/kayıttaki değere döner).
+export function TekneKimRow() {
+  const toast = useToast();
+  const { profile } = useAuth();
+  const kim = useTekneKim(profile);
+  const [sail, setSail] = useState(null);
+  const [name, setName] = useState(null);
+  const [busy, setBusy] = useState(false);
+  if (!kim) return null;
+  const s = sail ?? kim.sail;
+  const n = name ?? kim.name;
+  async function save(e) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await saveTekneKim(profile.uid, { sail: s, name: n });
+      setSail(null);
+      setName(null);
+      toast("Kaydedildi");
+    } catch {
+      toast("Kaydedilemedi, tekrar dene");
+    }
+    setBusy(false);
+  }
+  const box = "h-11 w-full rounded-xl bg-bg px-3 text-base outline-none ring-1 ring-line focus:ring-acc";
+  return (
+    <Fold title="Tekne ekranı" sub={[kim.sail, kim.name].filter(Boolean).join(" · ") || "…"}>
+      <form onSubmit={save} onClick={(e) => e.stopPropagation()} className="space-y-2.5 px-4 pb-3.5">
+        <input aria-label="Yelken no" placeholder="Yelken no" value={s} maxLength={12} autoCapitalize="characters" onChange={(e) => setSail(e.target.value)} className={`num ${box}`} />
+        <input aria-label="İsim" placeholder="İsim" value={n} maxLength={30} autoCapitalize="words" onChange={(e) => setName(e.target.value)} className={box} />
+        <Btn type="submit" disabled={busy || (sail === null && name === null)}>
+          {busy ? "Bekleyin…" : "Kaydet"}
         </Btn>
       </form>
     </Fold>

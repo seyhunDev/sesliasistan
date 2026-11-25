@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { arrayUnion, collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, waitForPendingWrites, where } from "firebase/firestore";
 import { addDoc, deleteDoc, setDoc, updateDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
-import { cleanBilgi, MSG_MAX } from "@/lib/bilgi";
+import { LIVE_MS, cleanBilgi, MSG_MAX } from "@/lib/bilgi";
 
 // Bilgi ekranı verisi: orgs/{org}/bilgi/ekran (sayaç, parkur, mesaj) ve orgs/{org}/bilgi/ses (son bas-konuş kaydı).
 // Ekranlar belgeyi dinler (onSnapshot): okuma yalnız belge değişince olur, kaç sporcu açarsa açsın sürekli sorma yok.
@@ -212,6 +212,43 @@ export function deviceId() {
   }
 }
 export const sendPos = (dev, d) => setDoc(doc(db, "bilgiTekne", dev), d);
+// Çıkış (Seyhun 2026-11-25 "çıkış yapınca konumu görünmesin, offline görünsün"): konum alanları boşalır, zaman LIVE_MS kadar geriye
+// alınır; Yönet'te hemen kapalı (Offline) sayılır, haritada görünmez. Kural değişmeden (yeni alan yok) yazılır.
+export const offPos = (dev, d) =>
+  setDoc(doc(db, "bilgiTekne", dev), { ...d, lat: null, lon: null, spd: null, hdg: null, acc: null, t: Date.now() - LIVE_MS - 1000 });
+
+// Hesapla giren sporcunun tekne kimliği (Seyhun 2026-11-25 "isim kendi ismi, yelken numarası varsa göster, yoksa kendi yazsın"):
+// isim hesabın adı, yelken no sporcu kaydından (athleteAtt kopyasında sailNo; ana hesap Sporcular'ı açınca eşitlenir). Ayarlar › Tekne
+// ekranı'ndan değiştirilen ya da katılırken yazılan değer users/{uid}.bilgiKim'de durur ve önce gelir.
+export function useTekneKim(profile) {
+  const uid = profile?.uid || "";
+  const org = profile?.orgId || "";
+  const [att, setAtt] = useState({ uid: "", sail: "" });
+  useEffect(() => {
+    if (!uid || !org) return;
+    let off = false;
+    getDoc(doc(db, "orgs", org, "athleteAtt", uid))
+      .then((d) => !off && setAtt({ uid, sail: String(d.data()?.sailNo || "").slice(0, 12) }))
+      .catch(() => !off && setAtt({ uid, sail: "" }));
+    return () => {
+      off = true;
+    };
+  }, [uid, org]);
+  if (!uid) return null;
+  const k = profile.bilgiKim || {};
+  return {
+    ready: att.uid === uid,
+    sail: String(k.sail || att.sail || "").slice(0, 12),
+    name: String(k.name || profile.name || "").slice(0, 30),
+  };
+}
+export const saveTekneKim = (uid, w) =>
+  updateDoc(doc(db, "users", uid), {
+    bilgiKim: {
+      sail: String(w.sail || "").trim().slice(0, 12),
+      name: String(w.name || "").replace(/\s+/g, " ").trim().slice(0, 30),
+    },
+  });
 
 // Sesle kişiye gönderme için kanaldakiler bir kez okunur
 export async function loadTekneler(org) {

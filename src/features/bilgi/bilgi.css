@@ -18,8 +18,9 @@ html.bz-lock body { position: fixed; inset: 0; width: 100%; }
   --bz-bg: #fff; --bz-fg: #000; --bz-txt: #111; --bz-mut: #454b55; --bz-dim: #59606b; --bz-off: #c3c8d0; --bz-line: #c9ced6; --bz-line2: #9aa3b2; --bz-line3: #1d4ed8;
   --bz-acc: #1d4ed8; --bz-tm: #1d4ed8; --bz-done: #1d4ed8; --bz-mark: #e08a00; --bz-tick: #111; --bz-tick2: #8a919c; --bz-card: #f1f3f6;
 }
-.bz-back { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 0.5rem); left: max(0.75rem, env(safe-area-inset-left, 0px)); padding: 0.5rem; color: var(--bz-fg); opacity: .28; background: none; border: 0; z-index: 2; }
-.bz-back svg { width: 1rem; height: 1rem; display: block; }
+/* Çıkış (2026-11-25, geri düğmesinin yerine): sol üstte küçük hap; ilk dokunuşta kırmızı "Çıkılsın mı?", ikincisi çıkar */
+.bz-out { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 0.5rem); left: max(0.75rem, env(safe-area-inset-left, 0px)); z-index: 3; height: 2.25rem; padding: 0 0.875rem; border-radius: 999px; border: 1px solid var(--bz-line2); background: transparent; color: var(--bz-fg); font-size: 0.875rem; font-weight: 700; opacity: .8; }
+.bz-out[data-ask] { background: #e5484d; border-color: #e5484d; color: #fff; opacity: 1; }
 .bz-talk { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 0.375rem); left: 50%; transform: translateX(-50%); z-index: 2; display: flex; align-items: center; gap: 0.5rem; padding: 0.375rem 0.875rem; border-radius: 999px; background: var(--bz-acc); color: #fff; font-size: 0.875rem; font-weight: 700; box-shadow: 0 4px 14px rgba(0, 0, 0, .3); }
 /* Ses dalgası: konuşma sürerken çubuklar iner kalkar */
 .bz-wave { display: inline-flex; align-items: center; gap: 3px; height: 1rem; }

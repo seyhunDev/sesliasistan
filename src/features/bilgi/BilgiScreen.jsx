@@ -6,7 +6,7 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { sunsetHM } from "@/lib/attRemind";
 import { FRESH_MS, SHOW_DEF, beepOf, buildCourse, dirName, normDeg, pFlag, screenMode, seqMarks, startView, declination, quatHeading, tiltHeading, windRel } from "@/lib/bilgi";
 import { CourseMap } from "./CourseMap";
-import { deviceId, readWho, savePusula, saveWho, sendGelen, sendIz, sendPos, useBilgi, useBilgiDoc, usePublic } from "./bilgiStore";
+import { deviceId, offPos, readWho, savePusula, saveTekneKim, saveWho, sendGelen, sendIz, sendPos, useBilgi, useBilgiDoc, usePublic, useTekneKim } from "./bilgiStore";
 import { usePtt } from "./usePtt";
 import { PttCancel, Wave } from "./Wave";
 import { mineOf, useCanliRace } from "@/features/liveScreen/sonuclar";
@@ -197,7 +197,7 @@ const metres = (a, b) => {
 // Kanaldaki varlık + konum (tek belge bilgiTekne/{cihaz}): GPS varsa 10 sn'de bir (durgunsa 45 sn), yoksa 45 sn'de bir konumsuz.
 // seen: ekranın gösterdiği/çaldığı son mesaj ya da ses (Yönet'te "Görüldü"); değişince hemen yazılır.
 function usePresence(on, who, org, k, uid, ch, seen) {
-  const st = useRef({ seen: "", kick: null });
+  const st = useRef({ seen: "", kick: null, off: null });
   useEffect(() => {
     if (!on || !org || !who || !ch) return;
     const S0 = st.current;
@@ -205,7 +205,9 @@ function usePresence(on, who, org, k, uid, ch, seen) {
     if (!dev) return;
     let fix = null;
     let sent = null;
+    let gone = false;
     const write = () => {
+      if (gone) return;
       const c = fix && Date.now() - fix.timestamp < 20000 ? fix.coords : null;
       const pt = c ? { lat: +c.latitude.toFixed(6), lon: +c.longitude.toFixed(6) } : { lat: null, lon: null };
       const d = {
@@ -240,8 +242,20 @@ function usePresence(on, who, org, k, uid, ch, seen) {
       sendIz({ org, k: k || "", ch, dev, sail: who.sail || "", name: who.name || "", uid: uid || "", t0, pts: iz.flat() }).catch(() => {});
       iz = [];
     };
-    const hide = () => document.visibilityState === "hidden" && flushIz();
+    // Arka plana atılınca / kapanınca (Seyhun 2026-11-25): telefon artık konum gönderemez, Yönet'te hemen Offline olsun, eski konum
+    // haritada kalmasın. Öne gelince hemen yeniden yazılır. Kapanış yazısı gitmezse Yönet 90 sn sonra (LIVE_MS) yine kapalı sayar.
+    const offDoc = () => ({ org, k: k || "", ch, sail: who.sail || "", name: who.name || "", uid: uid || "", seen: S0.seen || "" });
+    const hide = () => {
+      if (gone) return;
+      if (document.visibilityState === "hidden") {
+        flushIz();
+        sent = null;
+        offPos(dev, offDoc()).catch(() => {});
+      } else write();
+    };
+    const bye = () => !gone && offPos(dev, offDoc()).catch(() => {});
     document.addEventListener("visibilitychange", hide);
+    window.addEventListener("pagehide", bye);
     const id = setInterval(() => {
       const c = fix && Date.now() - fix.timestamp < 20000 ? fix.coords : null;
       if (c && Date.now() - fix.timestamp < 10000) {
@@ -255,12 +269,25 @@ function usePresence(on, who, org, k, uid, ch, seen) {
       if (age < 9500) return;
       write();
     }, 5000);
-    return () => {
-      S0.kick = null;
+    const stop = () => {
+      gone = true;
       if (w != null) navigator.geolocation.clearWatch(w);
       clearInterval(id);
       document.removeEventListener("visibilitychange", hide);
+      window.removeEventListener("pagehide", bye);
       flushIz();
+    };
+    // Çıkış düğmesi: önce her şey durur (GPS, iz, yazma), sonra tek "kapalı" yazısı; yazı en çok 3 sn beklenir
+    S0.off = () => {
+      if (gone) return Promise.resolve();
+      stop();
+      return Promise.race([offPos(dev, offDoc()).catch(() => {}), new Promise((r) => setTimeout(r, 3000))]);
+    };
+    return () => {
+      S0.kick = null;
+      S0.off = null;
+      // Sayfadan başka yolla çıkılsa (Android geri, kanal kapandı) da konum bırakılmaz
+      if (!gone) (stop(), offPos(dev, offDoc()).catch(() => {}));
     };
   }, [on, who, org, k, uid, ch]);
   useEffect(() => {
@@ -268,6 +295,7 @@ function usePresence(on, who, org, k, uid, ch, seen) {
     st.current.seen = seen;
     st.current.kick?.();
   }, [seen]);
+  return () => st.current.off?.() || Promise.resolve();
 }
 
 const noSub = () => () => {};
@@ -287,7 +315,9 @@ const WHY = {
 };
 // Kapat (Seyhun 2026-11-23 "katıl ve başlat, değiştir açılıyor, geri ya da X yok, öyle kalıyor"): sol üstte X. Değiştir açıkken X değiştirmeyi
 // bırakır; değilse ekrandan çıkar (uygulamada geri; linkte yalnız geri gidilecek sayfa varsa görünür).
-function StartCard({ onGo, onClose, kanal, why = "" }) {
+// Hesapla girişte (acct; Seyhun 2026-11-25) sorulmaz: isim hesabın adı, yelken no kayıtlıysa gösterilir; yoksa yalnız yelken no yazılır
+// (hesaba kaydedilir, sonraki açılışta sorulmaz). Değiştirmek Ayarlar › Tekne ekranı'ndan.
+function StartCard({ onGo, onClose, kanal, why = "", acct = null, uid = "" }) {
   // Saklı kimlik ilk çizimden sonra okunur (sunucu çizimiyle uyuşsun): sunucuda null
   const raw = useSyncExternalStore(noSub, whoRaw, () => null);
   const who = raw ? readWho() : null;
@@ -296,6 +326,12 @@ function StartCard({ onGo, onClose, kanal, why = "" }) {
   const [sail, setSail] = useState("");
   const [name, setName] = useState("");
   const go = () => {
+    if (acct) {
+      const s = acct.sail || sail.trim();
+      if (!s) return;
+      if (!acct.sail && uid) saveTekneKim(uid, { sail: s, name: acct.name }).catch(() => {});
+      return onGo({ sail: s, name: acct.name });
+    }
     if (edit) {
       if (!sail.trim() && !name.trim()) return;
       saveWho({ sail, name });
@@ -315,7 +351,7 @@ function StartCard({ onGo, onClose, kanal, why = "" }) {
       </svg>
     </button>
   ) : null;
-  if (raw === null || kanal === undefined) return <div className="bz-go navy">{x}</div>;
+  if (raw === null || kanal === undefined || (acct && !acct.ready)) return <div className="bz-go navy">{x}</div>;
   if (!kanal?.open)
     return (
       <div className="bz-go navy">
@@ -334,7 +370,29 @@ function StartCard({ onGo, onClose, kanal, why = "" }) {
         }}
       >
         <div className="bz-ch">{kanal.name}</div>
-        {edit ? (
+        {acct ? (
+          <>
+            {acct.sail ? (
+              <div className="bz-who">
+                <b className="num">{acct.sail}</b>
+                <span>{acct.name}</span>
+              </div>
+            ) : (
+              <>
+                <div className="bz-who">
+                  <span>{acct.name}</span>
+                </div>
+                <label>
+                  Yelken no
+                  <input className="num" value={sail} maxLength={12} inputMode="text" autoCapitalize="characters" onChange={(e) => setSail(e.target.value)} />
+                </label>
+              </>
+            )}
+            <button type="submit" className="btn btn-primary" disabled={!acct.sail && !sail.trim()}>
+              Katıl ve başlat
+            </button>
+          </>
+        ) : edit ? (
           <>
             <label>
               Yelken no
@@ -351,10 +409,12 @@ function StartCard({ onGo, onClose, kanal, why = "" }) {
             <span>{who.name}</span>
           </div>
         )}
-        <button type="submit" className="btn btn-primary" disabled={edit && !sail.trim() && !name.trim()}>
-          Katıl ve başlat
-        </button>
-        {!edit && (
+        {!acct && (
+          <button type="submit" className="btn btn-primary" disabled={edit && !sail.trim() && !name.trim()}>
+            Katıl ve başlat
+          </button>
+        )}
+        {!acct && !edit && (
           <button type="button" className="bz-chg" onClick={change}>
             Değiştir
           </button>
@@ -653,7 +713,9 @@ export function BilgiScreen({ pub = "" }) {
   const myMsg = forMe(b?.msg) ? b.msg : null;
   const mySes = forMe(ses) ? ses : null;
   const fresh = [myMsg, mySes].filter((x) => x?.id && now - x.at < FRESH_MS).sort((x, y) => y.at - x.at)[0];
-  usePresence(active, who, pub ? porg : org, pub, profile?.uid, kanal?.id || "", active ? fresh?.id || "" : "");
+  const goOff = usePresence(active, who, pub ? porg : org, pub, profile?.uid, kanal?.id || "", active ? fresh?.id || "" : "");
+  // Hesapla girişte kimlik hesaptan (isim + kayıtlı yelken no); girişsiz linkte bu telefonda saklı olan
+  const acct = useTekneKim(profile);
   const [talk, unlock] = useVoice(active, myMsg, mySes);
   const pos = useMyPos(active);
   const { data: mine } = useCanliRace(active && !!who?.sail, 60e3);
@@ -689,7 +751,31 @@ export function BilgiScreen({ pub = "" }) {
   const canBack = useSyncExternalStore(noSub, () => window.history.length > 1, () => false);
   const leave = () => {
     if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {});
-    router.back();
+    if (window.history.length > 1) router.back();
+    else router.replace("/");
+  };
+  // Çıkış (Seyhun 2026-11-25, geri düğmesinin yerine): iki dokunuş (denizde yanlışlıkla çıkılmasın: ilki "Çıkılsın mı?", 3 sn içinde
+  // ikincisi çıkar). GPS, iz, pusula kaydı, ses ve ekran kilidi durur; Yönet'te tekne hemen Offline, konumu gösterilmez.
+  const [bye, setBye] = useState(0);
+  useEffect(() => {
+    if (!bye) return;
+    const t = setTimeout(() => setBye(0), 3000);
+    return () => clearTimeout(t);
+  }, [bye]);
+  const exit = async () => {
+    if (bye !== 1) return setBye(1);
+    setBye(2);
+    try {
+      speechSynthesis?.cancel();
+    } catch {}
+    try {
+      AUDIO?.pause();
+    } catch {}
+    await goOff();
+    setOn(false);
+    setJoined("");
+    setBye(0);
+    if (!pub || canBack) leave();
   };
 
   const d = new Date(now);
@@ -755,11 +841,9 @@ export function BilgiScreen({ pub = "" }) {
 
   return (
     <main className={`bz${active ? " bz-pton" : ""}${showMap ? " bz-mapon" : ""}${night ? "" : " bz-day"} bz-m-${mode}${mode === "pre" && sv.phase !== "none" ? " bz-cnt" : ""}`} data-bilgi>
-      {!pub && (
-        <button type="button" className="bz-back" onClick={leave} aria-label="Geri">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
-            <path d="M15 5l-7 7 7 7" />
-          </svg>
+      {active && (
+        <button type="button" className="bz-out" data-ask={bye ? "1" : undefined} onClick={exit} disabled={bye === 2} data-press>
+          {bye === 2 ? "Çıkılıyor…" : bye ? "Çıkılsın mı?" : "Çıkış"}
         </button>
       )}
       {talk && (
@@ -871,7 +955,7 @@ export function BilgiScreen({ pub = "" }) {
         </span>
       )}
       {showMap && map}
-      {!active && <StartCard onGo={start} onClose={!pub || canBack ? leave : null} kanal={kanal} why={pub ? pwhy : ""} />}
+      {!active && <StartCard onGo={start} onClose={!pub || canBack ? leave : null} kanal={kanal} why={pub ? pwhy : ""} acct={acct} uid={profile?.uid || ""} />}
     </main>
   );
 }
