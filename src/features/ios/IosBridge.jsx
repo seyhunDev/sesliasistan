@@ -9,8 +9,10 @@ import { readTimer, useTimer } from "@/features/training/Countdown";
 import { bridgeVibrate } from "@/lib/haptic";
 import { iosApp, onOpen, showTimer, syncAlarms, takeOpen } from "@/lib/nativeIos";
 import { alarmItems } from "@/lib/planAlarm";
+import { SharedResults } from "./SharedResults";
 import { WatchBridge } from "./WatchBridge";
 import { WidgetFeed } from "./WidgetFeed";
+import { openOutside } from "@/lib/openOutside";
 
 // iPhone uygulamasının yerel parçalarını web'e bağlar (uygulama düzeninde bir kez durur; tarayıcıda hiçbir şey yapmaz):
 // - bas-konuş: Siri / Eylem tuşu / Denetim Merkezi düğmesi → asistan açılır ve dinler
@@ -19,6 +21,7 @@ import { WidgetFeed } from "./WidgetFeed";
 // - widget'lar planları, sayacı, mesajları, hesabı ve günün kelimesini alır (WidgetFeed); dokununca ilgili sayfa açılır ("go:/yol")
 // - eski navigator.vibrate çağrıları Taptic olur (lib/haptic.js)
 // - Apple Watch: saatten asistana iş ve tek sayaç (WatchBridge)
+// - Paylaş › Velora: WhatsApp'taki sonuç PDF'i ya da fotoğrafı yarışa eklenir (SharedResults)
 export function IosBridge() {
   const router = useRouter();
   const toast = useToast();
@@ -33,11 +36,12 @@ export function IosBridge() {
     if (!iosApp()) return;
     bridgeVibrate();
     const go = (what) => {
-      if (what.startsWith("go:")) router.push(what.slice(3) || "/");
+      if (what.startsWith("go:")) openOutside(router, what.slice(3) || "/");
+      else if (what === "share") window.dispatchEvent(new CustomEvent("sa-shared-files"));
       else if (what === "talk") window.dispatchEvent(new CustomEvent("sa-open-assistant", { detail: { listen: true } }));
       else if (what === "timer") {
         const own = readTimer().own;
-        if (own) router.push(own.startsWith("/athletes/races/") ? `${own}?tab=sure` : own);
+        if (own) openOutside(router, own.startsWith("/athletes/races/") ? `${own}?tab=sure` : own);
       }
     };
     takeOpen().then(go);
@@ -84,6 +88,7 @@ export function IosBridge() {
     <>
       <WidgetFeed timer={state && { ...state, title }} />
       <WatchBridge />
+      <SharedResults />
     </>
   ) : null;
 }

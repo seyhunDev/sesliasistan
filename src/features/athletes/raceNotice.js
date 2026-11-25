@@ -30,7 +30,7 @@ export async function kindOf(file) {
   return "";
 }
 
-export async function readNotice(file) {
+export async function readNotice(file, { focus = "" } = {}) {
   const kind = await kindOf(file);
   let body;
   if (kind === "pdf") {
@@ -44,7 +44,7 @@ export async function readNotice(file) {
   } else if (kind === "docx") {
     throw new Error("Word dosyası okunamıyor. PDF olarak kaydet ya da metni kopyalayıp “Metin yapıştır” ile ekle.");
   } else throw new Error("PDF, fotoğraf ya da metin seç");
-  return send(body);
+  return send(focus ? { ...body, focus } : body);
 }
 
 // Kopyalanan talimat metni
@@ -103,7 +103,7 @@ export async function addNoticePlans(saveDrafts, r, by) {
   if (!list.length) return 0;
   const place = [r.district, r.city].filter(Boolean).join(", ");
   const res = await saveDrafts(
-    list.map((d) => ({ type: "plan", title: `${r.name.trim()}: ${d.title}`, date: d.date, endDate: "", time: d.time || "", place, cat: "Yarış", assignees: [] })),
+    list.map((d) => ({ type: "plan", title: `${r.name.trim()}: ${d.title}`, date: d.date, endDate: "", time: d.time || "", place, cat: "Yarış", assignees: [], raceId: r.id || "" })),
     { source: "manual", by },
   );
   return res.error ? 0 : res.plans;

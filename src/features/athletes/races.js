@@ -1,7 +1,10 @@
 "use client";
 
+import { racePlanDates } from "./raceLinks";
 import { cleanResults } from "@/lib/raceResults";
-import { arrayUnion, collection, doc, getDoc, getDocs, serverTimestamp } from "firebase/firestore";
+import { cleanFollow } from "@/lib/resultSheet";
+import { arrayUnion, collection, doc, onSnapshot, serverTimestamp } from "firebase/firestore";
+import { readCache, readServer } from "@/lib/firebase/fastRead";
 import { deleteDoc, setDoc, updateDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { soon } from "@/lib/soon";
@@ -18,6 +21,8 @@ export const RACE_FIELDS = [
   // abroad: yurt dışı yarışı (city = ülke, district = şehir; Türkiye'de yapılacaklar listesi açılır), skips: listeden çıkarılan hazır işler
   "abroad", "skips", "done",
   "name", "federation", "city", "district", "startDate", "endDate", "leaveStart", "leaveEnd", "letterDate", "docsAt",
+  // docsKey: evrak hazırlandığındaki bilgilerin özeti (RaceEditor docsHash); bilgi değişince farklılaşır, her cihazda "evrak eski" anlaşılır
+  "docsKey",
   "signer", "signerTitle", "travel", "vehicle", "drivers", "athleteIds", "note", "checks", "planAdded",
   // Yolculuk: çıkış günü/saati, çıkış yeri, buluşma noktası (boşsa çıkış yeri), dönüş günü/saati (tripText)
   "departDate", "departTime", "departFrom", "meetPoint", "returnDate", "returnTime",
@@ -49,6 +54,12 @@ export const RACE_FIELDS = [
   "results",
   // Evrak'ta seçili belgeler (DOCS anahtarları; yoksa DOC_DEFAULT)
   "docs",
+  // Sonuçlarda ☆ ile takip edilen başka kulüplerin sporcuları ["ilca 4|216382", …] (resultSheet.followKey)
+  "follow",
+  // Ortak yarış bağı (lib/sharedRace.js): sharedRaces/{shared}; sharedAt ortaktan son alınan sürüm
+  "shared", "sharedAt",
+  // Yarış sitesinden izleme (raceSite.js): { act, cls, season, n, legNo } TYF İlan Tahtası'ndaki sınıf sekmesi
+  "site",
 ];
 
 const NOTICE_KEYS = ["organizer", "venue", "classes", "schedule", "deadlines", "tasks", "fees", "hotels", "contacts", "notes", "summary", "at", "planned"];
@@ -275,9 +286,17 @@ const clean = (r) =>
               ? cleanDocs(r[k])
             : k === "hotels"
               ? cleanHotels(r[k])
+            : k === "follow"
+              ? cleanFollow(r[k])
+            : k === "site"
+              ? cleanSite(r[k])
             : String(r[k] || "").trim(),
     ]),
   );
+
+// Yarış sitesi bağı (raceSite.js): yoksa null
+export const cleanSite = (s) =>
+  s && /^\d{1,9}$/.test(String(s.act || "")) ? { act: String(s.act), cls: String(s.cls || "").slice(0, 40), season: String(s.season || "").slice(0, 9), n: Number(s.n) || 1, legNo: /^\d{1,4}$/.test(String(s.legNo || "")) ? String(s.legNo) : "" } : null;
 
 // Yeni yarışın boş hali (evrak tarihi boş: belgeler ilk hazırlanınca o gün yazılır, sonra değişmez): yetkili, il, federasyon gibi bilgiler son yarıştan gelir.
 // Kulüp izin yazısının sayısı son yarışın son sayısından devam eder.
@@ -285,23 +304,23 @@ export function freshRace(last = {}, today = "") {
   return {
     abroad: false, skips: [], done: [],
     name: "", federation: last.federation || "Yelken", city: last.city || "İzmir", district: "",
-    startDate: "", endDate: "", leaveStart: "", leaveEnd: "", letterDate: "", docsAt: "",
+    startDate: "", endDate: "", leaveStart: "", leaveEnd: "", letterDate: "", docsAt: "", docsKey: "",
     signer: last.signer || "", signerTitle: last.signerTitle || "Başkan",
     travel: last.travel || "Kendi İmkanları İle", vehicle: "-", drivers: "-", athleteIds: [],
     departDate: "", departTime: "", departFrom: last.departFrom || "", meetPoint: "", returnDate: "", returnTime: "", note: "", checks: {}, planAdded: false,
     clubNo: last.clubNo ? nextNo(last.clubNo, Math.max(1, last.athleteIds?.length || 0)) : "", clubDate: "", clubFrom: "", clubTo: "", clubEvent: "", clubPlace: "",
-    clubSigner: last.clubSigner || "", clubTitle: last.clubTitle || "Antrenör", hotelName: "", hotelFrom: "", hotelTo: "", hotels: null, entryClass: "", docs: null, notice: null, noticeFile: null, files: [], todos: [], budget: null, around: null, weather: null, spot: null, results: null,
+    clubSigner: last.clubSigner || "", clubTitle: last.clubTitle || "Antrenör", hotelName: "", hotelFrom: "", hotelTo: "", hotels: null, entryClass: "", docs: null, notice: null, noticeFile: null, files: [], todos: [], budget: null, around: null, weather: null, spot: null, results: null, shared: "", sharedAt: "",
   };
 }
 
 // Yarışı planlara yazar (tüm gün, çok günlü, "Yarış" kategorisi). saveDrafts: DataProvider'dan.
 // Yolculuk yazıldıysa plan çıkış gününde, çıkış saatinde başlar, dönüş gününde biter; yeri buluşma noktası (tek plan, ayrı kayıt yok).
+// Plan yarışın kimliğini taşır (raceId): Planlar, Takvim ve ana sayfada dokununca yarış sayfası açılır, yarışın adı değişse de bağ kopmaz (raceLinks.js).
 export async function addRacePlan(saveDrafts, r, by) {
-  const date = r.departDate || r.startDate;
-  const end = r.returnDate || r.endDate || "";
+  const { date, endDate } = racePlanDates(r);
   const time = /^\d{2}:\d{2}$/.test(r.departTime || "") ? r.departTime : "";
   const res = await saveDrafts(
-    [{ type: "plan", title: r.name.trim(), date, endDate: end && end > date ? end : "", time, place: (r.meetPoint || r.departFrom || "").trim() || [r.district, r.city].filter(Boolean).join(", "), cat: "Yarış", assignees: [] }],
+    [{ type: "plan", title: r.name.trim(), date, endDate, time, place: (r.meetPoint || r.departFrom || "").trim() || [r.district, r.city].filter(Boolean).join(", "), cat: "Yarış", assignees: [], raceId: r.id || "" }],
     { source: "manual", by },
   );
   return !res.error && res.plans > 0;
@@ -328,10 +347,24 @@ export function tripRows(r) {
 }
 
 // Tek yarış (multimedya sayfası); yoksa null
-export async function loadRace(orgId, id) {
-  const snap = await getDoc(doc(col(orgId), id));
-  return snap.exists() ? { id: snap.id, ...clean(snap.data()) } : null;
+// onCache: telefondaki kopya varsa hemen onunla çağrılır (sayfa beklemeden çizilir); dönen söz sunucudaki hâli (lib/firebase/fastRead.js)
+const raceOf = (snap) => (snap.exists() ? { id: snap.id, ...clean(snap.data()) } : null);
+export async function loadRace(orgId, id, onCache) {
+  const ref = doc(col(orgId), id);
+  if (onCache) readCache(ref).then((s) => s?.exists() && onCache(raceOf(s)));
+  return raceOf(await readServer(ref));
 }
+
+// Açık yarış sayfası yarışı dinler (Seyhun 2026-11-10 "telefondan sonuç yüklerim, iPad'de o an açıktır, anlık görebilmeliyim"):
+// yalnız sunucudaki hâl gelir (bu cihazın bekleyen yazısı ve telefondaki kopya atlanır). Okuma: açılışta 1, sonra yalnız değişince 1.
+export function watchRace(orgId, id, cb) {
+  return onSnapshot(
+    doc(col(orgId), id),
+    (snap) => !snap.metadata.hasPendingWrites && !snap.metadata.fromCache && snap.exists() && cb(raceOf(snap)),
+    () => {},
+  );
+}
+export { remoteResults } from "@/lib/raceResults";
 
 // Yalnız sonuçlar (multimedya sayfasından yükleme): yarışın diğer alanlarına dokunulmaz; bulunan yeni sporcular yarışa eklenir
 export async function saveRaceResults(orgId, id, results, addIds = []) {
@@ -347,33 +380,75 @@ let last = null; // { orgId, at, list }
 export const racesNow = (orgId, maxAge = Infinity) => (last?.orgId === orgId && Date.now() - last.at < maxAge ? last.list : null);
 const stale = () => last && (last.at = 0);
 
-export async function loadRaces(orgId) {
-  const snap = await getDocs(col(orgId));
-  const list = snap.docs.map((d) => ({ id: d.id, ...clean(d.data()) })).sort((a, b) => (b.startDate || "").localeCompare(a.startDate || ""));
+// Ortak yarış bağı (sharedRaces.js publishRace): yalnız bağ alanları yazılır, bellekteki liste de güncellenir
+export async function linkRace(orgId, id, link) {
+  const r = last?.orgId === orgId && last.list.find((x) => x.id === id);
+  if (r) Object.assign(r, { shared: link.shared, sharedAt: link.sharedAt || "" });
+  await updateDoc(doc(col(orgId), id), { shared: link.shared, sharedAt: link.sharedAt || "" });
+}
+
+const listOf = (snap) => snap.docs.map((d) => ({ id: d.id, ...clean(d.data()) })).sort((a, b) => (b.startDate || "").localeCompare(a.startDate || ""));
+export async function loadRaces(orgId, onCache) {
+  if (onCache) readCache(col(orgId)).then((s) => s && !s.empty && onCache(listOf(s)));
+  const snap = await readServer(col(orgId));
+  const list = listOf(snap);
   rememberRaceNames(list.map((r) => r.name));
   last = { orgId, at: Date.now(), list };
   return list;
 }
 
-// Yeni yarışı ekler ya da var olanı günceller; kimliği döndürür
-export async function saveRace(orgId, uid, r) {
-  const data = { ...clean(r), updatedAt: serverTimestamp() };
-  rememberRaceNames([data.name]);
-  stale();
+// Değişen alanlar: base (sayfanın bildiği son kayıt) ile karşılaştırılır; aynı kalan alan yazılmaz
+export function changedFields(r, base) {
+  const a = clean(r);
+  const b = clean(base);
+  return Object.fromEntries(Object.keys(a).filter((k) => JSON.stringify(a[k]) !== JSON.stringify(b[k])).map((k) => [k, a[k]]));
+}
+
+// Yeni yarışı ekler ya da var olanı günceller; kimliği döndürür.
+// base verilirse yalnız değişen alanlar yazılır (Seyhun 2026-11-04, yarış sistemi haritası: sayfa açıkken siteden gelen ek talimat,
+// Yayın'dan yüklenen sonuç gibi başka yerin yazdığı alan, sayfa kaydedince eski haliyle geri yazılıyordu)
+export async function saveRace(orgId, uid, r, base = null) {
+  const data = { ...(r.id && base ? changedFields(r, base) : clean(r)), updatedAt: serverTimestamp() };
+  if (data.name !== undefined) rememberRaceNames([data.name]);
+  // Değişen yoksa bellekteki liste de geçerli kalır (önceden değişen yokken de liste eskitiliyordu,
+  // geri dönünce "Yarış yükleniyor" ve bütün liste sunucudan yeniden okunuyordu; Seyhun 2026-11-12)
+  if (r.id && base && Object.keys(data).length === 1) return r.id;
   // Sunucu onayı en çok 2,5 sn beklenir; yazma cihazda yapılmıştır, arkada gider (lib/soon.js, denetim B11)
   if (r.id) {
+    // Bellekteki kayıt da güncellenir: geri dönünce yarış yeniden okunmadan doğru hâliyle açılır
+    const m = last?.orgId === orgId && last.list.find((x) => x.id === r.id);
+    if (m) Object.assign(m, Object.fromEntries(Object.entries(data).filter(([k]) => k !== "updatedAt")));
+    else stale();
     await soon(updateDoc(doc(col(orgId), r.id), data), 2500, "Yarış");
     return r.id;
   }
+  stale();
   const ref = doc(col(orgId));
   await soon(setDoc(ref, { ...data, createdByUid: uid, createdAt: serverTimestamp() }), 2500, "Yarış");
   return ref.id;
 }
 
+// Yalnız takip edilen sporcular (Sonuçlar ☆); diğer alanlara dokunulmaz
+export const saveRaceFollow = (orgId, id, follow) => (stale(), updateDoc(doc(col(orgId), id), { follow: cleanFollow(follow), updatedAt: serverTimestamp() }));
+
+// Yalnız yarışın tarihleri (Yayın › Program › Programı ekle, Seyhun 2026-11-02); diğer alanlara dokunulmaz
+export const saveRaceDates = (orgId, id, { startDate, endDate }) => (stale(), updateDoc(doc(col(orgId), id), { startDate, endDate, updatedAt: serverTimestamp() }));
+
 // Yalnız yarışın yeri (multimedya Hava sekmesinden); diğer alanlara dokunulmaz
 export const saveRaceSpot = (orgId, id, spot) => (stale(), updateDoc(doc(col(orgId), id), { spot: cleanSpot(spot), updatedAt: serverTimestamp() }));
 
-export const deleteRace = (orgId, id) => (stale(), deleteDoc(doc(col(orgId), id)));
+// Silinince ana sayfanın yarış özeti (raceHome.js) olayla hemen tazelenir; yarış şeridi ve kartı silinen yarışı göstermez
+// Sunucuda silinen yarış (birleştirme, raceSite.mergeSite): liste önbelleği ve açık ekranlar
+export const raceGone = (id) => {
+  stale();
+  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("sa-race-gone", { detail: { id } }));
+};
+export const deleteRace = (orgId, id) => {
+  stale();
+  return deleteDoc(doc(col(orgId), id)).then(() => {
+    if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent("sa-race-gone", { detail: { id } }));
+  });
+};
 
 // Gün ekle: "2026-10-07", -1 → "2026-10-06"
 export function shiftDay(s, n) {
@@ -381,4 +456,17 @@ export function shiftDay(s, n) {
   const d = new Date(`${s}T12:00:00`);
   d.setDate(d.getDate() + n);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+// Evrağa giren yarış alanları ve özet (RaceEditor: hazırlanan evrak eski mi; her cihazda aynı sonuç)
+export const DOC_FIELDS = [
+  "abroad", "name", "federation", "city", "district", "startDate", "endDate", "leaveStart", "leaveEnd", "letterDate",
+  "signer", "signerTitle", "travel", "vehicle", "drivers", "athleteIds", "departDate", "departTime", "departFrom", "meetPoint", "returnDate", "returnTime",
+  "clubNo", "clubDate", "clubFrom", "clubTo", "clubEvent", "clubPlace", "clubSigner", "clubTitle", "hotelName", "hotelFrom", "hotelTo", "entryClass",
+];
+export function docsHash(v) {
+  const s = JSON.stringify(v, (k, x) => (x && typeof x === "object" && typeof x.toMillis === "function" ? x.toMillis() : x));
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+  return (h >>> 0).toString(36);
 }

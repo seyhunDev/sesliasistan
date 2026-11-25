@@ -5,6 +5,7 @@ import { canLog, isLogNote, isTraining, monthLog } from "./trainingLog";
 import { isFit, statusOf } from "./fitness/model";
 import { monthRows } from "./dues";
 import { planState } from "./agenda";
+import { dayCode } from "@/features/weather/weather";
 
 const KEY = "sa-home-sum";
 export function readSum() {
@@ -159,7 +160,8 @@ export function trainingWeek(plans = [], today, fit = [], weeks = 1, fromYesterd
     const f = fit.filter((x) => x.date === date).map((x) => ({ ...x, st: statusOf(x.plan || x, today) }));
     const rank = { missed: 0, today: 1, next: 1, skip: 2, done: 3 };
     f.sort((a, b) => (a.mine === b.mine ? 0 : a.mine ? -1 : 1) || rank[a.st] - rank[b.st] || a.name.localeCompare(b.name, "tr"));
-    return { date, d: d.getDate(), w, state, has: on.length > 0, sail: on, fit: f, other: others.filter((p) => p.date === date) };
+    // Diğer planlar çok günlüyse (yarış) her gününde nokta olur
+    return { date, d: d.getDate(), w, state, has: on.length > 0, sail: on, fit: f, other: others.filter((p) => p.date <= date && (p.endDate || p.date) >= date) };
   });
   const ym = today.slice(0, 7);
   const m = monthLog(plans, ym);
@@ -233,67 +235,10 @@ export function raceForPlan(plan, open, today) {
   return now.length === 1 ? now[0].id : null;
 }
 
-// Ana sayfa › İşlemler düğmeleri, gruplu (sıra sabit). o: { staff, owner, side (sporcu/öğrenci/veli), parent, athletes (sporcu yetkisi),
-// races (Yarışlar ana sayfada), training, receipts, shop, lessons, fit (antrenörün hazırladığı fitness antrenmanı var) }. Toplantı bir sayfa değil: { id: "meeting" } döner.
-// Dönüş: [{ title, items: [{ href | id, icon, label }] }]; boş grup çıkmaz.
-export function homeActions(o) {
-  const groups = [
-    ["Günlük", [
-      { href: "/plans", icon: "cal", label: "Planlar" },
-      { href: "/notes", icon: "note", label: "Notlar" },
-      !o.side && { id: "meeting", icon: "mic", label: "Toplantı" },
-      o.side && { href: "/my-attendance", icon: "check", label: o.parent ? "Yoklama" : "Yoklamam" },
-      { href: "/birthdays", icon: "cake", label: "Doğum günü" },
-      o.shop && { href: "/shopping", icon: "cart", label: "Alışveriş" },
-      (!o.staff || o.fit) && { href: "/fitness", icon: "dumbbell", label: "Fitness" },
-      o.lessons && { href: "/schedule", icon: "book", label: "Dersler" },
-      !o.side && { href: "/english", icon: "chat", label: "İngilizce" }, // kelimeler ve hazır cümleler (Seyhun 2026-10-22)
-      { href: "/archive", icon: "archive", label: "Arşiv" },
-    ]],
-    ["Kulüp", [
-      o.athletes && { href: "/athletes", icon: "anchor", label: "Sporcular" },
-      o.athletes && { href: "/athletes/attendance", icon: "checks", label: "Yoklama" },
-      o.athletes && !o.side && { href: "/training/day", icon: "clock", label: "Antrenman" }, // sayaç, yoklama, yarışlar, günlük
-      o.races && { href: "/athletes/races", icon: "flag", label: "Yarışlar" },
-      (o.training || o.athletes) && !o.side && { href: "/training", icon: "trend", label: "Ant. günlüğü" },
-      o.athletes && !o.side && { href: "/media", icon: "image", label: "Medya" }, // antrenman ve yarış fotoğraf/videoları (Seyhun 2026-10-22)
-      o.athletes && o.owner && { href: "/dues", icon: "wallet", label: "Aidatlar" },
-      !o.staff && { href: "/inventory", icon: "box", label: "Envanter" },
-      { href: "/wind", icon: "wind", label: "Rüzgâr" },
-      !o.side && { href: "/sea", icon: "map", label: "Gemiler" }, // gemiler canlı, Sahil Güvenlik, acil (Seyhun 2026-10-23)
-      !o.side && { href: "/cams", icon: "video", label: "Kameralar" }, // halka açık canlı kameralar, Windy (Seyhun 2026-10-23)
-    ]],
-    ["Yönetim", [
-      o.receipts && { href: "/receipts", icon: "receipt", label: "Fiş / Fatura" },
-      !o.staff && { href: "/mail", icon: "wallet", label: "Hesaplar" },
-      !o.staff && { href: "/people/staff", icon: "users", label: "Kişiler" },
-    ]],
-    ["Sosyal", [!o.staff && { href: "/posts", icon: "instagram", label: "Instagram", brand: "instagram" }, !o.staff && { href: "/events", icon: "tent", label: "Etkinlikler" }]],
-  ];
-  return groups
-    .map(([title, items]) => ({ title, items: items.filter(Boolean) }))
-    .filter((g) => g.items.length);
-}
+// Tümü penceresinin ve sol menünün sayfa listesi artık hesap görünümü dosyasında (lib/hesapGorunum.js, 2026-11-25)
+export { homeActions } from "./hesapGorunum";
 
-// Ana sayfa › Kısayollar: İşlemler'in hepsi yerine en çok SHORTCUT_MAX düğme; kalanlar "Tümü" penceresinde (gruplu).
-// Seçim kişinin profilinde (users/{uid}.homeLinks: anahtar listesi, anahtar = href ya da id). Seçim yoksa ya da seçilenler
-// bu kişide yoksa varsayılanlar, eksik kalırsa grupların sırasıyla tamamlanır. Dönüş: düğmeler (homeActions öğeleri).
-export const SHORTCUT_MAX = 7; // 4 sütunda iki sıra: 7 kısayol + "Tümü"
-export const DEFAULT_SHORTCUTS = ["/plans", "/notes", "/athletes", "/athletes/attendance", "meeting", "/inventory", "/receipts"];
 export const linkKey = (a) => a.href || a.id;
-export function shortcutsOf(groups, picked) {
-  const all = groups.flatMap((g) => g.items);
-  const byKey = new Map(all.map((a) => [linkKey(a), a]));
-  const own = Array.isArray(picked) ? picked.filter((k) => byKey.has(k)) : [];
-  const keys = own.length ? own : DEFAULT_SHORTCUTS.filter((k) => byKey.has(k));
-  if (!own.length) for (const a of all) if (keys.length < SHORTCUT_MAX && !keys.includes(linkKey(a))) keys.push(linkKey(a));
-  return keys.slice(0, SHORTCUT_MAX).map((k) => byKey.get(k));
-}
-// Tümü penceresinde bir düğmeyi kısayollara ekle/çıkar: yeni anahtar listesi (dolu iken ekleme yapılmaz → null)
-export function toggleShortcut(current, key) {
-  if (current.includes(key)) return current.filter((k) => k !== key);
-  return current.length >= SHORTCUT_MAX ? null : [...current, key];
-}
 
 // Ana sayfa › NOTLAR: arşivlenmemiş notlardan önce sabitlenenler, sonra en yeni (oluşturma ya da son değişiklik); en çok n tane.
 // Bellekteki notlardan (DataProvider), Firestore'a ek okuma yok. Dönüş: { list, total }.
@@ -500,6 +445,19 @@ const daysTo = (date, today) => Math.round((Date.parse(`${date}T12:00:00`) - Dat
 
 // Yarış satırı: süren yarış (başladı, bitmedi) önce, yoksa sıradaki. open: [{ id, name, startDate, endDate, place, count }] (raceHome.js)
 // { id, title, sub ("17-19 Eki · Foça · 6 sporcu" ya da "Sürüyor · Foça"), right ("Sürüyor", "Yarın", "4 gün") } ya da null
+// Süren yarış (ilk gününden son gününe kadar; ana sayfa Multimedya kısayolu RaceLive): { id, title } ya da null. Birden çok varsa en erken başlayan.
+// Seçilen günü kapsayan yarış (ana sayfada büyük hava o yarışın yerinin olur; Seyhun 2026-10-27 "A · Yarışın yeri büyük"). En erken başlayan.
+export function awayRace(open = [], day) {
+  return (open || []).filter((x) => x?.id && x.startDate && x.startDate <= day && (x.endDate || x.startDate) >= day).sort((a, b) => a.startDate.localeCompare(b.startDate))[0] || null;
+}
+
+export function liveRace(open = [], today) {
+  const r = (open || [])
+    .filter((x) => x?.id && x.startDate && x.startDate <= today && (x.endDate || x.startDate) >= today)
+    .sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
+  return r ? { id: r.id, title: r.name || "Yarış" } : null;
+}
+
 export function clubRaceRow(open = [], today) {
   const list = open.filter((r) => r.startDate && (r.endDate || r.startDate) >= today).sort((a, b) => a.startDate.localeCompare(b.startDate));
   const r = list.find((x) => x.startDate <= today) || list[0];
@@ -555,7 +513,7 @@ export const mealPhoto = (h) => (h >= 6 && h < 11 ? "breakfast" : h >= 11 && h <
 // Ana sayfada seçilen günün planları (Seyhun 2026-10-23 "günler en üstte"): iptal ve bitenler hariç, saat sırasıyla (saatsizler sonda)
 export function dayPlans(plans = [], date) {
   return plans
-    .filter((p) => p.date === date && p.status !== "cancelled" && !p.done && p.status !== "done")
+    .filter((p) => p.date <= date && (p.endDate || p.date) >= date && p.status !== "cancelled" && !p.done && p.status !== "done")
     .sort((a, b) => (a.time || "99").localeCompare(b.time || "99"));
 }
 
@@ -572,7 +530,7 @@ export function dayWeather(w, rows, date) {
   return {
     min: info?.min ?? Math.min(...ts),
     max: info?.max ?? Math.max(...ts),
-    code: info?.code ?? noon.code,
+    code: info?.code != null ? dayCode(info.code, rows) : noon.code,
     wind: Math.max(...use.map((h) => h.wind)),
     gust: Math.max(...use.map((h) => h.gust)),
     dir: top.dir,

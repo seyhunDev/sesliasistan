@@ -42,11 +42,11 @@ export function SeaPage() {
       </div>
       <div data-pagebar="" className="fixed inset-x-0 bottom-0 z-40 px-5 pb-[calc(1rem+env(safe-area-inset-bottom))]">
         <div className="ck mx-auto grid max-w-[30rem] grid-cols-2 gap-2 rounded-[1.375rem] p-2 shadow-lg">
-          <button type="button" data-press onClick={() => me && setCenter({ lat: +me.lat.toFixed(4), lon: +me.lon.toFixed(4) })} className="raised flex h-[3.75rem] min-w-0 flex-col items-center justify-center rounded-2xl px-2">
+          <button type="button" data-press onClick={() => me && setCenter({ lat: +me.lat.toFixed(4), lon: +me.lon.toFixed(4) })} className="btn btn-secondary h-[3.75rem] min-w-0 flex-col gap-0.5 rounded-2xl px-2">
             <b className="text-[1rem] font-semibold">Teknem</b>
             <small className="w-full truncate text-center text-[0.75rem] text-white/65">{myState(me)}</small>
           </button>
-          <button type="button" data-press onClick={() => setSos(true)} className="raised act-main flex h-[3.75rem] min-w-0 flex-col items-center justify-center rounded-2xl px-2">
+          <button type="button" data-press onClick={() => setSos(true)} className="btn btn-primary h-[3.75rem] min-w-0 flex-col gap-0.5 rounded-2xl px-2">
             <b className="text-[1rem] font-semibold">Acil</b>
             <small className="text-[0.75rem] font-semibold text-[var(--rec)]">158 · Kanal 16</small>
           </button>

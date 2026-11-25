@@ -1,0 +1,8 @@
+## Nerede kaldım
+- İnternet kopma ekranı ve bağlantı dönünce yenilenme (Seyhun 2026-11-04: "sürekli internet kopma hatası alıyoruz; geri gelse bile hemen alınıyor mu bilmiyorum, sayfayı yenilemek ya da uygulamayı kapatıp açmak zorunda kalıyorum"; telefonda denenmedi):
+  - Neden 1 (iPhone uygulaması): Capacitor her yükleme hatasında `mobil/www/index.html` "İnternete bağlanılamadı" sayfasını açıyordu, yarıda kesilen yüklemede de (iptal -999, WebKit 102: sayfa kendini yenilerken başka yere geçilmesi). Sayfa kendiliğinden yeniden denemiyordu. Düzeltme: `VeloraViewController.swift` GezinmeKalkani bu iki hatayı yok sayar; uygulama öne gelince hata sayfasındaysa ya da sayfa boş/ölüyse (beyaz ekran) site yeniden açılır. `www/index.html` internet gelince ve 5 sn'de bir siteyi dener, ulaşınca açar. Xcode ile yeniden kurulum gerekir.
+  - Neden 2 (veri yenilenmiyor): iPhone arkaya alınınca Firestore bağlantısı sessizce kopuyor, dinleyiciler eski veride kalıyordu. `netWatch.js` watchReconnect: 15 sn'den uzun arkada kalıp dönünce (netSync RESUME_KICK_MS), internet gelince ve Safari sayfayı önbellekten getirince bağlantı bir kez kapatılıp açılır (kick; yalnız aradaki değişiklikler okunur). OfflineBanner'da bağlı.
+  - Neden 3 (ana ekrana eklenen sürüm): `public/sw.js` kayıtlı kopyası olmayan sayfada ağ 4 sn'de cevap vermezse "İnternet bağlantısı yok" sayfası çıkıyordu. Artık ağ beklenir; o sayfa da internet gelince kendini yeniler.
+
+## Sıradaki işler
+0. iPhone uygulamasını Xcode ile yeniden kur (Mac: `cd ~/Projeler/sesliasistan/mobil && npx cap sync ios`, sonra Xcode › Run). Dene: uygulamayı 1 dk arkada bırak, dön: veriler kendiliğinden tazelenmeli; uçak modunda aç, kapat: "İnternete bağlanılamadı" kendiliğinden kapanmalı.

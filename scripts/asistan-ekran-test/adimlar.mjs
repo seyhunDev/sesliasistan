@@ -48,6 +48,7 @@ async function idleCost(page, ms = 2500) {
 }
 
 export async function scenarios(h) {
+  if (process.env.ASISTAN_TEK === "antrenman") return trainVoice(h); // yalnız antrenman sesle bölümü
   const { check, newPage, orb, dome, state, full, ringColor, ringText, convo, last, waitFor, say, btn, typeAsk, talkAsk, closeAll, swipeDown, aiCalls, calls, setAI, setTasks, setTranscript, setLive, TODAY, TOMORROW, log } = h;
 
   // ================================================================ 1. Sekme çubuğu ve açılış
@@ -66,21 +67,21 @@ export async function scenarios(h) {
     return [n === 1 && tabs === 4 && ob && ob.x > vw * 0.7 && ob.width >= 70, `${n} düğme · ${tabs} sekme · küre x ${Math.round(ob?.x)} / ${vw} · ${Math.round(ob?.width)} px`];
   });
   // İkonlu iş düğmeleri (Seyhun 2026-10-25 "B · İki sütun, camgöbeği ikon"): iki sütun, her düğmede soldan giren ikon ve yazı
-  await check("Ana sayfa", "iş düğmeleri", "iki sütun, her düğmede ikon ve ad", async () => {
+  await check("Ana sayfa", "iş düğmeleri", "dört sütun, iki satır (en çok 8), her düğmede ikon ve ad", async () => {
     const nav = page.locator("nav[aria-label='İşler']");
     await nav.waitFor({ timeout: 8000 }).catch(() => {});
     if (process.env.HOME_SHOT) await nav.screenshot({ path: `${process.env.HOME_SHOT}.png` }).catch(() => {});
     const r = await nav.evaluate((n) => {
       const b = [...n.children];
       const xs = new Set(b.map((e) => Math.round(e.getBoundingClientRect().x)));
-      return { n: b.length, cols: xs.size, ic: b.filter((e) => e.querySelector("svg.ck-icon") && e.textContent.trim()).length };
+      return { n: b.length, cols: xs.size, ic: b.filter((e) => e.querySelector("svg") && e.textContent.trim()).length };
     }).catch(() => ({ n: 0, cols: 0, ic: 0 }));
-    return [r.n >= 4 && r.cols === 2 && r.ic === r.n, `${r.n} düğme · ${r.cols} sütun · ${r.ic} ikonlu`];
+    return [r.n >= 5 && r.n <= 8 && r.cols === 4 && r.ic === r.n, `${r.n} düğme · ${r.cols} sütun · ${r.ic} ikonlu`];
   });
-  await check(G1, "boşta", "durum boşta, etiket “basılı tut konuş”", async () => {
+  await check(G1, "boşta", "durum boşta, etiket “dokun konuş”", async () => {
     const st = await orb(page).getAttribute("data-state");
     const lb = await orb(page).getAttribute("aria-label");
-    return [st === "idle" && /basılı tut konuş/.test(lb), `${st} · ${lb}`];
+    return [st === "idle" && /dokun konuş/.test(lb), `${st} · ${lb}`];
   });
 
   await check("Enerji (boşta)", "ana sayfa", `saniyede en çok ${ENERGY_MAX} stil ve yerleşim hesabı`, async () => {
@@ -92,12 +93,14 @@ export async function scenarios(h) {
   const srBefore = await page.evaluate(() => window.__t.srStarts);
   await h.hold(page);
   const G2 = "Bas konuş: tam ekran açılış";
-  await check(G2, "düğmeye bas", "tam ekran koyu açılır (afull-in, data-theme=dark), ekranı kaplar", async () => {
+  // Seyhun 2026-11-06 "arka fon blur olsun, alttan bir şey açılmasın": tam ekran bulanık zemin, olaylar ortada
+  await check(G2, "düğmeye dokun", "tam ekran bulanık koyu zemin açılır (afull-in, data-theme=dark), alttan pencere yok", async () => {
     await full(page).waitFor({ timeout: 4000 });
     const cls = await full(page).getAttribute("class");
     const theme = await full(page).getAttribute("data-theme");
     const box = await full(page).boundingBox();
-    return [/afull-in/.test(cls) && theme === "dark" && box.height >= 800, `${cls.match(/afull-\w+/)?.[0]} · ${theme} · ${Math.round(box.height)} px`];
+    const vh = page.viewportSize().height;
+    return [/afull-in/.test(cls) && !/afull-sm/.test(cls) && theme === "dark" && box.height >= vh * 0.9, `${cls.match(/afull-(in|out)/)?.[0]} · ${theme} · ${Math.round(box.height)}/${vh} px`];
   });
   await check(G2, "açılış animasyonu", "afull-in animasyonu tanımlı ve çalışıyor", async () => {
     const a = await full(page).evaluate((el) => getComputedStyle(el).animationName);
@@ -111,28 +114,29 @@ export async function scenarios(h) {
   // Dinlerken "Dinliyorum" yalnız alttaki çubukta, halkada yazı yok (2026-10-18)
   // Asistan düğmede (2026-10-22): düğme kırmızı, içinde canlı ses dalgası; "Dinliyorum" söylenen yazının altında
   // Seyhun 2026-10-22: "iki farklı yerde dinliyorum yazısı çıkıyor": ekranda tek "Dinliyorum"
-  await check("Halka renkleri", "dinlerken", "düğme kırmızı + ses dalgası, durum satırında yazı yok, “Dinliyorum” tek yerde", async () => {
+  // Dokun konuş (2026-11-06): düğmede gönder oku, ses dalgası ortada sözün altında
+  await check("Halka renkleri", "dinlerken", "düğme dinliyor (gönder oku) + ortada ses dalgası, durum satırında yazı yok, “Dinliyorum” en çok bir yerde", async () => {
     const c = await ringColor(page);
-    const bars = (await page.locator("[data-dome] [data-ring] canvas").count()) === 1 ? 5 : 0;
+    const bars = (await page.locator("[data-dome] .asaid canvas").count()) === 1 ? 5 : 0;
     const t = (await ringText(page)).trim();
     const all = await dome(page).innerText();
     const n = (all.match(/Dinliyorum/g) || []).length;
-    return [c === "kırmızı" && bars === 5 && !t && n === 1, `${c} · ${bars} çubuk · halka: “${t}” · “Dinliyorum” ${n} kez`];
+    return [c === "kırmızı" && bars === 5 && !t && n <= 1, `${c} · ${bars} çubuk · halka: “${t}” · “Dinliyorum” ${n} kez`];
   });
   // Asistan düğmede (2026-10-22): ayrı zemin yok, arkadaki sayfa bulanıklaşır; örtü sürekli oynamaz; yan düğmeler
   // Bas-konuş (2026-10-25): altta tek kutu ve sağında küre; Dur ve kapat düğmesi yok (bırakınca gönderir)
-  await check("Halka renkleri", "zemin", "arkadaki sayfa bulanık (örtü sürekli oynamaz), altta tek kutu, Dur ve kapat düğmesi yok", async () => {
+  await check("Halka renkleri", "zemin", "arkadaki sayfa bulanık (örtü sürekli oynamaz), altta tek kutu, Dur yok, sağ üstte kapat", async () => {
     const z = await page.locator("[data-dome] .abg").evaluate((el) => { const c = getComputedStyle(el); return { anim: `${c.animationName} ${c.animationIterationCount}`, blur: c.backdropFilter || c.webkitBackdropFilter || "" }; });
     const pill = await page.locator("[data-dome] .apill").count();
     const dur = await btn(page, "Dur").count();
     const x = await btn(page, "Asistanı kapat").count();
-    return [!/infinite/.test(z.anim) && /blur/.test(z.blur) && pill === 1 && dur === 0 && x === 0, `örtü ${z.anim} · ${z.blur} · kutu ${pill} · Dur ${dur} · kapat ${x}`];
+    return [!/infinite/.test(z.anim) && /blur/.test(z.blur) && pill === 1 && dur === 0 && x === 1, `örtü ${z.anim} · ${z.blur} · kutu ${pill} · Dur ${dur} · kapat ${x}`];
   });
   await say(page, "notlarımı oku");
   // Canlı yazı (Claude uygulaması gibi, 2026-10-21): söylenen kutunun üstüne akar, kutuda "Dinliyorum · süre"; gönderme düğmesi yok
-  await check(G2, "konuşurken", "canlı yazı, süre; Dur ve Gönder düğmesi yok (bırakınca gider)", async () => {
-    const ok = await waitFor(async () => /notlarımı oku/.test(await dome(page).locator(".asheet-input").innerText()), 3000);
-    const box = (await dome(page).locator(".asheet").innerText()).replace(/\n/g, " ");
+  await check(G2, "konuşurken", "canlı yazı ortada, süre; Dur ve Gönder düğmesi yok (düğmeye dokununca gider)", async () => {
+    const ok = await waitFor(async () => /notlarımı oku/.test(await dome(page).locator(".asaid").innerText()), 3000);
+    const box = (await dome(page).locator(".asaid").innerText()).replace(/\n/g, " ");
     const dur = await btn(page, "Dur").count();
     return [!!ok && /\d:\d\d/.test(box) && dur === 0 && (await btn(page, "Gönder").count()) === 0, `${box.slice(0, 80)} · Dur ${dur}`];
   });
@@ -143,11 +147,13 @@ export async function scenarios(h) {
     const ok = await waitFor(async () => /Yelken bezleri|kuru yerde/i.test(await convo(page)), 6000);
     return [!!ok && aiCalls() === before, `${(await convo(page)).replace(/\s+/g, " ").slice(0, 120)} · yz isteği ${aiCalls() - before}`];
   });
-  await check("Halka renkleri", "cevaptan sonra", "yeşil halka ve onay (✓ Tamam), durum boşta", async () => {
+  await check("Halka renkleri", "cevaptan sonra", "yeşil halka ve onay (✓ Tamam) bir kez görünür, sonra asistan düğmesi geri gelir", async () => {
     await waitFor(async () => (await state(page)) === "idle", 5000);
     const c = await ringColor(page);
     const chk = await page.locator("[data-dome] .lring-check").count();
-    return [c === "yeşil" && chk === 1, `${c} · onay ${chk} · ${await state(page)}`];
+    const gone = await waitFor(async () => ((await page.locator("[data-dome] .lring-check").count()) === 0 ? true : null), 3000);
+    const tone = await page.locator("[data-dome] [data-orb]").first().getAttribute("data-tone").catch(() => "");
+    return [c === "yeşil" && chk === 1 && !!gone && tone === "idle", `${c} · onay ${chk} · sonra ${gone ? "kayboldu" : "kalıcı"} · ${tone} · ${await state(page)}`];
   });
   await check("Enerji (boşta)", "asistan açık, boşta", `saniyede en çok ${ENERGY_MAX} stil ve yerleşim hesabı`, async () => {
     await page.waitForTimeout(800);
@@ -157,7 +163,7 @@ export async function scenarios(h) {
 
   // Kapat (×): aşağı kayarak kapanır, sekmeler geri gelir
   const G4 = "Kapanış";
-  await page.locator("[data-dome] [data-apane]").click({ position: { x: 20, y: 20 } });
+  await page.locator("[data-apane]").click({ position: { x: 4, y: 4 } }); // ortadaki boş bulanık alan
   await check(G4, "boş alana dokun", "afull-out ile aşağı kayarak kapanır", async () => {
     const cls = await waitFor(async () => {
       const c = await full(page).getAttribute("class", { timeout: 300 }).catch(() => "");
@@ -182,6 +188,7 @@ export async function scenarios(h) {
   await typeAsk(page, "bugün planda neler var");
   await check(G5, "kısa dokun → Yaz → gönder", "yazı kutusu açılır, gönderince tam ekran asistan cevaplar", async () => {
     const ok = await waitFor(async () => /Dişçi/i.test(await convo(page)), 6000);
+    if (process.env.WX_SHOT) await page.waitForTimeout(800).then(() => page.screenshot({ path: `${process.env.WX_SHOT}-asistan.png` }));
     return [!!ok, (await convo(page)).replace(/\s+/g, " ").slice(0, 140)];
   });
   await check(G3, "bugün planda neler var", "bugünün planı yerelde sayılır, yapay zekaya gitmez", async () => [aiCalls() === before, `yz isteği ${aiCalls() - before}`]);
@@ -729,10 +736,18 @@ async function scenarios3(h) {
     await shot.setViewportSize({ width: 600, height: 800 });
     await shot.setContent(`<body style="margin:0;background:#ddd;display:grid;place-items:center;height:100vh">${q.createSvgTag({ cellSize: 6, margin: 4 })}</body>`);
     const png = await shot.screenshot();
+    if (process.env.QR_PNG) (await import("node:fs")).writeFileSync(process.env.QR_PNG, png);
     await shot.close();
-    // Kısa dokunuş: asistan açılır, boşta; altta Fotoğraf · Yaz (bas-konuş 2026-10-25)
-    await page.locator("[data-dome] [data-orb]:visible").first().click();
-    await waitFor(async () => (await state(page)) === "idle", 4000);
+    // Dokun konuş (2026-11-06): basılı tut → yazı kutusu (içinde Fotoğraf)
+    {
+      const o = page.locator("[data-dome] [data-orb]:visible").first();
+      const b = await o.boundingBox();
+      await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+      await page.mouse.down();
+      await page.waitForTimeout(650);
+      await page.mouse.up();
+      await page.locator("[data-dome] textarea").waitFor({ timeout: 4000 }).catch(() => {});
+    }
     const b2 = aiCalls();
     const pick = page.locator("[data-dome] input[type=file][accept='image/*']");
     await check(GQ, "yazı kutusunda Fotoğraf", "düğme görünür", async () => {
@@ -742,7 +757,7 @@ async function scenarios3(h) {
     if (await pick.count()) await pick.setInputFiles({ name: "kod.png", mimeType: "image/png", buffer: png });
     await check(GQ, "kare kodun fotoğrafı", "kişi okunur, yapay zekaya gitmez", async () => {
       const ok = await waitFor(async () => /Velora kare kodundan okudum\. Deniz Aydın/.test(clean(await convo(page))), 8000);
-      return [!!ok && aiCalls() === b2, `${clean(await last(page)).slice(0, 90)} · yapay zeka ${aiCalls() - b2}`];
+      return [!!ok && aiCalls() === b2, `${clean(await last(page)).slice(0, 90)} · yapay zeka ${aiCalls() - b2} DBG ${clean(await dome(page).innerText()).slice(0, 400)}`];
     });
     await talkAsk(page, "vazgeç");
     await waitFor(async () => (await state(page)) === "idle", 3000);
@@ -788,15 +803,28 @@ async function scenarios4(h) {
     });
     await page.goto(`${base}/athletes/races/test-yaris/media`);
     await page.waitForTimeout(3000);
-    await check(GN, "Yarış multimedya sayfası", "sekme çubuğu ve asistan düğmesi yok", async () => {
+    // uygulamanın sekme çubuğu yok; asistan kendi alt çubuğunda tek küre (Seyhun 2026-10-29 "ses asistanı butonunu da koyalım parkura")
+    await check(GN, "Yarış multimedya sayfası", "uygulamanın sekme çubuğu yok, yarışın alt çubuğunda tek asistan küresi", async () => {
       const n = await page.locator("[data-orb]:visible").count();
       const nav = await page.locator("nav[aria-label='Sekmeler']:visible").count();
-      return [n === 0 && nav === 0, `${new URL(page.url()).pathname} · ${n} düğme · sekme çubuğu ${nav}`];
+      const dock = await page.locator("nav[aria-label='Multimedya sekmeleri'] [data-orb]:visible").count();
+      return [n === 1 && dock === 1 && nav === 0, `${new URL(page.url()).pathname} · ${n} düğme (alt çubukta ${dock}) · sekme çubuğu ${nav}`];
     });
-    const picked = () => page.locator("button[data-day][aria-pressed='true']").getAttribute("data-day").catch(() => "");
+    // gün düğmesi Özet'in yanında (data-cur); günler dokununca açılan listede (Seyhun 2026-10-29)
+    const picked = () => page.locator("button[data-cur]").getAttribute("data-cur").catch(() => "");
+    const dayCount = async () => {
+      await page.locator("button[data-cur]").click({ timeout: 5000 }).catch(() => {});
+      await page.waitForTimeout(400);
+      const n = await page.locator("[role=dialog] button[data-day]").count();
+      await page.keyboard.press("Escape");
+      await page.waitForTimeout(400);
+      return n;
+    };
     const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" });
     await check(GN, "Yarış multimedya açılışı", "dün antrenman günü varken bugün seçili, son yarış günü değil", async () => [(await picked()) === today, `${await picked()} · bugün ${today}`]);
-    await page.locator("button[data-day]").last().click().catch(() => {});
+    await page.locator("button[data-cur]").click({ timeout: 5000 }).catch(() => {});
+    await page.waitForTimeout(400);
+    await page.locator("[role=dialog] button[data-day]").last().click().catch(() => {});
     await page.evaluate(() => {
       const n = Date.now;
       Object.defineProperty(document, "hidden", { configurable: true, get: () => true });
@@ -821,17 +849,19 @@ async function scenarios4(h) {
       await page.waitForTimeout(800);
       return [old === 0 && dv === 1 && sf === 1, `eski Başlat ${old} · Devam ${dv} · Sıfırla ${sf}`];
     });
-    await check(GN, "Yarış multimedya: denemeleri sıfırla", "Liste › Denemeleri sıfırla → 1 eklenen gün yazar, Sıfırla'dan sonra dünkü gün kalkar", async () => {
-      const before = await page.locator("button[data-day]").count();
+    await check(GN, "Yarış multimedya: denemeleri sıfırla", "⋯ › Denemeleri sıfırla (Süre'de düğme yok) → 1 eklenen gün yazar, Sıfırla'dan sonra dünkü gün kalkar", async () => {
+      const before = await dayCount();
       const step = async (name, fn) => fn().catch((e) => { throw new Error(`${name}: ${String(e.message).split("\n")[0]}`); });
-      await step("Liste", () => page.locator("button", { hasText: "Liste ›" }).first().click({ timeout: 5000 }));
-      await step("Denemeleri sıfırla", () => page.getByRole("button", { name: "Denemeleri sıfırla" }).click({ timeout: 5000 }));
+      const inTab = await page.locator("main button:visible", { hasText: /^Denemeleri sıfırla$/ }).count();
+      if (inTab) throw new Error("Süre sekmesinde hâlâ Denemeleri sıfırla düğmesi var");
+      await step("⋯", () => page.getByRole("button", { name: "Yarış ayarları" }).click({ timeout: 5000 }));
+      await step("Denemeleri sıfırla", () => page.locator("[data-menu='reset']").click({ timeout: 5000 }));
       const dlg = page.getByRole("dialog", { name: "Denemeleri sıfırla" });
       await dlg.waitFor({ timeout: 4000 });
       const txt = (await dlg.innerText()).replace(/\s+/g, " ");
       await step("Sıfırla", () => dlg.getByRole("button", { name: "Sıfırla", exact: true }).click({ timeout: 5000 }));
       await page.waitForTimeout(1200);
-      const after = await page.locator("button[data-day]").count();
+      const after = await dayCount();
       return [/Eklenen gün 1/.test(txt) && after === before - 1 && (await picked()) === today, `${before} → ${after} gün · ${txt.slice(0, 80)}`];
     });
     await page.context().close();
@@ -853,9 +883,9 @@ async function scenarios4(h) {
       const ok = await waitFor(async () => (await full(page).count()) && (await state(page)) === "listening", 4000);
       return [!!ok, `tam ekran ${await full(page).count()} · ${await state(page)}`];
     });
-    await check(GW, "açık asistanın genişliği", "konuşma ortada, en çok 34rem (544 px)", async () => {
+    await check(GW, "açık asistanın genişliği", "konuşma ortada, en çok 40rem (640 px; 2026-11-06 iPad'de biraz geniş)", async () => {
       const w = await page.locator("[data-dome] .asheet").first().evaluate((el) => el.getBoundingClientRect().width);
-      return [w <= 545, `${Math.round(w)} px`];
+      return [w <= 641, `${Math.round(w)} px`];
     });
     await check("Sayfa hataları", "geniş ekran", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
     await page.context().close();
@@ -975,8 +1005,8 @@ async function scenarios4(h) {
       await h.hold(page);
       await waitFor(async () => (await state(page)) === "listening", 5000);
       await check(GR, "canlı yazı (akış)", "konuşurken kelimeler kutuya akar, parça çevirisi istenmez", async () => {
-        const ok = await waitFor(async () => /Yarın saat onda antrenman/.test(await dome(page).locator(".asheet-input").innerText()), 6000);
-        const box = clean(await dome(page).locator(".asheet-input").innerText());
+        const ok = await waitFor(async () => /Yarın saat onda antrenman/.test(await dome(page).locator(".asaid").innerText()), 6000);
+        const box = clean(await dome(page).locator(".asaid").innerText());
         const parts = calls.filter((c) => c.path === "/api/transcribe").length - part0;
         const url = await page.evaluate(() => window.__ws.urls[0] || "");
         return [!!ok && /BidiGenerateContentConstrained\?access_token=auth_tokens/.test(url), `“${box.slice(0, 60)}” · ses parçası ${await page.evaluate(() => window.__ws.audio)} · parça çevirisi ${parts}`];
@@ -1036,6 +1066,53 @@ async function scenarios4(h) {
   }
   await seaPage(h);
   await camsPage(h);
+  await rainStrip(h);
+  await trainVoice(h);
+}
+
+// ================================================================ Antrenman yarışı sesle (Seyhun 2026-11-02): "2 dakika başlat" → 3·2·1 sonra sayaç ve yarış; "yarışı bitir"
+async function trainVoice(h) {
+  const { check, newPage, waitFor, typeAsk, closeAll, convo, log } = h;
+  log("    Antrenman: sesle başlat ve bitir…");
+  const { page, errs } = await newPage();
+  const G = "Antrenman sesle (Yönet)";
+  const home = async () => {
+    await page.goto(new URL(page.url()).origin + "/bilgi/yonet", { waitUntil: "load" }); // bugün yarış da var: antrenman sözleri Yönet'te antrenmanın (2026-11-23)
+    await page.addStyleTag({ content: "nextjs-portal{display:none!important}" });
+    await page.waitForTimeout(1200);
+  };
+  await home();
+  const timer = () => page.evaluate(() => JSON.parse(localStorage.getItem("sa-sayac") || "null"));
+  await typeAsk(page, "2 dakika başlat");
+  await check(G, "2 dakika başlat", "önce ekranda 3 · 2 · 1, sayaç henüz başlamadı", async () => {
+    const seen = await waitFor(async () => (await page.locator("[role=status][aria-label^='Başlıyor']").count()) > 0, 8000);
+    const t = await timer();
+    return [!!seen && !(t?.end > 0), `${seen ? "3·2·1 göründü" : "3·2·1 yok"} · sayaç ${t?.end ? "başlamış" : "bekliyor"}`];
+  });
+  await check(G, "3 sn sonra", "2 dakikalık geri sayım başladı, sayacın sahibi Yönet", async () => {
+    const ok = await waitFor(async () => ((await timer())?.end || 0) > Date.now() + 100000, 7000);
+    const t = await timer();
+    const gone = await page.locator("[role=status][aria-label^='Başlıyor']").count();
+    const left = t?.end ? Math.round((t.end - Date.now()) / 1000) : null;
+    return [!!ok && t.own === "/bilgi/yonet" && t.mode === "start" && gone === 0 && left > 100 && left <= 120, `kalan ${left} sn · sahibi ${t?.own || "-"} · mod ${t?.mode} · 3·2·1 ${gone ? "duruyor" : "kalktı"}`];
+  });
+  await closeAll(page);
+  await home();
+  // Start geçmiş gibi: sayacın 0'ı 30 sn önce
+  await page.evaluate(() => {
+    const t = JSON.parse(localStorage.getItem("sa-sayac"));
+    localStorage.setItem("sa-sayac", JSON.stringify({ ...t, end: Date.now() - 30000 }));
+    window.dispatchEvent(new Event("sa-sayac"));
+  });
+  await typeAsk(page, "sayacı bitir");
+  await check(G, "sayacı bitir", "sayaç durur, “Bitti” denir", async () => {
+    const ok = await waitFor(async () => /Bitti/.test(await convo(page)), 8000);
+    const t = await timer();
+    return [!!ok && t?.end == null, `${ok ? "bitti dendi" : `cevap: ${(await convo(page)).slice(-80)}`} · sayaç ${t?.end == null ? "durdu" : "sürüyor"}`];
+  });
+  await closeAll(page);
+  await check("Sayfa hataları", "antrenman sesle", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
+  await page.context().close();
 }
 
 // ================================================================ Deniz trafiği (/sea): tam ekran MarineTraffic haritası
@@ -1064,6 +1141,315 @@ async function seaPage(h) {
     await page.screenshot({ path: `${process.env.SEA_SHOT}.png`, fullPage: true });
   }
   await check("Sayfa hataları", "deniz trafiği", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
+  await page.context().close();
+}
+
+// ================================================================ Hava: yağış şeridi ve kuvvetli yağış uyarısı (Seyhun 2026-10-26 "A · Altında renkli şerit")
+async function rainStrip(h) {
+  const { check, newPage, waitFor, log } = h;
+  log("    Hava: yağış şeridi…");
+  const { page, errs } = await newPage();
+  // Open-Meteo taklidi: 7 gün saatlik; bugün 14–16 arası kuvvetli yağış
+  await page.route("**/api.open-meteo.com/**", (route) => {
+    const p = (n) => String(n).padStart(2, "0");
+    const d0 = new Date();
+    const days = [...Array(7)].map((_, k) => { const d = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate() + k); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; });
+    const time = days.flatMap((d) => [...Array(24)].map((_, i) => `${d}T${p(i)}:00`));
+    const mm = time.map((t, i) => (i < 24 ? [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.4, 2, 5.5, 9, 3, 0.6, 0, 0, 0, 0, 0, 0][i] : 0));
+    const at = (f) => time.map(f);
+    const body = {
+      current: { time: time[10], temperature_2m: 17, weather_code: 80, is_day: 1, wind_speed_10m: 9, wind_gusts_10m: 14, wind_direction_10m: 200 },
+      hourly: { time, temperature_2m: at(() => 17), weather_code: at((_, i) => (mm[i] > 1 ? 81 : 3)), is_day: at((t) => (+t.slice(11, 13) >= 7 && +t.slice(11, 13) <= 18 ? 1 : 0)),
+        wind_speed_10m: at(() => 9), wind_gusts_10m: at(() => 14), wind_direction_10m: at(() => 200), precipitation_probability: at((_, i) => (mm[i] ? 80 : 10)), precipitation: mm },
+      daily: { time: days, weather_code: days.map(() => 80), temperature_2m_max: days.map(() => 19), temperature_2m_min: days.map(() => 14),
+        wind_speed_10m_max: days.map(() => 12), wind_gusts_10m_max: days.map(() => 18), wind_direction_10m_dominant: days.map(() => 200) },
+    };
+    return route.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(body) });
+  });
+  await page.goto(page.url().replace(/\/[^/]*$/, "/"), { waitUntil: "load" });
+  // Sıradaki plan iş düğmesi biçiminde, yazılar tek satır (Seyhun 2026-10-31 "yazılar alta kayıyor")
+  await check("Ana sayfa", "sıradaki plan tek satır", "turkuaz kart: solda tarih, sağda kalan süre, plan adı ve tür · saat · yer birer satır, alt satıra kaymaz", async () => {
+    const card = page.locator("[aria-label='Sıradaki plan']").first();
+    if (!(await waitFor(() => card.count(), 8000))) return [true, "7 gün içinde plan yok"];
+    if (process.env.WX_SHOT) {
+      await card.evaluate((el) => el.scrollIntoView({ block: "center" }));
+      await page.waitForTimeout(500);
+      await page.screenshot({ path: `${process.env.WX_SHOT}-siradaki.png` }).catch(() => {});
+      await page.evaluate(() => window.scrollTo(0, 0));
+    }
+    const lines = await card.evaluate((el) => [...el.querySelectorAll(":scope > span.flex-1 > *")].map((x) => { const st = getComputedStyle(x); const lh = parseFloat(st.lineHeight) || parseFloat(st.fontSize) * 1.3; return Math.round(x.getBoundingClientRect().height / lh); }));
+    return [lines.length === 2 && lines.every((n) => n <= 1), `satırlar ${lines.join(",")}`];
+  });
+  // Seyhun 2026-11-03 "A · İyice sade": iş düğmelerinin altında Kulüp kutuları ve notlar; İngilizce, Görevler, Medya, Yemek · Market · Giyim, Deniz trafiği yok
+  await check("Ana sayfa", "sade ana sayfa", "İngilizce/Görevler/Medya kartları, Yemek · Market · Giyim ve Deniz trafiği · Kameralar düğmeleri yok", async () => {
+    await page.locator("nav[aria-label='İşler']").waitFor({ timeout: 15000 });
+    await page.waitForTimeout(2500);
+    const cards = await page.locator("section[aria-label='İngilizce'], section[aria-label='Görevler'], section[aria-label='Medya']").count();
+    const shop = await page.getByText(/^(Yemek|Giyim)$/).count();
+    const links = await page.locator("main a[href='/sea'], main a[href='/cams']").count();
+    if (process.env.WX_SHOT) {
+      const nav = page.locator("nav[aria-label='İşler']").first();
+      await nav.scrollIntoViewIfNeeded().catch(() => {});
+      await nav.screenshot({ path: `${process.env.WX_SHOT}-dugmeler.png` }).catch(() => {});
+      await page.locator("section[aria-label='Günün planları']").first().screenshot({ path: `${process.env.WX_SHOT}-cizelge.png` }).catch(() => {});
+    }
+    if (process.env.WX_SHOT) await page.screenshot({ path: `${process.env.WX_SHOT}-anasayfa.png`, fullPage: true });
+    return [cards === 0 && shop === 0 && links === 0, `kart ${cards} · alışveriş ${shop} · deniz/kamera ${links}`];
+  });
+  // Seyhun 2026-11-05 "tek uygulama ekranı, kaydırma gerekmeden": iPad yatay ve dikeyde ana sayfa ekranı doldurur; solda hava + Takvim sayfası, sağda düğmeler
+  await check("Ana sayfa", "iPad tek ekran", "yatay 1180x820 ve dikey 820x1180: hava, takvim ve düğmeler görünür, sayfa kaymaz; telefonda takvim kenardan kenara bant", async () => {
+    const out = [];
+    for (const [w, h, tag] of [[1180, 820, "yatay"], [820, 1180, "dikey"]]) {
+      await page.setViewportSize({ width: w, height: h });
+      await page.waitForTimeout(1500);
+      const m = await page.evaluate(() => {
+        const main = document.querySelector("main.home-screen");
+        const cal = document.querySelector(".cal-emb");
+        const r = cal?.getBoundingClientRect();
+        return { has: !!main, scroll: main ? main.scrollHeight - main.clientHeight : -1, cal: !!cal, calH: r ? Math.round(r.height) : 0, tl: !!document.querySelector("section[aria-label='Günün planları']"), nav: !!document.querySelector("nav[aria-label='İşler']") };
+      });
+      if (process.env.WX_SHOT) await page.screenshot({ path: `${process.env.WX_SHOT}-ipad-${tag}.png` });
+      // Yan gün paneli kapalı başlar, güne dokununca açılır, Kapat ile kapanır; Plan/Görev/Doğum günü ekle başlıkta
+      m.closed = (await page.locator(".cal-emb .cal-body").count()) === 0;
+      await page.locator(".cal-emb header button", { hasText: "+ Ekle" }).click({ timeout: 6000 }).catch((e) => (m.err = `ekle: ${String(e).slice(0, 160)}`));
+      m.adds = (await page.locator(".cal-emb [role=menuitem]").count()) === 3;
+      await page.locator(".cal-emb header button", { hasText: "+ Ekle" }).click({ timeout: 6000 }).catch((e) => (m.err = `kapat: ${String(e).slice(0, 300)}`));
+      await page.locator(".cal-emb .cal-cell").nth(15).click({ timeout: 6000 }).catch((e) => (m.err = `hücre: ${String(e).slice(0, 300)}`));
+      await page.waitForTimeout(400);
+      m.opened = (await page.locator(".cal-emb .cal-body").count()) === 1;
+      { const q = await page.locator("nav[aria-label='İşler'].hq .hq-tile").count(); m.quick = q >= 5 && q <= 8; }
+      if (process.env.WX_SHOT) await page.screenshot({ path: `${process.env.WX_SHOT}-ipad-${tag}-gun.png` });
+      await page.locator(".cal-emb [aria-label='Günü kapat']").click({ timeout: 6000 }).catch((e) => (m.err = `günü kapat: ${String(e).slice(0, 200)}`));
+      await page.waitForTimeout(300);
+      m.closed2 = (await page.locator(".cal-emb .cal-body").count()) === 0;
+      out.push([tag, m]);
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForTimeout(1200);
+    const ph = await page.evaluate(() => ({ screen: !!document.querySelector("main.home-screen"), cal: !!document.querySelector(".cal-emb"), tl: !!document.querySelector("section[aria-label='Günün planları']") }));
+    const ok = out.every(([, m]) => m.has && m.cal && m.calH >= 300 && !m.tl && m.nav && m.closed && m.adds && m.opened && m.closed2 && m.quick) && !ph.screen && ph.cal && !ph.tl;
+    return [ok, JSON.stringify({ out, ph })];
+  });
+  // Seyhun 2026-11-03 (Windy görseli): ana sayfa hava kartı saat saat tablo; 3 saatte bir sütun, ertesi gün de var, yağmur mm satırı, şimdiki saat çerçeveli
+  await check("Ana sayfa", "saat saat hava tablosu", "hava kartında saat sütunları, Yağmur mm satırı ve kırmızı çerçeveli şimdiki saat", async () => {
+    await page.getByRole("button", { name: "Tablo", exact: true }).first().click();
+    const t = page.locator("[data-hour-table]").first();
+    if (!(await waitFor(() => t.count(), 8000))) return [false, "tablo yok"];
+    const cols = await t.locator("[data-col]").count();
+    const rain = await t.getByText(/^Yağmur/).count();
+    const now = await t.locator("[data-now]").count();
+    const shift = await t.evaluate((el) => el.querySelector(".overflow-x-auto")?.scrollLeft || 0);
+    if (process.env.WX_SHOT) {
+      const hero = page.locator(".ck-hero").first();
+      await hero.screenshot({ path: `${process.env.WX_SHOT}-hero-tablo.png` });
+    }
+    return [cols >= 9 && rain === 1 && now === 1, `sütun ${cols} · yağmur ${rain} · şimdi ${now} · kaydırma ${Math.round(shift)}`];
+  });
+  // Seyhun 2026-11-01 "Tümü penceresi gruplara ayrılsın, tıklayınca açılsın" ("A · Açılır gruplar"): 6 grup kapalı, dokununca o grup açılır, öbürü kapanır; tek Yarışlar
+  await check("Ana sayfa", "Tümü grupları", "Tümü penceresinde gruplar kapalı başlar, dokununca tek grup açılır, Yarışlar bir kez", async () => {
+    await page.getByRole("button", { name: "Tümü", exact: true }).first().click();
+    const box = page.locator("[data-all-groups]");
+    await waitFor(() => box.count(), 5000);
+    const heads = box.locator(":scope > section > button");
+    const titles = await heads.locator("b").allTextContents();
+    const shut = await box.locator("[aria-expanded='true']").count();
+    await heads.filter({ hasText: "Kulüp" }).click();
+    const club = await box.locator("section:has([aria-expanded='true']) a").allTextContents();
+    await heads.filter({ hasText: "Hava ve deniz" }).click();
+    const one = await box.locator("[aria-expanded='true']").count();
+    const sea = await box.locator("section:has([aria-expanded='true']) a").allTextContents();
+    if (process.env.WX_SHOT) await page.screenshot({ path: `${process.env.WX_SHOT}-tumu.png` });
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(400);
+    const races = club.filter((x) => x.includes("Yarışlar")).length;
+    return [titles.length >= 5 && titles[0] === "Günlük" && shut === 0 && races === 1 && !club.some((x) => /Tüm yarışlar|günlüğü/.test(x)) && one === 1 && sea.some((x) => x.includes("Hava")) && !sea.some((x) => x.includes("Rüzgâr")), `gruplar ${titles.join(",")} · açık ${shut}/${one} · kulüp ${club.join(",")} · deniz ${sea.join(",")}`];
+  });
+  await page.evaluate(() => Object.keys(localStorage).filter((k) => /weather|hava|wx/i.test(k)).forEach((k) => localStorage.removeItem(k)));
+  await page.goto(page.url().replace(/\/[^/]*$/, "/weather"), { waitUntil: "load" });
+  await check("Hava", "yağmur grafiği", "saat saat tabloda yağış mm sayıyla (5,5 ve 9) görünür; Dün/Yarın gün satırı var", async () => {
+    const T = "[data-hour-table]";
+    const ok = await waitFor(() => page.locator(`${T} [data-col]`).count(), 15000);
+    const txt = (await page.locator(T).first().textContent().catch(() => "")) || "";
+    const days = await page.locator("nav[aria-label='Gün'] button").count();
+    if (process.env.WX_SHOT) await page.waitForTimeout(2500).then(() => page.screenshot({ path: `${process.env.WX_SHOT}.png`, fullPage: true }));
+    return [ok >= 24 && /5,5/.test(txt) && /9/.test(txt) && days >= 1, `sütun ${ok} · gün düğmesi ${days} · 5,5 ${/5,5/.test(txt)}`];
+  });
+  await check("Sayfa hataları", "hava yağış", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
+  await page.context().close();
+  await rainSplit(h);
+}
+
+// Ölçülen yağmur (beyaz noktalı çizgi, şimdiye kadar) ile beklenen yağmur (mavi alan, bütün gün) ayrımı (Seyhun 2026-10-27 "A · Ölçülen beyaz çizgi")
+async function rainSplit(h) {
+  const { check, newPage, waitFor, log } = h;
+  log("    Hava: ölçülen / beklenen yağmur…");
+  const { page, errs } = await newPage();
+  const p = (n) => String(n).padStart(2, "0");
+  const nowH = +new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: "Europe/Istanbul" }).format(new Date());
+  await page.route("**/api.open-meteo.com/**", (route) => {
+    const d0 = new Date();
+    const days = [...Array(7)].map((_, k) => { const d = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate() + k); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; });
+    const time = days.flatMap((d) => [...Array(24)].map((_, i) => `${d}T${p(i)}:00`));
+    // Tahmin: her saat biraz yağmur; şimdiden önceki kutular ölçülenle değişmeli
+    const mm = time.map((t, i) => (i < 24 ? 1.5 : 0));
+    const at = (f) => time.map(f);
+    const body = {
+      current: { time: time[nowH], temperature_2m: 17, weather_code: 61, is_day: 1, wind_speed_10m: 9, wind_gusts_10m: 14, wind_direction_10m: 200 },
+      hourly: { time, temperature_2m: at(() => 17), weather_code: at(() => 61), is_day: at(() => 1),
+        wind_speed_10m: at(() => 9), wind_gusts_10m: at(() => 14), wind_direction_10m: at(() => 200), precipitation_probability: at(() => 80), precipitation: mm },
+      daily: { time: days, weather_code: days.map(() => 61), temperature_2m_max: days.map(() => 19), temperature_2m_min: days.map(() => 14),
+        wind_speed_10m_max: days.map(() => 12), wind_gusts_10m_max: days.map(() => 18), wind_direction_10m_dominant: days.map(() => 200) },
+    };
+    const lats = new URL(route.request().url()).searchParams.get("latitude") || "";
+    if (lats.includes(",")) {
+      const many = lats.split(",").map((_, k) => ({ utc_offset_seconds: 10800, hourly: { time: time.slice(Math.max(0, nowH - 2), nowH + 13), wind_speed_10m: time.slice(0, 15).map(() => 6 + (k % 7) * 2), wind_gusts_10m: time.slice(0, 15).map(() => 12), wind_direction_10m: time.slice(0, 15).map(() => 200 + k * 2), precipitation: time.slice(0, 15).map((_, i) => (i > 3 && k % 3 === 0 ? 2 : 0)) } }));
+      return route.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(many) });
+    }
+    return route.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(body) });
+  });
+  // İstasyon: şimdiki saatte biten 3 saatlik 4.2 mm rapor
+  await page.route("**/api/wind-obs**", (route) => {
+    const rows = [...Array(nowH + 1)].map((_, i) => ({ hh: p(i), wind: 6, gust: 10, dir: 200, at: `${p(i)}:00`, rain: i === nowH && nowH >= 1 ? { mm: 4.2, h: 3 } : null }));
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ station: { name: "Dikili", km: 1, near: true, lat: 39.08, lon: 26.9 }, rows }) });
+  });
+  // Radar (2026-10-28): son 2 saat 10 dakikada bir orta şiddet; harita karoları boş resim
+  await page.route("**/api/rain-radar**", (route) => {
+    const t = Date.now();
+    const frames = [...Array(12)].map((_, i) => ({ at: new Date(t - (11 - i) * 600e3).toISOString(), level: i % 4 === 0 ? 0 : 2 }));
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ src: "RainViewer", frames }) });
+  });
+  const PNG = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=", "base64");
+  await page.route("**/server.arcgisonline.com/**", (route) => route.fulfill({ status: 200, contentType: "image/png", body: PNG }));
+  // Bölge haritası: koyu düz zemin (karolar yok); MapLibre yerelde WX_MAPLIBRE klasöründen (npm pack maplibre-gl@4.7.1 → package/dist), yoksa harita açılamadı yazısı
+  const STYLE = { version: 8, sources: {}, layers: [{ id: "bg", type: "background", paint: { "background-color": "#1c3550" } }] };
+  await page.route("**/tiles.openfreemap.org/styles/**", (route) => route.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(STYLE) }));
+  await page.route("**/api.rainviewer.com/**", (route) => route.fulfill({ status: 404, headers: { "access-control-allow-origin": "*" }, body: "" }));
+  if (process.env.WX_MAPLIBRE) {
+    const fs = await import("node:fs");
+    await page.route("**/unpkg.com/maplibre-gl@*/dist/*", (route) => {
+      const f = route.request().url().split("/").pop();
+      return route.fulfill({ status: 200, contentType: f.endsWith(".css") ? "text/css" : "application/javascript", headers: { "access-control-allow-origin": "*" }, body: fs.readFileSync(`${process.env.WX_MAPLIBRE}/${f}`) });
+    });
+  }
+  await page.evaluate(() => Object.keys(localStorage).filter((k) => /weather|hava|wx/i.test(k)).forEach((k) => localStorage.removeItem(k)));
+  await page.goto(page.url().replace(/\/[^/]*$/, "/weather"), { waitUntil: "load" });
+  await check("Hava", "ölçülen / beklenen yağmur", "geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama", async () => {
+    const T = "[data-hour-table]";
+    await waitFor(() => page.locator(`${T} [data-col]`).count(), 15000);
+    const wantOlc = nowH >= 1;
+    if (wantOlc) await waitFor(() => page.locator(`${T} [data-obs]`).count(), 8000);
+    const olc = await page.locator(`${T} [data-obs]`).count();
+    const txt = (await page.locator(T).first().textContent().catch(() => "")) || "";
+    const leg = (await page.locator("[aria-label='Tablo açıklaması']").first().textContent().catch(() => "")) || "";
+    const legOk = wantOlc ? /Ölçülen \(Dikili istasyonu\)/.test(leg) : true;
+    const split = nowH >= 3 ? /1,4/.test(txt) : true;
+    if (process.env.WX_SHOT) await page.waitForTimeout(2500).then(() => page.screenshot({ path: `${process.env.WX_SHOT}-ayrim.png`, fullPage: true }));
+    return [(olc > 0) === wantOlc && legOk && split, `ölçülen sütun ${olc} · açıklama "${leg}" · bölünmüş ${split}`];
+  });
+  // Radar kutuları ve nokta haritası (Seyhun 2026-10-28 "Evet, böyle yap")
+  await check("Hava", "radar ve nokta", "ölçülen sütunlar tabloda; Bölge başlığı, istasyon adı ve bölge haritası", async () => {
+    await waitFor(() => page.locator("[data-hour-table] [data-col]").count(), 8000);
+    const bars = await page.locator("[data-hour-table] [data-obs]").count();
+    const tx = 1;
+    const head = await page.getByRole("heading", { name: "BÖLGE" }).count();
+    const st = await page.getByText("Dikili istasyonu · 1 km").count();
+    // Harita tablonun altında sayfada (2026-11-03): saat çubuğu ve Oynat ile
+    const rmap = await waitFor(() => page.locator("[aria-label='Bölge haritası']").count(), 5000).catch(() => 0);
+    let canvas = 1;
+    if (process.env.WX_MAPLIBRE) {
+      const reg = page.locator("[aria-label='Bölge haritası']");
+      await reg.scrollIntoViewIfNeeded().catch(() => {});
+      canvas = await waitFor(() => reg.locator("canvas").count(), 10000);
+      await page.waitForTimeout(1500);
+      if (process.env.WX_SHOT) await reg.screenshot({ path: `${process.env.WX_SHOT}-bolge-ruzgar.png` }).catch(() => {});
+      await reg.getByRole("button", { name: "Yağış" }).click().catch(() => {});
+      await reg.locator("input[type='range']").evaluate((el) => { const set = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set; set.call(el, el.max); el.dispatchEvent(new Event("input", { bubbles: true })); }).catch(() => {});
+      await page.waitForTimeout(1000);
+      if (process.env.WX_SHOT) await reg.screenshot({ path: `${process.env.WX_SHOT}-bolge-yagis.png` }).catch(() => {});
+    }
+    const mleg = rmap ? "Seçilen yer Ölçüm" : "";
+    const src = await page.getByText(/Radar: RainViewer/).count();
+    if (process.env.WX_SHOT) await page.waitForTimeout(2500).then(() => page.screenshot({ path: `${process.env.WX_SHOT}-radar.png`, fullPage: true }));
+    return [(bars >= 1 || nowH < 1) && tx === 1 && head === 1 && st === 1 && /Seçilen yer/.test(mleg) && /Ölçüm/.test(mleg) && canvas > 0 && src === 1, `yağan çubuk ${bars} · açıklama ${bars} · Nokta ${head} · istasyon ${st} · harita açıklaması "${mleg}" · kaynak ${src}`];
+  });
+  await check("Sayfa hataları", "hava ölçülen yağmur", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
+  await page.context().close();
+  await raceDayHome(h);
+}
+
+// Yarış günü ana sayfa (Seyhun 2026-10-27 "A · Yarışın yeri büyük"): yarın Foça'da test yarışı; yarın seçilince büyük hava Foça'nın, Dikili tek satır
+const nav0 = async (page) => {
+  await page.keyboard.press("Escape"); // güne dokununca açılan gün penceresi kapansın
+  await page.waitForTimeout(400);
+  await page.locator("nav[aria-label='Günler'] button").first().click().catch(() => {});
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(400);
+};
+async function raceDayHome(h) {
+  const { check, newPage, waitFor, log } = h;
+  log("    Ana sayfa: yarış günü havası…");
+  const { page, errs } = await newPage();
+  const p = (n) => String(n).padStart(2, "0");
+  await page.route("**/geocoding-api.open-meteo.com/**", (route) => {
+    const dk = /Dikili/.test(decodeURIComponent(route.request().url()));
+    const hit = dk ? { name: "Dikili", admin1: "İzmir", country_code: "TR", latitude: 39.07, longitude: 26.89 } : { name: "Foça", admin1: "İzmir", country_code: "TR", latitude: 38.67, longitude: 26.75 };
+    return route.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify({ results: [hit] }) });
+  });
+  await page.route("**/api.open-meteo.com/**", (route) => {
+    const foca = route.request().url().includes("latitude=38.67");
+    const d0 = new Date();
+    const days = [...Array(7)].map((_, k) => { const d = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate() + k); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; });
+    const time = days.flatMap((d) => [...Array(24)].map((_, i) => `${d}T${p(i)}:00`));
+    const at = (f) => time.map(f);
+    const wv = foca ? 15 : 7;
+    const body = {
+      current: { time: time[10], temperature_2m: foca ? 21 : 17, weather_code: 2, is_day: 1, wind_speed_10m: wv, wind_gusts_10m: wv + 6, wind_direction_10m: 20 },
+      hourly: { time, temperature_2m: at(() => (foca ? 21 : 17)), weather_code: at(() => 2), is_day: at(() => 1), wind_speed_10m: at(() => wv), wind_gusts_10m: at(() => wv + 6), wind_direction_10m: at(() => 20), precipitation_probability: at(() => 0), precipitation: at(() => 0) },
+      daily: { time: days, weather_code: days.map(() => 2), temperature_2m_max: days.map(() => 22), temperature_2m_min: days.map(() => 15), wind_speed_10m_max: days.map(() => wv), wind_gusts_10m_max: days.map(() => wv + 6), wind_direction_10m_dominant: days.map(() => 20) },
+    };
+    return route.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: JSON.stringify(body) });
+  });
+  await page.evaluate(() => Object.keys(localStorage).filter((k) => /weather|hava|wx|rwx/i.test(k)).forEach((k) => localStorage.removeItem(k)));
+  await page.goto(page.url().replace(/\/[^/]*$/, "/"), { waitUntil: "load" });
+  // Seyhun 2026-11-04: yarış olan güne dokununca hava alanı değişmez (yarış yeri tablosu yok); ilk dokunuş günü seçer, pencere açılmaz
+  const TOMORROW = new Date(Date.now() + 864e5).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" });
+  await check("Ana sayfa", "yarış günü havası", "yarın (Foça'da yarış) takvimde seçilince hava alanı aynı kalır, yarış yeri tablosu çıkmaz; altında o günün planları alt alta okunur", async () => {
+    const cell = page.locator(".cal-emb .cal-cell", { has: page.locator(`xpath=self::*[contains(@aria-label, '${TOMORROW}')]`) }).first();
+    const cellBtn = page.locator(`.cal-emb button[aria-label^='${TOMORROW}']`).first();
+    await cellBtn.waitFor({ timeout: 12000 });
+    await cellBtn.click();
+    await page.waitForTimeout(1500);
+    const race = await page.locator("section[aria-label='Yarış yerinin havası']").count();
+    const hero = await page.locator("section[aria-label='Bugün'] [aria-label='Hava ayrıntısı']").count();
+    const sel = await cellBtn.getAttribute("aria-pressed");
+    const list = await page.locator(".cal-flatv .cal-body li").count();
+    if (process.env.WX_SHOT) await page.screenshot({ path: `${process.env.WX_SHOT}-yaris.png` });
+    void cell;
+    return [race === 0 && hero === 1 && sel === "true" && list >= 1, `yarış tablosu ${race} · hava ${hero} · seçili ${sel} · gün satırı ${list}`];
+  });
+  // Süren yarış (Seyhun 2026-10-30: "ana sayfadan süreyi kaldıralım, sadece tıklama olsun"): sayaç ve düğme yok, tek satır; dokununca yarış sayfası
+  await check("Ana sayfa", "süren yarış tek satır", "yarış adı ve kısa durum, düğme yok, dokununca yarışın sayfası açılır", async () => {
+    await nav0(page);
+    const row = page.locator("a[aria-label='Süren yarış']");
+    // Akşam 18'den sonra günün yarışları bitmiş sayılır, satır yoktur (Seyhun 2026-10-31); yerine Sıradaki kartı
+    if (+new Intl.DateTimeFormat("en", { hour: "numeric", hourCycle: "h23", timeZone: "Europe/Istanbul" }).format(new Date()) >= 18) {
+      await page.waitForTimeout(4000);
+      const n = await row.count();
+      return [n === 0, `akşam: satır ${n ? "duruyor" : "yok"}`];
+    }
+    await row.waitFor({ timeout: 12000 });
+    const href = (await row.getAttribute("href")) || "";
+    const btns = await row.locator("button").count();
+    const sub = await waitFor(async () => ((await row.locator("small").textContent().catch(() => "")) || "").trim().length, 10000);
+    const text = (await row.textContent()) || "";
+    if (process.env.WX_SHOT) await row.screenshot({ path: `${process.env.WX_SHOT}-satir.png` }).catch(() => {});
+    await row.click();
+    const went = await waitFor(async () => (/\/athletes\/races\/[^/]+$/.test(new URL(page.url()).pathname) ? 1 : 0), 10000);
+    await page.goBack().catch(() => {});
+    const ok = /^\/athletes\/races\/[^/]+$/.test(href) && btns === 0 && sub > 0 && went === 1 && !/Başlat|Kayıt/.test(text);
+    return [ok, `bağlantı ${href} · düğme ${btns} · yazı "${text.trim()}" · açıldı ${went}`];
+  });
+  await check("Sayfa hataları", "yarış günü havası", "tarayıcıda hata yok", async () => [errs.length === 0, errs.slice(0, 3).join(" | ") || "yok"]);
   await page.context().close();
 }
 

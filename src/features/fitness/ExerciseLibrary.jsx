@@ -1,25 +1,29 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useEffect, useMemo, useState } from "react";
 import { useToast } from "@/components/ui/ToastProvider";
 import { Icon } from "@/components/ui/Icon";
 import { createPortal } from "react-dom";
-import { fold } from "@/lib/fitness/exercises";
 import { ytThumb } from "@/lib/fitness/youtube";
-import { libAdd, libDupes, libKeepOf, libKey, libList, libMediaIds } from "@/lib/fitness/library";
+import { libAdd, libDupes, libKeepOf, libKey, libList, libMediaIds, nameKey } from "@/lib/fitness/library";
 import { Thumb } from "./ExerciseMedia";
 import { ExerciseScreen } from "./ExerciseScreen";
 import { getThumb, loadMedia, looseMedia } from "./fitMedia";
 import { ExercisePicker } from "./ExercisePicker";
 import { saveLib, similarGroups } from "./fitnessData";
 import { useFitLib } from "./useFitLib";
+import { PosterImport } from "./PosterImport";
+import { FitModels } from "./FitModels";
 
 // Hareketler: kulübün hareket kütüphanesi (programlarda geçen her hareket bir kez, numarasıyla). Harekete eklenen
 // fotoğraf, video ve YouTube bağlantısı o hareketin geçtiği bütün programlarda ve sporcuların antrenmanlarında görünür.
 const hasMedia = (x) => !!(x.yt?.id || (x.media || []).length);
 
 export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
-  const { lib, setMedia, merge, attach, rename, drop } = useFitLib();
+  const confirmAsk = useConfirm();
+  const { lib, setMedia, addMale, setModel, merge, attach, rename, drop } = useFitLib();
+  const [models, setModels] = useState(false); // Modeller: kız/erkek model, erkek fotoğrafları
   const toast = useToast();
   const [join, setJoin] = useState(false);
   const [naming, setNaming] = useState(null);
@@ -27,6 +31,7 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
   const [sel, setSel] = useState("");
   const [pick, setPick] = useState(false);
   const [only, setOnly] = useState("");
+  const [poster, setPoster] = useState(false); // Afişten: bir afişten her hareketin fotoğrafı
   useEffect(() => {
     if (!open) return undefined;
     const prev = document.body.style.overflow;
@@ -54,7 +59,7 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
     const item = p.custom ? { ex: "", name: p.name } : { ex: p.id, name: p.name, kind: p.kind };
     const { lib: next } = libAdd(lib, [item]);
     const saved = await saveLib(orgId, next).catch(() => null);
-    const k = libList(saved || next).find((x) => fold(x.name) === fold(item.name) || (item.ex && x.key === item.ex));
+    const k = libList(saved || next).find((x) => nameKey(x.name) === nameKey(item.name) || (item.ex && x.key === item.ex));
     if (k) setSel(k.key);
   };
   const close = () => {
@@ -81,7 +86,7 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
   const remove = async () => {
     const n = uses[e.key] || 0;
     if (n) return toast(`${n} programda var; önce programdan çıkar`);
-    if (!confirm(`“${e.name}” listeden silinsin mi? Fotoğraf ve videoları silinmez, "Hareketsiz kalan dosyalar"da durur.`)) return;
+    if (!(await confirmAsk({ title: "Hareket silinsin mi?", text: `${e.name} · fotoğraf ve videoları "Hareketsiz kalan dosyalar"da kalır.` }))) return;
     try {
       await drop(e.key);
       back();
@@ -92,7 +97,7 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
   };
   // Bu hareketi seçilenle birleştirir: fotoğrafı/videosu çok olan kalır, öbürünün adı da ileride ona gider
   const joinWith = async (x) => {
-    if (!confirm(`“${e.name}” ile “${x.name}” aynı hareket olarak birleştirilsin mi? Fotoğraf ve videoların hepsi kalır.`)) return;
+    if (!(await confirmAsk({ title: "Birleştirilsin mi?", text: `${e.name} ile ${x.name} tek hareket olur, fotoğraf ve videoların hepsi kalır.`, yes: "Birleştir", danger: false }))) return;
     const keep = libKeepOf(lib, [e.key, x.key]);
     try {
       await merge(keep, [e.key, x.key]);
@@ -166,6 +171,12 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
               {label}
             </button>
           ))}
+          <button type="button" onClick={() => setModels(true)} className="ml-auto h-9 rounded-full bg-card px-3.5 text-[0.8125rem] font-semibold text-acc ring-1 ring-line">
+            Modeller
+          </button>
+          <button type="button" onClick={() => setPoster(true)} className="h-9 rounded-full bg-card px-3.5 text-[0.8125rem] font-semibold text-acc ring-1 ring-line">
+            Afişten
+          </button>
         </div>
       </div>
       <div className="mx-auto max-w-[30rem] px-4 pb-[max(2rem,env(safe-area-inset-bottom))]">
@@ -200,6 +211,8 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
         </ul>
       </div>
       <ExercisePicker open={pick} onClose={() => setPick(false)} onPick={add} />
+      <FitModels open={models} onClose={() => setModels(false)} orgId={orgId} lib={lib} setModel={setModel} addMale={addMale} />
+      <PosterImport open={poster} onClose={() => setPoster(false)} orgId={orgId} lib={lib} setMedia={setMedia} />
     </div>,
     document.body,
   );
@@ -214,11 +227,12 @@ const mediaText = (x) => {
   return [ph ? `${ph} fotoğraf` : "", vd ? `${vd} video` : ""].filter(Boolean).join(" · ") || "Fotoğraf yok";
 };
 function Dupes({ groups, uses, onMerge, title = "Aynı adlı hareketler", start = false }) {
+  const confirmAsk = useConfirm();
   const [open, setOpen] = useState(start);
   const [busy, setBusy] = useState("");
   const run = async (list) => {
     const names = list.map((g) => g.name).join(", ");
-    if (!confirm(`${names} birleştirilsin mi? Fotoğraf ve videolar silinmez, kalan harekete geçer.`)) return;
+    if (!(await confirmAsk({ title: "Birleştirilsin mi?", text: `${names} · fotoğraf ve videolar kalan harekete geçer.`, yes: "Birleştir", danger: false }))) return;
     setBusy(list.length > 1 ? "*" : list[0].keep);
     try {
       for (const g of list) await onMerge(g.keep, g.items.map((x) => x.key));

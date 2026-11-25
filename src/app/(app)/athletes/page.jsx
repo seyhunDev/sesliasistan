@@ -18,6 +18,7 @@ import { useData } from "@/features/data/DataProvider";
 import { AccessSheet } from "@/features/athletes/AccessSheet";
 import { syncAthleteAtt } from "@/features/athletes/mirror";
 import { NewAthlete } from "@/features/athletes/NewAthlete";
+import { repairLinks } from "@/features/athletes/memberSync";
 
 // Arama ve karşılaştırma için: küçük harf, Türkçe
 const low = (s) => String(s || "").toLocaleLowerCase("tr-TR");
@@ -58,6 +59,7 @@ function AthleteList() {
   useEffect(() => {
     if (!data || synced.current === data) return;
     synced.current = data;
+    repairLinks(myUid, members, data.athletes).catch(() => {});
     for (const a of data.athletes) {
       const m = members.find((x) => x.athleteId === a.id && x.status !== "left" && x.account !== false);
       if (m) syncAthleteAtt(myUid, m.uid, a).catch(() => {});
@@ -96,7 +98,7 @@ function AthleteList() {
   const pill0 = "flex h-9 shrink-0 items-center rounded-full border px-3.5 text-[0.8125rem] font-semibold";
 
   return (
-    <main className={`mx-auto max-w-[30rem] px-5 ${sel ? "pb-[calc(7rem+env(safe-area-inset-bottom))]" : "pb-[calc(2.5rem+env(safe-area-inset-bottom))]"}`}>
+    <main className={`split mx-auto max-w-[30rem] px-5 ${sel ? "pb-[calc(7rem+env(safe-area-inset-bottom))]" : "pb-[calc(2.5rem+env(safe-area-inset-bottom))]"}`}>
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Sporcular">
         <header className="flex items-center gap-2.5">
           <BackButton href="/" />
@@ -105,7 +107,7 @@ function AthleteList() {
             <p className="truncate text-[0.8125rem] text-white/65">{sub}</p>
           </div>
           {data && !err && (
-            <button type="button" onClick={() => setAdding(true)} data-press className="raised act-main flex h-9 shrink-0 items-center gap-1 rounded-xl border px-3.5 text-[0.875rem] font-semibold">
+            <button type="button" onClick={() => setAdding(true)} data-press className="btn btn-primary btn-sm shrink-0 gap-1">
               <Icon name="plus" className="size-4" />
               Sporcu
             </button>
@@ -113,10 +115,10 @@ function AthleteList() {
         </header>
 
         <div className="mt-4 grid grid-cols-2 gap-2">
-          <Link href="/athletes/attendance" data-press className="raised flex h-10 items-center justify-center rounded-xl border text-[0.9375rem] font-semibold">
+          <Link href="/athletes/attendance" data-press className="btn btn-secondary h-10 text-[0.9375rem]">
             Yoklama
           </Link>
-          <Link href="/athletes/races" data-press className="raised flex h-10 items-center justify-center rounded-xl border text-[0.9375rem] font-semibold">
+          <Link href="/athletes/races" data-press className="btn btn-secondary h-10 text-[0.9375rem]">
             Yarışlar
           </Link>
         </div>
@@ -142,7 +144,7 @@ function AthleteList() {
         {data && !err && usedClasses.length > 1 && (
           <div className="-mx-5 mt-3 flex gap-2 overflow-x-auto px-5 pb-0.5 [scrollbar-width:none]">
             {[{ id: "", name: "Tümü" }, ...usedClasses].map((c) => (
-              <button key={c.id || "all"} type="button" onClick={() => setCls(c.id)} aria-pressed={cls === c.id} data-press className={`${pill0} ${cls === c.id ? "border-white bg-white text-[#11203a]" : "ck-glass text-white"}`}>
+              <button key={c.id || "all"} type="button" onClick={() => setCls(c.id)} aria-pressed={cls === c.id} data-press className={`${pill0} ${cls === c.id ? "border-white bg-white text-[#0b1a33]" : "ck-glass text-white"}`}>
                 {c.name}
               </button>
             ))}
@@ -178,7 +180,7 @@ function AthleteList() {
           {list.length === 0 ? (
             <p className="mt-4 text-center text-[0.875rem] text-mut">Eşleşen sporcu yok</p>
           ) : (
-            <ul className="divide-y divide-line overflow-hidden rounded-[1.25rem] border border-line bg-card">
+            <ul className="card-grid divide-y divide-line overflow-hidden rounded-[1.25rem] border border-line bg-card">
               {list.map((a) => {
                 const b = birthParts(a.studentBirthDate);
                 const canAdd = b && !hasBday(a, b);

@@ -9,6 +9,14 @@ export const RELATIONS = ["Eş", "Çocuk", "Anne", "Baba", "Kardeş", "Akraba", 
 export const kindOf = (p) => (KINDS.includes(p?.kind) ? p.kind : "staff");
 // Sporcu tarafı: sporcu, öğrenci, veli (antrenörler = çalışanlar)
 export const isAthleteSide = (k) => k === "athlete" || k === "student" || k === "parent";
+// Antrenör (Seyhun 2026-11-24): ana hesabın "Antrenör" işaretlediği çalışan. Kendi Yönet ekranı olur, kendi sporcularına link
+// gönderir. Verisi kulübünkinden ayrı: orgs/k-{uid} (Firestore kuralı isCoachSpace). Ana hesabın alanı kendi işletmesi.
+export const isCoach = (p) => p?.role === "staff" && kindOf(p) === "staff" && p?.coach === true;
+export const coachSpace = (uid) => (uid ? `k-${uid}` : "");
+export const bilgiOrg = (p) => (!p ? "" : p.role === "owner" ? p.orgId || "" : isCoach(p) ? coachSpace(p.uid) : "");
+// Normal kullanıcı (Seyhun 2026-11-24 "küçük kapsamlı uygulama"): çalışan, aile, diğer. Sade menü, alt çubuk ve Ayarlar.
+// Ana hesap her şeyi görür; sporcu tarafı (sporcu, öğrenci, veli) kendi düzeninde kalır.
+export const isPlain = (k) => k === "staff" || k === "family" || k === "other";
 // Fiş ekleyebilenler (ödeme bekler)
 export const canReceipts = (k) => k === "owner" || k === "staff" || k === "family";
 

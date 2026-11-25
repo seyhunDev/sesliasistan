@@ -47,5 +47,5 @@ export function watchTraining(trainings, today) {
   const p = (trainings || []).find((x) => x.date === today);
   if (!p) return { own: "/training", where: "Antrenman", label: "" };
   const where = p.title || "Antrenman";
-  return { own: `/training/day?id=${p.id}`, where, label: `${where} · bugün${p.time ? ` ${p.time}` : ""}` };
+  return { own: "/bilgi/yonet", where, label: `${where} · bugün${p.time ? ` ${p.time}` : ""}` };
 }

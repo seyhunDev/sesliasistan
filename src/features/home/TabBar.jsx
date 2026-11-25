@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
+import { VeloraGlyph } from "@/components/ui/AppLogo";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAdd } from "@/features/add/AddProvider";
@@ -13,51 +14,48 @@ import { useAssistant } from "@/features/assistant/AssistantProvider";
 import { useBirthday } from "@/features/birthdays/BirthdayProvider";
 import { useChat } from "@/features/chat/ChatProvider";
 import { useReceipt } from "@/features/receipts/ReceiptProvider";
-import { useKind } from "@/features/auth/useKind";
-import { useAuth } from "@/features/auth/AuthProvider";
-import { canSeeAthletes } from "@/features/athletes/access";
 import { useMeeting } from "@/features/meeting/MeetingProvider";
 import { ListenWave } from "@/features/speech/ListenWave";
 import { MicDot } from "@/features/speech/MicDot";
 import { useTts } from "@/features/speech/TtsProvider";
+import { SpeakerGlyph } from "@/features/speech/SpeakerGlyph";
 import { useSpeech } from "@/hooks/useSpeech";
-import { canReceipts, isAthleteSide } from "@/lib/kinds";
+import { canReceipts } from "@/lib/kinds";
+import { useHesap } from "@/features/auth/useHesap";
+import { tabsOf } from "@/lib/hesapGorunum";
 import { miniText, pullAction } from "@/lib/miniOrb";
 import { ringOf } from "@/lib/assistRing";
 import { SideNav, useWide } from "./SideNav";
-import { TimerChip } from "@/features/training/TimerChip";
 
 const HOLD_MS = 450; // basılı tutma: yazarak sor (bas-konuş olmayan küçük küreler)
-// BAS-KONUŞ (Seyhun 2026-10-25, örnek "A · Çubuğun sağ ucunda"): asistan küresi basılı tutulduğu sürece dinler, bırakınca
-// gönderir; kendiliğinden dinleme yok. Çok kısa dokunuş (SHORT_MS) konuşma sayılmaz; parmak küreden uzağa (AWAY_PX) kayıp
-// bırakılırsa gönderilmez. onRelease({ short, away }).
-const SHORT_MS = 300;
-const AWAY_PX = 90;
-// Bırakma pencereden dinlenir: kapalı asistanda basınca sekme çubuğundaki küre yerini açık asistanın küresine bırakır
-// (ilk düğme kalkar), parmağın kalkması yine yakalanır.
-function usePress(onPress, onRelease) {
-  const rel = useRef(onRelease);
-  useLayoutEffect(() => {
-    rel.current = onRelease;
-  });
+export const CHECK_MS = 1500; // iş bitince küredeki yeşil ✓ bu kadar görünür, sonra asistan düğmesi geri gelir
+// DOKUN KONUŞ (Seyhun 2026-11-06, örnek /mnt/project-files/asistan/tiklamali): basılı tutarak konuşmak yok. Boştayken dokununca
+// dinler, dinlerken dokununca bitirir ve gönderir (düğmede gönder oku), iş sürerken dokununca durdurur (düğmede kare).
+// Boştayken basılı tutmak (onHold varsa) yazarak sorar. onRelease({ short }) eski arayüzle aynı: gönder = { short: false },
+// durdur = { short: true }.
+function usePress(onPress, onRelease, state, onHold) {
+  const t = useRef(0);
+  const held = useRef(false);
   if (!onPress) return null;
+  const up = () => clearTimeout(t.current);
   return {
     onPointerDown: (e) => {
-      if (e.button > 0) return;
-      const p = { t: Date.now(), x: e.clientX, y: e.clientY, away: false };
-      const move = (ev) => {
-        if (Math.hypot(ev.clientX - p.x, ev.clientY - p.y) > AWAY_PX) p.away = true;
-      };
-      const end = (ev) => {
-        window.removeEventListener("pointermove", move);
-        window.removeEventListener("pointerup", end);
-        window.removeEventListener("pointercancel", end);
-        rel.current?.({ short: Date.now() - p.t < SHORT_MS, away: p.away || ev.type === "pointercancel" });
-      };
-      window.addEventListener("pointermove", move);
-      window.addEventListener("pointerup", end);
-      window.addEventListener("pointercancel", end);
+      held.current = false;
+      if (e.button > 0 || !onHold || state !== "idle") return;
+      t.current = setTimeout(() => {
+        held.current = true;
+        navigator.vibrate?.(12);
+        onHold();
+      }, HOLD_MS);
+    },
+    onPointerUp: up,
+    onPointerLeave: up,
+    onPointerCancel: up,
+    onClick: () => {
+      if (held.current) return void (held.current = false);
       navigator.vibrate?.(10);
+      if (state === "listening") return onRelease?.({ short: false, away: false });
+      if (state === "busy") return onRelease?.({ short: true, away: false });
       onPress();
     },
     onContextMenu: (e) => e.preventDefault(),
@@ -93,8 +91,9 @@ const PAGES = {
 const RACE = { ph: "Bu yarışla ilgili söyle…", ex: ["Mehmet'i de ekle", "Not al: otel rezervasyonu yapılacak", "Bütçeye otel kişi başı 3500 ekle"] };
 const isRace = (path) => path.startsWith("/athletes/races/");
 // Yarış multimedya ve antrenman sayfası kendi alt sekmelerini (Süre · Medya · Hava · Sonuçlar) gösterir
-// Tam ekran sayfalar (sekme çubuğu yok): yarış multimedya, antrenman günü, gömülü Market /sanal (Seyhun 2026-10-25 "tam ekran olmalı")
-const isMedia = (path) => /^\/athletes\/races\/[^/]+\/media/.test(path) || path === "/training/day" || path === "/sanal";
+// Tam ekran sayfalar (sekme çubuğu yok): yarış multimedya, gömülü Market /sanal (Seyhun 2026-10-25 "tam ekran olmalı"), gömülü Velora Sailing /sailing
+// yarış sayfası da (kendi alt çubuğu: Yarış · Süre · Medya · Parkur · Sonuçlar, RaceMedia RACE_DOCK); yeni yarış formu değil
+const isMedia = (path) => /^\/athletes\/races\/[^/]+\/(media|yayin)/.test(path) || /^\/athletes\/races\/(?!new$)[^/]+$/.test(path) || path === "/sanal" || path === "/sailing";
 // Tek gönderi ekranı: söylenen açık gönderiyi değiştirir (PostEditor)
 const POST = { ph: "Gönderiyle ilgili söyle…", ex: ["Daha kısa ve samimi yaz", "Mete ikinci oldu diye ekle", "Gün batımında teknelerle görsel üret"] };
 const isPost = (path) => path.startsWith("/posts/");
@@ -202,15 +201,15 @@ const LIGHT_LABEL = {
 };
 // İş sürerken kısa dokunuş durdurur; okurken kısa dokunuş okumayı keser, basılı tutunca sözünü kesip dinler
 const PTT_LABEL = {
-  idle: "Asistan: basılı tut konuş",
-  listening: "Bırak, gönder",
+  idle: "Asistan: dokun konuş, basılı tut yaz",
+  listening: "Bitir ve gönder",
   busy: "Durdur",
   speaking: "Okumayı kes",
 };
 export function VoiceLight({ onTap, onHold, onPress, onRelease, state, size = "size-[4.5rem]", compact = false }) {
   const t = useRef(null);
   const held = useRef(false);
-  const ptt = usePress(onPress, onRelease);
+  const ptt = usePress(onPress, onRelease, state, onHold);
   const down = () => {
     held.current = false;
     t.current = setTimeout(() => {
@@ -233,13 +232,15 @@ export function VoiceLight({ onTap, onHold, onPress, onRelease, state, size = "s
         onClick: () => !held.current && onTap(),
       })}
       aria-label={ptt ? PTT_LABEL[state] || PTT_LABEL.idle : LIGHT_LABEL[state] || LIGHT_LABEL.idle}
-      className={`vlight ${compact ? "vl-sm" : ""} ${size} ${ptt ? "touch-none" : ""} shrink-0 select-none active:scale-95 [-webkit-touch-callout:none]`}
+      className={`vlight ${compact ? "vl-sm" : ""} ${size} shrink-0 select-none active:scale-95 [-webkit-touch-callout:none]`}
     >
       <span className="vl-halo" aria-hidden="true" />
       <span className="vl-ring" aria-hidden="true" />
       <span className="vl-disc" aria-hidden="true" />
       {state === "listening" ? (
         <ListenWave round {...(compact ? { bar: 2.5, gap: 2.5 } : {})} />
+      ) : ptt && state === "idle" ? (
+        <Icon name="mic" className="relative size-[1.875rem] text-white [stroke-width:2]" />
       ) : (
         <span className="vl-wave" aria-hidden="true">
           <i />
@@ -280,32 +281,14 @@ function NavTab({ href, icon, label, active, badge }) {
 //   konuşuyor            noktalar                             mavi · basılı tut, sözünü kes
 // mode: listening | sending | busy | speaking | idle. tail: yazının soluk son kısmı. r: ringOf (data-tone, üstteki durum yazısı)
 const PILLBTN = "grid size-11 shrink-0 touch-manipulation place-items-center rounded-full bg-white/[.08] text-fg transition active:scale-90";
-function AssistBox({ mode, text, tail = "", ph, r = {}, draft = false, onX, xLabel, onText, onPhoto, onPress, onRelease }) {
-  const box = useRef(null);
+function AssistBox({ mode, ph, r = {}, draft = false, onX, xLabel, onText, onPhoto, onPress, onRelease }) {
   const pick = useRef(null);
-  useEffect(() => {
-    const el = box.current;
-    if (el) el.scrollTop = el.scrollHeight; // uzun sözde son kısım görünsün
-  }, [text, tail]);
-  const listening = mode === "listening";
   const idle = mode === "idle";
-  const said = [text, tail].filter(Boolean).join(" ");
   return (
     <div className="relative px-3 pb-1">
-      {/* Söylenen / yazılan söz: kutunun üstünde, büyük; durunca dokununca klavyeyle düzeltilir */}
-      {!!said && (
-        <div data-mode={mode} className={`asheet-input amsg-in mx-2 ${listening ? "mb-2" : "mb-4"} ${idle ? "asheet-draft" : ""}`}>
-          <div ref={box} onClick={idle ? onText : undefined} className={`max-h-[9.5rem] overflow-hidden text-[1.3125rem] font-semibold leading-snug tracking-[-.01em] ${idle && onText ? "cursor-text" : ""}`}>
-            <span className="text-fg">
-              {text}
-              {tail && <span className="text-fg/45">{text ? " " : ""}{tail}</span>}
-              {listening && <i className="box-caret" aria-hidden="true" />}
-            </span>
-          </div>
-        </div>
-      )}
       <div className="flex items-end gap-2.5">
-        <div className="apill flex h-[3.875rem] min-w-0 flex-1 items-center gap-2 rounded-full pl-2 pr-4">
+        {/* Dinlerken ve iş sürerken kutu yok: söylenen ortada (Said), yalnız sağdaki düğme */}
+        <div className={`apill flex h-[3.875rem] min-w-0 flex-1 items-center gap-2 rounded-full pl-2 pr-4 ${idle ? "" : "invisible"}`}>
           {idle && draft ? (
             <button type="button" onClick={onX} aria-label={xLabel} className={PILLBTN}>
               <Icon name="x" className="size-[1.25rem]" />
@@ -330,12 +313,7 @@ function AssistBox({ mode, text, tail = "", ph, r = {}, draft = false, onX, xLab
           ) : (
             <span className="w-2 shrink-0" />
           )}
-          {listening ? (
-            <span className="flex min-w-0 flex-1 items-center gap-2 text-[0.9375rem] font-semibold text-fg/80">
-              <MicDot />
-              Dinliyorum · <ListenClock />
-            </span>
-          ) : idle ? (
+          {idle ? (
             <button type="button" onClick={onText} aria-label={draft ? "Düzelt" : "Yaz"} className="min-w-0 flex-1 truncate py-3 text-left text-[0.9375rem] text-fg/55">
               {draft ? "Düzelt" : ph}
             </button>
@@ -349,13 +327,43 @@ function AssistBox({ mode, text, tail = "", ph, r = {}, draft = false, onX, xLab
   );
 }
 
+// Ortadaki söz (Seyhun 2026-11-06 "ortada olaylar gerçekleşsin"): dinlerken söylenen büyük ve ortada akar (son, henüz
+// kesinleşmemiş kısım soluk), altında sesle oynayan dalga ve süre. Durunca (taslak) dokununca klavyeyle düzeltilir.
+function Said({ mode, text, tail = "", onText }) {
+  const box = useRef(null);
+  useEffect(() => {
+    const el = box.current;
+    if (el) el.scrollTop = el.scrollHeight; // uzun sözde son kısım görünsün
+  }, [text, tail]);
+  const listening = mode === "listening";
+  const idle = mode === "idle";
+  return (
+    <div data-mode={mode} className={`asaid amsg-in flex flex-col items-center text-center ${idle ? "asheet-draft" : ""}`}>
+      <div ref={box} onClick={idle ? onText : undefined} className={`max-h-[14rem] overflow-hidden text-[1.625rem] font-semibold leading-snug tracking-[-.01em] md:text-[2rem] ${idle && onText ? "cursor-text" : ""}`}>
+        <span className="text-fg">
+          {text}
+          {tail && <span className="text-fg/45">{text ? " " : ""}{tail}</span>}
+        </span>
+      </div>
+      {listening && (
+        <>
+          <div className="mt-5 flex w-28 text-[#8fb3ff]">
+            <ListenWave line className="h-9" bar={4} gap={4} />
+          </div>
+          <span className="mt-2 text-[0.8125rem] font-semibold tabular-nums text-[#8fb3ff]"><ListenClock /></span>
+        </>
+      )}
+    </div>
+  );
+}
+
 // Ortadaki düğme (alt çubuktaki asistan düğmesiyle aynı yer ve görünüş, globals.css .vlight .aorb): renk durumu anlatır.
 // İçinde: dinlerken canlı ses dalgası, taslakta ↑, iş bitince onay, değilse logo dalgası. data-tone/data-fill ekran testleri için.
 function OrbMain({ mode, r, icon, label, on = true, onTap, onHold, onPress, onRelease, small = false }) {
   const t = useRef(null);
   const held = useRef(false);
-  const ptt = usePress(onPress, onRelease);
   const vstate = mode === "listening" ? "listening" : mode === "busy" || mode === "sending" ? "busy" : mode === "speaking" ? "speaking" : "idle";
+  const ptt = usePress(onPress, onRelease, vstate);
   const down = () => {
     held.current = false;
     if (!onHold || mode !== "idle") return;
@@ -383,17 +391,23 @@ function OrbMain({ mode, r, icon, label, on = true, onTap, onHold, onPress, onRe
         onClick: () => !held.current && onTap(),
       })}
       aria-label={ptt ? PTT_LABEL[vstate] || PTT_LABEL.idle : label}
-      className={`vlight aorb ${small ? "vl-sm size-[3.125rem]" : ptt ? "size-[4.75rem] touch-none" : "size-[4.5rem]"} shrink-0 select-none disabled:opacity-60 [-webkit-touch-callout:none]`}
+      className={`vlight aorb ${small ? "vl-sm size-[3.125rem]" : ptt ? "size-[4.75rem]" : "size-[4.5rem]"} shrink-0 select-none disabled:opacity-60 [-webkit-touch-callout:none]`}
     >
       <span className="vl-halo" aria-hidden="true" />
       <span className="vl-ring" aria-hidden="true" />
       <span className="vl-disc" aria-hidden="true" />
-      {mode === "listening" ? (
+      {ptt && vstate === "listening" ? (
+        <Icon name="up" className="relative size-8 text-[#0b1a33] [stroke-width:2.6]" />
+      ) : ptt && vstate === "busy" ? (
+        <Icon name="stop" className="relative size-6 text-white" />
+      ) : mode === "listening" ? (
         <ListenWave round {...(small ? { bar: 3, gap: 3 } : {})} />
       ) : icon === "up" && !ptt ? (
         <Icon name="up" className={`relative ${small ? "size-6" : "size-7"} text-white [stroke-width:2.5]`} />
       ) : r.check && mode === "idle" ? (
         <svg viewBox="0 0 48 48" className={`relative ${small ? "size-6" : "size-8"}`} aria-hidden="true"><path className="lring-check" d="M13 25l7 7 15-16" /></svg>
+      ) : ptt && vstate === "idle" ? (
+        <Icon name="mic" className="relative size-[1.875rem] text-white [stroke-width:2]" />
       ) : (
         <span className="vl-wave" aria-hidden="true"><i /><i /><i /><i /><i /></span>
       )}
@@ -402,7 +416,7 @@ function OrbMain({ mode, r, icon, label, on = true, onTap, onHold, onPress, onRe
 }
 
 // Yazı kutusu (klavyeyle yazarken, Composer): üstte yazı alanı, altta × · ses · ↑ Gönder (2026-10-16 sade kutu)
-const ROUND = "grid size-11 shrink-0 touch-manipulation place-items-center rounded-full transition active:scale-90";
+const ROUND = "grid size-12 shrink-0 touch-manipulation place-items-center rounded-full transition active:scale-90";
 function TypeBox({ mode, text, tail = "", ph, onX, xLabel, onMain, mainIcon, mainLabel, mainOn = true, onText, onStop, onTalk, onPhoto, onPick, children }) {
   const box = useRef(null);
   const pick = useRef(null);
@@ -527,7 +541,8 @@ const LEAVE_MS = 340; // globals.css › .afull-out
 
 // Sesli yanıt düğmesi (Seyhun 2026-10-20: "asistan kullanılırken de seslendirmeyi kapatabilmeliyim, uygun ortam olmayabilir"):
 // sağ üstte hoparlör. Kapatınca okuma o an susar, sonraki cevaplar yalnız yazılır; açınca sonraki cevaplar okunur.
-// Ayarlar › Sesli yanıt ile aynı ayar. Simge yumuşak geçişle değişir, alttaki kısa yazı ne olduğunu söyler.
+// Ayarlar › Sesli yanıt ile aynı ayar. "B · Dolu daire" (Seyhun 2026-11-04): açıkken elektrik mavisi dolu daire, kapalıyken soluk daire
+// ve hoparlörün üstünde çizgi; simge yumuşak geçer (SpeakerGlyph).
 function ReadToggle() {
   const tts = useTts();
   const toast = useToast();
@@ -545,15 +560,14 @@ function ReadToggle() {
       onClick={flip}
       aria-pressed={on}
       aria-label={on ? "Sesli yanıtı kapat" : "Sesli yanıtı aç"}
-      className={`absolute right-3 top-1/2 grid size-10 -translate-y-1/2 place-items-center rounded-full border transition-[background-color,border-color,color,transform] duration-200 active:scale-90 ${on ? "border-acc/40 bg-acc/15 text-acc" : "border-white/10 bg-white/5 text-mut"}`}
+      className={`spk-btn grid size-10 shrink-0 place-items-center rounded-full transition-[background-color,color,box-shadow,transform] duration-200 active:scale-90 ${on ? "bg-[#3d7bff] text-white" : "spk-btn-off bg-white/10 text-[#e8ecff]/70"}`}
     >
-      <span className={`absolute transition-[opacity,transform] duration-200 ${on ? "scale-100 opacity-100" : "scale-75 opacity-0"}`}><Icon name="volume" className="size-5" /></span>
-      <span className={`absolute transition-[opacity,transform] duration-200 ${on ? "scale-75 opacity-0" : "scale-100 opacity-100"}`}><Icon name="mute" className="size-5" /></span>
+      <SpeakerGlyph on={on} />
     </button>
   );
 }
 
-function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = false, state, live, talk, press, release, typeNow, typing, onTypingDone, cfg, onClose, onMini, setSlot, path, unread, voice = {}, typeInit = "" }) {
+function Dome({ noAi = false, tabs = [], bar, slim, rec, active, leaving = false, small = false, state, live, talk, press, release, typeNow, typing, onTypingDone, cfg, onClose, onMini, setSlot, path, unread, voice = {}, typeInit = "" }) {
   const client = useSyncExternalStore(noop, () => true, () => false);
   const box = useRef(null);
   const inner = useRef(null);
@@ -576,6 +590,8 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
     const jump = wasActive.current !== active;
     wasActive.current = active;
     const set = () => {
+      // Taşma gizli kubbe tarayıcıca kaydırılmış kalabilir (tam ekrandayken odaklanan düğme): küre yukarıda kesilmesin
+      if (o.scrollTop) o.scrollTop = 0;
       const h = shown ? Math.round(i.offsetHeight) : 0;
       if (o.style.height !== `${h}px`) {
         if (jump) o.style.transition = "none";
@@ -606,6 +622,8 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
     const fit = () => {
       const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
       el.style.transform = kb > 40 ? `translate3d(0,${-kb}px,0)` : "";
+      if (kb > 40) el.dataset.kb = "";
+      else delete el.dataset.kb; // klavye açıkken kutu klavyeye yapışık (alt güvenli alan boşluğu yok)
       el.style.setProperty("--vvh", `${Math.round(vv.height)}px`);
     };
     fit();
@@ -615,6 +633,7 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
       vv.removeEventListener("resize", fit);
       vv.removeEventListener("scroll", fit);
       el.style.transform = "";
+      delete el.dataset.kb;
     };
   }, [typing, active]);
 
@@ -795,18 +814,32 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
     : mode === "sending" ? heard || "" // yalnız şimdi söylenen: önceki söz (live.said) bir an görünüp kaybolmasın (Seyhun, 2026-10-09)
     : mode === "busy" ? "" // gönderilen söz sohbete balon olarak geçti: kutuda ikinci kez görünmez (Seyhun 2026-10-25)
     : draft;
-  const ring = active ? ringOf({ state, transcribing: live.transcribing, status: live.status, list: live.prog, talked: live.talked, shown: live.planShown, saved: live.saved }) : {};
-  // İş bitince (düğmede ✓) kısa "tamam" titreşimi; dinleme başlarken titreşim useSpeech'te
-  const done = !!ring.check;
+  const okRing = active ? ringOf({ state, transcribing: live.transcribing, status: live.status, list: live.prog, talked: live.talked, shown: live.planShown, saved: live.saved }) : {};
+  // İş bitince (düğmede ✓) kısa "tamam" titreşimi; dinleme başlarken titreşim useSpeech'te.
+  // Yeşil ✓ bir kez görünür, CHECK_MS sonra kaybolur ve asistan düğmesi geri gelir (Seyhun 2026-11-01)
+  const done = !!okRing.check;
+  const [checkGone, setCheckGone] = useState(false);
   useEffect(() => {
-    if (done) haptic("success");
+    if (!done) return;
+    haptic("success");
+    const t = setTimeout(() => setCheckGone(true), CHECK_MS);
+    return () => {
+      clearTimeout(t);
+      setCheckGone(false);
+    };
   }, [done]);
+  const ring = done && checkGone ? { tone: "idle", fill: 0, label: "", sub: "" } : okRing;
   return (
+    <>
+    {/* Yazarak sor (Seyhun 2026-11-13, örnek ana-sayfa/sade-2026-11/klavye.html): arkası kararır ve bulanıklaşır, boş yere dokununca kapanır */}
+    {typing && !active && <div aria-hidden="true" onClick={onTypingDone} className="atype-dim fixed inset-0 z-[38] bg-[rgba(3,8,18,.62)] backdrop-blur-[3px]" />}
+    {/* Asistan açıkken arkadaki sayfa görünür, hafifçe kararır; dışına dokununca kapanır (dinlerken ya da bekleyen söz varken değil) */}
     <div
       ref={box}
       data-dome=""
       data-state={active ? state : "idle"}
       data-on={active ? "" : undefined}
+      data-typing={typing && !active ? "" : undefined}
       role="region"
       aria-label="Asistan"
       className={`dome dome-rise fixed inset-x-0 bottom-0 ${rec ? "z-[55]" : "z-[38]"} h-0 overflow-hidden ${shown ? "visible" : "invisible [transition:height_.5s_cubic-bezier(.22,.8,.24,1),visibility_0s_.5s]"}`}
@@ -816,15 +849,15 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
           düğmesi (dokun: konuş, basılı tut: yaz). Asistan açılınca çubuğun yerine alttan beyaz bir sayfa (ChatGPT, Gemini
           gibi) gelir: üstte tutamaç ve kapat, ortada sohbet balonları, altta Oluştur, yazı kutusu ve ses düğmesi. Durum
           yalnız ses düğmesinin renginden anlaşılır (yeşil bekliyor, kırmızı dinliyor, kehribar çalışıyor, mavi konuşuyor). */}
-      <div ref={inner} className={`absolute inset-x-0 bottom-0 ${active ? "h-[var(--vvh,100dvh)]" : ""}`}>
+      <div ref={inner} className="absolute inset-x-0 bottom-0">
         {sheet ? (
           // Asistan açıkken tam sayfa (Seyhun, 2026-10-14): arkada animasyonlu zemin, önde sohbet ve görevler, altta aynı kutu;
           // açık ya da koyu görünümden bağımsız tek koyu tasarım (data-theme="dark": içindeki dark: sınıfları da koyu)
-          <div data-theme={active ? "dark" : undefined} data-state={active ? state : undefined} data-filled={open ? "" : undefined} className={active ? `afull ${leaving ? "afull-out" : "afull-in"} relative flex h-full flex-col` : "contents"}>
+          <div data-theme={active ? "dark" : undefined} data-state={active ? state : undefined} data-filled={open ? "" : undefined} className={active ? `afull ${leaving ? "afull-out" : "afull-in"} relative flex h-[var(--vvh,100dvh)] flex-col` : "contents"}>
           {active && <AssistBg />}
-          <div className={`asheet relative mx-auto w-full max-w-[34rem] pb-[max(0.5rem,calc(env(safe-area-inset-bottom)-0.25rem))] ${active ? "flex min-h-0 flex-1 flex-col pt-[env(safe-area-inset-top)]" : ""}`}>
+          <div className={`asheet ${typing && !active ? "navy" : ""} relative mx-auto w-full max-w-[34rem] pb-[max(0.5rem,calc(env(safe-area-inset-bottom)-0.25rem))] ${active ? "flex min-h-0 flex-1 flex-col md:max-w-[40rem]" : ""}`}>
             {active && (
-              <div className="relative flex h-12 shrink-0 items-center px-5">
+              <div className="relative mt-[env(safe-area-inset-top)] flex h-14 shrink-0 items-center gap-2 px-5">
                 {/* Durum yazısı (Düşünüyorum, Yapıyorum 2 / 3, Kaydedildi): sol üstte tek satır; sağda sesli yanıt */}
                 {/* İş bitince ("Kaydedildi", "Tamam") yazı görünmez: bunu düğmedeki yeşil ✓ anlatır; ekran okuyucu yine okur */}
                 <p aria-live="polite" className="min-w-0 truncate text-[0.875rem] font-semibold text-fg/80">
@@ -833,7 +866,11 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
                     {ring.label && ring.sub ? <span className="font-normal text-fg/60"> · {ring.sub}</span> : null}
                   </span>
                 </p>
+                <span className="ml-auto" />
                 <ReadToggle />
+                <button type="button" onClick={onClose} aria-label="Asistanı kapat" className="grid size-10 shrink-0 place-items-center rounded-full bg-white/[.12] text-fg transition active:scale-90">
+                  <Icon name="x" className="size-5" />
+                </button>
               </div>
             )}
             {active && (
@@ -842,14 +879,19 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
                 data-apane=""
                 // Tek kutu (2026-10-23): kapat düğmesi yok, dinlerken ve taslak varken dışında boş alana dokununca kapanır
                 onClick={(e) => (e.target === pane.current || e.target === body.current) && mode !== "listening" && !draft && onClose?.()}
-                // Sohbet alanı ekranın kalanını kaplar; mesajlar alttan dolar, fazlası içeride kayar
-                // Üstte boşluk ve yukarı doğru soluklaşma (Seyhun: "yazı yukarı gittikçe soluklaşsın, üstte biraz boşluk", 2026-10-14)
-                className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 [mask-image:linear-gradient(to_bottom,transparent,rgba(0,0,0,.35)_2.5rem,#000_40%)] [scrollbar-width:none]"
+                // Küçük pencere (Seyhun 2026-11-02 "A · İçeriğe göre büyür"): sohbet içeriği kadar, en çok ekranın yarısı kadar
+                // pencere; fazlası içeride kayar, yeni mesajda kendiliğinden en alta iner (yukarıdaki kaydırma). Üstte kısa soluklaşma.
+                // Tam ekran bulanık zemin (Seyhun 2026-11-06): olaylar ekranın ortasında; uzun sohbet içeride kayar
+                className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 [mask-image:linear-gradient(to_bottom,transparent,#000_1.5rem,#000_calc(100%-1.5rem),transparent)] [scrollbar-width:none]"
               >
-                <div ref={body} className="flex min-h-full flex-col justify-end pb-5 pt-10">
-                  <div ref={feed}>
+                <div ref={body} data-said={boxText && mode !== "busy" ? "" : undefined} className="flex min-h-full flex-col justify-center py-6">
+                  <div ref={feed} data-afeed="">
                     <div ref={setSlot} />
                   </div>
+                  {!!boxText && mode !== "busy" && (
+                    <Said mode={mode} text={boxText} tail={mode === "listening" && heard && live.heardFix != null ? live.tail || "" : ""} onText={mode === "idle" ? (draft ? voice.type : typeNow) : undefined} />
+                  )}
+                  {mode === "listening" && !boxText && <Said mode={mode} text="" />}
                 </div>
               </div>
             )}
@@ -859,10 +901,8 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
               <AssistBox
                 mode={mode}
                 r={ring}
-                text={boxText}
                 ph={cfg.ph}
                 draft={!!draft}
-                tail={mode === "listening" && heard && live.heardFix != null ? live.tail || "" : ""}
                 // × her zaman asistanı kapatır (Seyhun 2026-10-22); dinleme ve bekleyen söz de gider
                 onX={onClose}
                 xLabel="Asistanı kapat"
@@ -892,17 +932,16 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
               {/* Bas-konuş (Seyhun 2026-10-25 "A · Çubuğun sağ ucunda"): dört sekme solda, büyük küre sağ uçta, baş parmağın altında */}
               <div className="mx-auto flex h-14 max-w-[34rem] items-stretch">
                 <div className="grid min-w-0 flex-1 grid-cols-4">
-                  <NavTab href="/" icon="home" label="Ana sayfa" active={path === "/"} />
-                  <NavTab href="/calendar" icon="cal" label="Takvim" active={path === "/calendar"} />
-                  <NavTab href="/messages" icon="chat" label="Mesajlar" active={path === "/messages"} badge={unread} />
-                  <NavTab href="/tasks" icon="task" label="Görevler" active={path === "/tasks"} />
+                  {/* Sekmeler hesap görünümüne göre (lib/hesapGorunum.js TABS; normal kullanıcıda Kulüp ve İngilizce, Seyhun 2026-11-24) */}
+                  {tabs.map(([href, label, icon, key]) => (
+                    <NavTab key={href} href={href} icon={icon} label={label} active={href === "/" ? path === "/" : String(path || "").startsWith(href)} badge={key === "msg" ? unread : undefined} />
+                  ))}
                 </div>
                 {!noAi && (
                   <div data-ptt="" className="relative w-[6rem] shrink-0">
-                    <TimerChip />
                     <span className="acenter absolute -top-7 right-2.5 rounded-full p-1">
                       {/* Küçülen asistan bu küreyi kullanır: rengi o anki durum (ikinci küre yok) */}
-                      <VoiceLight state={small ? state : "idle"} onPress={press} onRelease={release} size="size-[4.75rem]" />
+                      <VoiceLight state={small ? state : "idle"} onPress={press} onRelease={release} onHold={typeNow} size="size-[4.75rem]" />
                     </span>
                   </div>
                 )}
@@ -912,6 +951,7 @@ function Dome({ noAi = false, bar, slim, rec, active, leaving = false, small = f
         )}
       </div>
     </div>
+    </>
   );
 }
 
@@ -957,7 +997,8 @@ export function TabBar({ cfg, bar, slim = false, rec = false, sideNav = false })
     document.body.dataset.typing = "1";
     return () => delete document.body.dataset.typing;
   }, [typing]);
-  const kind = useKind();
+  const h = useHesap(); // ana sayfa, alt çubuk, menü hesap görünümüne göre ("… gibi gör" dahil)
+  const kind = h.kind;
 
   const open = !!live.open;
   // Küçülen küre (Seyhun, 2026-10-14): konuşurken ya da iş sürerken aşağı çekilince asistan kapanmaz, sağ altta küre
@@ -989,15 +1030,12 @@ export function TabBar({ cfg, bar, slim = false, rec = false, sideNav = false })
   };
   // Oluştur menüsü gruplu (Seyhun: "artı düğmesinin içeriğini geliştirin, daha fazla özelliğimiz var", 2026-10-06): kişinin
   // görebildiği her hızlı oluşturma işi, ana sayfadaki İşlemler'le aynı izinlerle. Sayfanın kendi seçenekleri en üstte.
-  const { profile } = useAuth();
   const { openMeeting } = useMeeting();
-  const staff = profile?.role === "staff";
-  const owner = profile?.role === "owner";
-  const side = isAthleteSide(kind);
+  const { staff, side, owner } = h;
   // Sporcu ve öğrenci: asistan yok (veli eskisi gibi). Fitness sayfalarında da şimdilik yok (Seyhun, 2026-10-16:
   // "simdilik sesli asistani fitness sayfalarinda kullanmayacagiz"; program yapay zekayla sayfanın kendi düğmelerinden).
   const noAi = kind === "athlete" || kind === "student" || String(path || "").startsWith("/fitness");
-  const athletes = canSeeAthletes(profile?.email);
+  const athletes = h.athletes;
   const to = (href) => () => router.push(href);
   const groups = [
     ["Kayıt", [
@@ -1068,6 +1106,7 @@ export function TabBar({ cfg, bar, slim = false, rec = false, sideNav = false })
     <>
       <Dome
         noAi={noAi}
+        tabs={tabsOf(h.view)}
         bar={bar}
         slim={slim}
         rec={rec && !noAi}
@@ -1123,10 +1162,15 @@ export function TabBar({ cfg, bar, slim = false, rec = false, sideNav = false })
           orb={
             noAi ? null : (
               <>
-                <VoiceLight state={open && mini ? state : "idle"} onTap={talk} onHold={typeNow} size="size-12" compact />
-                <button type="button" onClick={typeNow} className="min-w-0 flex-1 truncate rounded-xl px-2 py-2 text-left text-[0.875rem] font-medium text-fg hover:bg-fg/[.04]">
-                  Yazarak sor
+                {/* Solda logo; sağda klavye (yazarak sor) ve en sağda konuşma, ikisi aynı yuvarlak (Seyhun 2026-11-13) */}
+                <Link href="/" aria-label="Velora" className="shrink-0 text-[var(--sn-logo)]">
+                  <VeloraGlyph size={40} color="currentColor" v="var(--sn-logo-v, transparent)" />
+                </Link>
+                <span className="flex-1" />
+                <button type="button" onClick={typeNow} aria-label="Yazarak sor" data-press className="skb grid size-12 shrink-0 place-items-center rounded-full text-white active:scale-95">
+                  <Icon name="keyboard" className="size-5" />
                 </button>
+                <VoiceLight state={open && mini ? state : "idle"} onTap={talk} onHold={typeNow} size="size-12" compact />
               </>
             )
           }
@@ -1163,6 +1207,18 @@ export function TabBar({ cfg, bar, slim = false, rec = false, sideNav = false })
   );
 }
 
+// Yarış sayfası alt çubuksuz mu (yarıştan önce TabDock yok): sayfa "sa-plain" olayıyla bildirir; o zaman uygulamanın çubuğu görünür.
+// Yüklenirken gizli kalır (yarış günü çubuk bir an görünüp kaybolmasın).
+function usePlainPage() {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    const f = (e) => setOn(!!e.detail);
+    window.addEventListener("sa-plain", f);
+    return () => window.removeEventListener("sa-plain", f);
+  }, []);
+  return on;
+}
+
 // Uygulama yerleşiminde tek kez çizilir: sayfa değişince yeniden kurulmaz (geçişte titreme/zıplama olmaz).
 // Her sayfada sekmelerle görünür (ana sayfadaki gibi), sohbet ekranında yalnız asistan çalışırken.
 // Sekmeler görünürken sayfaların alt boşluğu kubbeye göre büyür (globals.css).
@@ -1176,7 +1232,10 @@ function Host() {
   // tasarımı diğer sayfalarda da aynı olsun", 2026-10-06). Önceden dört ana sekme dışında yalnız küreli ince hâliyle duruyordu.
   // Sohbet ekranında yok (kendi yazma satırı var). Yarış multimedya sayfasında da yok: sayfa tam ekran multimedya işlerine
   // ayrılır (Seyhun 2026-10-18), asistan yalnız çalışırken küre olarak görünür.
-  const bar = !(path.startsWith("/messages") && chat) && !isMedia(path);
+  // Yarış sayfası yarıştan önce kendi alt çubuğunu (TabDock) çizmez (Seyhun 2026-10-30, yaris-yapi): o zaman uygulamanın çubuğu görünür
+  const plain = usePlainPage();
+  const media = isMedia(path) && !(plain && /^\/athletes\/races\/(?!new$)[^/]+$/.test(path));
+  const bar = !(path.startsWith("/messages") && chat) && !media;
   const slim = false;
   // Açık kayıt ekranı (AddSheet bildirir): { focus, examples } ya da null
   const [rec, setRec] = useState(null);
@@ -1201,7 +1260,7 @@ function Host() {
   const cfg = rec
     ? { ph: "Bu kayıtla ilgili söyle…", ex: rec.examples, focus: rec.focus }
     : { ...(PAGES[path] || (isPost(path) ? POST : isInv(path) ? INV : race ? RACE : PAGES["/"])), ...Object.fromEntries(Object.entries(page || {}).filter(([, v]) => v != null && v !== "")) };
-  return <TabBar cfg={cfg} bar={bar} slim={slim} rec={!!rec} sideNav={!isMedia(path)} />;
+  return <TabBar cfg={cfg} bar={bar} slim={slim} rec={!!rec} sideNav={!media} />;
 }
 export function TabBarHost() {
   return (

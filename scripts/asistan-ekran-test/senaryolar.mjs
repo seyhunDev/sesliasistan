@@ -45,7 +45,7 @@ function seedData() {
   const plan = (id, title, date, time) => ({ path: `orgs/{owner}/plans/${id}`, data: { ...who("owner"), title, date, endDate: "", time, allDay: !time, durationMin: time ? 60 : null, tz: "Europe/Istanbul", timeSource: time ? "user" : "none", place: "", status: "planned" } });
   return {
     users: [
-      { key: "owner", email: OWNER, password: PASS, name: "Test Sahip", doc: { name: "Test Sahip", email: OWNER, role: "owner", orgId: "{owner}", onboarded: true, introV: 99, tourDone: true, createdAt: now } },
+      { key: "owner", email: OWNER, password: PASS, name: "Test Sahip", doc: { name: "Test Sahip", email: OWNER, role: "owner", orgId: "{owner}", sport: "sailing", onboarded: true, introV: 99, tourDone: true, createdAt: now } },
       { key: "athlete", email: ATHLETE, password: PASS, name: "Ege Demir", doc: { name: "Ege Demir", email: ATHLETE, role: "staff", kind: "athlete", orgId: "{owner}", onboarded: true, introV: 99, tourDone: true, createdAt: now } },
     ],
     docs: [
@@ -55,6 +55,8 @@ function seedData() {
       { path: "orgs/{owner}/tasks/t-motor", data: { ...who("owner"), title: "Motor bakımı", due: TODAY, done: false, doneAt: null, planId: null } },
       // Yarış multimedya: yarış yarın başlar, dün elle eklenmiş antrenman günü (açılışta bugün seçili olmalı, son gün değil)
       { path: "orgs/{owner}/races/test-yaris", data: { name: "Test Kupası", city: "İzmir", district: "Foça", startDate: TOMORROW, endDate: TOMORROW, athleteIds: [], createdByUid: "{owner}" } },
+      // Ana sayfa yarış şeridi: bugün süren yarış (Dikili; büyük hava değişmez)
+      { path: "orgs/{owner}/races/test-canli", data: { name: "Canlı Kupa", city: "İzmir", district: "Dikili", startDate: TODAY, endDate: TODAY, athleteIds: [], createdByUid: "{owner}" } },
       { path: "orgs/{owner}/raceLive/test-yaris", data: { days: [ymd(new Date(Date.now() - 864e5))] } },
       { path: "orgs/{owner}/members/{athlete}", data: { uid: "{athlete}", name: "Ege Demir", email: ATHLETE, role: "staff", kind: "athlete", createdAt: now } },
     ],
@@ -210,34 +212,44 @@ export async function run(server, log = () => {}) {
       b = n;
     }
     heldAt = Date.now();
-    await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
-    await page.mouse.down();
+    await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
   };
+  // Dokun konuş (Seyhun 2026-11-06): ikinci dokunuş gönderir (dinlemiyorsa dokunulmaz: iş durmasın)
   const letGo = async (page) => {
     const wait = HOLD_MIN - (Date.now() - heldAt);
     if (wait > 0) await page.waitForTimeout(wait);
-    await page.mouse.up();
+    if ((await state(page)) !== "listening") return;
+    const o = page.locator("[data-dome] [data-orb]:visible").first();
+    const b = await o.boundingBox();
+    if (b) await page.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
   };
   // Asistanı yazarak kullan: küreye kısa dokun (açılır, boşta), "Yaz" → yaz, gönder
   const typeAsk = async (page, text) => {
     if (!(await page.locator(".afull.afull-in").count())) {
       await waitFor(async () => !(await full(page).count()), 2000);
-      await orb(page).click();
-      await page.locator(".afull.afull-in").waitFor({ timeout: 4000 });
+      // Dokun konuş (2026-11-06): dokununca dinler; yazmak için basılı tutulur (yazı kutusu açılır)
+      const b = await orb(page).boundingBox();
+      await page.mouse.move(b.x + b.width / 2, b.y + b.height / 2);
+      await page.mouse.down();
+      await page.waitForTimeout(650);
+      await page.mouse.up();
+    } else {
+      await waitFor(async () => (await state(page)) === "idle", 6000);
+      await btn(page, "Yaz").click({ timeout: 5000 });
     }
-    await waitFor(async () => (await state(page)) === "idle", 6000);
-    await btn(page, "Yaz").click({ timeout: 5000 });
     const ta = page.locator("[data-dome] textarea");
     await ta.waitFor({ timeout: 5000 });
     await ta.fill(text);
     await ta.press("Enter");
   };
-  // Konuşarak sor: küreye basılı tut → söyle → bırak (gönderir)
+  // Konuşarak sor: küreye dokun → söyle → tekrar dokun (gönderir)
   const talkAsk = async (page, text) => {
     const sr0 = await page.evaluate(() => window.__t.srStarts);
     if (!(await page.locator(".afull.afull-in").count())) await waitFor(async () => !(await full(page).count()), 2000); // kapanış animasyonu bitsin
     else await waitFor(async () => (await state(page)) === "idle", 6000);
     await hold(page);
+    // Dokun konuş: dokunuş kapanış ya da açılış hareketine denk gelip boşa gidebilir; bir kez daha dokunulur
+    if (!(await waitFor(async () => (await state(page)) === "listening", 2500)) && (await state(page)) === "idle") await hold(page);
     if (!(await waitFor(async () => (await state(page)) === "listening", 4000))) {
       await letGo(page);
       throw new Error(`dinlemeye geçmedi (durum: ${await state(page)})`);
@@ -263,9 +275,9 @@ export async function run(server, log = () => {}) {
   const closeAll = async (page) => {
     for (let i = 0; i < 4 && (await page.locator(".afull.afull-in").count()); i++) {
       const x = btn(page, "Asistanı kapat");
-      if ((await state(page)) === "listening") await page.locator("[data-dome] [data-orb]:visible").first().click().catch(() => {});
-      else if (await x.count()) await x.click().catch(() => {});
-      else await page.locator("[data-dome] [data-apane]").click({ position: { x: 20, y: 20 } }).catch(() => {});
+      // Sağ üstteki × her durumda kapatır (dinlerken de; 2026-11-06)
+      if (await x.count()) await x.first().click().catch(() => {});
+      else await page.locator("[data-apane]").click({ position: { x: 4, y: 4 } }).catch(() => {});
       await page.waitForTimeout(400);
     }
     await waitFor(async () => !(await full(page).count()), 1500);

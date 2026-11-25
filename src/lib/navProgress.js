@@ -1,7 +1,11 @@
 // Sayfa geçişi ilerleme çizgisinin durumu (NavProgress.jsx çizer): idle | run | done.
 // Bağlantı tıklaması ve router.push/replace/back geçişi başlatır, yeni sayfa açılınca biter.
 
+// Alt sekme sayfaları (Ana sayfa, Takvim, Mesajlar, Görevler): aralarında geçiş kaymaz, yumuşakça değişir
+const TAB_ROOTS = ["/", "/calendar", "/messages", "/tasks"];
+
 let phase = "idle";
+let startedAt = 0; // son navStart anı (geri düğmesi mi, iPhone'un kenardan kaydırması mı: navPopped)
 let timer = 0;
 const subs = new Set();
 const set = (p) => {
@@ -27,7 +31,9 @@ export function navStart(href, back = false) {
   if (!back) {
     const p = pathOf(href);
     if (!p || p === window.location.pathname) return;
-  }
+    setNavKind(TAB_ROOTS.includes(p) && TAB_ROOTS.includes(window.location.pathname) ? "tab" : "fwd");
+  } else setNavKind("back");
+  startedAt = Date.now();
   clearTimeout(timer);
   set("run");
   timer = setTimeout(navDone, 10000); // en kötü durumda kendiliğinden biter
@@ -62,10 +68,24 @@ export function navClick(e) {
 let popped = false;
 export const navPopped = () => {
   popped = true;
+  // Geri düğmesi önce navStart'ı çağırır (router.back). Öncesinde navStart yoksa geri iPhone'un kenardan kaydırmasıdır
+  // (VeloraViewController allowsBackForwardNavigationGestures): sayfa zaten kaydı, geçiş animasyonu ikinci kez oynamaz.
+  setNavKind(Date.now() - startedAt < 1000 ? "back" : "none");
 };
 
+// Sayfa geçişi animasyonunun türü (globals.css › SAYFA GEÇİŞİ, app/(app)/template.jsx ViewTransition): <html data-nav>
+// fwd (yeni sayfa sağdan gelir), back (geri: önceki sayfa soldan döner), tab (alt sekmeler arası yumuşak geçiş),
+// none (kenardan kaydırarak geri: sayfa zaten parmakla kaydı, ikinci kez kaymasın). none kısa bir süre değişmez,
+// çünkü ardından gelen geri (router.back, popstate) onu "back" yapmaya çalışır.
+let kindHeld = 0;
+export function setNavKind(kind, hold = 0) {
+  if (typeof document === "undefined") return;
+  if (!hold && Date.now() < kindHeld) return;
+  kindHeld = hold ? Date.now() + hold : 0;
+  document.documentElement.dataset.nav = kind;
+}
+
 // Sayfa geçişinin yönü (app/(app)/template.jsx): "back" (geri), "tab" (alt sekmeler arası), "fwd" (ileri), "" (ilk açılış)
-const TAB_ROOTS = ["/", "/calendar", "/messages", "/tasks"];
 let lastPath = "";
 let lastDir = "";
 export function pageDir() {

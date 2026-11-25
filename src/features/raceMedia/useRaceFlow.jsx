@@ -9,9 +9,10 @@ import { VOIDS, beginRace, dropRace, finishRace, nextRaceNo, raceName, raceTime,
 
 // Yarış akışı (Seyhun 2026-10-18): Süre sekmesi ve uygulama içi kamera aynı akışı kullanır (RaceMedia'da bir kez).
 // "Başlat · 4. yarış" geri sayımı başlatır ve yarışı açar; +30 sn/+1 dk start anını kaydırır; "Yarışı bitir" bitiş saatini yazar.
-// İptal: geri sayımda ya da startan sonra sebep sorulur (Tehir, Genel geri çağırma, İptal; kapatınca İptal). Yarış geçersiz sayılır,
+// İptal: geri sayımda ya da startan sonra sebep sorulur (Tehir, Genel geri çağırma, Abandone; startan sonra yalnız Abandone ve genel geri; kapatınca Abandone). Yarış geçersiz sayılır,
 // numarası tekrarına geçer. Geri sayımda "Yanlış başlattım" yarışı siler. Her adımdan sonra 8 sn "Geri al" (liste ve sayaç geri yazılır).
-export function useRaceFlow({ orgId, raceId, live, onChange, rdays = null, today = "" }) {
+// nextGrp: sıradaki startın grubu (ya da onu veren işlev: Yayın'da satırdan seçilen grup) (Yayın sayfasının programı); grup grup yarışta aynı yarışın gruplarına ortak numara
+export function useRaceFlow({ orgId, raceId, live, onChange, rdays = null, today = "", nextGrp = "" }) {
   const toast = useToast();
   const [ask, setAsk] = useState(null); // iptal sebebi sorulan: { id, prevT, canDrop, at }
   const save = (next) => onChange({ starts: next }, () => saveStarts(orgId, raceId, next));
@@ -19,10 +20,10 @@ export function useRaceFlow({ orgId, raceId, live, onChange, rdays = null, today
     toast(msg, { duration: 8000, action: { label: "Geri al", onClick: () => (save(before), prevT && writeTimer(prevT)) } });
   const ridOf = (t) => t?.rid || live.starts.find((x) => t?.end && Math.abs(Date.parse(x.at) - t.end) < 5000)?.id || "";
   const flow = {
-    label: `${nextRaceNo(live.starts, today, rdays)}. yarış`,
+    label: `${nextRaceNo(live.starts, today, rdays, typeof nextGrp === "function" ? nextGrp() : nextGrp)}. yarış`,
     onStart: (end, rid, prevT) => {
       const before = live.starts;
-      const got = beginRace(live.starts, Date.now(), end, rdays);
+      const got = beginRace(live.starts, Date.now(), end, rdays, typeof nextGrp === "function" ? nextGrp() : nextGrp);
       save(got.starts);
       undo(`${raceName(got.starts.find((x) => x.id === got.id))} ${end < Date.now() ? "açıldı" : "geri sayımı başladı"}`, before, prevT);
     },
@@ -59,7 +60,15 @@ export function useRaceFlow({ orgId, raceId, live, onChange, rdays = null, today
     const s = next.find((x) => x.id === ask.id);
     undo(s ? raceTitle(s) : reason, before, ask.prevT);
   };
-  return { flow, ask, choose, ridOf, save, undo };
+  // Bayrakla abandone / genel geri (Seyhun 2026-11-03 "bayrakları tıklayarak, onayla"): sebep sorulmaz, seçilen yarışlar hemen geçersiz
+  const voidNow = (ids, reason) => {
+    const before = live.starts;
+    let next = live.starts;
+    for (const id of ids) next = voidRace(next, id, reason, Date.now(), rdays);
+    save(next);
+    undo(ids.length > 1 ? `${ids.length} yarış · ${reason}` : raceTitle(next.find((x) => x.id === ids[0])) || reason, before, null);
+  };
+  return { flow, ask, choose, ridOf, save, undo, voidNow };
 }
 
 // "Neden iptal?" seçenekleri; Sheet içinde (sayfada) ve kameranın üstünde (koyu) aynı düğmeler
@@ -67,9 +76,10 @@ export function VoidChoices({ ask, onChoose, dark = false }) {
   const btn = dark ? "h-12 rounded-2xl bg-white/15 text-[1rem] font-semibold text-white active:bg-white/25" : "h-12 rounded-2xl bg-bg text-[1rem] font-semibold ring-1 ring-line active:translate-y-px";
   return (
     <div className="grid gap-2 pb-2">
-      {VOIDS.map((v) => (
+      {/* Start'tan sonra tehir olmaz: Abandone (N) ya da genel geri; yarış sayılmaz, verisi kalır, numarası tekrar startına geçer */}
+      {(ask.canDrop ? VOIDS : ["Abandone", "Genel geri çağırma"]).map((v) => (
         <button key={v} type="button" onClick={() => onChoose(v)} className={btn}>
-          {v === "İptal" ? "İptal (sebepsiz)" : v}
+          {v === "Abandone" ? "Abandone · N bayrağı" : v}
         </button>
       ))}
       {ask.canDrop && (
@@ -83,7 +93,7 @@ export function VoidChoices({ ask, onChoose, dark = false }) {
 
 export function VoidSheet({ ask, onChoose }) {
   return (
-    <Sheet open={!!ask} onClose={() => onChoose("İptal")} title="Neden iptal?">
+    <Sheet open={!!ask} onClose={() => onChoose("Abandone")} title={ask && !ask.canDrop ? "Yarış sayılmasın" : "Neden iptal?"}>
       {ask && <VoidChoices ask={ask} onChoose={onChoose} />}
     </Sheet>
   );

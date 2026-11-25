@@ -1,0 +1,2 @@
+.nv-canli { bottom: calc(var(--vb-b, 1rem) + 0.25rem); font-family: -apple-system, Inter, system-ui, sans-serif; }
+@media not all and (max-aspect-ratio: 1/1) { .nv-canli { bottom: calc(1rem + env(safe-area-inset-bottom)); } }

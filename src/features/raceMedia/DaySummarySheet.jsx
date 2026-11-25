@@ -7,9 +7,20 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { loadRaceDay } from "@/features/athletes/raceWeather";
 import { resultLine } from "@/lib/resultSheet";
 import { daySummary } from "@/lib/raceLive";
+import { authFetch } from "@/lib/authFetch";
 import { drawDayCard } from "./dayCard";
 
-// Gün özeti: o günün rüzgârı, yarışları ve bizimkilerin sırası tek kartta (resim) ve yazı olarak.
+// En yakın istasyonun o gün ölçtüğü rüzgâr (100 km'ye kadar); bugün ve geçmiş günler için
+async function windObs(d, day) {
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  if (!d?.lat || day > today) return null;
+  const q = new URLSearchParams({ lat: String(d.lat), lon: String(d.lon), date: day, far: "1" });
+  const v = await authFetch(`/api/wind-obs?${q}`).then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  return v?.rows?.length ? v.rows : null;
+}
+
+// Gün özeti: o günün rüzgârı (elle kayıt, yoksa ölçülen, yoksa tahmin), yarışları ve bizimkilerin sırası tek kartta (resim) ve yazı olarak.
 // "Resmi paylaş" telefonun paylaş menüsünü açar (WhatsApp veli grubu, Instagram); "Yazıyı paylaş" düz metin.
 export function DaySummarySheet({ open, onClose, race, day, live, ours }) {
   const toast = useToast();
@@ -20,8 +31,9 @@ export function DaySummarySheet({ open, onClose, race, day, live, ours }) {
     if (!open || card?.key === key) return;
     let on = true;
     (async () => {
-      const rows = await loadRaceDay(race, day).then((d) => d.rows).catch(() => null);
-      const s = daySummary({ race, day, live, ours, rows, line: resultLine });
+      const d = await loadRaceDay(race, day).catch(() => null);
+      const obs = await windObs(d, day);
+      const s = daySummary({ race, day, live, ours, rows: d?.rows || null, obs, line: resultLine });
       const blob = await drawDayCard(s);
       if (on) setCard((c) => (c?.url && URL.revokeObjectURL(c.url), { key, url: URL.createObjectURL(blob), blob, text: s.text }));
     })().catch(() => on && toast("Özet hazırlanamadı"));

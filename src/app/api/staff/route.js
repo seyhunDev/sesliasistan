@@ -27,9 +27,12 @@ async function readBody(request) {
   }
 }
 
-// Hesap aç: { memberId?, name, kind, login (e-posta ya da kullanıcı adı), password }
-// memberId verilirse var olan kişi kaydına hesap açılır ve hesabın kimliği kişinin kimliği olur
-// (ona verilmiş işler, doğum günü bağlantısı aynen kalır). Verilmezse yeni kişi + hesap oluşur.
+// Hesap aç: { memberId?, athleteId?, name, kind, login (e-posta ya da kullanıcı adı), password, auto?, birth?, phone?, children? }
+// Kişi kaydını sunucu kurar (telefondaki yazmanın sunucuya ulaşmasını beklemez; eskiden "Kişi bulunamadı" buradan çıkıyordu).
+// memberId: var olan kişiye hesap açılır, hesabın kimliği kişinin kimliği olur (işler, doğum günü bağlantısı kalır).
+// athleteId (kulüp sporcusu): önce bu sporcuya bağlı kişi, yoksa aynı adlı bağsız sporcu kişisi kullanılır; ikisi de yoksa yeni kişi.
+// Sporcunun zaten hesabı varsa yeni hesap açılmaz: { ok, exists, member } döner (ikinci hesap "ege.demir2" olmasın).
+// auto: kullanıcı adı alınmışsa sonuna sayı eklenir (ege.demir → ege.demir2).
 export async function POST(request) {
   const o = await owner(request);
   if (o.res) return o.res;
@@ -37,10 +40,10 @@ export async function POST(request) {
   if (!body) return bad("Geçersiz istek");
   const name = cleanName(body.name);
   const kind = KINDS.includes(body.kind) ? body.kind : "staff";
-  const login = String(body.login ?? body.email ?? "").trim().toLocaleLowerCase("tr-TR");
+  const base = String(body.login ?? body.email ?? "").trim().toLocaleLowerCase("tr-TR");
   const password = String(body.password || "");
   if (!name) return bad("Ad gerekli.");
-  if (login.includes("@") ? !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(login) : !validUsername(login))
+  if (base.includes("@") ? !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(base) : !validUsername(base))
     return bad("Geçerli bir e-posta ya da kullanıcı adı yaz (kullanıcı adı: en az 3 karakter; harf, rakam, nokta).");
   if (password.length < 6) return bad("Şifre en az 6 karakter olmalı.");
 
@@ -48,32 +51,67 @@ export async function POST(request) {
   const org = db.collection("orgs").doc(o.uid);
   const members = org.collection("members");
   const all = await members.get();
-  const accounts = all.docs.filter((d) => d.data().account !== false && d.data().status !== "left").length;
-  if (accounts >= MAX_ACCOUNTS) return bad(`En fazla ${MAX_ACCOUNTS} hesap açılabilir.`);
-  const memberId = String(body.memberId || "");
-  if (memberId) {
-    const m = all.docs.find((d) => d.id === memberId);
-    if (!m) return bad("Kişi bulunamadı.", 404);
-    if (m.data().account !== false && m.data().status !== "left") return bad("Bu kişinin zaten hesabı var.");
+  const live = all.docs.filter((d) => d.data().status !== "left");
+  const hasAcc = (d) => d.data().account !== false;
+  if (live.filter(hasAcc).length >= MAX_ACCOUNTS) return bad(`En fazla ${MAX_ACCOUNTS} hesap açılabilir.`);
+  const athleteId = String(body.athleteId || "");
+  const low = (s) => String(s || "").trim().toLocaleLowerCase("tr-TR");
+  let m = body.memberId ? all.docs.find((d) => d.id === String(body.memberId)) : null;
+  if (!m && athleteId) {
+    m = live.find((d) => d.data().athleteId === athleteId && hasAcc(d)) || live.find((d) => d.data().athleteId === athleteId);
+    // Kişiler'den açılmış, kulübe bağlanmamış hesap: aynı ad → bağlanır, ikinci hesap açılmaz
+    if (!m) m = live.find((d) => ["athlete", "student"].includes(d.data().kind) && !d.data().athleteId && low(d.data().name) === low(name));
   }
+  const exists = (d) => ({ uid: d.id, name: d.data().name, login: d.data().loginName || String(d.data().email || "").replace(/@.*$/, "") });
+  if (m && hasAcc(m) && m.data().status !== "left") {
+    if (athleteId && m.data().athleteId !== athleteId) await m.ref.set({ athleteId, updatedAt: new Date().toISOString() }, { merge: true });
+    if (!athleteId && body.memberId) return bad("Bu kişinin zaten hesabı var.");
+    return NextResponse.json({ ok: true, exists: true, member: exists(m) });
+  }
+  const askedId = /^[A-Za-z0-9]{10,64}$/.test(String(body.memberId || "")) ? String(body.memberId) : "";
+  const uid = m ? m.id : askedId || members.doc().id;
 
   let user;
-  try {
-    user = await adminAuth().createUser({ ...(memberId ? { uid: memberId } : {}), email: loginEmail(login), password, displayName: name });
-  } catch (e) {
-    if (e.code === "auth/email-already-exists") return bad(login.includes("@") ? "Bu e-posta ile zaten bir hesap var." : "Bu kullanıcı adı alınmış; başka bir tane dene.");
-    if (e.code === "auth/uid-already-exists") return bad("Bu kişinin zaten hesabı var.");
-    if (e.code === "auth/invalid-password") return bad("Şifre en az 6 karakter olmalı.");
-    console.error("[staff] oluşturulamadı:", e.code, e.message);
-    return bad("Hesap oluşturulamadı.", 500);
+  let login = base;
+  for (let i = 1; i <= 9; i++) {
+    login = i === 1 ? base : `${base}${i}`;
+    try {
+      user = await adminAuth().createUser({ uid, email: loginEmail(login), password, displayName: name });
+      break;
+    } catch (e) {
+      if (e.code === "auth/email-already-exists") {
+        if (body.auto && !base.includes("@")) continue;
+        return bad(base.includes("@") ? "Bu e-posta ile zaten bir hesap var." : "Bu kullanıcı adı alınmış; başka bir tane dene.");
+      }
+      // Kişinin eski, kapatılırken silinememiş girişi: aynı kimlikle yeniden kullanılır
+      if (e.code === "auth/uid-already-exists") {
+        try {
+          user = await adminAuth().updateUser(uid, { email: loginEmail(login), password, displayName: name, disabled: false });
+          break;
+        } catch (e2) {
+          if (e2.code === "auth/email-already-exists" && body.auto && !base.includes("@")) continue;
+          return bad(e2.code === "auth/email-already-exists" ? "Bu kullanıcı adı alınmış; başka bir tane dene." : "Hesap oluşturulamadı.", e2.code === "auth/email-already-exists" ? 400 : 500);
+        }
+      }
+      if (e.code === "auth/invalid-password") return bad("Şifre en az 6 karakter olmalı.");
+      console.error("[staff] oluşturulamadı:", e.code, e.message);
+      return bad("Hesap oluşturulamadı.", 500);
+    }
   }
+  if (!user) return bad("Uygun kullanıcı adı bulunamadı; başka bir ad dene.");
   const now = new Date().toISOString();
   const email = login.includes("@") ? login : "";
+  const extra = {
+    ...(athleteId ? { athleteId } : {}),
+    ...(body.birth ? { birth: String(body.birth).slice(0, 10) } : {}),
+    ...(body.phone ? { phone: String(body.phone).slice(0, 20) } : {}),
+    ...(Array.isArray(body.children) && body.children.length ? { children: body.children.map(String).slice(0, 20) } : {}),
+  };
   const batch = db.batch();
   batch.set(db.collection("users").doc(user.uid), { name, email: loginEmail(login), role: "staff", kind, orgId: o.uid, createdAt: now });
   batch.set(
     members.doc(user.uid),
-    { uid: user.uid, name, kind, role: "staff", account: true, loginName: login, status: "active", ...(email ? { email } : {}), ...(memberId ? {} : { createdAt: now }) },
+    { uid: user.uid, name, kind, role: "staff", account: true, loginName: login, status: "active", updatedAt: now, ...extra, ...(email ? { email } : {}), ...(m ? {} : { createdAt: now }) },
     { merge: true },
   );
   batch.set(org.collection("directory").doc(user.uid), { name, role: "staff", kind }); // sohbet rehberi
@@ -81,7 +119,7 @@ export async function POST(request) {
   return NextResponse.json({ ok: true, member: { uid: user.uid, name, login } });
 }
 
-// Hesap bilgisi güncelle: { uid, name?, kind?, password? } — kişi kaydı istemcide değişir; burada hesap, profil ve rehber eşitlenir
+// Hesap bilgisi güncelle: { uid, name?, kind?, password?, coach? } (coach: antrenör işareti, yalnız çalışanda anlamlı) — kişi kaydı istemcide değişir; burada hesap, profil ve rehber eşitlenir
 export async function PATCH(request) {
   const o = await owner(request);
   if (o.res) return o.res;
@@ -102,10 +140,11 @@ export async function PATCH(request) {
     console.warn("[staff] hesap güncellenemedi:", e.code);
     if (password) return bad("Şifre değiştirilemedi.", 500);
   }
+  const coach = typeof body.coach === "boolean" ? { coach: body.coach } : {};
   const patch = { ...(name ? { name } : {}), ...(kind ? { kind } : {}) };
-  if (Object.keys(patch).length) {
+  if (Object.keys(patch).length || "coach" in coach) {
     const batch = db.batch();
-    batch.set(db.collection("users").doc(uid), patch, { merge: true });
+    batch.set(db.collection("users").doc(uid), { ...patch, ...coach }, { merge: true });
     batch.set(org.collection("directory").doc(uid), patch, { merge: true });
     await batch.commit();
   }

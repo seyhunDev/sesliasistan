@@ -2,10 +2,13 @@
 // sıralamayı uygulama hesaplar (saf fonksiyonlar, test edilir):
 // - Genel sıra: sınıftaki bütün sporcular (kategori, cinsiyet ayrımı yok).
 // - Optimist'te kategori: yanında Junior ya da Bambino yazmayan Senior; Junior ve Bambino ayrıca kendi içinde sıralanır.
+// - ILCA 4'te Junior doğum yılından (CAT_RULES, withCats): yarışın yılında 15 yaş ve altı.
 // - Kızlar: sınıftaki bütün kızlar kendi içinde sıralanır. Bizim sporcularda cinsiyet sporcu kartından,
 //   diğerlerinde belgeden; belgede yoksa yapay zekanın addan tahmini.
 // - Bizim sporcular listede adından bulunur (aynı adlı iki satır varsa yelken no, sonra kulüp adı ayırır).
-// Sonuç yarışın results.rows alanına sporcu başına yazılır: { cls, cat, place, n, cp, cn, gp, gn, f }.
+// - Final serisi gruplara bölünmüşse (Altın / Gümüş / Bronz / Zümrüt; Gold / Silver / Bronze / Emerald) satırda grp yazar; liste
+//   Altın önce gelecek biçimde sıralanır ve sporcunun kendi grubundaki sırası ayrıca verilir (Seyhun 2026-10-30).
+// Sonuç yarışın results.rows alanına sporcu başına yazılır: { cls, cat, grp, fp, fn, place, n, cp, cn, gp, gn, f }.
 
 const plain = (s) =>
   String(s || "")
@@ -19,15 +22,76 @@ const plain = (s) =>
 const tokens = (s) => plain(s).split(" ").filter(Boolean);
 const digits = (s) => String(s || "").replace(/\D/g, "");
 
+// Sonuç listesinde arama: ad, kulüp ya da yelken numarası ("dikili", "kaya", "1234", "TUR 1234"); her kelime geçmeli, rakamlar yelken no'da
+export function sheetMatch(r, q) {
+  const words = tokens(q);
+  const num = digits(q);
+  if (!words.length && !num) return true;
+  const hay = plain([r?.name, r?.club, r?.sail].join(" "));
+  return words.every((w) => hay.includes(w)) && (!num || digits(r?.sail).includes(num));
+}
+// Yarışta takip edilen sporcunun anahtarı (race.follow): sınıf + yelken no rakamları, yelken no yoksa ad
+const clsKey = (s) => String(s || "").toLowerCase().replace(/ı/g, "i").replace(/[^a-z0-9]+/g, " ").trim();
+export const followKey = (cls, r) => `${clsKey(cls)}|${digits(r?.sail) || plain(r?.name)}`.slice(0, 80);
+export const cleanFollow = (a) => [...new Set((Array.isArray(a) ? a : []).filter((k) => typeof k === "string" && /^[a-z0-9 ]*\|[a-z0-9 ]+$/.test(k) && k.length <= 80))].slice(0, 100);
 export const isOptimist = (cls) => /opti/.test(plain(cls));
 
-// "J", "JR", "Junior", "U12" → Junior; "B", "Bambino" → Bambino; Optimist'te boş → Senior; diğer sınıflarda kategori yok
+// Sınıfa göre yaş kategorileri (doğum yılından): yarışın yılında en çok `age` yaşında olan o kategoriye girer.
+// ILCA 4: 15 yaş ve altı Junior (2026 yarışlarında 2011 ve sonrası doğumlular; her yıl kendiliğinden bir yıl kayar).
+// Yeni sınıfın kuralı (Optimist Junior/Bambino gibi) buraya eklenir; kuralı olan sınıfta belgedeki işaret yalnız doğum yılı yoksa kullanılır.
+export const CAT_RULES = [{ cls: /^ILCA 4$/, cats: [{ cat: "Junior", age: 15 }] }];
+const ruleOf = (cls) => CAT_RULES.find((r) => r.cls.test(String(cls || "")));
+// "2011", "12.03.2011", "2011-03-12" → 2011
+export const bornYear = (s) => {
+  const m = String(s || "").match(/\b(19\d\d|20\d\d)\b/);
+  return m ? +m[1] : 0;
+};
+
+// "J", "JR", "Junior", "U12" → Junior; "B", "Bambino" → Bambino; Optimist'te boş → Senior;
+// kuralı olan sınıfta (CAT_RULES) belgedeki işaret, boşsa kategori yok; diğer sınıflarda kategori yok
 export function catOf(cls, raw) {
   const c = plain(raw);
-  if (!isOptimist(cls)) return "";
+  const opti = isOptimist(cls);
+  if (!opti && !ruleOf(cls)) return "";
   if (/^b$|bamb/.test(c)) return "Bambino";
   if (/^j$|^jr$|junior|^jun|genc/.test(c)) return "Junior";
-  return "Senior";
+  return opti ? "Senior" : "";
+}
+
+// Kuralı olan sınıflarda kategoriyi doğum yılından yazar (year: yarışın yılı). Doğum yılı okunamayan satırda belgedeki işaret kalır.
+export function withCats(fleets, year = new Date().getFullYear()) {
+  return (fleets || []).map((f) => {
+    const rule = ruleOf(f.cls);
+    if (!rule) return f;
+    const rows = f.rows.map((r) => {
+      const b = bornYear(r.born);
+      if (!b) return r;
+      return { ...r, cat: rule.cats.find((c) => year - b <= c.age)?.cat || "" };
+    });
+    return { ...f, rows };
+  });
+}
+// Yarışın yılı (başlangıç tarihinden; yoksa bu yıl)
+export const raceYear = (race) => +String(race?.startDate || "").slice(0, 4) || new Date().getFullYear();
+
+// Final grubu (eleme serisinin renk grupları Sarı/Mavi/Kırmızı değil): "Gold", "Altın" → Altın; "Silver", "Gümüş" → Gümüş; "Bronze", "Bronz" → Bronz; "Emerald", "Zümrüt" → Zümrüt
+export const GROUPS = ["Altın", "Gümüş", "Bronz", "Zümrüt"];
+export function grpOf(raw) {
+  const c = plain(raw).replace(/\b(grup|group|fleet|filo|final)\b/g, "").trim();
+  if (!c) return "";
+  if (/^(altin|gold)$/.test(c)) return "Altın";
+  if (/^(gumus|silver)$/.test(c)) return "Gümüş";
+  if (/^(bronz|bronze)$/.test(c)) return "Bronz";
+  if (/^(zumrut|emerald)$/.test(c)) return "Zümrüt";
+  return "";
+}
+
+// Renk grubu (eleme günleri; Seyhun 2026-11-05 "geçici sonuçta gruplar karışık, her satırın grubu yazıyor"): satırın fl alanı.
+// grp yalnız final grubudur (sıralama onunla bölünür), fl o yarışın renk grubu (resmî sonuç gruba göre ayrılır)
+const COLOR_FL = [["Sarı", /^(sari|yellow)$/], ["Mavi", /^(mavi|blue)$/], ["Kırmızı", /^(kirmizi|red)$/], ["Yeşil", /^(yesil|green)$/], ["Pembe", /^(pembe|pink)$/], ["Turuncu", /^(turuncu|orange)$/], ["Mor", /^(mor|purple)$/], ["Beyaz", /^(beyaz|white)$/]];
+export function flOf(raw) {
+  const c = plain(raw).replace(/\b(grup|group|fleet|filo)\b/g, "").trim();
+  return c ? COLOR_FL.find(([, re]) => re.test(c))?.[0] || "" : "";
 }
 
 // "K", "F", "W", "Kız", "Kadın", "Female", "Girl" → K; "E", "M", "Erkek", "Male", "Boy" → E
@@ -48,7 +112,8 @@ export function clsName(raw) {
   return s.slice(0, 30);
 }
 
-// Yapay zekanın okuduğu listeyi temizler: [{ cls, rows: [{ rank, name, sail, club, born, pts, sex, cat }] }] (sıraya göre)
+// Yapay zekanın okuduğu listeyi temizler: [{ cls, rows: [{ rank, name, sail, club, born, pts, sex, cat, grp }] }] (sıraya göre).
+// Gruplu listede sıra Altın, Gümüş, Bronz, Zümrüt, grup içinde sıraya göre; belgede her grubun sırası 1'den başlıyorsa genel sıra yeniden verilir.
 export function cleanSheet(raw) {
   const fleets = [];
   for (const f of (Array.isArray(raw) ? raw : []).slice(0, 12)) {
@@ -64,12 +129,38 @@ export function cleanSheet(raw) {
         pts: Number.isFinite(Number(r?.pts)) && r?.pts !== null && r?.pts !== "" && Number(r.pts) >= 0 ? Math.round(Number(r.pts) * 10) / 10 : "",
         sex: sexOf(r?.sex),
         cat: catOf(cls, r?.cat),
+        grp: grpOf(r?.grp),
+        ...(flOf(r?.fl || r?.grp) ? { fl: flOf(r?.fl || r?.grp) } : {}),
+        // yarış yarış puanları (canlı ekranda resmî sonuç, Seyhun 2026-11-01): ["1", "(14)", "DNF"]; n. yarış = r[n-1]
+        ...(Array.isArray(r?.r) && r.r.some((x) => String(x ?? "").trim()) ? { r: r.r.slice(0, 20).map((x) => String(x ?? "").replace(/\s+/g, "").slice(0, 8)) } : {}),
       }))
       .filter((r) => r.name)
       .sort((a, b) => a.rank - b.rank);
-    if (cls && rows.length) fleets.push({ cls, rows });
+    if (!cls || !rows.length) continue;
+    // Gruplar ayrı liste okunduysa (her grup kendi sayfasında) aynı sınıfın grupları tek listede birleşir
+    const at = fleets.findIndex((x) => x.cls === cls);
+    // yarış sütun adları (Q1…F2); eski kayıtta yok
+    const heads = Array.isArray(f?.heads) ? f.heads.slice(0, 20).map((h) => String(h || "").replace(/\s+/g, "").toUpperCase().slice(0, 6)) : [];
+    const hd = heads.length ? { heads } : {};
+    if (at < 0) fleets.push({ cls, ...hd, rows: byGroup(rows) });
+    else fleets[at] = joinGroups(fleets[at], { cls, ...hd, rows });
   }
   return fleets;
+}
+
+// Gruplu liste: Altın, Gümüş, Bronz, Zümrüt sırasıyla, grup içinde sıraya göre; sıra grup grup 1'den başlıyorsa genel sıra yeniden verilir
+export function byGroup(rows) {
+  if (!rows.some((r) => r.grp)) return rows;
+  const gi = (r) => (r.grp ? GROUPS.indexOf(r.grp) : GROUPS.length);
+  const out = [...rows].sort((a, b) => gi(a) - gi(b) || a.rank - b.rank);
+  return out.some((r, i) => i && r.rank <= out[i - 1].rank) ? out.map((r, i) => ({ ...r, rank: i + 1 })) : out;
+}
+// Aynı sınıfın yeni listesi eskisine (Seyhun 2026-10-30: Altın, Gümüş, Bronz ayrı ayrı PDF): ikisi de gruplu ise yeni listenin
+// grupları eskisindekilerin yerine geçer, diğer gruplar kalır (Altın PDF'i + Gümüş PDF'i = tek sıralama). Grupsuz liste eskisinin yerine geçer.
+export function joinGroups(prev, next) {
+  const grps = new Set(next.rows.map((r) => r.grp).filter(Boolean));
+  if (!prev || !grps.size || !prev.rows.some((r) => r.grp)) return { ...next, rows: byGroup(next.rows) };
+  return { ...next, ...(next.heads || !prev.heads ? {} : { heads: prev.heads }), rows: byGroup([...prev.rows.filter((r) => r.grp && !grps.has(r.grp)), ...next.rows]) };
 }
 
 // Ad eşleşmesi: sporcunun ilk ve son adı satırda geçiyor (sıra fark etmez: "KAYA Ali" = Ali Kaya)
@@ -100,10 +191,12 @@ export function findOurs(fleets, athletes, club = "dikili") {
   return out;
 }
 
-// Sporcu başına sonuç: { sporcuId: { cls, cat, place, n, cp, cn, gp, gn } }
+// Sporcu başına sonuç: { sporcuId: { cls, cat, grp, fp, fn, place, n, cp, cn, gp, gn } }
+// grp/fp/fn: final grubu (Gümüş) ve o gruptaki sırası.
 // place/n: genel sıralama (bütün sporcular, kategori ve cinsiyet ayrımı yok).
 // cp/cn: Junior ya da Bambino ise o kategorinin kendi sırası (Senior'a ayrı sıra yok, genel sıra yeter).
 // gp/gn: kızlar sırası, sınıftaki bütün kızlar arasında (kategoriden bağımsız).
+// jp/jn: kategorinin kızlar sırası (Junior Kızlar): Junior ya da Bambino kızlar kendi aralarında.
 // Bizim sporcunun cinsiyeti sporcu kartından (studentGender) alınır, kızlar sıralamasında o geçerli.
 export function rankOurs(fleets, athletes, club) {
   const found = findOurs(fleets, athletes, club);
@@ -122,39 +215,61 @@ export function rankOurs(fleets, athletes, club) {
     const cp = sub.length ? sub.findIndex((x) => x.i === ri) + 1 : 0;
     const girls = f.rows.map((r, i) => i).filter((i) => sexes[fi][i] === "K");
     const gp = sexes[fi][ri] === "K" ? girls.indexOf(ri) + 1 : 0;
+    // Kategorinin kızları (Junior Kızlar): kızlar arasında aynı kategoridekiler
+    const catGirls = cp && gp ? girls.filter((i) => f.rows[i].cat === me.cat) : [];
+    const jp = catGirls.length ? catGirls.indexOf(ri) + 1 : 0;
+    const flt = me.grp ? f.rows.map((r, i) => i).filter((i) => f.rows[i].grp === me.grp) : [];
     out[id] = {
       cls: f.cls,
       cat: me.cat,
+      ...(flt.length ? { grp: me.grp, fp: flt.indexOf(ri) + 1, fn: flt.length } : {}),
+      // Renk grubu ve yarış yarış puanı (Seyhun 2026-11-08 "sporcunun hangi grupta olduğu ve yarışta kaç olduğunu görmek istiyorum")
+      ...(me.fl ? { fl: me.fl } : {}),
+      ...(me.pts !== "" && me.pts != null && Number.isFinite(Number(me.pts)) ? { pts: Number(me.pts) } : {}),
+      ...(me.r?.length ? { r: me.r, ...(f.heads?.length ? { rh: f.heads } : {}) } : {}),
       place: ri + 1,
       n: f.rows.length,
       cp: cp || "",
       cn: cp ? sub.length : "",
       gp: gp || "",
       gn: gp ? girls.length : "",
+      jp: jp || "",
+      jn: jp ? catGirls.length : "",
     };
   }
   return out;
 }
 
+// Yarış yarış: "Mavi grup · Y1 3 · Y2 (12) · Y3 5" (fl renk grubu, r yarış puanları, rh sütun adları; yoksa "1. yarış")
+export function raceLine(x) {
+  const rs = (x?.r || []).map((v, i) => (String(v ?? "").trim() ? `${x.rh?.[i] || `${i + 1}. yarış`} ${v}` : "")).filter(Boolean);
+  return [x?.fl && `${x.fl} grup`, ...rs].filter(Boolean).join(" · ");
+}
+
 // "Optimist Junior", "ILCA 4"
 export const groupName = (x) => [x?.cls, x?.cat].filter(Boolean).join(" ");
 
-// Kısa sonuç: "Optimist genel 56. / 120 · Junior 4. / 38 · Kızlar 7. / 30"
+// Kısa sonuç: "Optimist genel 56. / 120 · Junior 4. / 38 · Kızlar 7. / 30 · Junior Kızlar 2. / 12"
+// Gruplu: "Optimist Gümüş grup 5. / 40 · genel 65. / 120 · …"
 export function resultLine(x) {
   if (!x?.place) return "";
-  const head = `${x.cls ? `${x.cls} genel ` : ""}${x.place}.${x.n ? ` / ${x.n}` : ""}`;
+  const grp = x.grp && x.fp ? `${x.cls ? `${x.cls} ` : ""}${x.grp} grup ${x.fp}.${x.fn ? ` / ${x.fn}` : ""}` : "";
+  const head = `${x.cls && !grp ? `${x.cls} ` : ""}${x.cls || grp ? "genel " : ""}${x.place}.${x.n ? ` / ${x.n}` : ""}`;
   const cat = x.cp ? `${x.cat} ${x.cp}.${x.cn ? ` / ${x.cn}` : ""}` : "";
   const girls = x.gp ? `Kızlar ${x.gp}.${x.gn ? ` / ${x.gn}` : ""}` : "";
-  return [head, cat, girls].filter(Boolean).join(" · ");
+  const catGirls = x.jp ? `${x.cat} Kızlar ${x.jp}.${x.jn ? ` / ${x.jn}` : ""}` : "";
+  return [grp, head, cat, girls, catGirls].filter(Boolean).join(" · ");
 }
 
 // Sesli/yazılı cevap için: "Optimist genelde 120 sporcu içinde 56., Junior'da 38 sporcu içinde 4., kızlarda 30 sporcu içinde 7."
 export function resultSpeech(x) {
   if (!x?.place) return "";
-  const head = `${x.cls ? `${x.cls} genelde ` : ""}${x.n ? `${x.n} sporcu içinde ` : ""}${x.place}.`;
+  const grp = x.grp && x.fp ? `${x.cls ? `${x.cls} ` : ""}${x.grp.toLocaleLowerCase("tr-TR")} grupta ${x.fn ? `${x.fn} sporcu içinde ` : ""}${x.fp}., ` : "";
+  const head = `${grp}${x.cls && !grp ? `${x.cls} ` : ""}${x.cls || grp ? "genelde " : ""}${x.n ? `${x.n} sporcu içinde ` : ""}${x.place}.`;
   const cat = x.cp ? `, ${x.cat} sıralamasında ${x.cn ? `${x.cn} sporcu içinde ` : ""}${x.cp}.` : "";
   const girls = x.gp ? `, kızlarda ${x.gn ? `${x.gn} sporcu içinde ` : ""}${x.gp}.` : "";
-  return `${head}${cat}${girls}`;
+  const catGirls = x.jp ? `, ${x.cat} kızlarda ${x.jn ? `${x.jn} sporcu içinde ` : ""}${x.jp}.` : "";
+  return `${head}${cat}${girls}${catGirls}`;
 }
 
 // ---- Asistan: "Ali'nin sonuçları", "Ali Kaya kaçıncı oldu", "Foça yarışında Ali kaçıncı oldu" ----
@@ -162,6 +277,7 @@ const low = (s) => String(s || "").toLocaleLowerCase("tr-TR").replace(/[?.!…]+
 export function resultsAsk(raw) {
   const t = low(raw);
   if (/(sonuç\p{L}* (yükle|ekle|sil)|pdf)/u.test(t)) return null;
+  if (/\d+\s*derece/u.test(t)) return null; // "orsa şamandırası 15 derece": açı, sıralama değil (parkur)
   let m = t.match(/^(.+?)(?:['’]?n[ıiuü]n)? (?:yarış |son yarış )?(?:sonuçları|sonuçlarını göster|sonuçları neler|derece\p{L}*)(?: (?:neler|ne|nasıl|göster|söyle|oku))?$/u);
   if (m) return { name: nameIn(m[1]), race: "" };
   m = t.match(/^(?:(.+?) yarışında )?(.+?) kaçıncı (?:oldu|geldi|bitirdi|olmuş|gelmiş)$/u);
@@ -205,4 +321,23 @@ export function mergeSheet(res, ranked, file) {
 export function dropSheet(res, fileId) {
   const rows = Object.fromEntries(Object.entries(res?.rows || {}).filter(([, x]) => x.f !== fileId));
   return { fleet: res?.fleet || "", rows, files: (res?.files || []).filter((f) => f.id !== fileId) };
+}
+
+// Sonuç kartının yarış kareleri (features/athletes/ResultCards): (14) atılan, OCS ceza, en düşük sayı en iyi.
+const isDrop = (v) => /^\(.*\)$/.test(v) || /^\[.*\]$/.test(v);
+const bare = (v) => v.replace(/^[([]|[)\]]$/g, "").trim();
+const isPen = (v) => !!v && !/^-?\d+(?:[.,]\d+)?$/.test(v);
+
+export function raceCells(row) {
+  const rs = (row?.r || []).map((x) => String(x ?? "").trim());
+  const cells = rs.map((v, i) => {
+    const drop = isDrop(v);
+    const val = bare(v);
+    const pen = isPen(val);
+    return { k: i, head: row?.rh?.[i] || `Y${i + 1}`, val: val || "–", drop, pen, empty: !val, num: !val || pen ? null : Number(val.replace(",", ".")) };
+  });
+  const nums = cells.filter((c) => !c.drop && c.num !== null).map((c) => c.num);
+  const best = nums.length > 1 ? Math.min(...nums) : null;
+  for (const c of cells) c.best = best !== null && !c.drop && c.num === best;
+  return cells;
 }

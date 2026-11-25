@@ -1,10 +1,11 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useState } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { applySize } from "@/lib/textSize";
 import { doc, onSnapshot, setDoc as setDocument } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase/clientApp";
+import { clearWarm, readWarmMe, saveWarmMe } from "@/lib/warmStart";
 
 const Ctx = createContext(null);
 
@@ -16,25 +17,46 @@ export function AuthProvider({ children }) {
     const [doc_, setDoc] = useState(null); // users/{uid} içeriği
     const [loading, setLoading] = useState(true);
 
+    // Anında açılış: önceki açılışın profil kopyası varsa (lib/warmStart.js) oturum beklenmeden açılır; ilk çizimden önce
+    // (useLayoutEffect) uygulanır, açılış ekranı hiç görünmez. Firebase oturumu birkaç yüz ms sonra gelip aynı kişiyse yerine geçer.
+    useLayoutEffect(() => {
+        const w = readWarmMe();
+        if (!w || auth.currentUser) return;
+        // Sunucu çizimiyle aynı başlamak için (hidrasyon) ilk durum burada, boyamadan önce değişir
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setUser({ uid: w.uid, email: w.email, displayName: w.name, warm: true });
+        setDoc(w.doc);
+        setLoading(false);
+    }, []);
+
     useEffect(() => {
         let unsubDoc = () => {};
         const unsub = onAuthStateChanged(auth, (firebaseUser) => {
             unsubDoc();
             setUser(firebaseUser ?? null);
-            setDoc(null);
             if (!firebaseUser) {
+                clearWarm();
+                setDoc(null);
                 setLoading(false);
                 return;
             }
-            setLoading(true);
-            // Bağlantı yavaşsa bekletme: 3 sn içinde profil gelmezse varsayılanla aç
-            const t = setTimeout(() => setLoading(false), 3000);
+            // Kopyadaki kişi: ekran kopyayla açık kalır, profil arkada tazelenir
+            const same = firebaseUser.uid === readWarmMe()?.uid;
+            let t = 0;
+            if (!same) {
+                setDoc(null);
+                setLoading(true);
+                // Bağlantı yavaşsa bekletme: 3 sn içinde profil gelmezse varsayılanla aç
+                t = setTimeout(() => setLoading(false), 3000);
+            }
             unsubDoc = onSnapshot(
                 doc(db, "users", firebaseUser.uid),
                 (snap) => {
                     clearTimeout(t);
+                    if (same && !snap.exists() && snap.metadata.fromCache) return; // önbellek boş: kopyadaki profil kalır
                     setDoc(snap.exists() ? snap.data() : {});
                     setLoading(false);
+                    if (snap.exists()) saveWarmMe(firebaseUser, snap.data());
                     // Sunucudan gelen kesin "yok" bilgisinde (önbellekten değil) ana hesap profilini oluştur
                     if (!snap.exists() && !snap.metadata.fromCache) {
                         setDocument(doc(db, "users", firebaseUser.uid), {
@@ -48,7 +70,7 @@ export function AuthProvider({ children }) {
                 },
                 () => {
                     clearTimeout(t);
-                    setDoc({});
+                    if (!same) setDoc({});
                     setLoading(false);
                 },
             );
@@ -67,10 +89,12 @@ export function AuthProvider({ children }) {
             role: doc_?.role === "staff" || doc_?.role === "courier" ? doc_.role : "owner", // courier: Velora Food kurye hesabı (Velora'da yalnız "Velora Food'dan gir" ekranı)
             orgId: doc_?.orgId || user.uid,
             courierOf: doc_?.role === "courier" ? doc_?.courierOf || "" : "", // kuryenin çalıştığı işletme (sunucu yazar)
+            coach: doc_?.role === "staff" && doc_?.coach === true, // antrenör: kendi Yönet alanı (lib/kinds isCoach; ana hesap işaretler, sunucu yazar)
             kind: doc_?.role === "staff" ? doc_?.kind || "staff" : "owner", // kişi türü (lib/kinds): staff | family | athlete | student | parent | other
             photo: doc_?.photo || "", // profil fotoğrafı adresi (Storage; /api/photo yazar)
             photoPath: doc_?.photoPath || "",
             icsToken: doc_?.icsToken || "", // takvim aboneliği gizli bağlantısı (Ayarlar › iPhone takvimi; sunucu yazar)
+            bilgiKim: doc_?.bilgiKim && typeof doc_.bilgiKim === "object" ? doc_.bilgiKim : null, // tekne ekranı: yelken no + isim (Ayarlar › Tekne ekranı; bilgiStore useTekneKim)
             weatherPlace: doc_?.weatherPlace || null, // hava durumu konumu (Ayarlar; cihazlar arası)
             homeTools: Array.isArray(doc_?.homeTools) ? doc_.homeTools : null, // ana sayfada seçili ekstralar (null: seçim yapılmadı)
             athleteIndex: doc_?.athleteIndex || null, // sporcu "ses adları" dizini (yoklamada yapay zekaya gider)
@@ -99,8 +123,10 @@ export function AuthProvider({ children }) {
             ledgerCard: !!doc_?.ledgerCard, // ayarlar: Hesaplar'da Banka defteri kartı
             coach: doc_?.coach && typeof doc_.coach === "object" ? doc_.coach : null, // yarış evrakı: antrenör ve destek botu bilgisi
             races: doc_?.races === "on" || doc_?.races === "off" ? doc_.races : "", // ayarlar: ana sayfada Yarışlar düğmesi (raceHome.js)
+            raceLive: doc_?.raceLive === "off" ? "off" : "", // ayarlar: süren yarışın ana sayfa Multimedya kısayolu (RaceLive; "off" gizli)
             textSize: doc_?.textSize === "l" || doc_?.textSize === "xl" ? doc_.textSize : "", // ayarlar: yazı ve simge boyutu
             introV: Number(doc_?.introV) || (doc_?.onboarded ? 1 : 0), // görülen en son tanıtım sürümü (yeni slaytlar bundan büyük)
+            sport: typeof doc_?.sport === "string" ? doc_.sport : "", // spor (src/sports; "" = henüz seçmedi, SportGate bir kez sorar)
             onboarded: doc_ ? !!doc_.onboarded : null, // ilk açılış izin slaytları görüldü mü (null: henüz bilinmiyor)
             tourDone: !!doc_?.tourDone, // "Şimdi sen dene" (asistan düğmesini gösteren yönlendirme) görüldü/denendi mi
         }

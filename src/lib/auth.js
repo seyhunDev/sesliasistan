@@ -10,6 +10,8 @@ import {
 } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase/clientApp";
+import { clearWarm } from "@/lib/warmStart";
+import { clearPlace } from "@/lib/place";
 
 const EVENT = "sa-auth";
 
@@ -38,7 +40,8 @@ export async function login(emailOrUser, password) {
   await signInWithEmailAndPassword(auth, loginEmail(emailOrUser), password);
 }
 
-export async function register(name, email, password) {
+// extra: profile eklenecek alanlar (ör. { via: "sailing" }: Velora Sailing bağlantısından kaydoldu, bkz. lib/sailingReturn.js)
+export async function register(name, email, password, sport = "sailing", extra) {
   const cred = await createUserWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
 
   // Firebase Auth profilini güncelle
@@ -50,6 +53,8 @@ export async function register(name, email, password) {
     email: email.trim().toLowerCase(),
     role: "owner",
     orgId: cred.user.uid, // Güvenlik kurallarınıza göre orgId = uid
+    sport, // kayıtta seçilen spor (src/sports)
+    ...(extra || {}),
     createdAt: new Date().toISOString(),
   });
 }
@@ -61,6 +66,8 @@ export async function resetPassword(email) {
 }
 
 export async function logout() {
+  clearWarm(); // anında açılış kopyası (lib/warmStart.js) başka hesaba kalmasın
+  clearPlace();
   await signOut(auth);
 }
 

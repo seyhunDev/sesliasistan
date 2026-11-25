@@ -52,12 +52,15 @@ export function nextInfo(list) {
   };
 }
 
+// Yarış yerinin havası için (ana sayfa, raceWeather.racePlace): seçilen yer, Çevre'deki yarış alanı, ilçe ve il
+const wxOf = (r) => ({ spot: r.spot || null, around: r.around?.venue ? { venue: r.around.venue } : null, district: r.district || "", city: r.city || "" });
+
 function countRaces(orgId) {
   if (!cache || cache.orgId !== orgId || Date.now() - cache.at > 5 * 60e3) {
     const p = loadRaces(orgId)
       .then((list) => {
         const up = list.filter((r) => r.startDate && !isPast(r));
-        return { all: list.length, up: up.length, next: nextInfo(list), open: up.map((r) => ({ id: r.id, name: r.name || "", startDate: r.startDate, endDate: r.endDate || "", place: r.district || "", count: r.athleteIds?.length || 0 })) };
+        return { all: list.length, up: up.length, next: nextInfo(list), open: up.map((r) => ({ id: r.id, name: r.name || "", startDate: r.startDate, endDate: r.endDate || "", place: r.district || "", count: r.athleteIds?.length || 0, ...wxOf(r) })) };
       })
       .catch(() => null)
       .then((c) => {
@@ -74,20 +77,57 @@ export function prefetchRaces(profile) {
   if (canSeeAthletes(profile?.email) && profile?.orgId && profile.races !== "off") countRaces(profile.orgId);
 }
 
+// Son okunan yarış özeti bu cihazda saklanır: ana sayfa açılınca yarış şeridi (sayaç) ve yarış günü havası beklemeden çizilir,
+// grafik önce uzayıp sonra kısalmaz (Seyhun 2026-10-29: "neden sayaç sonradan yükleniyor"). Okuma bitince güncellenir.
+const SAVED = "sa-race-home";
+function readSaved(orgId) {
+  try {
+    const v = JSON.parse(localStorage.getItem(SAVED) || "null");
+    return v?.orgId === orgId && v.c ? v.c : null;
+  } catch {
+    return null;
+  }
+}
+function save(orgId, c) {
+  try {
+    localStorage.setItem(SAVED, JSON.stringify({ orgId, c }));
+  } catch {
+    /* dolu ya da gizli pencere */
+  }
+}
+
 export function useRaceHome() {
   const { profile } = useAuth();
   const allowed = canSeeAthletes(profile?.email) && !!profile?.orgId;
   const on = allowed && profile?.races !== "off";
-  const [n, setN] = useState(null);
+  const [n, setN] = useState(() => (on ? readSaved(profile.orgId) : null));
 
   useEffect(() => {
     if (!on) return;
     let live = true;
-    countRaces(profile.orgId).then((c) => {
-      if (live) setN(c || {}); // okunamazsa da "yükleniyor" bitsin
-    });
+    const read = () =>
+      countRaces(profile.orgId).then((c) => {
+        if (c) save(profile.orgId, c);
+        if (live) setN((old) => c || old || {}); // okunamazsa saklanan kalır, yoksa "yükleniyor" biter
+      });
+    read();
+    // Yarış silinince (races.js deleteRace): silinen yarış hemen düşer, saklanan özet ve 5 dakikalık bellek tazelenir
+    const gone = (e) => {
+      const id = e.detail?.id;
+      setN((old) => {
+        if (!old || !id) return old;
+        const next = { ...old, open: (old.open || []).filter((r) => r.id !== id), next: old.next?.id === id ? null : old.next };
+        next.up = next.open.length;
+        save(profile.orgId, next);
+        return next;
+      });
+      cache = null;
+      read();
+    };
+    window.addEventListener("sa-race-gone", gone);
     return () => {
       live = false;
+      window.removeEventListener("sa-race-gone", gone);
     };
   }, [on, profile?.orgId]);
 

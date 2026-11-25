@@ -4,12 +4,17 @@
 // ve sonuç belgesinden okunan bütün liste orgs/{org}/raceLive/{yarışId}/sheets/{belgeId} (genel sıralama; kulüp, doğum yılı, puan).
 // Yarış belgesinden ayrı durur: yarış sayfası kaydedince bu alanlar ezilmez. Fotoğraf ve video Storage'da orgs/{org}/raceMedia/{id}
 // (kural storage.rules: yalnız ana hesap). Fotoğraf 2048 px JPEG; video (en çok 2 dk) iPhone'un çektiği gibi (sesli) saklanır, çok büyükse küçültülür (prepRaceMedia).
-import { arrayUnion, collection, doc, getDoc, getDocs } from "firebase/firestore";
-import { deleteDoc, setDoc } from "@/lib/firebase/write";
+import { FieldPath, arrayUnion, collection, deleteField, doc, getDoc, getDocs, onSnapshot, runTransaction } from "firebase/firestore";
+import { readServer } from "@/lib/firebase/fastRead";
+import { deleteDoc, setDoc, updateDoc } from "@/lib/firebase/write";
 import { deleteObject, getDownloadURL, getStorage, ref as sref, uploadBytesResumable } from "firebase/storage";
 import { app, db } from "@/lib/firebase/clientApp";
 import { compressImage } from "@/lib/image";
-import { cleanBuoys, cleanDays, cleanLive, cleanMedia, cleanStarts, cleanWind } from "@/lib/raceLive";
+import { cleanBuoys, cleanDays, cleanLive, cleanMedia, cleanStarts, cleanWind, cleanPlan, mergeOrder, mergeStarts, pickTimer } from "@/lib/raceLive";
+import { cleanCards, cleanCourse, cleanObs } from "@/lib/raceCourse";
+import { EV_V, cleanCourseShow, cleanEvOne, cleanShowTpl, cleanRounds, cleanScreen, cleanStream, entryPatch } from "@/lib/raceRounds";
+import { cleanCamBy, cleanOnAir } from "@/lib/raceCams";
+import { cleanSrcLive } from "@/lib/srcLive";
 import { isVideoFile, shrinkVideo, videoMeta } from "@/features/fitness/fitMedia";
 
 const VIDEO_SEC = 120;
@@ -45,7 +50,7 @@ const mpath = (orgId, id) => `orgs/${orgId}/raceMedia/${id}`;
 const newId = () => `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 
 export async function loadLive(orgId, id) {
-  const snap = await getDoc(live(orgId, id));
+  const snap = await readServer(live(orgId, id)); // asılı bağlantıda sonsuz beklemez (lib/firebase/fastRead.js)
   return cleanLive(snap.exists() ? snap.data() : {});
 }
 
@@ -58,14 +63,58 @@ export const addWind = (orgId, id, w) => setDoc(live(orgId, id), { wind: arrayUn
 export const saveWind = (orgId, id, list) => setDoc(live(orgId, id), { wind: cleanWind(list) }, { merge: true });
 export const saveBuoys = (orgId, id, list) => setDoc(live(orgId, id), { buoys: cleanBuoys(list) }, { merge: true });
 export const saveDays = (orgId, id, list) => setDoc(live(orgId, id), { days: cleanDays(list) }, { merge: true });
-export const saveStarts = (orgId, id, list) => setDoc(live(orgId, id), { starts: cleanStarts(list) }, { merge: true });
+// Aynı anda iki telefon (Seyhun 2026-11-04): bu telefonun gördüğü son sunucu listesi (useLiveSync noteLive); yazmada sunucudakiyle birleşir
+// (lib/raceLive mergeStarts / mergeOrder). İnternet yokken ya da birleştirme olmazsa eskisi gibi bütün liste yazılır.
+const known = new Map();
+export function noteLive(orgId, id, d) {
+  known.set(`${orgId}/${id}`, { starts: cleanStarts(d?.starts), order: cleanPlan(d?.plan).order });
+}
+const online = () => typeof navigator === "undefined" || navigator.onLine !== false;
+async function mergeTx(orgId, id, field, mine, write) {
+  const k = `${orgId}/${id}`;
+  const base = known.get(k)?.[field];
+  if (!base || !online()) return null;
+  const out = await Promise.race([
+    runTransaction(db, async (tx) => {
+      const snap = await tx.get(live(orgId, id));
+      const d = snap.exists() ? snap.data() : {};
+      const srv = field === "starts" ? cleanStarts(d.starts) : cleanPlan(d.plan).order;
+      const m = field === "starts" ? mergeStarts(base, mine, srv) : mergeOrder(base, mine, srv);
+      write(tx, m);
+      return m;
+    }),
+    new Promise((_, no) => setTimeout(() => no(new Error("yavaş")), 4000)),
+  ]);
+  known.set(k, { ...known.get(k), [field]: out });
+  return out;
+}
+export async function saveStarts(orgId, id, list) {
+  const mine = cleanStarts(list);
+  const out = await mergeTx(orgId, id, "starts", mine, (tx, m) => tx.set(live(orgId, id), { starts: m }, { merge: true })).catch(() => null);
+  if (!out) return setDoc(live(orgId, id), { starts: mine }, { merge: true });
+}
+export const savePlan = (orgId, id, plan) => setDoc(live(orgId, id), { plan: cleanPlan(plan) }, { merge: true });
+// Yalnız değişen plan alanları (plan.<alan> bütünüyle): sunucunun siteden yazdığı daily/times/off/agenda ezilmesin
+// (yarış sistemi haritası 2026-11-04 riski). Belge yoksa bütün plan yazılır.
+export function savePlanKeys(orgId, id, plan, keys) {
+  const p = cleanPlan(plan);
+  const ks = keys.filter((k) => k in p);
+  if (!ks.length) return Promise.resolve();
+  const put = (order) => Object.fromEntries(ks.map((k) => [`plan.${k}`, k === "order" && order ? order : p[k]]));
+  // bekleyen startlar: sunucudakiyle birleşir (aynı anda iki telefon)
+  if (ks.includes("order"))
+    return mergeTx(orgId, id, "order", p.order, (tx, m) => tx.update(live(orgId, id), put(m)))
+      .catch(() => null)
+      .then((out) => (out ? undefined : updateDoc(live(orgId, id), put()).catch(() => savePlan(orgId, id, plan))));
+  return updateDoc(live(orgId, id), put()).catch(() => savePlan(orgId, id, plan));
+}
 // Bütün künye listesi (sporcu etiketi değişince)
 export const saveMedia = (orgId, id, list) => setDoc(live(orgId, id), { media: cleanMedia(list) }, { merge: true });
 
 // Seçilen ya da çekilen dosya → saklanacak hâl: { blob, type, kind }. onProg(0..1) küçültme ilerlemesi
 // Kurallar (Seyhun 2026-10-20: "iPhone'un kendi kamerası"): fotoğraf 2048 px JPEG; video en çok 2 dakika, iPhone'un çektiği dosya
 // olduğu gibi saklanır (ses, kalite ve yön korunur). Storage sınırını (60 MB) aşarsa 1280 px'e sesli küçültülür (video süresi kadar sürer).
-const RAW_MAX = 55 * 1024 * 1024;
+export const RAW_MAX = 55 * 1024 * 1024;
 export async function prepRaceMedia(file, onProg) {
   if (!isVideoFile(file)) {
     const img = await compressImage(file, 2048, 0.85);
@@ -194,16 +243,31 @@ export async function addRaceMedia(orgId, id, m, at, onProg, extra = null) {
   const r = sref(store(), mpath(orgId, mid));
   // Küçük resim yüklemeyle aynı anda hazırlanır (önce yapılınca iPhone'da yükleme 10 sn'ye kadar %0'da bekliyordu; Seyhun 2026-10-22)
   const posterP = (m.posterP || posterOf(m.blob, m.kind)).catch(() => null); // posterP: MediaTab çekilir çekilmez başlattı
-  const task = uploadBytesResumable(r, m.blob, { contentType: m.type, cacheControl: "private, max-age=31536000" });
-  await new Promise((res, rej) => task.on("state_changed", (s) => onProg?.(s.totalBytes ? s.bytesTransferred / s.totalBytes : 0), rej, res));
+  // extra.ph: yalnız telefonda (büyük video): dosya yüklenmez, küçük resim ve künye yazılır
+  if (!extra?.ph) {
+    const task = uploadBytesResumable(r, m.blob, { contentType: m.type, cacheControl: "private, max-age=31536000" });
+    await new Promise((res, rej) => task.on("state_changed", (s) => onProg?.(s.totalBytes ? s.bytesTransferred / s.totalBytes : 0), rej, res));
+  }
   const thumb = await putPoster(orgId, mid, await posterP);
-  const meta = cleanMedia([{ id: mid, kind: m.kind, type: m.type, size: m.blob.size, url: await getDownloadURL(r), at, thumb, ...extra }])[0];
+  const meta = cleanMedia([{ id: mid, kind: m.kind, type: m.type, size: m.blob.size, url: extra?.ph ? "" : await getDownloadURL(r), at, thumb, ...extra }])[0];
   // Kayıt telefondaki Firestore önbelleğine hemen yazılır; sunucunun onayı zayıf bağlantıda uzun sürer, beklenmez (halka %100'de takılı
   // kalıyordu). Yazma arkada tamamlanır.
   const w = setDoc(live(orgId, id), { media: arrayUnion(meta) }, { merge: true });
   w.catch((e) => console.warn("[raceMedia] künye yazılamadı", e));
   await Promise.race([w, new Promise((res) => setTimeout(res, 3000))]);
   return meta;
+}
+
+// Telefonda duran videoyu sonradan buluta yükle: dosya künyenin yerine gider, künyede url olur, ph kalkar
+export async function cloudMedia(orgId, id, meta, blob, type, onProg) {
+  const r = sref(store(), mpath(orgId, meta.id));
+  const task = uploadBytesResumable(r, blob, { contentType: type || meta.type, cacheControl: "private, max-age=31536000" });
+  await new Promise((res, rej) => task.on("state_changed", (s) => onProg?.(s.totalBytes ? s.bytesTransferred / s.totalBytes : 0), rej, res));
+  const url = await getDownloadURL(r);
+  const l = await loadLive(orgId, id);
+  const next = l.media.map((x) => (x.id === meta.id ? { ...x, url, type: type || x.type, size: blob.size, ph: false } : x));
+  await saveMedia(orgId, id, next);
+  return cleanMedia(next).find((x) => x.id === meta.id) || null;
 }
 
 // rest: kalan liste (arrayRemove birebir aynı nesneyi ister; etiket alanı eklenince eski künyeler eşleşmez)
@@ -235,15 +299,115 @@ export async function loadSheets(orgId, id) {
 
 // Denemeleri sıfırla: patch (lib/raceLive.js resetPatch) belgeye yazılır; media boşaltılıyorsa dosyalar da silinir
 export async function resetLive(orgId, id, patch, media = []) {
-  await setDoc(live(orgId, id), patch, { merge: true });
+  // mergeFields: her alan bütünüyle yazılır (rounds ve plan iç içe birleşmez, boşalır); günün grup listeleri de silinir
+  // Ekran evreleri (courseShow.ev) sıfırlamada kalır (Seyhun 2026-11-05 "çıkarıyorum, bir dahaki sefer geri gelmiş"); silinen kayda bağlı görüntü düşer
+  if (patch.courseShow && !patch.courseShow.ev) {
+    const ev = (await getDoc(live(orgId, id)).catch(() => null))?.data()?.courseShow?.ev;
+    if (ev && typeof ev === "object") {
+      const keep = Object.fromEntries(Object.entries(ev).map(([k, e]) => [k, patch.media && e?.vid?.kind === "rec" ? { ...e, vid: null } : e]));
+      patch = { ...patch, courseShow: { ...patch.courseShow, ev: keep } };
+    }
+  }
+  await setDoc(live(orgId, id), patch, { mergeFields: Object.keys(patch) });
+  await setDoc(doc(db, "orgs", orgId, "raceLive", id, "entries", "list"), { groups: {} }, { mergeFields: ["groups"] }).catch(() => {});
+  // parkur ölçümleri (rüzgâr, konumlar, ayak açıları) silinir; parkur kartları ve seçili parkur kalır
+  if (patch.stream) {
+    const snap = await getDocs(collection(db, "orgs", orgId, "raceLive", id, "course")).catch(() => null);
+    for (const d of snap?.docs || []) {
+      const x = d.data() || {};
+      await setDoc(d.ref, { ...(x.cards ? { cards: x.cards, sel: x.sel || "", cardAt: x.cardAt || "" } : {}), at: new Date().toISOString() }).catch(() => {});
+    }
+  }
   if (patch.media) for (const m of media) for (const p of [mpath(orgId, m.id), tpath(orgId, m.id)]) await deleteObject(sref(store(), p)).catch(() => {});
 }
 
-// Yarış silinince: dosyalar, listeler ve kayıt
+// Yarış silinince: fotoğraf/video dosyaları, sonuç listeleri, parkur günleri, kayıt listesi ve canlı kayıt (raceWipe.js çağırır)
 export async function dropLive(orgId, id) {
   const l = await loadLive(orgId, id).catch(() => null);
   for (const m of l?.media || []) for (const p of [mpath(orgId, m.id), tpath(orgId, m.id)]) await deleteObject(sref(store(), p)).catch(() => {});
-  const sh = await getDocs(sheets(orgId, id)).catch(() => null);
-  for (const d of sh?.docs || []) await deleteDoc(d.ref).catch(() => {});
+  for (const sub of ["sheets", "course", "entries"]) {
+    const snap = await getDocs(collection(db, "orgs", orgId, "raceLive", id, sub)).catch(() => null);
+    for (const d of snap?.docs || []) await deleteDoc(d.ref).catch(() => {});
+  }
   await deleteDoc(live(orgId, id)).catch(() => {});
+}
+
+// Parkur analizi (lib/raceCourse.js): gün gün ayrı belge orgs/{org}/raceLive/{yarış}/course/{gün}; ölçümler arrayUnion ile eklenir
+// (iki telefon aynı anda ekleyince biri kaybolmaz), konumlar ve silme tüm belgeyle yazılır
+export const courseRef = (orgId, id, day) => doc(db, "orgs", orgId, "raceLive", id, "course", day);
+export async function loadCourse(orgId, id, day) {
+  const snap = await getDoc(courseRef(orgId, id, day));
+  return cleanCourse(snap.exists() ? snap.data() : {});
+}
+export const addCourseObs = (orgId, id, day, o) => setDoc(courseRef(orgId, id, day), { obs: arrayUnion(cleanObs(o)), at: new Date().toISOString() }, { merge: true });
+// Konumla girilen nokta (Seyhun 2026-11-03 "Buradayım"): pts.<ad> yazılır ya da silinir (p null); ölçümlere dokunmaz
+export const saveCoursePt = (orgId, id, day, k, p) => setDoc(courseRef(orgId, id, day), { pts: { [k]: p ? { lat: p.lat, lon: p.lon, at: p.at } : deleteField() }, at: new Date().toISOString() }, { merge: true });
+// Asistana bir cümlede söylenen birkaç ölçüm (ve orsa uzunluğu) tek yazımda
+export const addCourseMany = (orgId, id, day, list, len = null) =>
+  setDoc(courseRef(orgId, id, day), { ...(list.length ? { obs: arrayUnion(...list.map(cleanObs)) } : {}), ...(len ? { len } : {}), at: new Date().toISOString() }, { merge: true });
+// Parkur kartları: yalnız kartlar ve seçili kart yazılır (ölçümlere dokunmaz)
+// kartlar yarış boyu (raceLive.cards, lib/raceCourse.js withRaceCards); gün belgesine de yazılır (eski sürümler okur)
+export const saveCards = (orgId, id, day, c) => {
+  const k = cleanCards(c);
+  const at = new Date().toISOString();
+  return Promise.all([setDoc(live(orgId, id), { cards: { cards: k.cards, sel: k.sel, by: k.by, cardAt: at } }, { mergeFields: ["cards"] }), setDoc(courseRef(orgId, id, day), { cards: k.cards, sel: k.sel, by: k.by, cardAt: at }, { merge: true })]);
+};
+export const saveCourse = (orgId, id, day, c) => setDoc(courseRef(orgId, id, day), { ...cleanCourse(c), at: new Date().toISOString() });
+
+// Canlı ekran (lib/raceRounds.js, Seyhun 2026-11-01): start başına şamandıra dönüşleri, ekranda oynayan kayıt, canlı yayın bağlantısı.
+// Herkese açık sayfa bunları /api/canli üzerinden okur (Firestore kuralı değişmedi).
+// base: telefonun yazmadan önce bildiği kayıt. Verilirse yalnız değişen noktalar yazılır (iki görevli aynı startın farklı şamandıralarına
+// aynı anda yazarken birbirini silmez; Seyhun 2026-11-02 inceleme). Parkur değişince ya da base yoksa startın kaydı bütünüyle değişir.
+// Kayıtta legs { "0": { s, t } } (Firestore iç içe diziyi reddeder: eski [[…]] biçimi hiç kaydedilemiyordu).
+export function saveRounds(orgId, id, sid, entry, base = null) {
+  const p = entryPatch(base, entry);
+  if (p.all) return setDoc(live(orgId, id), { rounds: { [sid]: p.doc } }, { mergeFields: [new FieldPath("rounds", sid)] });
+  const patch = { ...p.patch };
+  if (p.drop.length) patch.pen = { ...(patch.pen || {}), ...Object.fromEntries(p.drop.map((s) => [s, deleteField()])) };
+  if (!Object.keys(patch).length) return Promise.resolve();
+  return setDoc(live(orgId, id), { rounds: { [sid]: patch } }, { merge: true });
+}
+export const saveScreen = (orgId, id, s) => setDoc(live(orgId, id), { screen: cleanScreen({ ...s, at: new Date().toISOString() }) }, { merge: true });
+// Evre atamaları (ev) ve sabitlenen öğe (pin) burada yazılmaz: eski kopyayla başka ekranın seçimi ezilmesin (saveEvre, savePin alan alan yazar)
+export const saveCourseShow = (orgId, id, c) => {
+  const { ev: _e, pin: _p, evre: _v, ...rest } = cleanCourseShow(c);
+  return setDoc(live(orgId, id), { courseShow: rest }, { merge: true });
+};
+// Tek evrenin görüntüsü + gösterilecekler + süre (Yayın › Ekran); yalnız courseShow.ev.<evre> değişir
+export const saveEvre = (orgId, id, k, e) => setDoc(live(orgId, id), { courseShow: { ev: { [k]: cleanEvOne(e, k) } } }, { mergeFields: [new FieldPath("courseShow", "ev", k)] });
+// Sayaç belgeye (/canli Start penceresi; sayacın sahibi Yayın sayfası olduğundan useLiveSync bu sayfada göndermez)
+export const saveTimer = (orgId, id, t) => setDoc(live(orgId, id), { timer: { ...pickTimer(t), at: Date.now() } }, { merge: true });
+// Senin evre listelerin (bütün yarışlar; raceRounds cleanShowTpl): orgs/{org}/yayinEkran/ev, evre evre yazılır
+const showTplRef = (orgId) => doc(db, "orgs", orgId, "yayinEkran", "ev");
+export const loadShowTpl = (orgId) => getDoc(showTplRef(orgId)).then((s) => cleanShowTpl(s.exists() ? s.data().ev : null));
+export const saveShowTpl = (orgId, k, e) => setDoc(showTplRef(orgId), { ev: { [k]: { v: EV_V, items: e.items, sec: e.sec, side: e.side } } }, { mergeFields: [new FieldPath("ev", k)] });
+// Elle seçilen evre; boş = kendiliğinden (yarışın durumuna göre)
+export const saveEvreMan = (orgId, id, k) => setDoc(live(orgId, id), { courseShow: { evre: k || "" } }, { merge: true });
+// Elle sabitlenen öğe; boş = otomatik (sesle açılan "one" da kalkar)
+export const savePin = (orgId, id, item) => setDoc(live(orgId, id), { courseShow: { pin: item || "", ...(item ? {} : { one: "" }), scene: "" } }, { merge: true });
+// Ekrandaki yarış (sid boş = en son başlayan) ve kameraların grupları (alan bütün yazılır: çözülen grup silinir)
+export const saveOnAir = (orgId, id, o) => setDoc(live(orgId, id), { onAir: cleanOnAir(o) }, { merge: true });
+export const saveCamBy = (orgId, id, m) => setDoc(live(orgId, id), { camBy: cleanCamBy(m) }, { mergeFields: ["camBy"] });
+// Yayında olan kaynaklar { id: son görülme } (lib/srcLive.js; alan bütün yazılır)
+export const saveSrcLive = (orgId, id, m) => setDoc(live(orgId, id), { srcLive: cleanSrcLive(m) }, { mergeFields: ["srcLive"] });
+// s: { url, drone } (eski çağrı yalnız bağlantı yazısı verir)
+// Görüntü kaynakları (antrenman ekranının Kamera'sı; cleanLive stream'i taşımaz)
+export const loadStream = async (orgId, id) => cleanStream((await getDoc(live(orgId, id))).data()?.stream);
+export const saveStream = (orgId, id, s) => setDoc(live(orgId, id), { stream: cleanStream(typeof s === "string" ? { url: s } : s) }, { merge: true });
+// Dönüşleri canlı dinle (Yayın sayfası: başka telefondan girilen dönüşler hemen görünür; aynı belgeyi useLiveSync de dinler, okuma ortak)
+export function watchRounds(orgId, id, cb) {
+  return onSnapshot(
+    live(orgId, id),
+    (snap) => {
+      if (snap.metadata.hasPendingWrites) return;
+      const d = snap.exists() ? snap.data() : {};
+      cb({ rounds: cleanRounds(d.rounds), screen: cleanScreen(d.screen), stream: cleanStream(d.stream), timer: d.timer || null, camBy: cleanCamBy(d.camBy), onAir: cleanOnAir(d.onAir), srcLive: cleanSrcLive(d.srcLive) });
+    },
+    () => {},
+  );
+}
+export async function loadRoundsOf(orgId, id) {
+  const snap = await readServer(live(orgId, id));
+  const d = snap.exists() ? snap.data() : {};
+  return { ...cleanLive(d), timer: d.timer || null, rounds: cleanRounds(d.rounds), screen: cleanScreen(d.screen), stream: cleanStream(d.stream), courseShow: cleanCourseShow(d.courseShow), camBy: cleanCamBy(d.camBy), onAir: cleanOnAir(d.onAir), srcLive: cleanSrcLive(d.srcLive), cards: d.cards || null };
 }

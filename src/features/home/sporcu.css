@@ -1,0 +1,202 @@
+/* Sporcu ana sayfası "Sahne" (SporcuHome.jsx; Seyhun 2026-11-25 A). Fitness Sahne ile aynı dil: koyu zemin, Barlow Condensed başlık, tek vurgu limon.
+   Telefon: tek sütun. iPad (48rem+): iki sütun (solda bugün ve yarış, sağda kartlar ve kutular). */
+body.sh-body { background: #0b0b0c; }
+.sh, .shm, .shm-dim { --sh-lime: #d4ff3a; --sh-fit: #ff7a1a; --sh-yel: #ffe14d; --sh-line: #26262b; --sh-tile: #17171a; --sh-mut: #a1a1aa; }
+.sh {
+  min-height: 100dvh; background: #0b0b0c; color: #fff;
+  padding: calc(0.75rem + env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) calc(var(--stage-h, 6rem) + 1.5rem) max(1rem, env(safe-area-inset-left));
+  max-width: 72rem; margin: 0 auto;
+}
+.sh-c { font-family: var(--lv-font-c), var(--font-num), system-ui, sans-serif; font-weight: 800; text-transform: uppercase; line-height: .9; letter-spacing: .01em; }
+.sh-top { display: flex; align-items: center; gap: .5rem; }
+.sh-date { flex: 1; min-width: 0; text-align: center; font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--sh-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sh-rb { position: relative; width: 2.5rem; height: 2.5rem; border-radius: 50%; background: #1f1f22; border: 1px solid #2e2e33; color: #fff; display: grid; place-items: center; flex-shrink: 0; }
+.sh-badge { position: absolute; top: -.2rem; right: -.2rem; min-width: 1.1rem; height: 1.1rem; padding: 0 .25rem; border-radius: .55rem; background: var(--sh-lime); color: #111; font: 800 .625rem/1.1rem var(--font-num, system-ui); font-style: normal; text-align: center; }
+.sh-pill { border: 1px solid #3f3f46; border-radius: 999px; padding: .4rem .8rem; font-size: .8125rem; font-weight: 700; color: #fff; white-space: nowrap; }
+.sh-me { width: 2.5rem; height: 2.5rem; border-radius: 50%; background: var(--sh-lime); color: #111; display: grid; place-items: center; font-weight: 700; font-size: .75rem; flex-shrink: 0; }
+.sh-grid { display: grid; gap: .8rem; margin-top: .9rem; }
+.sh-col { display: flex; flex-direction: column; gap: .8rem; min-width: 0; }
+.sh-hi { font-size: clamp(2.4rem, 11vw, 3.4rem); margin: 0; }
+.sh-hi em { font-style: normal; color: var(--sh-lime); }
+.sh-wx { display: flex; align-items: center; gap: .45rem; flex-wrap: wrap; font-size: .875rem; color: #d4d4d8; }
+.sh-wx b { color: #fff; font-weight: 700; }
+.sh-wx i { width: 1px; height: .9rem; background: #3f3f46; }
+.sh-k { font-size: .6875rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.sh-lime { color: var(--sh-lime); }
+.sh-orange { color: var(--sh-fit); }
+
+/* BUGÜN dev kartı */
+.sh-hero { position: relative; border-radius: 1.5rem; overflow: hidden; min-height: 14rem; display: flex; flex-direction: column; justify-content: flex-end;
+  background: linear-gradient(180deg, rgba(0,0,0,0) 30%, rgba(0,0,0,.85)), radial-gradient(120% 80% at 80% 10%, #155e75, #0b0b0c 70%); }
+.sh-sail { position: absolute; right: 1.25rem; top: 1rem; width: 5.5rem; height: 7rem; pointer-events: none; }
+.sh-hero-in { display: flex; flex-direction: column; align-items: flex-start; text-align: left; padding: 1rem 1rem 1.1rem; padding-right: 8.5rem; gap: .25rem; color: #fff; }
+.sh-hero-t { font-size: clamp(2.2rem, 10vw, 3.2rem); overflow-wrap: anywhere; }
+.sh-meta { display: flex; gap: 1rem; flex-wrap: wrap; font-size: .75rem; color: #d4d4d8; margin-top: .25rem; }
+.sh-meta b { display: block; color: #fff; font-size: 1.15rem; font-weight: 700; }
+.sh-go { position: absolute; right: 1rem; bottom: 1rem; background: var(--sh-lime); color: #111; border-radius: 999px; padding: .6rem 1rem; font-size: .875rem; font-weight: 800; white-space: nowrap; }
+
+/* Fitness dev kartı (antrenman yokken en üstte) */
+.sh-fhero { background: linear-gradient(180deg, rgba(0,0,0,0) 25%, rgba(0,0,0,.85)), radial-gradient(120% 90% at 85% 5%, #7c2d12, #120b06 70%); border: 1px solid #3b2414; }
+.sh-dumb { position: absolute; right: 1.25rem; top: 1.2rem; width: 6rem; height: 3rem; pointer-events: none; }
+.sh-go-fit { background: var(--sh-fit); }
+.sh-strip { display: flex; gap: .3rem; margin-top: .5rem; flex-wrap: wrap; }
+.sh-strip span { width: 2rem; height: 2rem; border-radius: .5rem; background: #ffffff1a; display: grid; place-items: center; font-family: var(--lv-font-c), system-ui; font-weight: 800; font-size: .9rem; }
+/* Yatay tek kartlar: fitness (antrenman da varsa) ve İngilizce */
+.sh-wide { display: flex; align-items: center; gap: .8rem; border-radius: 1.2rem; padding: .85rem .95rem; text-align: left; color: #fff; width: 100%; }
+.sh-wide .sh-k { display: block; }
+.sh-wide-t { display: block; font-size: 1.8rem; margin: .2rem 0; overflow-wrap: anywhere; }
+.sh-wide-l { display: block; font-size: 1rem; margin: .15rem 0; }
+.sh-wide small { font-size: .8rem; color: #d4d4d8; }
+.sh-wide-b { border-radius: 999px; padding: .55rem .95rem; font-size: .82rem; font-weight: 800; color: #111; white-space: nowrap; flex-shrink: 0; }
+.sh-wide.sh-fit { background: linear-gradient(120deg, #3a1d0a, #120b06); border: 1px solid #3b2414; }
+.sh-wide.sh-fit .sh-wide-b { background: var(--sh-fit); }
+.sh-wide.sh-en { background: linear-gradient(120deg, #2b2508, #0f0e06); border: 1px solid #3a3410; }
+.sh-wide.sh-en .sh-k { color: var(--sh-yel); }
+.sh-wide.sh-en .sh-wide-b { background: var(--sh-yel); }
+
+/* Kayıtlı yarış: kendi kartı, limon çerçeve, kaç gün kaldı büyük */
+.sh-race { position: relative; overflow: hidden; display: flex; align-items: center; gap: .9rem; background: #111; border: 1.5px solid var(--sh-lime); border-radius: 1.3rem; padding: .95rem; color: #fff; }
+.sh-race-n { font-size: 3.4rem; color: var(--sh-lime); flex-shrink: 0; min-width: 4.4rem; text-align: center; }
+.sh-race-n small { display: block; font: 800 .625rem var(--font-num, system-ui); letter-spacing: .1em; color: #d4d4d8; margin-top: .2rem; }
+.sh-race .sh-k { display: block; }
+.sh-race-t { display: block; font-size: 1.6rem; margin: .2rem 0; overflow-wrap: anywhere; }
+.sh-race small { display: block; color: var(--sh-mut); font-size: .78rem; }
+.sh-flag { position: absolute; right: -.6rem; bottom: -.6rem; width: 4.5rem; height: 4.5rem; opacity: .12; pointer-events: none; }
+
+/* Kutular */
+.sh-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
+.sh-tile { background: var(--sh-tile); border: 1px solid var(--sh-line); border-radius: 1.15rem; padding: .8rem; min-height: 6rem; display: flex; flex-direction: column; justify-content: space-between; gap: .3rem; text-align: left; color: #fff; min-width: 0; }
+.sh-tile .sh-k { color: var(--sh-mut); letter-spacing: .04em; text-transform: none; font-size: .75rem; font-weight: 700; }
+.sh-t { display: block; font-size: 1.05rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sh-s { display: block; font-size: .75rem; color: var(--sh-mut); }
+.sh-sailing { background: linear-gradient(160deg, #0e4a5c, #0b1a24); border-color: #164e63; }
+.sh-sailing .sh-k { color: #a5f3fc; }
+.sh-boat { background: linear-gradient(160deg, #14532d, #0b1410); border-color: #166534; }
+.sh-boat .sh-k { color: #bbf7d0; }
+
+/* Menü (tam ekran) ve + Ekle (alttan) — SporcuMenu.jsx */
+.shm { position: fixed; inset: 0; z-index: 60; background: #0b0b0c; color: #fff; overflow-y: auto; overscroll-behavior: contain; animation: shm-in .18s ease-out; }
+.shm-in { max-width: 40rem; margin: 0 auto; padding: calc(.9rem + env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) calc(2rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left)); display: flex; flex-direction: column; gap: 1rem; }
+.shm-head { display: flex; align-items: center; gap: .7rem; }
+.shm-me { flex: 1; min-width: 0; display: flex; align-items: center; gap: .75rem; }
+.shm-me b { display: block; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.shm-me small { color: var(--sh-mut); font-size: .8rem; }
+.shm-av { width: 3rem; height: 3rem; border-radius: 50%; background: var(--sh-lime); color: #111; display: grid; place-items: center; font-weight: 800; flex-shrink: 0; }
+.shm-g { font-size: .6875rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #71717a; margin: .2rem 0 .3rem .2rem; }
+.shm-row { display: flex; align-items: center; gap: .75rem; padding: .7rem .3rem; border-bottom: 1px solid #1f1f22; }
+.shm-row i { width: 2.2rem; height: 2.2rem; border-radius: .75rem; background: #ffffff12; display: grid; place-items: center; flex-shrink: 0; font-style: normal; }
+.shm-row b { flex: 1; min-width: 0; font-size: 1rem; font-weight: 600; }
+.shm-last { border-bottom: 0; }
+.shm-boat { background: linear-gradient(160deg, #14532d, #0b1410); border-color: #166534; }
+.shm-fit { background: linear-gradient(160deg, #3a1d0a, #120b06); border-color: #3b2414; }
+.shm-en { background: linear-gradient(160deg, #2b2508, #0f0e06); border-color: #3a3410; }
+.shm-sea { background: linear-gradient(160deg, #0e4a5c, #0b1a24); border-color: #164e63; }
+.shm-dim { position: fixed; inset: 0; z-index: 60; background: rgba(0,0,0,.6); display: flex; flex-direction: column; justify-content: flex-end; align-items: center; animation: shm-fade .15s ease-out; }
+.shm-sheet { width: 100%; max-width: 32rem; background: #141416; color: #fff; border: 1px solid #2e2e33; border-bottom: 0; border-radius: 1.6rem 1.6rem 0 0; padding: .6rem 1rem calc(1.2rem + env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: .8rem; animation: shm-up .2s ease-out; }
+.shm-grab { width: 2.6rem; height: .3rem; border-radius: .2rem; background: #3f3f46; margin: 0 auto .1rem; }
+.shm-title { font-size: 2rem; margin: 0; }
+.shm-a { border-radius: 1.15rem; padding: .85rem; min-height: 6rem; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; text-align: left; background: #1f2937; color: #fff; }
+.shm-a b { display: block; font-size: 1.5rem; }
+.shm-a small { display: block; font-size: .75rem; opacity: .85; margin-top: .15rem; }
+.shm-a-lime { background: var(--sh-lime); color: #111; }
+.shm-a-blue { background: #1e3a8a; }
+.shm-type { display: flex; align-items: center; gap: .55rem; background: #1f1f22; border: 1px solid #2e2e33; border-radius: 999px; padding: .75rem 1rem; color: #a1a1aa; font-size: .9375rem; text-align: left; }
+@keyframes shm-in { from { opacity: 0; transform: translateY(.5rem); } }
+@keyframes shm-fade { from { opacity: 0; } }
+@keyframes shm-up { from { transform: translateY(100%); } }
+@media (prefers-reduced-motion: reduce) { .shm, .shm-dim, .shm-sheet { animation: none; } }
+.sh-mini { border-radius: 999px; padding: .35rem .65rem; font-size: .75rem; font-weight: 700; background: #ffffff1a; color: #fff; white-space: nowrap; }
+.sh-mini-on { background: var(--sh-lime); color: #111; }
+
+/* ─── Ana hesap ve normal kullanıcı Sahne (SahneHome.jsx; Seyhun 2026-11-25, örnek velora-tarama/ana-normal-sahne.html) ─── */
+body:has(main.sh) .atabbar { --card: #0b0b0c; --line: #1f1f22; background: rgba(11, 11, 12, .94); box-shadow: 0 -1px 0 #1f1f22; }
+body:has(main.sh) .atabbar a { color: #71717a; }
+body:has(main.sh) .atabbar a[aria-current="page"] { color: var(--sh-lime, #d4ff3a); }
+body:has(main.sh) .acenter { background: #0b0b0c; box-shadow: 0 -1px 0 #1f1f22; }
+body:has(main.sh) .sidenav.navy { background: #0f0f11; --sn-line: #1f1f22; --sn-on-bg: rgba(212, 255, 58, .12); --sn-bar: #d4ff3a; --sn-logo: #d4ff3a; --sn-logo-v: transparent; }
+.shm-blue { background: linear-gradient(160deg, #1e3a8a, #0b1020); border-color: #1e40af; }
+.sh-g3 { display: grid; gap: .8rem; margin-top: .9rem; grid-template-areas: "a" "d" "b" "c"; }
+.sh-a { grid-area: a; min-width: 0; }
+.sh-d { grid-area: d; min-width: 0; }
+.sh-wl:empty, .sh-wr:empty { display: none; }
+.sh-wl { display: none; }
+.sh-b { grid-area: b; min-width: 0; display: flex; flex-direction: column; gap: .7rem; }
+.sh-c3 { grid-area: c; min-width: 0; display: flex; flex-direction: column; gap: .8rem; }
+.sh-sec { font-size: .6875rem; font-weight: 800; letter-spacing: .12em; color: #71717a; margin: .2rem 0 -.3rem .15rem; }
+.sh-kn { font-size: 2rem; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sh-bar { display: block; height: .3rem; border-radius: .2rem; background: #ffffff1a; overflow: hidden; }
+.sh-bar i { display: block; height: 100%; background: var(--sh-fit); }
+.sh-warn { color: #fbbf5c; }
+.sh-rl > a { margin-top: 0; }
+.sh-wide.sh-yon { background: linear-gradient(150deg, #1e3a8a, #0b1020); border: 1px solid #1e40af; }
+.sh-wide.sh-yon .sh-k { color: #93c5fd; }
+.sh-wide.sh-yon .sh-wide-b { background: #fff; }
+/* Hava paneli: ortak WindChart'ın renkleri burada (ölçülen limon, tahmin beyaz kesik, sağanak gri) */
+.sh-wxp { background: linear-gradient(180deg, #0f1d2b, #0b0b0c); border: 1px solid #1e2a36; border-radius: 1.4rem; overflow: hidden; color: #fff;
+  --wx-strong: #fff; --wx-t2: #cbd5e1; --wx-t3: #94a3b8; --wx-mut: #94a3b8; --wx-faint: #64748b; --wx-line: #1e2a36; --wx-line2: #2a3a4a; --wx-acc: #93c5fd;
+  --wx-fc: #fff; --wx-area: rgba(255, 255, 255, .1); --wx-gust: #94a3b8; --wx-obs: #d4ff3a; --wx-axis: #64748b; --wx-grid: #1e2a36;
+  --wx-rain: #93c5fd; --wx-raint: #bfdbfe; --wx-raindot: #bfdbfe; --wx-mm: #93c5fd; --rec: #ef4444;
+  --wc0: #64748b; --wc1: #cbd5e1; --wc2: #e2e8f0; --wc3: #fde68a; --wc4: #fca5a5;
+  --sky-sun: #fcd34d; --sky-sun2: #fcd34d; --sky-cloud: #94a3b8; --sky-rain: #93c5fd; --sky-storm: #c4b5fd; --sky-snow: #e0f2fe; }
+.sh-wxp .text-mut { color: #94a3b8; }
+.sh-wxp .iph-sky { color: #cbd5e1; opacity: .3; }
+.sh-wxp .iph-wch svg path[stroke="url(#iph-wl)"] { stroke: #fff; stroke-dasharray: 5 5; opacity: .8; }
+.sh-wx-now { display: flex; flex-direction: column; gap: .1rem; width: 100%; text-align: left; padding: .85rem .95rem 0; color: #fff; }
+.sh-wx-live { display: inline-flex; align-items: center; gap: .35rem; color: var(--sh-lime); font-size: .6875rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.sh-wx-live i { width: .45rem; height: .45rem; border-radius: 50%; background: var(--sh-lime); }
+.sh-wx-row { display: flex; align-items: flex-end; gap: .6rem; }
+.sh-wx-ar { margin-bottom: .7rem; }
+.sh-wx-big { font-size: 4.6rem; color: #fff; }
+.sh-wx-big small { font-size: 1.1rem; color: #a1a1aa; margin-left: .2rem; }
+.sh-wx-info { flex: 1; min-width: 0; margin-bottom: .55rem; font-size: .8rem; color: #cbd5e1; line-height: 1.35; display: flex; flex-direction: column; }
+.sh-wx-info b { color: #fff; font-size: .9rem; }
+.sh-wx-t { text-align: right; margin-bottom: .55rem; display: flex; flex-direction: column; align-items: flex-end; }
+.sh-wx-t b { font-size: 1.7rem; font-weight: 700; line-height: 1; }
+.sh-wx-t small { display: flex; align-items: center; gap: .3rem; font-size: .72rem; color: #94a3b8; margin-top: .25rem; }
+.sh-wx-wait { display: grid; place-items: center; min-height: 6rem; font-size: .875rem; color: #94a3b8; width: 100%; }
+.sh-wx-rain { margin: 0; padding: .55rem .95rem .75rem; border-top: 1px solid #1e2a36; font-size: .78rem; font-weight: 600; color: #93c5fd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Gün şeridi */
+.sh-days { display: flex; gap: .4rem; overflow-x: auto; scrollbar-width: none; margin: 0 -1rem; padding: 0 1rem; scroll-padding: 0 1rem; }
+.sh-days::-webkit-scrollbar { display: none; }
+.sh-day { flex: 1 0 4.4rem; min-width: 0; background: #141416; border: 1px solid #26262b; border-radius: .9rem; padding: .45rem .5rem; font-size: .625rem; font-weight: 700; letter-spacing: .04em; color: #a1a1aa; text-align: left; display: flex; flex-direction: column; }
+.sh-day b { color: #fff; font-family: var(--lv-font-c), system-ui; font-weight: 800; font-size: 1.15rem; line-height: 1.1; }
+.sh-day span.num { font-size: .6875rem; letter-spacing: 0; white-space: nowrap; }
+.sh-day-w { display: flex; align-items: flex-end; gap: 2px; height: 1rem; margin: .2rem 0; }
+.sh-day-w i { flex: 1; background: #475569; border-radius: 1px; }
+.sh-day-on { border-color: var(--sh-lime); }
+.sh-day-on b { color: var(--sh-lime); }
+.sh-day-on .sh-day-w i { background: var(--sh-lime); opacity: .7; }
+/* Planlar */
+.sh-plans { background: #141416; border: 1px solid #26262b; border-radius: 1.2rem; padding: .25rem .85rem; display: flex; flex-direction: column; overflow: hidden; }
+.sh-pl { display: flex; align-items: center; gap: .65rem; padding: .6rem 0; border-top: 1px solid #1f1f22; font-size: .875rem; text-align: left; color: #fff; min-width: 0; }
+.sh-pl:first-child { border-top: 0; }
+.sh-pl-t { font-size: .8125rem; font-weight: 700; color: #a1a1aa; width: 3.2rem; flex-shrink: 0; white-space: nowrap; }
+.sh-pl i { width: .25rem; height: 1.6rem; border-radius: .2rem; background: var(--tfg); flex-shrink: 0; }
+.sh-pl b { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.sh-pl small { color: #71717a; font-size: .75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40%; }
+.sh-pl-now { background: #d4ff3a14; margin: 0 -.85rem; padding: .6rem .85rem; }
+main.sh.sh .tone-st { --tfg: #22c55e; } main.sh.sh .tone-sp { --tfg: #60a5fa; } main.sh.sh .tone-ve { --tfg: #a78bfa; } main.sh.sh .tone-fa { --tfg: #d6a77a; } main.sh.sh .tone-fit { --tfg: #ff7a1a; } main.sh.sh .tone-gen { --tfg: #71717a; }
+.sh-noplan { margin: 0; padding: .7rem .2rem; font-size: .8125rem; font-weight: 600; color: #71717a; }
+@media (min-width: 48rem) {
+  main.sh:has(.sh-g3) { max-width: none; }
+  .sh-g3 { grid-template-columns: 1fr 1fr; grid-template-areas: "a a" "d d" "b c"; gap: 1.1rem; align-items: start; }
+  .sh-days { margin: 0; padding: 0; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); overflow: visible; }
+  .sh-day { min-width: 0; }
+  .sh-wx-big { font-size: 5.6rem; }
+  .sh-wl { display: block; }
+  .sh-wl:empty { display: none; }
+  .sh-wr { display: none; }
+}
+@media (min-width: 64rem) {
+  .sh-g3 { grid-template-columns: 1.5fr 1fr; grid-template-areas: "a c" "d c" "b c"; grid-template-rows: auto auto 1fr; }
+  .sh-b { align-self: start; }
+  .sh-wl { display: none; }
+  .sh-wr { display: block; }
+  .sh-wr:empty { display: none; }
+}
+@media (min-width: 48rem) {
+  .sh { padding-left: max(1.5rem, env(safe-area-inset-left)); padding-right: max(1.5rem, env(safe-area-inset-right)); }
+  .sh-grid { grid-template-columns: 1.25fr 1fr; gap: 1.1rem; align-items: start; }
+  .sh-hero { min-height: 20rem; }
+  .sh-sail { width: 8rem; height: 10rem; }
+}

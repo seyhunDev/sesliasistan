@@ -2,6 +2,8 @@
 const PATHS = {
   mic: <><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" /><path d="M19 10v2a7 7 0 0 1-14 0v-2" /><path d="M12 19v3" /></>,
   stop: <rect x="6" y="6" width="12" height="12" rx="2.5" fill="currentColor" />,
+  play: <path d="M8 5.5v13l10.5-6.5z" fill="currentColor" />,
+  pause: <path d="M8 5h2.5v14H8zM13.5 5H16v14h-2.5z" fill="currentColor" />,
   load: <path d="M21 12a9 9 0 1 1-6.219-8.56" />,
   check: <path d="M20 6 9 17l-5-5" />,
   home: <><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" /><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></>,

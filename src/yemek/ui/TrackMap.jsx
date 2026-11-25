@@ -5,10 +5,10 @@ import { MAP_ATTR, MAP_STYLE, loadMapLibre } from "@/lib/maplibre";
 import { fetchRoute, lineOf } from "../route";
 
 // Takip haritası (Seyhun 2026-10-23: tek, akıcı, göze hoş harita): vektör harita, restorandan adrese yollardan rota
-// (çizilerek gelir), restoran fotoğraflı yuvarlak, ev camgöbeği, kurye aracına göre simge (motor / araba / bisiklet)
+// (çizilerek gelir), restoran fotoğraflı yuvarlak, ev mavi, kurye aracına göre simge (motor / araba / bisiklet)
 // ve yumuşak kayarak ilerler; yolun alınan kısmı soluk. Telefonda tek parmak sayfayı kaydırır, iki parmak yakınlaştırır.
 // small: ana sayfadaki yemek kartının üstündeki küçük harita (çerçevesiz, dokunulmaz; dokunuş kartın bağlantısına gider); onFail: harita yüklenemedi.
-const ACC = "#0b7f99", DEEP = "#0f2c45";
+const ACC = "#2563eb", DEEP = "#0b1a33";
 const ICONS = {
   motor: '<circle cx="6" cy="17" r="3"/><circle cx="18" cy="17" r="3"/><path d="M9 17h4l3-7h3M14.5 10 13 6h-2.5M8 14h5"/>',
   araba: '<path d="M4 16v-3.5L6 8h12l2 4.5V16z"/><path d="M4 12.5h16"/><circle cx="8" cy="16.5" r="1.8"/><circle cx="16" cy="16.5" r="1.8"/>',
@@ -23,11 +23,11 @@ function el(html, style) {
   Object.assign(d.style, style);
   return d;
 }
-const placeEl = (photo) => el("", { width: "40px", height: "40px", borderRadius: "999px", border: "3px solid #fff", background: DEEP, backgroundImage: photo ? `url(${photo})` : "none", backgroundSize: "cover", backgroundPosition: "center", boxShadow: "0 3px 10px rgba(15,44,69,.35)" });
+const placeEl = (photo) => el("", { width: "40px", height: "40px", borderRadius: "999px", border: "3px solid #fff", background: DEEP, backgroundImage: photo ? `url(${photo})` : "none", backgroundSize: "cover", backgroundPosition: "center", boxShadow: "0 3px 10px rgba(11, 26, 51,.35)" });
 const homeEl = () => el(svg("home", 16), { width: "32px", height: "32px", borderRadius: "999px", border: "3px solid #fff", background: ACC, display: "grid", placeItems: "center", boxShadow: "0 3px 10px rgba(11,127,153,.4)" });
 function courierEl(vehicle) {
-  const d = el(svg(vehicle, 22), { width: "44px", height: "44px", borderRadius: "999px", border: "3px solid #fff", background: DEEP, display: "grid", placeItems: "center", boxShadow: "0 4px 12px rgba(15,44,69,.4)" });
-  d.animate?.([{ boxShadow: "0 0 0 0 rgba(11,127,153,.55), 0 4px 12px rgba(15,44,69,.4)" }, { boxShadow: "0 0 0 16px rgba(11,127,153,0), 0 4px 12px rgba(15,44,69,.4)" }], { duration: 1800, iterations: Infinity });
+  const d = el(svg(vehicle, 22), { width: "44px", height: "44px", borderRadius: "999px", border: "3px solid #fff", background: DEEP, display: "grid", placeItems: "center", boxShadow: "0 4px 12px rgba(11, 26, 51,.4)" });
+  d.animate?.([{ boxShadow: "0 0 0 0 rgba(11,127,153,.55), 0 4px 12px rgba(11, 26, 51,.4)" }, { boxShadow: "0 0 0 16px rgba(11,127,153,0), 0 4px 12px rgba(11, 26, 51,.4)" }], { duration: 1800, iterations: Infinity });
   return d;
 }
 const lineData = (coords) => ({ type: "Feature", properties: {}, geometry: { type: "LineString", coordinates: coords.length > 1 ? coords : [] } });

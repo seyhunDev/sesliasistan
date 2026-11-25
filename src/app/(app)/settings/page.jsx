@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { BackButton } from "@/components/ui/BackButton";
+import { ListHead } from "@/components/ui/Row";
 import { Sheet } from "@/components/ui/Sheet";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { BrainCard } from "@/features/brain/BrainCard";
 import { useData } from "@/features/data/DataProvider";
-import { Fold, NotifyMoreRow, NotifyRow, PermissionsRow, PowerRow, SizeRow, SummaryRow, ThemeRow, VoiceRow, WeatherPlaceRow, PasswordRow, useNotifications, RacesRow, LedgerRow } from "@/features/settings/Groups";
+import { Fold, NotifyMoreRow, NotifyRow, PermissionsRow, PowerRow, SizeRow, SummaryRow, ThemeRow, VoiceRow, WeatherPlaceRow, PasswordRow, TekneKimRow, useNotifications, RacesRow, RaceLiveRow, LedgerRow } from "@/features/settings/Groups";
 import { Group, Row } from "@/features/settings/ui";
 import { BackupRow } from "@/features/settings/Backup";
 import { DeviceDataRow } from "@/features/settings/DeviceData";
@@ -16,21 +17,42 @@ import { CallsRow } from "@/features/settings/Calls";
 import { CalendarFeedRow } from "@/features/settings/CalendarFeed";
 import { PastChatsRow } from "@/features/settings/PastChats";
 import { EnergyRow } from "@/features/settings/Energy";
+import { AndroidApkRow } from "@/features/settings/AndroidApk";
+import { CleanAccountsRow } from "@/features/settings/CleanAccounts";
 import { buildLine } from "@/lib/buildInfo";
+import { openText, readOpens } from "@/lib/openTime";
 import { logout } from "@/lib/auth";
 import { FaceIdRow } from "@/features/ios/AppLock";
-import { KIND_LABEL, kindOf } from "@/lib/kinds";
+import { KIND_LABEL, isCoach, isPlain, kindOf } from "@/lib/kinds";
+import { setGibiGor, useHesap } from "@/features/auth/useHesap";
+import { useRouter } from "next/navigation";
 import { ProfilePhoto } from "@/features/people/ProfilePhoto";
 
-// Profil kartı (ana hesap ve kişiler ortak)
-function Profile({ profile, label }) {
+// Lacivert üst: geri, Ayarlar, altında ad · hesap türü, sağda fotoğraf (yeni tasarım, 2026-11-03)
+function Top({ profile, label }) {
   return (
-    <section className="mt-2 flex items-center gap-4 rounded-2xl border border-line bg-card px-4 py-3.5">
-      <ProfilePhoto orgId={profile.orgId} uid={profile.uid} name={profile.name} photo={profile.photo} photoPath={profile.photoPath} size="size-14" text="text-[1.1875rem]" tone="bg-acc text-white" />
-      <span className="min-w-0 flex-1">
-        <b className="block truncate text-[1.1875rem] font-semibold tracking-tight">{profile.name}</b>
-        <span className="block truncate text-[0.875rem] text-mut">{label}</span>
-      </span>
+    <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Ayarlar">
+      <header className="flex items-center gap-2.5">
+        <BackButton href="/" />
+        <div className="min-w-0 flex-1 leading-tight">
+          <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Ayarlar</h1>
+          <p className="truncate text-[0.8125rem] text-white/65">{[profile.name, label].filter(Boolean).join(" · ")}</p>
+        </div>
+        <ProfilePhoto orgId={profile.orgId} uid={profile.uid} name={profile.name} photo={profile.photo} photoPath={profile.photoPath} size="size-10" text="text-[0.9375rem]" tone="bg-acc text-white" />
+      </header>
+    </section>
+  );
+}
+
+// Açık alan ve bölüm: başlık listenin dışında (ListHead), satırlar ince çizgili beyaz kartta (yeni tasarım, 2026-11-03)
+function Body({ children }) {
+  return <div className="wide-body wide-cols relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">{children}</div>;
+}
+function Sec({ title, children }) {
+  return (
+    <section>
+      {title && <ListHead title={title} />}
+      <div className="divide-y divide-line overflow-hidden rounded-[1.25rem] border border-line bg-card">{children}</div>
     </section>
   );
 }
@@ -48,30 +70,61 @@ function VersionRow() {
   );
 }
 
+// Açılış süresi: bu cihazdaki son açılışlar (lib/openTime.js)
+function OpenRow() {
+  const [text] = useState(() => (typeof window === "undefined" ? "" : openText(readOpens())));
+  return text ? <Row title="Açılış süresi" sub={text} /> : null;
+}
+
 // Ana hesap dışındaki kişiler (çalışan, aile, sporcu…): yalnız kişinin kendisine gereken ayarlar (Seyhun, 2026-10-19).
 // Sporcu ve öğrencide asistan yok: sesli yanıt ve günlük özetler de yok.
 function PersonSettings({ profile, n }) {
   const kind = kindOf(profile);
   const ai = kind !== "athlete" && kind !== "student";
+  // Normal kullanıcı (çalışan, aile, diğer; Seyhun 2026-11-24 "sade, net"): yalnız 8 satır. Plan hatırlatması, günlük özetler,
+  // sürüm ve Android satırı yok (gizli, silinmedi). Sporcu tarafı eskisi gibi.
+  if (isPlain(kind))
+    return (
+      <main className="wide mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
+        <Top profile={profile} label={isCoach(profile) ? "Antrenör" : KIND_LABEL[kind] || "Kişi"} />
+        <Body>
+          <Sec title="Ayarlar">
+            <SizeRow />
+            <ThemeRow />
+            <NotifyRow n={n} />
+            <VoiceRow />
+            <WeatherPlaceRow />
+          </Sec>
+          <Sec title="Hesap">
+            <PasswordRow />
+            <FaceIdRow />
+            <Row title="Çıkış yap" danger onClick={() => logout()} />
+          </Sec>
+        </Body>
+      </main>
+    );
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
-      <PageHeader title="Ayarlar" />
-      <Profile profile={profile} label={KIND_LABEL[kind] || "Kişi"} />
-      <Group title="Ayarlar">
-        <SizeRow />
-        <ThemeRow />
-        <NotifyRow n={n} />
-        <NotifyMoreRow n={n} />
-        {ai && <SummaryRow />}
-        {ai && <VoiceRow />}
-        <WeatherPlaceRow />
-      </Group>
-      <Group title="Hesap">
-        <PasswordRow />
-        <FaceIdRow />
-        <VersionRow />
-        <Row title="Çıkış yap" danger onClick={() => logout()} />
-      </Group>
+    <main className="wide mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
+      <Top profile={profile} label={KIND_LABEL[kind] || "Kişi"} />
+      <Body>
+        <Sec title="Ayarlar">
+          <SizeRow />
+          <ThemeRow />
+          <NotifyRow n={n} />
+          <NotifyMoreRow n={n} />
+          {ai && kind !== "parent" && <SummaryRow />}
+          {ai && <VoiceRow />}
+          <WeatherPlaceRow />
+          {(kind === "athlete" || kind === "student") && <TekneKimRow />}
+        </Sec>
+        <Sec title="Hesap">
+          <PasswordRow />
+          <FaceIdRow />
+          <VersionRow />
+          <AndroidApkRow />
+          <Row title="Çıkış yap" danger onClick={() => logout()} />
+        </Sec>
+      </Body>
     </main>
   );
 }
@@ -95,69 +148,84 @@ export default function SettingsPage() {
   const { profile } = useAuth();
   const { members } = useData();
   const n = useNotifications();
+  const h = useHesap();
+  const router = useRouter();
   if (!profile) return null;
+  // "… gibi gör" (ana hesap): o hesabın Ayarlar düzeni görünür (lib/hesapGorunum.js)
+  if (h.preview) return <PersonSettings profile={{ ...profile, role: "staff", kind: h.kind, coach: false }} n={n} />;
   if (profile.role !== "owner") return <PersonSettings profile={profile} n={n} />;
 
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
-      <PageHeader title="Ayarlar" />
+    <main className="wide mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
+      <Top profile={profile} label="Ana hesap" />
+      <Body>
+        <Sec title="Genel">
+          <SizeRow />
+          <ThemeRow />
+          <WeatherPlaceRow />
+          <TekneKimRow />
+          <RacesRow />
+          <RaceLiveRow />
+          <Row title="Yayın" href="/settings/yayin" />
+        </Sec>
 
-      <Profile profile={profile} label="Ana hesap" />
+        <Sec title="Bildirimler">
+          <NotifyRow n={n} />
+          <NotifyMoreRow n={n} />
+          <SummaryRow />
+        </Sec>
 
-      <Group title="Genel">
-        <SizeRow />
-        <ThemeRow />
-        <WeatherPlaceRow />
-        <RacesRow />
-      </Group>
+        <Sec title="Ses ve asistan">
+          <VoiceRow />
+          <PowerRow />
+          <PastChatsRow />
+          <PermissionsRow />
+        </Sec>
 
-      <Group title="Bildirimler">
-        <NotifyRow n={n} />
-        <NotifyMoreRow n={n} />
-        <SummaryRow />
-      </Group>
+        <Sec title="Veri ve cihaz">
+          <EnergyRow />
+          <UsageRow />
+          <DeviceDataRow />
+          <BackupRow />
+          <Row title="Gmail ve banka mailleri" href="/mail/setup" />
+          <CalendarFeedRow />
+        </Sec>
 
-      <Group title="Ses ve asistan">
-        <VoiceRow />
-        <PowerRow />
-        <PastChatsRow />
-        <PermissionsRow />
-      </Group>
+        <Sec>
+          <Row title="Testler" href="/settings/tests" />
+        </Sec>
 
-      <Group title="Veri ve cihaz">
-        <EnergyRow />
-        <UsageRow />
-        <DeviceDataRow />
-        <BackupRow />
-        <Row title="Gmail ve banka mailleri" href="/mail/setup" />
-        <CalendarFeedRow />
-      </Group>
+        {/* Üç hesap görünümü (Seyhun 2026-11-25 "ben her şeye hakim olmalıyım"): ötekilerin ana sayfası, alt çubuğu, menüsü; veri yine senin */}
+        <Sec title="Görünüm">
+          <Row title="Normal kullanıcı gibi gör" onClick={() => (setGibiGor("normal"), router.push("/"))} chevron />
+          <Row title="Sporcu gibi gör" onClick={() => (setGibiGor("sporcu"), router.push("/"))} chevron />
+        </Sec>
 
-      <Group>
-        <Row title="Testler" href="/settings/tests" />
-      </Group>
+        <Sec title="Hesap">
+          <PasswordRow />
+          <FaceIdRow />
+          <VersionRow />
+          <AndroidApkRow />
+          <OpenRow />
+          <CleanAccountsRow />
+          <Row title="Çıkış yap" danger onClick={() => logout()} />
+        </Sec>
 
-      <Group title="Hesap">
-        <PasswordRow />
-        <FaceIdRow />
-        <VersionRow />
-        <Row title="Çıkış yap" danger onClick={() => logout()} />
-      </Group>
-
-      <Group>
-        <SheetRow title="Arşivlenenler" sub="6">
-          <Group>
-            <LedgerRow />
-            <Fold title="Öğrenme" sub={profile.brainOff ? "Kapalı" : "Açık"}>
-              <BrainCard bare owner />
-            </Fold>
-            <CallsRow />
-            <MoveAllRow />
-            <MailFilesRow />
-            <Row title="Kişiler" sub={members.length ? `${members.length} kişi` : ""} href="/staff" />
-          </Group>
-        </SheetRow>
-      </Group>
+        <Sec>
+          <SheetRow title="Arşivlenenler" sub="6">
+            <Group>
+              <LedgerRow />
+              <Fold title="Öğrenme" sub={profile.brainOff ? "Kapalı" : "Açık"}>
+                <BrainCard bare owner />
+              </Fold>
+              <CallsRow />
+              <MoveAllRow />
+              <MailFilesRow />
+              <Row title="Kişiler" sub={members.length ? `${members.length} kişi` : ""} href="/staff" />
+            </Group>
+          </SheetRow>
+        </Sec>
+      </Body>
     </main>
   );
 }

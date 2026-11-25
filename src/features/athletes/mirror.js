@@ -1,7 +1,7 @@
 "use client";
 
 // Sporcunun kendi yoklamasını uygulamada görebilmesi için kulüp verisinden yalnızca ad ve yoklama geçmişi
-// bizim projeye kopyalanır: orgs/{ana hesap}/athleteAtt/{sporcunun kişi kimliği} = { name, athleteId, att: { "YYYY-MM-DD": durum }, parents: [veli kimlikleri] }
+// bizim projeye kopyalanır: orgs/{ana hesap}/athleteAtt/{sporcunun kişi kimliği} = { name, athleteId, sailNo (tekne ekranı), att: { "YYYY-MM-DD": durum }, parents: [veli kimlikleri] }
 // Yalnızca uygulamada hesabı olan sporcular için. Okuyabilenler: ana hesap, sporcunun kendisi, bağlı velileri (firestore.rules).
 // Sağlık, T.C., adres gibi kulüp bilgileri kopyalanmaz.
 import { arrayUnion, deleteField, doc } from "firebase/firestore";
@@ -21,7 +21,7 @@ export function flatAtt(att = {}) {
 
 // Tüm geçmişi yazar (hesap açılınca ya da "eşitle")
 export const syncAthleteAtt = (orgId, mid, a, parents) =>
-  setDoc(ref(orgId, mid), { name: a.studentName, athleteId: a.id, att: flatAtt(a.att), ...(parents ? { parents } : {}), updatedAt: new Date().toISOString() }, { merge: true });
+  setDoc(ref(orgId, mid), { name: a.studentName, athleteId: a.id, sailNo: String(a.sailNo || "").slice(0, 12), att: flatAtt(a.att), ...(parents ? { parents } : {}), updatedAt: new Date().toISOString() }, { merge: true });
 
 // Veliyi bağla
 export const linkParent = (orgId, mid, parentId) => setDoc(ref(orgId, mid), { parents: arrayUnion(parentId) }, { merge: true });

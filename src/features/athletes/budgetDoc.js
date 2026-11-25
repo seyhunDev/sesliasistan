@@ -1,7 +1,7 @@
 // Yarış bütçesi PDF'i: antetli başlık, kalem tablosu, özet ve sporcu başına ödeme listesi (A4).
 // pdf-lib yalnızca çıktı alınırken yüklenir. Yazı tipleri ve logo raceDocs.loadFonts'tan.
 import { CLUB, rangeText } from "./raceDocs.js";
-import { UNITS, forAthlete, howText, tl, totals } from "./budget.js";
+import { UNITS, forAthlete, howLine, howText, splitCount, tl, totals } from "./budget.js";
 import { tripRows } from "./races.js";
 
 const W = 595.28;
@@ -110,12 +110,19 @@ export async function buildBudgetPdf(r, athletes, fonts) {
   head();
   const unitName = Object.fromEntries(UNITS);
   t.lines.forEach((l) => {
-    if (need(30)) head();
+    if (need(l.note ? 41 : 30)) head();
     text(l.cat, cols[0], y, f.r, 9.5, { max: cols[1] - cols[0] - 6 });
+    // Ortak kalem (Seyhun 2026-11-16): hesap satırının sonunda "· Ortak · 4 sporcu"
+    const n = splitCount(l, t);
     text(l.title + (l.club ? " (kulüp)" : ""), cols[1], y, f.b, 9.5, { max: cols[3] - cols[1] - 70 });
-    text(l.unit === "room" ? howText(l, t) : `${howText(l, t)} · ${unitName[l.unit]}`, cols[1], y + 12, f.r, 8, { color: MUT, max: cols[3] - cols[1] - 70 });
+    text(l.unit === "room" || n ? howLine(l, t) : `${howText(l, t)} · ${unitName[l.unit]}`, cols[1], y + 12, f.r, 8, { color: MUT, max: cols[3] - cols[1] - 70 });
     text(tl(l.total), cols[3], y, f.b, 9.5, { align: "right" });
     text(l.club ? "-" : tl(l.share), cols[4], y, f.r, 9.5, { align: "right" });
+    // Kalemin notu (Seyhun 2026-11-16)
+    if (l.note) {
+      text(l.note, cols[1], y + 23, f.r, 8, { color: MUT, max: cols[3] - cols[1] - 70 });
+      y += 11;
+    }
     y += 28;
     rule(y - 11);
   });
@@ -123,11 +130,15 @@ export async function buildBudgetPdf(r, athletes, fonts) {
     text("Kalem yok.", cols[1], y, f.r, 9.5, { color: MUT });
     y += 22;
   }
-  need(24);
-  text("Toplam", cols[1], y + 2, f.b, 10);
-  text(tl(t.total), cols[3], y + 2, f.b, 10, { align: "right" });
-  text(t.athletes ? tl(t.perAthlete) : "-", cols[4], y + 2, f.b, 10, { align: "right" });
-  y += 30;
+  // Toplam: kalemlerden bir satır aralıkla ayrı, üstte koyu çizgi, kalın yazı
+  need(44);
+  y += 8;
+  rule(y - 6, NAVY, 1.2);
+  y += 14;
+  text("Toplam", cols[1], y, f.b, 11);
+  text(tl(t.total), cols[3], y, f.b, 11, { align: "right" });
+  text(t.athletes ? tl(t.perAthlete) : "-", cols[4], y, f.b, 11, { align: "right" });
+  y += 32;
 
   // Sporcu başına ödeme
   if (athletes.length) {

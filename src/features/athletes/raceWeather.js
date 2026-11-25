@@ -1,7 +1,7 @@
 // Yarış günlerinin hava tahmini, rüzgâr önde. Kaynak ana sayfadaki hava durumuyla aynı: Open-Meteo (ücretsiz, anahtarsız, knot).
 // Konum: Çevre'de bulunan yarış alanı, yoksa yarışın ilçesi (Open-Meteo konum arama). Tahmin en çok 16 gün ileriyi kapsar;
 // daha uzaktaki günler "henüz tahmin yok" görünür. Sonuç yarışın `weather` alanına kaydedilir, "Güncelle" ile yenilenir.
-import { sailWindows, windName } from "@/features/weather/weather";
+import { dirDeg, sailWindows, softCode, windName } from "@/features/weather/weather";
 
 export const HORIZON = 15; // bugün + 15 gün = Open-Meteo'nun 16 günlük tahmini
 const DAY_FROM = 9; // gündüz rüzgârı: 09–18
@@ -31,6 +31,18 @@ export function raceDays(r) {
   return out;
 }
 
+// Yarış havasında gezilebilen günler (Seyhun 2026-10-31 "bir gün önce ne olmuş"): yarıştan BEFORE gün önce başlar, yarışın son
+// gününe kadar; 90 günden eskisi yok (tahmin ufkunun ötesindeki gün "Tahmin … sonra çıkar" der). Grafik kaydırılarak ya da gün listesinden seçilir.
+export const WX_BEFORE = 5; // Seyhun 2026-11-03: önceki 5 gün (tahmin ve gerçekleşen), kapalı başlar, günler listesinden / kaydırarak
+export function wxDays(r, today) {
+  const days = raceDays(r);
+  if (!days.length) return [];
+  const out = [];
+  const from = addDays(days[0], -WX_BEFORE) < addDays(today, -90) ? addDays(today, -90) : addDays(days[0], -WX_BEFORE);
+  for (let d = from; d < days[0]; d = addDays(d, 1)) out.push(d);
+  return [...out, ...days];
+}
+
 // Yönlerin ortalaması (rüzgâr hızıyla ağırlıklı)
 function meanDir(rows) {
   let x = 0;
@@ -48,7 +60,7 @@ export function shapeDays(j, days) {
   const h = j?.hourly || {};
   const d = j?.daily || {};
   const rows = (h.time || []).map((t, i) => ({
-    date: t.slice(0, 10), hh: t.slice(11, 13), t: N(h.temperature_2m?.[i]), code: N(h.weather_code?.[i]), day: h.is_day ? !!h.is_day[i] : true,
+    date: t.slice(0, 10), hh: t.slice(11, 13), t: N(h.temperature_2m?.[i]), code: softCode(N(h.weather_code?.[i]), N(h.precipitation_probability?.[i])), day: h.is_day ? !!h.is_day[i] : true,
     wind: N(h.wind_speed_10m?.[i]), gust: N(h.wind_gusts_10m?.[i]), dir: N(h.wind_direction_10m?.[i]),
   })).filter((x) => x.wind !== null && x.gust !== null && x.dir !== null);
   return days
@@ -93,7 +105,7 @@ export function cleanWeather(w) {
 }
 
 // Kısa rüzgâr cümlesi: "Karayel (KB) 8–14 kn, sağanak 19 kn"
-export const windLine = (x) => `${windName(x.dir)[0]} (${windName(x.dir)[1]}) ${x.lo === x.hi ? x.hi : `${x.lo}–${x.hi}`} kn, sağanak ${x.gust} kn`;
+export const windLine = (x) => `${windName(x.dir)[0]} (${windName(x.dir)[1]}, ${dirDeg(x.dir)}) ${x.lo === x.hi ? x.hi : `${x.lo}–${x.hi}`} kn, sağanak ${x.gust} kn`;
 
 // --- İstekler (telefondan) ---
 
@@ -146,8 +158,8 @@ const DAY_TTL = 3600e3;
 export function rowsFrom(j, date) {
   const h = j?.hourly || {};
   return (h.time || [])
-    .map((time, i) => ({ time, hh: time.slice(11, 13), t: N(h.temperature_2m?.[i]), code: N(h.weather_code?.[i]), day: h.is_day ? !!h.is_day[i] : true,
-      wind: N(h.wind_speed_10m?.[i]), gust: N(h.wind_gusts_10m?.[i]), dir: N(h.wind_direction_10m?.[i]), rain: N(h.precipitation_probability?.[i]) }))
+    .map((time, i) => ({ time, hh: time.slice(11, 13), t: N(h.temperature_2m?.[i]), code: softCode(N(h.weather_code?.[i]), N(h.precipitation_probability?.[i])), day: h.is_day ? !!h.is_day[i] : true,
+      wind: N(h.wind_speed_10m?.[i]), gust: N(h.wind_gusts_10m?.[i]), dir: N(h.wind_direction_10m?.[i]), rain: N(h.precipitation_probability?.[i]), mm: h.precipitation?.[i] == null ? null : Math.round(h.precipitation[i] * 10) / 10 }))
     .filter((x) => x.time.startsWith(date) && x.wind !== null && x.gust !== null && x.dir !== null);
 }
 export async function loadRaceDay(r, date, force = false) {
@@ -165,7 +177,7 @@ export async function loadRaceDay(r, date, force = false) {
   const place = await racePlace(r);
   const q = new URLSearchParams({
     latitude: place.lat, longitude: place.lon, timezone: "auto", wind_speed_unit: "kn", start_date: date, end_date: date,
-    hourly: "temperature_2m,weather_code,is_day,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation_probability",
+    hourly: "temperature_2m,weather_code,is_day,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation_probability,precipitation",
   });
   const res = await fetch(`https://api.open-meteo.com/v1/forecast?${q}`, { signal: AbortSignal.timeout(12000) });
   if (!res.ok) throw new Error(`Hava tahmini alınamadı (${res.status})`);

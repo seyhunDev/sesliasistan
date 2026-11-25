@@ -5,6 +5,7 @@ import { requireUser, unauthorized } from "@/lib/server/auth";
 import { logAiError } from "@/lib/ai/errors";
 
 export const runtime = "nodejs";
+export const maxDuration = 26; // sesli cevapta iki çağrı (yazıya dök + değerlendir)
 
 // Söylenen kelimenin kartı (asistan "X kelimesini ekle, bana çalıştır"; kelime destede yoksa): İngilizce kelime,
 // türü, Türkçe anlamı, yaygın kullanımla örnek cümle ve Türkçesi. Türkçe söylenirse İngilizcesi bulunur. Kaydetmez.
@@ -29,6 +30,131 @@ Kurallar:
 - exTr: örneğin Türkçesi ya da boş.
 - Anlaşılmıyorsa en boş kalsın.`;
 
+// more: İngilizce sayfasında kartın ek örnekleri (bir kez hazırlanır, desteye yazılır)
+const MORE = `Türkçe konuşan, İngilizce öğrenen bir yetişkin için verilen kelimeye ya da cümleye örnek hazırlıyorsun.
+Kurallar:
+- ex2: kelimenin (cümlede: kalıbın) en yaygın kullanımıyla günlük hayattan 2 kısa, doğal İngilizce cümle (her biri en çok 12 kelime). Kelime ya da kalıp cümlede aynen geçsin. Verilen örnek cümleyi tekrar etme.
+- dlg: iki kişi arasında 3 satırlık kısa, doğal bir günlük konuşma (A, B, A sırasıyla; her satır en çok 12 kelime). Kelime ya da kalıp en az bir satırda geçsin.
+- Her satırda e: İngilizcesi, t: doğal Türkçesi.
+- Sade, B1-B2 düzeyinde, gerçek hayattan konular (iş, yolculuk, aile, spor, alışveriş).`;
+const LINES = { type: "array", items: { type: "object", properties: { e: { type: "string" }, t: { type: "string" } }, required: ["e", "t"] } };
+const MORE_SCHEMA = { type: "object", properties: { ex2: LINES, dlg: LINES }, required: ["ex2", "dlg"] };
+const lines = (a, n) =>
+  (Array.isArray(a) ? a : [])
+    .map((x) => ({ e: S(x?.e, 200), t: S(x?.t, 200) }))
+    .filter((x) => x.e && x.t)
+    .slice(0, n);
+
+async function more(au, body) {
+  const en = S(body?.en, 160);
+  if (!en) return bad("Hangi kelime?");
+  countAi(au, "word");
+  try {
+    const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: MORE, user: `${body?.kind === "phrase" ? "Cümle" : "Kelime"}: """${en}""" (${S(body?.tr, 120)})\nVerilen örnek: """${S(body?.ex, 200)}"""`, schema: MORE_SCHEMA, maxTokens: 900, timeoutMs: 15000 });
+    return NextResponse.json({ more: { ex2: lines(raw?.ex2, 3), dlg: lines(raw?.dlg, 4) } });
+  } catch (e) {
+    logAiError("word", "gemini", e);
+    if (e.status === 429) return bad("Yapay zeka kotası şu an dolu. Biraz sonra tekrar dene.", 429);
+    return bad("Örnekleri hazırlayamadım.", 502);
+  }
+}
+
+// Sesli cevap yalnız yazıya dökülür (Seyhun 2026-11-25: "kullanıcının söylediği değil, sanki otomatik bir cevap yazılıyor").
+// Önceden döküm, konuşmanın ya da beklenen cümlenin verildiği aynı çağrıda yapılıyordu; model kişinin söylediği yerine
+// beklediği/uygun bir cevabı yazabiliyordu. Artık ilk çağrı bağlam görmeden kelimesi kelimesine yazar, değerlendirme ayrı.
+const SCRIBE = `Ekteki ses kaydında söyleneni kelimesi kelimesine yaz. Kişi İngilizce öğreniyor: söylediği hatalıysa, eksikse ya da yarımsa AYNEN öyle yaz; düzeltme, tamamlama, tahmin etme. Türkçe konuştuysa Türkçe yaz. Anlaşılmayan kelimeyi atla. Kayıtta konuşma yoksa text boş.`;
+const SCRIBE_SCHEMA = { type: "object", properties: { text: { type: "string" } }, required: ["text"] };
+async function scribe(audio) {
+  const images = [{ mimeType: (audio.type || "audio/webm").split(";")[0], data: Buffer.from(await audio.arrayBuffer()).toString("base64") }];
+  const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: SCRIBE, user: "Kaydı yazıya dök.", schema: SCRIBE_SCHEMA, images, maxTokens: 200, timeoutMs: 9000 });
+  return S(raw?.text, 300);
+}
+
+// talk: İngilizce sayfası › Konuş. Kelimeyle 5 tur karşılıklı konuşma; her turda kişinin son cevabı kısaca düzeltilir,
+// sıradaki cümle ve ipucu (örnek cevap) gelir. Kaydetmez.
+const TALK = `Türkçe konuşan, İngilizce öğrenen bir yetişkinle kısa bir İngilizce konuşma yapıyorsun. Amaç verilen kelimeyi (ya da kalıbı) kullanmayı öğretmek.
+Kurallar:
+- Konuşma 5 turdur. Her turda sen bir İngilizce cümle söylersin: bazen soru, bazen günlük bir sohbet cümlesi; kişiden cevap bekler. Cümlelerin çoğunda kelime geçsin, kişinin de cevabında kelimeyi kullanmasını kolaylaştır.
+- Konular gerçek hayattan: iş, aile, yolculuk, spor, alışveriş, hafta sonu. Sade, B1-B2 düzeyi, en çok 16 kelime.
+- next: senin sıradaki cümlen (e İngilizce, t doğal Türkçesi). Konuşma bittiyse (5. cevaptan sonra) kısa, sıcak bir kapanış cümlesi.
+- hints: kişinin next'e verebileceği 3 kısa, doğal, birbirinden farklı örnek cevap (e İngilizce, t Türkçesi; en çok 10 kelime); mümkünse kelimeyi/kalıbı kullansın. Kapanışta boş liste.
+- Kişi bir cevap verdiyse: ok true ise cevap anlaşılır ve doğru; küçük doğal farklar sorun değil. Dilbilgisi ya da kelime hatası varsa ok false ve fix: cevabın düzeltilmiş tam hâli (İngilizce). Doğruysa fix boş. Türkçe cevap verdiyse ok false, fix İngilizcesi.
+- Konuşmanın akışına uy, kişinin söylediğine kısaca tepki ver.`;
+const LINE = { type: "object", properties: { e: { type: "string" }, t: { type: "string" } }, required: ["e", "t"] };
+const TALK_SCHEMA = { type: "object", properties: { ok: { type: "boolean" }, fix: { type: "string" }, next: LINE, hints: { type: "array", items: LINE } }, required: ["ok", "fix", "next", "hints"] };
+const TURNS = 5;
+
+// audio: kişinin sesli cevabı (İngilizce; Türkçe sesli tanıma bozardı): önce bağlamsız yazıya dökülür (scribe, heard), sonra yazılı cevap gibi değerlendirilir
+async function talk(au, body, audio = null) {
+  const en = S(body?.en, 160);
+  if (!en) return bad("Hangi kelime?");
+  const turns = (Array.isArray(body?.turns) ? body.turns : [])
+    .slice(-12)
+    .map((x) => ({ me: x?.who === "me", e: S(x?.e, 300) }))
+    .filter((x) => x.e);
+  countAi(au, "word");
+  try {
+    let heard = "";
+    if (audio) {
+      heard = await scribe(audio);
+      if (!heard) return bad("Sesini duyamadım, tekrar dene.", 422);
+      turns.push({ me: true, e: heard });
+    }
+    const answers = turns.filter((x) => x.me).length;
+    const last = turns.at(-1)?.me ? turns.at(-1).e : "";
+    const done = answers >= TURNS;
+    const log = turns.map((x) => `${x.me ? "Kişi" : "Sen"}: ${x.e}`).join("\n");
+    const user = `${body?.kind === "phrase" ? "Kalıp" : "Kelime"}: """${en}""" (${S(body?.tr, 120)})
+Tur: ${Math.min(answers + 1, TURNS)} / ${TURNS}${done ? " (kişi 5. cevabını verdi: kapanış cümlesi yaz)" : ""}
+${log ? `Konuşma:\n${log}` : "Konuşma yeni başlıyor: ilk cümleni yaz."}${last ? `\nKişinin son cevabı: """${last}"""` : ""}`;
+    const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: TALK, user, schema: TALK_SCHEMA, maxTokens: 800, timeoutMs: audio ? 10000 : 12000 });
+    const line = (x) => ({ e: S(x?.e, 300), t: S(x?.t, 300) });
+    const next = line(raw?.next);
+    if (!next.e) return bad("Konuşmayı sürdüremedim, tekrar dene.", 502);
+    const fix = last && raw?.ok === false ? S(raw?.fix, 300) : "";
+    const hints = done ? [] : (Array.isArray(raw?.hints) ? raw.hints : []).map(line).filter((x) => x.e).slice(0, 3);
+    return NextResponse.json({ heard, ok: !fix, fix, next, hints, hint: hints[0] || { e: "", t: "" }, done });
+  } catch (e) {
+    logAiError("word", "gemini", e);
+    if (e.status === 429) return bad("Yapay zeka kotası şu an dolu. Biraz sonra tekrar dene.", 429);
+    return bad("Konuşmayı sürdüremedim, tekrar dene.", 502);
+  }
+}
+
+// hear: İngilizce sayfası › Kalıplar › Hatırla. Kişi resme bakıp cümleyi sesle söyler; yapay zeka kaydı yazıya döker (heard)
+// ve beklenen cümleyle aynı mı bakar (ok). Küçük telaffuz ya da kısaltma farkı (I am / I'm) sorun değil.
+const HEAR = `Türkçe konuşan, İngilizce öğrenen bir yetişkinin söylediği (yazıya dökülmüş) İngilizce cümleyi değerlendiriyorsun.
+- ok: söylenen, beklenen cümleyle aynı kalıbı ve anlamı taşıyorsa true. Kısaltma (I am / I'm), küçük telaffuz farkı ve sondaki noktalama önemsiz. Kalıp yanlışsa, kelime eksik ya da farklıysa false.`;
+const HEAR_OK = { type: "object", properties: { ok: { type: "boolean" } }, required: ["ok"] };
+// Büyük-küçük harf, noktalama ve yaygın kısaltmalar (I'm / I am) dışında aynıysa yapay zekaya sorulmaz
+const flat = (t) =>
+  String(t)
+    .toLowerCase()
+    .replace(/[’`]/g, "'")
+    .replace(/\b(i|you|we|they|he|she|it|that|there|what)'(m|re|s|ve|ll|d)\b/g, (m, a, b) => `${a} ${{ m: "am", re: "are", s: "is", ve: "have", ll: "will", d: "would" }[b]}`)
+    .replace(/\b(do|does|did|is|are|was|were|have|has|can|could|would|should|wo|ca)n't\b/g, (m, a) => `${{ wo: "will", ca: "can" }[a] || a} not`)
+    .replace(/[^a-z0-9' ]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+const same = (a, b) => flat(a) === flat(b);
+
+async function hear(au, body, audio) {
+  const en = S(body?.en, 200);
+  if (!en || !audio) return bad("Ses kaydı yok");
+  countAi(au, "word");
+  try {
+    const heard = await scribe(audio);
+    if (!heard) return bad("Sesini duyamadım, tekrar dene.", 422);
+    if (same(heard, en)) return NextResponse.json({ heard, ok: true });
+    const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: HEAR, user: `Beklenen cümle: """${en}"""\nKişinin söylediği: """${heard}"""`, schema: HEAR_OK, maxTokens: 60, timeoutMs: 8000 });
+    return NextResponse.json({ heard, ok: raw?.ok === true });
+  } catch (e) {
+    logAiError("word", "gemini", e);
+    if (e.status === 429) return bad("Yapay zeka kotası şu an dolu. Biraz sonra tekrar dene.", 429);
+    return bad("Dinleyemedim, tekrar dene.", 502);
+  }
+}
+
 const SCHEMA = {
   type: "object",
   properties: { en: { type: "string" }, type: { type: "string" }, tr: { type: "string" }, ex: { type: "string" }, exTr: { type: "string" } },
@@ -42,15 +168,25 @@ async function handle(request) {
   const au = await requireUser(request);
   if (!au.ok) return unauthorized(au);
   let body;
+  let audio = null;
   try {
-    body = await request.json();
+    if ((request.headers.get("content-type") || "").includes("multipart/form-data")) {
+      const form = await request.formData();
+      body = JSON.parse(String(form.get("data") || "{}"));
+      audio = form.get("audio");
+      if (!audio || typeof audio === "string" || !audio.size) return bad("Ses kaydı yok");
+      if (audio.size > 4 * 1024 * 1024) return bad("Kayıt çok uzun");
+    } else body = await request.json();
   } catch {
     return bad("Geçersiz istek");
   }
+  if (!process.env.GEMINI_API_KEY || !process.env.GEMINI_MODEL) return bad("Yapay zeka anahtarı tanımlı değil.", 503);
+  if (body?.more) return more(au, body);
+  if (body?.talk) return talk(au, body, audio);
+  if (body?.hear) return hear(au, body, audio);
   const phrase = body?.kind === "phrase";
   const word = S(body?.word, phrase ? 160 : 60);
   if (!word) return bad("Hangi kelime?");
-  if (!process.env.GEMINI_API_KEY || !process.env.GEMINI_MODEL) return bad("Yapay zeka anahtarı tanımlı değil.", 503);
   countAi(au, "word");
   try {
     const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: phrase ? PHRASE : SYSTEM, user: `${phrase ? "Cümle" : "Kelime"}: """${word}"""`, schema: SCHEMA, maxTokens: 600, timeoutMs: 15000 });

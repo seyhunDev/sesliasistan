@@ -20,3 +20,25 @@ export async function shareFile(f) {
   }
   openFile(f, true);
 }
+
+// Yazdır (Seyhun 2026-11-13 kesin kayıt formları): bilgisayarda PDF gizli çerçevede açılıp yazıcı penceresi gelir;
+// iPhone/iPad'de çerçevedeki PDF yazdırılamıyor, paylaşım menüsü açılır (içinde "Yazdır" var)
+export function printFile(f) {
+  const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (ios) return shareFile(f);
+  const url = URL.createObjectURL(f);
+  const fr = document.createElement("iframe");
+  fr.style.cssText = "position:fixed;right:0;bottom:0;width:0;height:0;border:0";
+  fr.onload = () =>
+    setTimeout(() => {
+      try {
+        fr.contentWindow.focus();
+        fr.contentWindow.print();
+      } catch {
+        openFile(f);
+      }
+    }, 300);
+  fr.src = url;
+  document.body.appendChild(fr);
+  setTimeout(() => (fr.remove(), URL.revokeObjectURL(url)), 300_000);
+}

@@ -1,17 +1,22 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { JobPill } from "./JobPill";
 
-const Ctx = createContext(() => {});
+const NONE = () => {};
+const Ctx = createContext(NONE);
 
 // toast("Mesaj") ya da toast("Silindi", { action: { label: "Geri al", onClick }, duration: 5000 })
+// Bildirim ile arka plan işleri (lib/jobs.js) aynı yerde, tek hapta görünür (JobPill; Seyhun 2026-11-13 "Yap").
 export function ToastProvider({ children }) {
-  const [t, setT] = useState({ msg: "", action: null });
+  // İç içe (canlı ekran kendi bildirimini açar): işler yalnız en dıştaki göstergede, iki hap olmaz
+  const nested = useContext(Ctx) !== NONE;
+  const [t, setT] = useState({ msg: "", action: null, n: 0 });
   const [show, setShow] = useState(false);
   const timer = useRef(null);
 
   const toast = useCallback((msg, opts = {}) => {
-    setT({ msg, action: opts.action || null });
+    setT((o) => ({ msg, action: opts.action || null, n: o.n + 1 }));
     setShow(true);
     clearTimeout(timer.current);
     timer.current = setTimeout(() => setShow(false), opts.duration || (opts.action ? 5000 : 2200));
@@ -24,29 +29,17 @@ export function ToastProvider({ children }) {
     return () => window.removeEventListener("sa-save-failed", on);
   }, [toast]);
 
-  const act = () => {
+  const act = useCallback(() => {
     clearTimeout(timer.current);
     setShow(false);
     t.action?.onClick();
-  };
+  }, [t]);
+  const hide = useCallback(() => (clearTimeout(timer.current), setShow(false)), []);
 
   return (
     <Ctx.Provider value={toast}>
       {children}
-      <div
-        role="status"
-        data-toast
-        className={`fixed left-1/2 top-[calc(0.875rem_+_env(safe-area-inset-top))] z-[90] flex max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 rounded-full bg-fg py-2 pl-[1.125rem] text-sm font-medium text-bg shadow-lg transition duration-300 ${
-          t.action ? "pr-2" : "pr-[1.125rem]"
-        } ${show ? "translate-y-0 opacity-100" : "pointer-events-none -translate-y-6 opacity-0"}`}
-      >
-        <span className="truncate py-0.5">{t.msg}</span>
-        {t.action && (
-          <button onClick={act} className="shrink-0 rounded-full bg-bg/15 px-3 py-1 text-[0.8125rem] font-semibold text-bg transition active:scale-95">
-            {t.action.label}
-          </button>
-        )}
-      </div>
+      <JobPill note={show ? t : null} onNote={act} onHide={hide} jobs={!nested} />
     </Ctx.Provider>
   );
 }

@@ -19,6 +19,10 @@ export function dayLabel(s, today) {
 }
 
 // Bugünden o güne kaç gün var (geçmişse eksi)
+// Plan o güne düşüyor mu (çok günlü planlar başlangıçtan bitişe her gün; yarış planı 3 gün sürerse 3 günde de görünür)
+export const onDay = (p, d) => !!p?.date && p.date <= d && (p.endDate || p.date) >= d;
+// Plan o gün hangi saatte: saat yalnız ilk gününe aittir (yarışın çıkış saati), sonraki günlerde tüm gün
+export const timeOn = (p, d) => (p?.date === d ? p.time || "" : "");
 export const daysBetween = (from, to) => Math.round((D(to) - D(from)) / 864e5);
 // "Bugün", "Yarın", "4 gün kaldı", "3 gün önce"
 export function leftLabel(day, today) {

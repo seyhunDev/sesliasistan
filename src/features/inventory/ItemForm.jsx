@@ -1,11 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Loader } from "@/components/ui/Loader";
 import { FILE_LABELS, prepFile, sizeText } from "./invFiles";
 import { Button } from "@/components/ui/Button";
-import { OWNERS, SERVICE_KINDS, STATES, UNITS, ageText, canLink, cleanItem, cleanService, extraHints, hasSailNo, hostsOf, isBoat, isBot, isMotor, itemLabel, kitOf, lastService, motorsOf, serviceLabel, serviceText } from "./invModel";
+import { OWNERS, SERVICE_KINDS, STATES, UNITS, ageText, canLink, cleanItem, cleanService, extraHints, hasSailNo, hostsOf, isBoat, isBot, isMotor, itemLabel, kitOf, lastService, motorsOf, serviceText } from "./invModel";
 
 export const input =
   "h-11 w-full min-w-0 max-w-full rounded-xl border border-transparent bg-bg px-3 text-base text-fg outline-none transition placeholder:text-mut/70 focus:border-acc focus:bg-card";
@@ -26,7 +26,9 @@ function F({ label, children, className = "" }) {
 // Takım parçasında (salma, dümen, direk, bumba, yelken) bağlı olduğu tekne; teknede takımı (aç, eksikleri oluştur).
 // Belgeler ve fotoğraflar: kaydedilmiş olanlar açılır/silinir; yeni seçilenler (pend) Kaydet'te yüklenir.
 // onRead(dosya, form): yapay zeka fotoğrafı/belgeyi okur, boş alanları doldurur. onFile(meta): kayıtlı dosyayı açar.
-export function ItemForm({ start, cats, inv, onSave, onDelete, onOpen, onKit, onRead, onFile }) {
+// formId verilirse Kaydet / Sil düğmeleri formda çizilmez; pencerenin altındaki SheetActions bu formu gönderir.
+// onState({ dirty, ready }): yazılmış bir şey var mı (kapatırken sorulur), kaydedilebilir mi.
+export function ItemForm({ start, cats, inv, onSave, onDelete, onOpen, onKit, onRead, onFile, formId, onState }) {
   const [x, setX] = useState(start);
   const [pend, setPend] = useState([]);
   const [busy, setBusy] = useState(""); // "read" | ""
@@ -91,8 +93,15 @@ export function ItemForm({ start, cats, inv, onSave, onDelete, onOpen, onKit, on
   const addExtra = (k = "") => setX((v) => ({ ...v, extra: [...(v.extra || []), { k, v: "" }] }));
   const hints = extraHints(x.cat).filter((h) => !(x.extra || []).some((e) => e.k.toLocaleLowerCase("tr-TR") === h.toLocaleLowerCase("tr-TR")));
 
+  const dirty = pend.length > 0 || JSON.stringify(x) !== JSON.stringify(start);
+  const ready = !!x.name.trim() && busy !== "read";
+  useEffect(() => {
+    onState?.({ dirty, ready });
+  }, [dirty, ready, onState]);
+
   return (
     <form
+      id={formId}
       className="w-full min-w-0 space-y-3 overflow-x-hidden pb-2"
       onSubmit={(e) => {
         e.preventDefault();
@@ -123,7 +132,7 @@ export function ItemForm({ start, cats, inv, onSave, onDelete, onOpen, onKit, on
                 f={f}
                 onOpen={() => onFile?.(f)}
                 onLabel={(label) => setX((v) => ({ ...v, files: v.files.map((y) => (y.id === f.id ? { ...y, label } : y)) }))}
-                onDrop={() => window.confirm(`“${f.label || f.name}” silinsin mi? (Kaydet'e basınca silinir)`) && setX((v) => ({ ...v, files: v.files.filter((y) => y.id !== f.id) }))}
+                onDrop={() => setX((v) => ({ ...v, files: v.files.filter((y) => y.id !== f.id) }))}
               />
             ))}
             {pend.map((f) => (
@@ -324,10 +333,12 @@ export function ItemForm({ start, cats, inv, onSave, onDelete, onOpen, onKit, on
       <F label="Not">
         <textarea value={x.note} onChange={set("note")} maxLength={600} rows={2} className={`${input} h-auto py-2`} />
       </F>
-      <Button type="submit" disabled={!x.name.trim() || busy === "read"}>
-        Kaydet
-      </Button>
-      {onDelete && (
+      {!formId && (
+        <Button type="submit" disabled={!ready}>
+          Kaydet
+        </Button>
+      )}
+      {!formId && onDelete && (
         <button type="button" onClick={onDelete} data-press className="btn btn-danger w-full">
           Envanterden sil
         </button>
@@ -358,7 +369,7 @@ function Services({ list, onChange }) {
                 <span className="block text-[0.875rem] font-semibold">{serviceText(e)}</span>
                 {(e.what || e.cost > 0 || e.by) && <small className="block text-[0.75rem] text-mut">{[e.what, e.cost > 0 ? `${e.cost.toLocaleString("tr-TR")} ₺` : "", e.by].filter(Boolean).join(" · ")}</small>}
               </span>
-              <button type="button" onClick={() => window.confirm(`${serviceLabel(e.kind)} kaydı silinsin mi?`) && onChange(list.filter((y) => y.id !== e.id))} aria-label="Sil" data-press className="btn btn-icon btn-sm size-8 shrink-0 text-mut">
+              <button type="button" onClick={() => onChange(list.filter((y) => y.id !== e.id))} aria-label="Sil" data-press className="btn btn-icon btn-sm size-8 shrink-0 text-mut">
                 <Icon name="x" className="size-4" />
               </button>
             </li>

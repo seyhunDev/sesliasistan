@@ -1,9 +1,19 @@
 ---
 name: velora-tasarim
-description: Velora yeni tasarım kuralları (lacivert kokpit + sade liste). Bir sayfayı, pencereyi ya da bileşeni tasarlarken veya yeni tasarıma geçirirken önce bunu oku.
+description: Velora yeni tasarım kuralları (açık tema .acik 2026-11-22; eski lacivert kokpit + sade liste). Bir sayfayı, pencereyi ya da bileşeni tasarlarken veya yeni tasarıma geçirirken önce bunu oku.
 ---
 
 # Velora yeni tasarım kuralları
+
+## AÇIK TEMA (Seyhun 2026-11-22, en güncel temel; örnek /mnt/project-files/ana-sayfa/sade-2026-11/acik-ana-sayfa.html)
+
+"Renk cümbüşü göz yoruyor": yeni tasarımlar Apple beyazı ve sade. İlk sayfa ana sayfa (`IpadHome.jsx`, `main.iph.acik`); diğer sayfalar sırayla buna geçecek.
+- Sayfanın `<main>`'ine `acik` sınıfı ver (globals.css `.acik`). Renkler oradan: zemin `#f5f5f7`, kart beyaz (gölge yerine çok ince çerçeve), yazı `#1d1d1f`, ikinci yazı `#3a3a3c`, soluk `#6e6e73`/`#aeaeb2`, çizgi `#e5e5ea`, açık gri dolgu `--fill #eeeef2`, tek vurgu mavi `#2563eb`.
+- Sayfada `main.acik` varken sol menü ve alt çubuk kendiliğinden açık olur (`body:has(main.acik)`). Lacivert sayfalar (`.navy`) eskisi gibi kalır.
+- Hava/grafik renkleri değişkenden (`--wx-*`, rüzgâr `--wc0…4`, gök `--sky-*`): aynı HavaPanel/WindChart/DayCell iki temada da çalışır. Açıkta tahmin koyu gri çizgi, ölçülen mavi, sağanak gri kesik, yağış açık mavi bant; rüzgâr rakamları koyu, yalnız 18 kn ve üstü kehribar.
+- Başlıklar normal harf (büyük harf değil). Düğmeler ortak `btn` (btn-primary/secondary btn-sm).
+- Takvim planları tek satır: saat · renkli nokta · başlık · yer (telefonda yer gizli); rüzgâr yok; süren plan açık gri zemin.
+- Renk yalnız anlam taşıyınca: plan türü küçük nokta, uyarı kehribar, şimdi kırmızı çizgi.
 
 Ana sayfa (2026-10-21, "C · Lacivert kokpit") bu kuralların örneğidir. Yeni bir sayfa yaparken önce `src/features/home/` ve `src/features/weather/WeatherTop.jsx` dosyalarına bak, aynı parçaları kullan.
 
@@ -15,23 +25,25 @@ Ana sayfa (2026-10-21, "C · Lacivert kokpit") bu kuralların örneğidir. Yeni 
 - Düğmelerin kısa bir adı olur ("Yoklama", "Günlük yaz"). Çıplak ok kullanılmaz. Ek işler "⋯" içine konur.
 - Boş alan bırakılmaz, sayfa sıkı durur. Yazı taşmaz (`truncate`).
 - Kısaltmalar kullanılır: Pzt, 17 Eki, ₺. Başlıklar normal harfle yazılır (büyük harf değil), yazılar semibold.
-- Tek vurgu rengi camgöbeği (Okyanus). Yeşil yalnız bitti/ödendi için. Amber yalnız gerçek uyarı için. Renk yanıp sönmez.
+- Tek vurgu rengi elektrik mavisi (Velora V, 2026-11-03). Yeşil yalnız bitti/ödendi için. Amber yalnız gerçek uyarı için. Renk yanıp sönmez.
 - Yapay zekâ yapımı görünümden kaçın: degrade, parıltı, gölgeli süs kartları yok. Kartlar düz ve ince çizgili olur.
 
-## Renkler (`src/app/globals.css` `:root`): "Okyanus" paleti (Seyhun 2026-10-22)
+## Renkler (`src/app/globals.css` `:root`): "Velora V" paleti (Seyhun 2026-11-03, logo 3: lacivert zeminde beyaz daire içinde V)
+- Yarış detayı iPad (2026-11-09, örnek yaris-tasarim/ipad-detay): tam ekran; arkada canlı yayının fotoğrafı bulanık, solda soluk büyük ad + tarih, Şimdi/Hava cam satırları, en altta Canlı ekran · Yayın; sağda koyu cam panelde sekmeler. Yatayda sol menü gizli, asistan düğmesi sağ altta. Sonuç yuvarlaklarında BFD siyah, UFD beyaz, diğer cezalar kırmızı.
 
-Lacivert kokpit ve `.navy` sayfalar gece mavisi `#11203a` (kart `#182a48`, çizgi `#26395c`), lacivertte vurgu `#67e8f9`, seçili/ana iş `#0ea5c4`. Logo: gece mavisi zeminde camgöbeği → açık turkuaz çubuklar (`#0ea5c4` → `#a5f3fc`).
+Logo lacivert ve beyaz. Lacivert kokpit ve `.navy` sayfalar logonun laciverti `#0b1a33` (kart `#13243f`, çizgi `#24375a`), lacivertte vurgu açık mavi `#8fb3ff`, seçili/ana iş elektrik mavisi `#3d7bff`. Açık sayfalar Apple gibi: açık gri zemin, beyaz kartlar.
 
 | Token | Değer | Kullanım |
 |---|---|---|
-| `--bg` | #f2f4f6 | serin açık zemin |
-| `--card` | #fcfdfe | kart / liste zemini |
+| `--bg` | #f5f5f7 | açık zemin |
+| `--card` | #ffffff | kart / liste zemini |
 | `--fg` | #26282c | yazı |
-| `--mut` | #74777d | ikinci yazı |
-| `--line` | #e7e5df | ince çizgi |
-| `--acc` | #0b7f99 | tek vurgu (camgöbeği) |
-| `--accbg` | #e2f2f6 | açık vurgu zemini |
-| `--deep` | #0f2c45 | koyu gece mavisi |
+| `--mut` | #6e6e73 | ikinci yazı |
+| `--line` | #e5e5ea | ince çizgi |
+| `--acc` | #2563eb | tek vurgu (mavi; açık zeminde okunur tonu) |
+| `--accbg` | #e8effe | açık vurgu zemini |
+| `--deep` | #0b1a33 | logonun laciverti |
+| `--brand` | #2f6bff → #6b9bff | yalnız asistan düğmesi |
 | `--ok` | #4a8a64 | bitti / ödendi |
 | `--warn` / `--warnbg` | #a8742a / #f6eedf | uyarı |
 | `--rec` | #c8574f | kayıt / tehlike |
@@ -49,17 +61,19 @@ Tailwind'de `bg-bg`, `text-mut`, `text-acc`, `border-line` gibi sınıflarla yaz
 - `Row.jsx`: `RowList`, `Row` (lead · başlık · alt yazı · sağ değer veya `Tag`), `ListHead`, `SkelRow`, `Tag`. Satır biçimi her listede aynıdır: öğe + durum. Satıra dokununca öğe kendi yerinde açılır. Uyarı alt yazısı amberdir.
 - `Gauge.jsx`: `Gauge` (halka), `Bar` (ince çubuk). "9/14 ödedi" gibi oranlar için kullanılır.
 - `ActionGrid.jsx`: kokpitteki adlı düğme ızgarası.
-- `Button.jsx`: tek düğme bileşeni. Yeni düğme yazılmaz, buradan alınır. Türleri: `primary` (vurgu rengi, ana iş), `secondary` (beyaz, kabarık), `text`, `icon`, `danger`, `back`, `round`. Hepsi kabarık durur ve basınca içeri göçer.
+- `Button.jsx`: tek düğme bileşeni (sınıflar `btn btn-primary|secondary|danger|text|icon|round|back`, küçük `btn-sm`). Yeni düğme yazılmaz, sayfa CSS'ine düğme rengi/kenar/gölge yazılmaz (yalnız yer ve boy). Görünüm "A · Düz" (Seyhun 2026-11-22): tek renk dolgu, degrade/gölge/çerçeve yok; Ana dolu mavi, İkincil açık gri (lacivertte yarı saydam beyaz), Tehlike açık kırmızı, Yazı/Simge zeminsiz; seçili İkincil `aria-pressed` mavi. Basınca biraz küçülür ve koyulaşır. Tasarım örneklerinde (HTML) `project-files/butonlar/ortak-dugme.css` aynen kullanılır (KULLANIM.md).
 - `BackButton.jsx`: yuvarlak simge geri düğmesi (karar "A · Yuvarlak simge", #642).
 - `Sheet.jsx`: alttan açılan pencere. Arka plan kaymaz (#627).
 
 ## Lacivert üstte düğmeler
 
-- `.ck .raised`: yarı saydam beyaz kabarık düğme.
-- `.act-main`: beyaz zemin, en önemli düğme ya da bugün.
-- `.ck-sel`: seçili olan camgöbeği (#0ea5c4). `aria-pressed` ile birlikte kullanılır.
-- `.ck-glass`: yarı saydam kutu (şerit, ikincil düğme).
-- `.ck :is(.btn-round,.btn-back)`: yarı saydam yuvarlak düğme. Basınca açık renkte yanıp sönmez.
+- Aynı ortak düğme: `.ck`, `.navy` içinde kendiliğinden lacivert görünüm alır (Ana #3d7bff, İkincil yarı saydam beyaz). Eski `raised`, `act-main`, `ck-btn`, `ck-pill`, `food-btn` düğme olarak kullanılmaz (2026-11-12'de kaldırıldı); `raised` yalnız seçim kutuları/çipler için kaldı.
+- `.ck-sel`: seçili çip elektrik mavisi (#3d7bff). `aria-pressed` ile birlikte kullanılır.
+- `.ck-glass`: yarı saydam kutu (şerit, arama kutusu).
+
+## Ana sayfa (2026-11-11 iPad, 2026-11-12 iPhone da, "A · Zaman şeridi")
+
+Telefonda da iPad'de de ana sayfa tek bileşen `IpadHome.jsx`: baştan sona lacivert, ince çizgili paneller (`.iph-pn`), panel başlığı küçük büyük harf (`.iph-pt`), rakamlar Space Grotesk (`.num`). Hava ve takvim ayrı panellerde; aynı saat ekseni (06–24). Rüzgâr rengi `windColor` (hafif mavi, iyi yeşil, sert sarı, çok sert kırmızı). Telefonda (<48rem) paneller alt alta, pusula solda küçük, günler yana kayar, plan bloğunda yalnız başlama saati; sayfalar başlıktaki "Tümü"de. Hava kutusu ortak parça (`src/features/weather/WxPanel.jsx` HavaPanel, DayCell): ana sayfa ve hava sayfası aynı; ölçülen (istasyon) rüzgâr beyaz çizgi + nokta, tahmin mavi; geçmiş gün "ölçülen" etiketli.
 
 ## Önemli plan
 
@@ -79,13 +93,34 @@ Arama kutusu ve süzgeç çipleri lacivert üstte durur: kutu `ck-glass`, çip s
 
 ## Sayfaların durumu (2026-10-21)
 
-Yeni tasarımda olanlar: Ana sayfa, Giriş (`/login`; lacivert tam ekran, iki adım, 2026-10-22), Testler (`/settings/tests`; GitHub sonucu ve Hepsini çalıştır / Seçilenler lacivertte, testler özellik özellik), Hava (`/weather`), gün penceresi (DayPick), Antrenman günlüğü (`/training`), Antrenman günü (`/training/day`; sayaç `Countdown dark` ile lacivertte), Yarışlar (`/athletes/races`; sıradaki yarış lacivertte), Planlar (`/plans`; bölüm başına tek liste, gün başlığı, saat + kategori çizgisi), Sporcular (`/athletes`; arama ve sınıflar lacivertte), Yoklama (`/athletes/attendance`; 2026-10-22 baştan sona lacivert: son 7 gün kutuları, tek özet çizgisi, toplu işaret / sınıf / ay raporu / ses adları ⋯ penceresinde), Yarış detay (`/athletes/races/[id]`; sekmeler lacivertte büyük düğmeler, her birinde kısa durum) ve Medya (`/media`; Antrenman / Yarış, bölüm başına 4'lü ızgara, 2026-10-22), Alışveriş (`/shopping`; lacivertte Liste / Yemek, 2026-10-22) ve Velora Yemek (`/shopping?tab=yemek`, `/yemek/[id]`, `/yemek/siparis/[id]`; kod `src/yemek/ui`, fotoğraflı kartlar: kapak, ürün, yuvarlak mutfak), İngilizce (`/english`; Kelimeler / Cümleler ve sayılar lacivertte, altta Sıradaki kartı, 2026-10-22), Fitness › Sporcular (`/fitness`; baştan sona koyu `.fit-dark`, üstte salon fotoğrafı koyulaşarak kaybolur, sporcu kartında hafta halkası ve Pzt–Paz gün kutuları, 2026-10-23; Benim ve Beslenme henüz eski; ortak parçalar `src/features/fitness/FitDark.jsx`), sporcunun Fitness sayfası (`AthleteFitness`; aynı koyu görünüm, 2026-10-25), Yoklamam (`/my-attendance`; lacivert, devam yayı + günler, 2026-10-25), Notlar (`/notes`; arama ve süzgeç lacivertte, satırda notun rengi; not tam sayfa `/notes/[id]`, kendiliğinden kaydeder, az kullanılanlar ⋯ "Not ayarları"nda, 2026-10-23), Aidatlar (`/dues`; lacivertte bu ayın alınan / beklenen tutarı ve çubuk, Ödeme ekle / Banka, arama; borcu yoksa yeşil ✓ simgesi; aylık aidat, hatırlatma, banka ⋯ "Aidat ayarları"nda, 2026-10-23), Deniz trafiği (`/sea`; lacivertte harita ve Teknem / yenileme / Acil düğmeleri, altta durum durum gemiler, 2026-10-23), Kameralar (`/cams`; lacivertte yer düğmesi ve en yakın kamera büyük, altta 2 sütun kamera kartları ve Daha fazla, 2026-10-23). Asistan (2026-10-22, "düğmede"): tam ekran zemin yok, sayfa bulanıklaşır; alt çubuktaki düğme yerinde kalır, yanında iki adlı düğme; söylenen yazı düğmenin üstünde; mesaj, görev listesi ve kartlar kendi zeminleriyle.
+Yeni tasarımda olanlar: Ana sayfa, Giriş (`/login`; lacivert tam ekran, iki adım, 2026-10-22), Testler (`/settings/tests`; GitHub sonucu ve Hepsini çalıştır / Seçilenler lacivertte, testler özellik özellik), Hava (`/weather`), gün penceresi (DayPick), Antrenman günlüğü (`/training`), Antrenman günü (`/training/day`; 2026-11-02 açık zemin, başlıksız: sol üstte geri + Yoklama · Günlük, sayaç tek beyaz kartta, videolar yalnız Medya sekmesinde), Yarışlar (`/athletes/races`; sıradaki yarış lacivertte), Planlar (`/plans`; 2026-11-01 sade: lacivertte bugünün planları `ck-plan` kartında, süren/sıradaki büyük; altta Önemli çerçeveli kartlar ve Yaklaşan tek satırlık liste), Sporcular (`/athletes`; arama ve sınıflar lacivertte), Yoklama (`/athletes/attendance`; 2026-10-22 baştan sona lacivert: son 7 gün kutuları, tek özet çizgisi, toplu işaret / sınıf / ay raporu / ses adları ⋯ penceresinde), Yarış detay (`/athletes/races/[id]`; sekmeler lacivertte büyük düğmeler, her birinde kısa durum) ve Medya (`/media`; Antrenman / Yarış, bölüm başına 4'lü ızgara, 2026-10-22), Alışveriş (`/shopping`; lacivertte Liste / Yemek, 2026-10-22) ve Velora Yemek (`/shopping?tab=yemek`, `/yemek/[id]`, `/yemek/siparis/[id]`; kod `src/yemek/ui`, fotoğraflı kartlar: kapak, ürün, yuvarlak mutfak), İngilizce (`/english`; Kelimeler / Cümleler ve sayılar lacivertte, altta Sıradaki kartı, 2026-10-22), Fitness (`/fitness` bütün sekmeleri, sporcu sayfası, program düzenleme, antrenman ekranı `FitPlanView`; 2026-11-25 "Sahne": ana sayfayla aynı koyu dil, `src/features/fitness/fitSahne.css` `main.fs` renk değişkenlerini koyu/limon yapar, üst çubuk `FsHead`, turuncu antrenman kartı `.fs-hero`, başlıklar `.fs-c`), sporcunun Fitness sayfası (`AthleteFitness`; aynı koyu görünüm, 2026-10-25), Yoklamam (`/my-attendance`; lacivert, devam yayı + günler, 2026-10-25), Notlar (`/notes`; arama ve süzgeç lacivertte, satırda notun rengi; not tam sayfa `/notes/[id]`, kendiliğinden kaydeder, az kullanılanlar ⋯ "Not ayarları"nda, 2026-10-23), Aidatlar (`/dues`; lacivertte bu ayın alınan / beklenen tutarı ve çubuk, Ödeme ekle / Banka, arama; borcu yoksa yeşil ✓ simgesi; aylık aidat, hatırlatma, banka ⋯ "Aidat ayarları"nda, 2026-10-23), Deniz trafiği (`/sea`; lacivertte harita ve Teknem / yenileme / Acil düğmeleri, altta durum durum gemiler, 2026-10-23), Kameralar (`/cams`; lacivertte yer düğmesi ve en yakın kamera büyük, altta 2 sütun kamera kartları ve Daha fazla, 2026-10-23). Ayarlar (ana liste), Fişler ve faturalar (`/receipts`, `/invoices`; Fiş ekle / Fatura ekle lacivertte, Excel/Mail/Yazdır ⋯ içinde), Kişisel hesap (`/payments`), Görevler, Takvim (lacivertte ay ızgarası), Mesajlar listesi, Kişi grupları (`/people/[group]`), Etkinlikler, Envanter, Doğum günleri, Arşiv, Hesaplar (`/mail`) ve Instagram gönderileri (`/posts`; fotoğraf ızgarası) (2026-11-03). Çalışanlar (`/staff`), Ders programı (`/schedule`), Fitness Benim ve Beslenme, Sporcu detayı (`/athletes/[id]`), Yoklama raporu (2026-11-03 grup 4), Asistan (2026-10-22, "düğmede"): tam ekran zemin yok, sayfa bulanıklaşır; alt çubuktaki düğme yerinde kalır, yanında iki adlı düğme; söylenen yazı düğmenin üstünde; mesaj, görev listesi ve kartlar kendi zeminleriyle.
 
-Henüz eski tasarımda olanlar: archive, athletes alt sayfaları (sporcu detayı, yoklama raporu, yarış multimedya), birthdays, calendar, debts, events, fitness (Benim, Beslenme), inventory, invoices, mail, messages, payments, people, posts, receipts, schedule, settings, staff, tasks, wind.
+Antrenman iPad (2026-11-11, "A · Üç sütun"): `/training/day` geniş ekranda Start + rüzgâr | Sporcular (Bitiren kim?) | Sıralama, `.tw-*` (trainLive.css); `/training` üç sütun. Telefon (2026-11-12 "A · Alt düğme"): sabit Start kutusu, sekmeler Sporcular · Sıralama · Rüzgâr, altta sabit ana düğme şeridi (`.tp-*`).
+
+Henüz eski tasarımda olanlar: yarış multimedya (multimedya konusunun), wind (yalnız tam ekran harita).
 
 Sıra (Seyhun 2026-10-21, en çok kullandıkları): Antrenman ✓ · Yarışlar ✓ · Yarış detay ✓ · Planlar ✓ · Sporcular ✓ · Yoklama ✓. Sonrası Seyhun'a sorulacak.
 
 Bir sayfa geçince bu listeyi güncelle.
+
+## Yarış sayfaları: "yarış kart" (2026-11-07)
+
+Yarışlar listesi ve yarış detayı diğer sayfalar gibi lacivert kokpit kullanır (Seyhun 2026-11-07 "diğer sayfalardaki gibi olsun, başlık geri butonun yanında; iPad'de tıklamalar net, ortak butonlar"; örnek project-files/yaris-tasarim/sade/ust-*.png onaylı). Yayın sayfası ayrı (kendi sahibi).
+
+- Üst lacivert (`.ck`): yuvarlak geri (`BackButton`), yanında başlık (liste "Yarışlar", detayda yarışın adı), sağda `AddButton` (`+ Yarış`, ortak Ana düğme) ya da yuvarlak ⋯ (`btn btn-round`). Detayda altında tek satır: tarih · yer · kalan gün. Başlık bir kez yazılır.
+- Sıradaki yarış mavi kart (`ck-plan`, Planlar'daki Bugün kartı gibi); altında Canlı ekran (beyaz) · Yayın (cam) (`RaceGo`, ortak `.btn`).
+- Altı açık gri zemin, üstü yuvarlak (`.rzc-body`); satırlar beyaz kartta (`.rz-list`), satır 3.5rem (iPad'de net dokunma). Yan yana açılır satırlar (`Fold`) tek kart olur.
+- Az kullanılanlar altta açılır "Diğer"de (Geçmiş yarışlar, Yarış takvimi, Siteden ekle); detayda ek işler ⋯ içinde.
+- Sekmeler (`RaceSeg`) açık gövdenin başında; iPad yatayda solda lacivert, sağda gövde (`split`).
+- Renk: mavi yalnız iş, yeşil tamam, sarı eksik, kırmızı yaklaşan/geçersiz.
+- Parçalar `src/features/athletes/raceUi.jsx`, CSS globals.css "YARIŞ SADE" + "YARIŞ KART" (`main.rz.rzc`).
+
+## Ortak eylemler (2026-11-09, onaylı örnek "Ortak eylemler")
+
+- Ekle: lacivert üstte başlığın sağında `AddButton` ("+ Ürün"); pencere açar, ayrı sayfaya gitmez. Boşsa `Empty` (tek satır + ekle düğmesi).
+- Pencere: `Sheet`. Telefonda yarım açılır, yukarı çekince tam boy; iPad'de ortada. İş düğmeleri `footer={<SheetActions … />}`: solda Vazgeç, sağda ana iş; düzenlemede solda kırmızı yazı "Sil". Yazı varsa `dirty` verilir.
+- Seçim: `PickSheet` (iPad'de `anchor` ile düğmenin altında).
+- Silme: geri alınabiliyorsa soru yok, `toast(…, { action: { label: "Geri al" } })`. Geri alınamıyorsa (para, toplu, gönderme) `useConfirm`. `window.confirm` kullanılmaz.
 
 ## Hareket (animasyon)
 

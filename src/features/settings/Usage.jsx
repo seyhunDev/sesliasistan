@@ -115,6 +115,11 @@ export function UsageRow() {
                   Gemini ses tanıma: bu ay {stt.min.toLocaleString("tr-TR")} dk (≈ {usd(stt.cost)})
                 </p>
               )}
+              {tts.gem > 0 && (
+                <p className="mt-2 text-mut">
+                  Gemini doğal ses: bu ay {tts.gem.toLocaleString("tr-TR")} harf (≈ {usd(tts.gemCost)})
+                </p>
+              )}
               {tts.chars > 0 && (
                 <p className="mt-2 text-mut">
                   Google seslendirme: bu ay {tts.chars.toLocaleString("tr-TR")} harf {`(ücretsiz 1 milyonun %${tts.pct}'i)`}

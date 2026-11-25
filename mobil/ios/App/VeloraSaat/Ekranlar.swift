@@ -2,8 +2,8 @@ import SwiftUI
 import WatchKit
 
 // Okyanus renkleri (widget'lardaki gibi), siyah saat zemini
-let vurgu = Color(red: 0.055, green: 0.647, blue: 0.769) // #0ea5c4
-let acik = Color(red: 0.404, green: 0.91, blue: 0.976) // #67e8f9
+let vurgu = Color(red: 0.239, green: 0.482, blue: 1) // #3d7bff
+let acik = Color(red: 0.561, green: 0.702, blue: 1) // #8fb3ff
 let yesil = Color(red: 0.29, green: 0.87, blue: 0.5)
 let koyu = Color(white: 0.17)
 
@@ -71,7 +71,7 @@ private struct SayacSeridi: View {
         .foregroundStyle(.white)
         .padding(.horizontal, 14)
         .frame(height: 44)
-        .background(Capsule().fill(s != nil && s?.state != "idle" ? AnyShapeStyle(LinearGradient(colors: [Color(red: 0.043, green: 0.498, blue: 0.6), vurgu], startPoint: .leading, endPoint: .trailing)) : AnyShapeStyle(koyu)))
+        .background(Capsule().fill(s != nil && s?.state != "idle" ? AnyShapeStyle(LinearGradient(colors: [Color(red: 0.145, green: 0.388, blue: 0.922), vurgu], startPoint: .leading, endPoint: .trailing)) : AnyShapeStyle(koyu)))
     }
 }
 
@@ -264,35 +264,54 @@ struct Hap: ButtonStyle {
     }
 }
 
-// Logo "Ses halkası" (widget'taki Logo): 24 çubuk, ortada beyaz nokta; koyu lacivert kürenin içinde
-private struct LogoCubuklari: Shape {
+// Velora logosu (Seyhun 2026-11-03): beyaz dairenin içinden oyulmuş dolu V, üstü açık.
+// Ölçüler src/components/ui/AppLogo.jsx (MARK_DISC, MARK_V) ile aynı; işaret kutusu x 18…82, y 18…86 (64 × 68 birim).
+private struct LogoV: Shape {
     func path(in rect: CGRect) -> Path {
-        let boy: [CGFloat] = [60, 100, 140, 90, 120, 70, 150, 85]
-        let o = rect.width / 760
-        let m = CGPoint(x: rect.midX, y: rect.midY)
+        let o = rect.width / 64
+        func n(_ x: CGFloat, _ y: CGFloat) -> CGPoint { CGPoint(x: rect.minX + (x - 18) * o, y: rect.minY + (y - 18) * o) }
         var p = Path()
-        for i in 0..<24 {
-            let a = CGFloat(i) * .pi / 12
-            let (sn, cs) = (sin(a), -cos(a))
-            p.move(to: CGPoint(x: m.x + sn * 200 * o, y: m.y + cs * 200 * o))
-            p.addLine(to: CGPoint(x: m.x + sn * (200 + boy[i % 8]) * o, y: m.y + cs * (200 + boy[i % 8]) * o))
-        }
+        p.move(to: n(26, 19))
+        p.addLine(to: n(35.6, 19))
+        p.addCurve(to: n(50, 55.8), control1: n(42, 35), control2: n(46, 47.8))
+        p.addLine(to: n(59.6, 19))
+        p.addLine(to: n(74, 19))
+        p.addLine(to: n(56.4, 67))
+        p.addLine(to: n(43.6, 67))
+        p.closeSubpath()
         return p
     }
 }
 
+private struct LogoDaire: Shape {
+    func path(in rect: CGRect) -> Path {
+        let o = rect.width / 64
+        return Path(ellipseIn: CGRect(x: rect.minX + 2 * o, y: rect.minY + 4 * o, width: 60 * o, height: 60 * o))
+    }
+}
+
+// Zeminsiz işaret: daire beyaz, V boşluğundan arkası görünür
+private struct LogoIsaret: View {
+    var boy: CGFloat
+    var body: some View {
+        ZStack {
+            LogoDaire().fill(Color(red: 0.831, green: 1.0, blue: 0.227))
+            LogoV().fill(Color.black).blendMode(.destinationOut)
+        }
+        .compositingGroup()
+        .frame(width: boy, height: boy * 68 / 64)
+    }
+}
+
+// Saat ana ekranındaki logo: Sahne siyahı (#0f0f11) kürenin içinde limon işaret (canlı logo 2026-11-25)
 struct LogoKure: View {
     var body: some View {
         GeometryReader { g in
             let w = min(g.size.width, g.size.height)
             ZStack {
-                Circle().fill(RadialGradient(colors: [Color(red: 0.078, green: 0.22, blue: 0.353), Color(red: 0.043, green: 0.11, blue: 0.2)], center: .center, startRadius: 0, endRadius: w / 2))
-                Circle().stroke(Color(red: 0.12, green: 0.3, blue: 0.42), lineWidth: 1.5)
-                LogoCubuklari()
-                    .stroke(LinearGradient(colors: [vurgu, Color(red: 0.647, green: 0.953, blue: 0.988)], startPoint: .topLeading, endPoint: .bottomTrailing),
-                            style: StrokeStyle(lineWidth: w * 0.78 * 30 / 760, lineCap: .round))
-                    .frame(width: w * 0.78, height: w * 0.78)
-                Circle().fill(.white).frame(width: w * 0.78 * 128 / 760, height: w * 0.78 * 128 / 760)
+                Circle().fill(Color(red: 0.059, green: 0.059, blue: 0.067))
+                Circle().stroke(Color.white.opacity(0.14), lineWidth: 1.5)
+                LogoIsaret(boy: w * 0.56)
             }
             .frame(width: w, height: w)
         }

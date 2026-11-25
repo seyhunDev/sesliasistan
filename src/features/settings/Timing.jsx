@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useEffect, useState } from "react";
 import { useToast } from "@/components/ui/ToastProvider";
 import { devOn, engineName, liveOf, liveText, msText, secText, setDevOn, timingClear, timingList, timingSteps, timingText } from "@/lib/assistTiming";
@@ -9,6 +10,7 @@ import { Btn, Row } from "./ui";
 // Testler › Kayıtlar › Süre kaydı (bare: pencerede yalnız içerik, açık gelir): son 20 komutun adım adım süreleri (yalnız bu cihazda, lib/assistTiming.js).
 // Toplam: sustuğun (yazıda gönderdiğin) andan cevabın okunmaya başlamasına kadar; "Konuşman" toplama girmez.
 export function TimingRow({ bare }) {
+  const confirmAsk = useConfirm();
   const toast = useToast();
   const [open, setOpen] = useState(!!bare);
   const [list, setList] = useState([]);
@@ -28,8 +30,8 @@ export function TimingRow({ bare }) {
       toast("Kopyalanamadı");
     }
   };
-  const clear = () => {
-    if (!confirm("Süre kaydı silinsin mi?")) return;
+  const clear = async () => {
+    if (!(await confirmAsk({ title: "Süre kaydı silinsin mi?" }))) return;
     timingClear();
     setList([]);
   };

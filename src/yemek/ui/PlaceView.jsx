@@ -50,7 +50,7 @@ export function PlaceView({ orgId, uid, name, id }) {
     <main className="mx-auto max-w-[30rem] pb-[calc(var(--dome-h,var(--stage-h,6rem))+6rem)]">
       <section className="relative h-[13.5rem] overflow-hidden bg-deep">
         <Img src={place.cover} w={900} alt={place.name} className="absolute inset-0 size-full" />
-        <span className="absolute inset-0 bg-gradient-to-b from-[#0f2c45]/10 via-transparent to-[#0f2c45]" />
+        <span className="absolute inset-0 bg-gradient-to-b from-[#0b1a33]/10 via-transparent to-[#0b1a33]" />
         <div className="ck absolute left-5 top-[calc(0.75rem+env(safe-area-inset-top))]" style={{ background: "none" }}><BackButton href="/shopping?tab=yemek" /></div>
         <div className="absolute inset-x-5 bottom-3 text-white">
           <h1 className="truncate text-[1.5rem] font-bold tracking-[-.02em]">{place.name}</h1>

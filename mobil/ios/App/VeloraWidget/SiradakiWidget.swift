@@ -8,8 +8,9 @@ import WidgetKit
 struct VeloraGiris: TimelineEntry {
     let date: Date
     let v: WidgetVeri?
-    let r: GunRuzgar?
+    let r: GunRuzgar? // yarış günü yarışın yerinin rüzgârı
     var b = Bolumler()
+    var ev: GunRuzgar? = nil // yarış günü evin rüzgârı (tek satır)
 }
 
 // Büyük Velora widget'ında görünen bölümler (iOS 17+: widget'a basılı tut › Edit Widget)
@@ -49,14 +50,23 @@ struct VeloraSaglayici: TimelineProvider {
         if let t = e.v?.timer, t.paused != true { anlar.append(t.bitis.addingTimeInterval(3601)) }
         anlar += (e.v?.plans ?? []).compactMap { WidgetVeri.baslangic($0)?.addingTimeInterval(3601) }
         let son = now.addingTimeInterval(3600)
-        let entries = Set(anlar.filter { $0 >= now && $0 <= son }).sorted().map { VeloraGiris(date: $0, v: e.v, r: e.r, b: e.b) }
+        let entries = Set(anlar.filter { $0 >= now && $0 <= son }).sorted().map { VeloraGiris(date: $0, v: e.v, r: e.r, b: e.b, ev: e.ev) }
         return Timeline(entries: entries, policy: .after(now.addingTimeInterval(ruzgar ? 1800 : 3600)))
     }
 
     func giris(_ now: Date) async -> VeloraGiris {
         let v = WidgetVeri.oku()
-        let r = ruzgar ? await RuzgarKaynak.al(lat: v?.lat ?? 39.0717, lon: v?.lon ?? 26.8886) : nil
-        return VeloraGiris(date: now, v: v, r: r)
+        guard ruzgar else { return VeloraGiris(date: now, v: v, r: nil) }
+        let lat = v?.lat ?? 39.0717, lon = v?.lon ?? 26.8886
+        // Yarış günü: büyük rüzgâr yarışın yerinin, ev ayrıca; yarış yerininki gelmezse eskisi gibi ev
+        if let y = v?.yaris(now) {
+            async let yr = RuzgarKaynak.al(lat: y.lat, lon: y.lon)
+            async let er = RuzgarKaynak.al(lat: lat, lon: lon)
+            let (a, b) = await (yr, er)
+            if let a { return VeloraGiris(date: now, v: v, r: a, ev: b) }
+            return VeloraGiris(date: now, v: v, r: b)
+        }
+        return VeloraGiris(date: now, v: v, r: await RuzgarKaynak.al(lat: lat, lon: lon))
     }
 }
 

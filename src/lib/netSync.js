@@ -19,3 +19,5 @@ export const OFFLINE_GRACE = 2500;
 // İnternet varken bekleyen kayıt şeridi: bu kadar görünür, sonra kapanır; en çok bu aralıkta bir kez
 export const FLASH_MS = 4000;
 export const FLASH_GAP = 10 * 60e3;
+// Uygulama en az bu kadar arkada kaldıysa öne gelince Firestore bağlantısı yenilenir (netWatch.js watchReconnect)
+export const RESUME_KICK_MS = 15e3;

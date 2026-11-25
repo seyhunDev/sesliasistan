@@ -4,10 +4,63 @@ import { useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Label, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
+import { classesOf } from "@/lib/sharedRace";
 
 const day = (s) => new Date(`${s}T12:00:00`);
 const short = (s) => day(s).toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short" });
 const tel = (p) => `tel:${String(p).replace(/[^\d+]/g, "")}`;
+
+// Talimat satırları (Seyhun 2026-11-09 "üç yol", yeni yarış sade): kart, ikon, açıklama yok; "Dosya seç" ve "Metin yapıştır" iki düz satır
+export function NoticeRows({ busy, onFile, onText }) {
+  const input = useRef(null);
+  const [paste, setPaste] = useState(false);
+  const [text, setText] = useState("");
+  return (
+    <div className="ra-rows">
+      {busy ? (
+        <p className="ra-r ra-wait">Talimat okunuyor…</p>
+      ) : (
+        <>
+          <button type="button" onClick={() => input.current?.click()} data-press="row" className="ra-r ra-go">
+            <b>Dosya seç</b>
+            <span aria-hidden="true">›</span>
+          </button>
+          <button type="button" onClick={() => setPaste(true)} data-press="row" className="ra-r ra-go">
+            <b>Metin yapıştır</b>
+            <span aria-hidden="true">›</span>
+          </button>
+        </>
+      )}
+      <input
+        ref={input}
+        type="file"
+        className="hidden"
+        onChange={(e) => {
+          const f = e.target.files?.[0];
+          e.target.value = "";
+          if (f) onFile(f);
+        }}
+      />
+      <Sheet open={paste} onClose={() => setPaste(false)} title="Talimat metni">
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={12}
+          aria-label="Talimat metni"
+          className="block w-full resize-none rounded-2xl bg-bg px-4 py-3 text-[0.9375rem] leading-relaxed outline-none"
+        />
+        <button
+          type="button"
+          disabled={text.trim().length < 40}
+          onClick={() => (setPaste(false), onText(text), setText(""))}
+          className="sticky bottom-0 mt-3 h-12 w-full rounded-xl bg-acc text-[0.9375rem] font-semibold text-white disabled:opacity-50"
+        >
+          Talimatı oku
+        </button>
+      </Sheet>
+    </div>
+  );
+}
 
 // Talimat yükleme kartı: dosya (PDF, fotoğraf; uzantısız olsa da) ya da kopyalanan metin
 export function NoticeUpload({ busy, onFile, onText, title = "Yarış talimatını yükle", sub = "PDF, fotoğraf ya da metin. Ad, tarih, yer, program, son tarihler, ücret ve oteller kendiliğinden dolar." }) {
@@ -88,11 +141,11 @@ export function NoticeDetails({ n }) {
   return (
     <>
       <Label>TALİMAT BİLGİLERİ</Label>
-      {(n.summary || n.organizer || n.venue || n.classes?.length > 0) && (
+      {(n.summary || n.organizer || n.venue || classesOf(n).length > 0) && (
         <>
           <div className={`${card} space-y-1.5 px-4 py-3 text-[0.875rem]`}>
             {n.summary && <p className="leading-relaxed">{n.summary}</p>}
-            {[["Düzenleyen", n.organizer], ["Yer", n.venue], ["Sınıflar", n.classes?.join(", ")]].map(
+            {[["Düzenleyen", n.organizer], ["Yer", n.venue], ["Sınıflar", classesOf(n).join(", ")]].map(
               ([k, v]) =>
                 v && (
                   <p key={k} className="flex gap-2">

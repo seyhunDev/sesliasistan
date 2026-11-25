@@ -28,5 +28,5 @@ export const adminAuth = () => getAuth(app());
 export async function profileOf(uid) {
   const snap = await adminDb().collection("users").doc(uid).get();
   const d = snap.exists ? snap.data() : {};
-  return { role: d.role || "owner", orgId: d.orgId || uid, name: d.name || "", devices: Object.keys(d.push || {}) };
+  return { role: d.role || "owner", kind: d.kind || "", orgId: d.orgId || uid, name: d.name || "", devices: Object.keys(d.push || {}) };
 }

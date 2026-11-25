@@ -27,6 +27,7 @@ const NO_SPEECH = "Ses duyulmadı, tekrar dene.";
 const QUIET_PEAK = 0.04; // ham ses tepesi bunun altındaysa konuşma yok sayılır (oda gürültüsü; konuşma genelde 0,1 üstü)
 const MAX_SEC = 90; // güvenlik sınırı
 const FINAL_WAIT = 700; // durdurunca son sonucu en fazla bu kadar bekle (ms)
+const STOP_TAIL = 350; // bırakınca kayıt bu kadar daha sürer (ms): son hece kesilmesin
 const VOICE_LVL = 0.03; // kayıt yolunda "ses var" alt eşiği (ortam gürültüsüne göre yükselir, vad.js)
 // Konuşma bitişi (1,6 sn; kısa konuşmada 2 sn) vad.js'te: END_SILENCE, speechEnded
 
@@ -62,9 +63,10 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
   const R = useRef({ status: "idle", sid: 0 });
   const cb = useRef({});
   cb.current = { onFinal, onFail, onMiss, names, terms, hold, preferServer, onWebFail, live };
-  const fail = (m) => {
+  // retry: çeviri olmayan kayıt saklandıysa aynı sesi yeniden gönderen işlev (bildirimdeki "Tekrar dene")
+  const fail = (m, retry) => {
     if (!R.current.silent) {
-      cb.current.onFail?.(String(m).replace(/ \[[^\]]*\]$/, "")); // otomatik başlatılan dinlemede hata sessiz geçilir
+      cb.current.onFail?.(String(m).replace(/ \[[^\]]*\]$/, ""), retry); // otomatik başlatılan dinlemede hata sessiz geçilir
       timingError(m); // asistan raporuna girer, ayrıntısıyla (lib/assistReport.js)
     }
     cb.current.onMiss?.();
@@ -81,6 +83,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     clearInterval(s.timer);
     s.timer = null;
     clearTimeout(s.finalTimer);
+    clearTimeout(s.tailTimer);
     s.gl?.end(); // canlı yazı hattı: son kelimeler gelsin diye kısa süre açık kalır, sonra kapanır
     s.gl = null;
     try { s.proc?.disconnect(); } catch {}
@@ -458,7 +461,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
           await new Promise((r) => setTimeout(r, 300));
           stream = await ask();
         }
-        if (cb.current.hold) held = stream;
+        if (cb.current.hold) holdMic(stream);
       }
       savePermission("microphone", "granted");
     } catch (e) {
@@ -501,7 +504,8 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
         s.rate = ctx.sampleRate;
         proc.onaudioprocess = (e) => {
           e.outputBuffer.getChannelData(0).fill(0); // hoparlöre ses gitmez
-          if (!alive() || s.status !== "listening") return;
+          // Bırakınca kayıt STOP_TAIL kadar sürer ("transcribing"): son hecenin ham sesi de toplansın
+          if (!alive() || s.status === "idle") return;
           const d = new Float32Array(e.inputBuffer.getChannelData(0));
           s.gl?.push(d, s.rate);
           s.pcm.push(d);
@@ -560,68 +564,62 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
           return;
         }
       }
-      try {
-        // WAV'a çevir (her sağlayıcı tanır); olmazsa ham sesten, o da olmazsa özgün kaydı gönder
-        if (upload === blob) {
-          try {
-            upload = await toWav16k(blob);
-            name = "kayit.wav";
-          } catch {
-            const w = await fromPcm().catch(() => null);
-            if (w) (upload = w), (name = "kayit.wav"), (raw = true);
-          }
-        }
-        if (!alive()) return;
-        const fd = new FormData();
-        fd.append("audio", upload, name);
-        if (cb.current.names?.length) fd.append("names", cb.current.names.join(","));
-        if (cb.current.terms?.length) fd.append("terms", cb.current.terms.join("|"));
-        speechMark("upload");
-        // En çok 15 sn beklenir (zayıf bağlantıda "Çeviriyorum" sonsuz kalmasın; denetim A8). Servis hızlıca bir anlık
-        // hata verdiyse (kota ya da zaman aşımı değil) kalan sürede bir kez daha denenir (denetim A3)
-        const t0 = Date.now();
-        let res = await authFetch("/api/transcribe", { method: "POST", body: fd, timeout: 15000 });
-        if (!res.ok && res.status >= 500 && res.status !== 502 && res.status !== 504 && Date.now() - t0 < 4000 && alive()) res = await authFetch("/api/transcribe", { method: "POST", body: fd, timeout: 15000 - (Date.now() - t0) });
-        const data = await jsonOf(res);
-        if (!alive()) return;
-        if (!res.ok) throw new Error(data.error || "Ses yazıya çevrilemedi, tekrar dene.");
-        let text = bestText(data.text, s.partial);
-        // Boş çeviri: kayıt (MediaRecorder) sessiz gelmiş olabilir (iPhone'da sesli cevaptan sonra; Seyhun 2026-10-21:
-        // "sesli cevaptan sonra mikrofona basınca ses anlaşılamadı"). Aynı anda toplanan ham sesle bir kez daha denenir
-        const lv = pcmLevel(s);
-        let again = "";
-        if (!text && !raw && lv.peak > 0.01 && alive()) {
+      // WAV'a çevir (her sağlayıcı tanır); olmazsa ham sesten, o da olmazsa özgün kayıt gönderilir
+      if (upload === blob) {
+        try {
+          upload = await toWav16k(blob);
+          name = "kayit.wav";
+        } catch {
           const w = await fromPcm().catch(() => null);
-          if (w && alive()) {
-            const fd2 = new FormData();
-            fd2.append("audio", w, "kayit.wav");
-            if (cb.current.names?.length) fd2.append("names", cb.current.names.join(","));
-            if (cb.current.terms?.length) fd2.append("terms", cb.current.terms.join("|"));
-            const r2 = await authFetch("/api/transcribe", { method: "POST", body: fd2, timeout: 12000 }).catch(() => null);
-            const d2 = r2?.ok ? await jsonOf(r2) : {};
-            text = bestText(d2.text, "");
-            again = text ? "ham sesle bulundu" : "ham sesle de boş";
-          }
+          if (w) (upload = w), (name = "kayit.wav"), (raw = true);
         }
-        if (!alive()) return;
-        finish();
-        speechDiag({ sec: Math.round((s.pcmLen / (s.rate || 16000)) * 10) / 10, kb: Math.round(blob.size / 1024), peak: lv.peak, rms: lv.rms, again, by: data.provider || "" });
-        if (text) {
-          speechMark("text");
-          cb.current.onFinal?.(text, mode);
-        } else fail(`Ses anlaşılamadı, tekrar dene.${diagNote(lv, blob.size, again)}`);
+      }
+      if (!alive()) return;
+      // Kayıt çeviri başarılı olana kadar bellekte tutulur (kept): çeviri olmazsa aynı ses yeniden gönderilir, yeni kayıt gerekmez
+      const job = { audio: upload, name, names: cb.current.names, terms: cb.current.terms, mode, at: Date.now(), busy: false };
+      speechMark("upload");
+      let data;
+      try {
+        data = await sendAudio(job, alive);
       } catch (e) {
         if (!alive()) return;
         finish();
-        // Son çeviri olmadıysa dinlerken gösterilen yazıyla devam
-        if (s.partial) cb.current.onFinal?.(s.partial, mode);
-        else fail(e.message);
+        // Çeviri olmadı: dinlerken gösterilen yazıyla devam (söylenen kaybolmaz); o da yoksa ses saklanır, "Tekrar dene"
+        if (s.partial && !s.delivered) {
+          s.delivered = true;
+          cb.current.onFinal?.(s.partial, mode);
+        } else keepAndFail(job, e.message);
+        return;
       }
+      if (!alive()) return;
+      let text = bestText(data.text, s.partial);
+      // Boş çeviri: kayıt (MediaRecorder) sessiz gelmiş olabilir (iPhone'da sesli cevaptan sonra; Seyhun 2026-10-21:
+      // "sesli cevaptan sonra mikrofona basınca ses anlaşılamadı"). Aynı anda toplanan ham sesle bir kez daha denenir
+      const lv = pcmLevel(s);
+      let again = "";
+      if (!text && !raw && lv.peak > 0.01 && alive()) {
+        const w = await fromPcm().catch(() => null);
+        if (w && alive()) {
+          const d2 = await sendAudio({ ...job, audio: w, name: "kayit.wav" }, alive, 1).catch(() => ({}));
+          text = bestText(d2.text, "");
+          again = text ? "ham sesle bulundu" : "ham sesle de boş";
+        }
+      }
+      if (!alive()) return;
+      finish();
+      speechDiag({ sec: Math.round((s.pcmLen / (s.rate || 16000)) * 10) / 10, kb: Math.round(blob.size / 1024), peak: lv.peak, rms: lv.rms, again, by: data.provider || "" });
+      if (s.delivered) return; // aynı kayıt bir kez teslim edilir
+      if (text) {
+        s.delivered = true;
+        dropKept();
+        speechMark("text");
+        cb.current.onFinal?.(text, mode);
+      } else fail(`Ses anlaşılamadı, tekrar dene.${diagNote(lv, blob.size, again)}`);
     };
     s.early = s.stopReq;
     mr.start(1000); // saniyede bir parça: ham ses toplanamazsa dinlerken de yazıya çevrilebilsin (liveWhole)
-    s.micAt = Date.now(); // ses gelip gelmediği bundan MIC_CHECK_MS sonra denetlenir (ticker)
-    if (s.stopReq) mr.stop(); // parmak izin ekranı sırasında kalktıysa
+    s.micAt = nowMs(); // ses gelip gelmediği bundan MIC_CHECK_MS sonra denetlenir (ticker)
+    if (s.stopReq) stopTail(s, mr); // parmak izin ekranı sırasında kalktıysa
   };
 
   const cancelNow = () => {
@@ -727,11 +725,8 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     // Kullanıcı kendisi bitirdi (↑): kendiliğinden açılmış dinleme olsa da kayıt sunucuya gider (ölçer sesi kaçırmış olabilir)
     if (byUser) s.auto = false;
     const m = mode === "edit" ? "edit" : "send";
-    if (Date.now() - s.t0 < 600 && !s.text) {
-      cancelNow();
-      fail("Çok kısa, tekrar dene.");
-      return;
-    }
+    // Kısa konuşma atılmaz ("evet", "gönder"): kayıt yolunda sessizlik süzgeci ve sunucu, telefonun tanımasında son sonuç
+    // karar verir (önceden 0,6 sn'den kısa dinleme "Çok kısa" diye atılıyordu; mikrofonun açılma süresi de buna giriyordu)
     s.mode = m;
     speechMark("voiceEnd", s.lastSpeech || 0);
     speechMark("stop");
@@ -740,7 +735,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
       const sid = s.sid;
       try { s.rec?.stop(); } catch {}
       s.finalTimer = setTimeout(() => deliver(sid, m), FINAL_WAIT); // son sonuç gecikirse eldeki metinle devam
-    } else if (s.mr && s.mr.state !== "inactive") s.mr.stop();
+    } else if (s.mr && s.mr.state !== "inactive") stopTail(s, s.mr);
     else s.stopReq = true;
   };
   const stop = useCallback((mode = "send") => stopNow(mode, true), []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -756,9 +751,23 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
     return s.status === "transcribing" || (s.status === "listening" && (!!s.voiceSeen || !!s.text));
   }, []);
 
+  // Saklanan kaydı yeniden gönder (çeviri olmadıysa bildirimdeki "Tekrar dene"): yeni kayıt başlatılmaz, aynı ses gider
+  const retryKept = () => retryJob({ R, setSt, cb, fail, again: retryKept });
+  const keepAndFail = (job, msg) => {
+    keepJob(job);
+    fail(msg, retryKept);
+  };
+
   useEffect(() => {
     setProvider(pickProvider());
+    // Uygulama arkaya geçerken (ekran kilidi, başka uygulama) dinleme sürüyorsa söylenen gönderilir; iPhone arkada
+    // mikrofonu kapatıyor, kayıt yarıda kalıp kayboluyordu
+    const onHide = () => {
+      if (document.visibilityState === "hidden" && R.current.status === "listening") stopRef.current?.("send", true);
+    };
+    document.addEventListener("visibilitychange", onHide);
     return () => {
+      document.removeEventListener("visibilitychange", onHide);
       cancelNow();
       if (cb.current.hold) releaseMic();
     };
@@ -768,6 +777,7 @@ export function useSpeech({ onFinal, onFail, onMiss, lang = "tr-TR", names, term
   const release = useCallback(() => {
     if (R.current.status !== "idle") cancelNow();
     releaseMic();
+    dropKept(); // asistan kapandı: saklanan ses bellekten silinir
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { provider, status, finalText, interim, level, elapsed, remaining, start, stop, cancel, setAutoStop, talking, release };
@@ -791,10 +801,114 @@ function pcmLevel(s) {
 // Hata yazısı sade kalır; ayrıntı yalnız rapora gider (timingError metni köşeli parantezden sonrası)
 const diagNote = (lv, bytes, again) => ` [kayıt ${Math.round(bytes / 1024)} KB, ham ses tepe ${lv.peak}, ortalama ${lv.rms}${again ? `, ${again}` : ""}]`;
 
+// Bırakınca kayıt STOP_TAIL kadar sürer, sonra durur (MediaRecorder son parçayı onstop'tan önce verir)
+function stopTail(s, mr) {
+  const sid = s.sid;
+  clearTimeout(s.tailTimer);
+  s.tailTimer = setTimeout(() => {
+    if (s.sid !== sid) return;
+    try {
+      if (mr.state !== "inactive") mr.stop();
+    } catch {}
+  }, STOP_TAIL);
+}
+
+// Çeviri isteği. İlk deneme olmazsa (bağlantı, zaman aşımı, sunucu hatası) internet beklenir ve aynı ses bir kez daha
+// gönderilir; kota/izin hatası ya da geçersiz istekte yeniden denenmez. tries: deneme sayısı
+const TRY_MS = [15000, 12000];
+const ONLINE_WAIT = 20000;
+const KEEP_MS = 10 * 60 * 1000; // çevrilemeyen ses en çok bu kadar bellekte kalır (diske yazılmaz)
+let kept = null; // çevrilemeyen son kayıt: { audio, name, names, terms, mode, at, busy }
+const dropKept = () => {
+  kept = null;
+};
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const waitOnline = (ms) =>
+  typeof navigator === "undefined" || navigator.onLine !== false
+    ? Promise.resolve()
+    : new Promise((r) => {
+        const t = setTimeout(done, ms);
+        function done() {
+          clearTimeout(t);
+          window.removeEventListener("online", done);
+          r();
+        }
+        window.addEventListener("online", done);
+      });
+const keepJob = (job) => {
+  kept = job;
+};
+// Saklanan kaydı yeniden gönder: x = { R, setSt, cb, fail, again } (useSpeech). Aynı kayıt aynı anda iki kez gönderilmez
+function retryJob(x) {
+  const s = x.R.current;
+  const job = kept;
+  if (!job || job.busy || Date.now() - job.at > KEEP_MS) {
+    kept = null;
+    return;
+  }
+  if (s.status !== "idle") return;
+  job.busy = true;
+  s.sid += 1;
+  const sid = s.sid;
+  const alive = () => x.R.current.sid === sid;
+  s.silent = false;
+  x.setSt("transcribing");
+  speechMark("upload");
+  sendAudio(job, alive)
+    .then((data) => {
+      if (!alive()) return;
+      x.setSt("idle");
+      kept = null;
+      const text = String(data.text || "").trim();
+      if (text) {
+        speechMark("text");
+        x.cb.current.onFinal?.(text, job.mode);
+      } else x.fail("Ses anlaşılamadı, tekrar dene.");
+    })
+    .catch((e) => {
+      if (!alive()) return;
+      x.setSt("idle");
+      job.busy = false;
+      x.fail(e.message, x.again);
+    })
+    .finally(() => {
+      job.busy = false;
+    });
+}
+async function sendAudio(job, alive = () => true, tries = TRY_MS.length) {
+  let last;
+  for (let i = 0; i < tries; i++) {
+    if (i) {
+      await waitOnline(ONLINE_WAIT);
+      await sleep(1000);
+      if (!alive()) break;
+    }
+    const fd = new FormData();
+    fd.append("audio", job.audio, job.name);
+    if (job.names?.length) fd.append("names", job.names.join(","));
+    if (job.terms?.length) fd.append("terms", job.terms.join("|"));
+    try {
+      const res = await authFetch("/api/transcribe", { method: "POST", body: fd, timeout: TRY_MS.at(i) || 12000 });
+      const data = await jsonOf(res);
+      if (res.ok) return data;
+      last = new Error(data.error || "Ses yazıya çevrilemedi, tekrar dene.");
+      if ([400, 401, 403, 413, 501].includes(res.status) || /kota/i.test(data.error || "")) break;
+    } catch (e) {
+      last = e;
+    }
+    if (!alive()) break;
+  }
+  throw last || new Error("Ses yazıya çevrilemedi, tekrar dene.");
+}
+
 // Turlar arasında tutulan mikrofon (hold). Tek bir asistan olduğu için modül düzeyinde
 let held = null;
 const stopStream = (st) => st?.getTracks().forEach((t) => t.stop());
 const liveStream = (st) => !!st && st.getAudioTracks().some((t) => t.readyState === "live" && t.enabled && !t.muted);
+const holdMic = (st) => {
+  held = st;
+};
+const nowMs = () => Date.now();
 export function releaseMic() {
   stopStream(held);
   held = null;

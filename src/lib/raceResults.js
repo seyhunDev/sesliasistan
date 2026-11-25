@@ -1,9 +1,9 @@
 // Yarış sonuçları: yarışın results alanı { fleet: tekne sayısı, rows: { sporcuId: { place, note, … } }, files: [künye] }.
 // Satırda sonuç belgesinden gelenler de durur (resultSheet.js): cls sınıf, cat kategori (Senior/Junior/Bambino),
-// place/n genel sıra ve sınıftaki sporcu sayısı, cp/cn Junior/Bambino sırası, gp/gn kızlar sırası, f belgenin kimliği.
+// grp/fp/fn final grubu (Altın/Gümüş/Bronz) ve gruptaki sırası, place/n genel sıra ve sınıftaki sporcu sayısı, cp/cn Junior/Bambino sırası, gp/gn kızlar sırası, f belgenin kimliği.
 // files: yüklenen sonuç PDF'leri { id, name, size, parts, at, path, url } (noticeFile.js; yeniler Storage'da, eskiler Firestore'da parçalı).
 // Sporcu kartında yarış geçmişi ve Instagram "sonuç" gönderisi buradan beslenir (saf fonksiyonlar, test edilir).
-import { resultLine } from "./resultSheet";
+import { GROUPS, resultLine } from "./resultSheet";
 import { storedOf } from "./storedFile";
 const int = (v, max) => {
   const n = Math.round(Number(String(v ?? "").replace(/[^\d]/g, "")));
@@ -22,8 +22,16 @@ export function cleanResults(v) {
     const row = { place, note };
     const cls = S(x?.cls, 30);
     if (cls) {
-      Object.assign(row, { cls, cat: ["Senior", "Junior", "Bambino"].includes(x?.cat) ? x.cat : "", n: int(x?.n, 1000), cp: int(x?.cp, 500), cn: int(x?.cn, 1000), gp: int(x?.gp, 500), gn: int(x?.gn, 1000) });
+      Object.assign(row, { cls, cat: ["Senior", "Junior", "Bambino"].includes(x?.cat) ? x.cat : "", n: int(x?.n, 1000), cp: int(x?.cp, 500), cn: int(x?.cn, 1000), gp: int(x?.gp, 500), gn: int(x?.gn, 1000), jp: int(x?.jp, 500), jn: int(x?.jn, 1000) });
+      if (GROUPS.includes(x?.grp) && int(x?.fp, 500)) Object.assign(row, { grp: x.grp, fp: int(x.fp, 500), fn: int(x?.fn, 1000) });
       if (/^[\w-]{1,40}$/.test(x?.f || "")) row.f = x.f;
+      // fl renk grubu, r yarış yarış puanları, rh sütun adları (Y1, Q2; resultSheet.raceLine)
+      if (["Sarı", "Mavi", "Kırmızı", "Yeşil", "Pembe", "Turuncu", "Mor", "Beyaz"].includes(x?.fl)) row.fl = x.fl;
+      if (x?.pts !== "" && x?.pts != null && Number.isFinite(Number(x.pts)) && Number(x.pts) >= 0) row.pts = Math.round(Number(x.pts) * 10) / 10;
+      if (Array.isArray(x?.r) && x.r.length) {
+        row.r = x.r.slice(0, 20).map((v) => S(v, 8));
+        if (Array.isArray(x?.rh) && x.rh.length) row.rh = x.rh.slice(0, 20).map((v) => S(v, 6));
+      }
     }
     rows[id] = row;
   }
@@ -33,7 +41,10 @@ export function cleanResults(v) {
     .slice(0, 8)
     .map((f) => ({ id: f.id, name: S(f.name, 120) || "sonuç.pdf", size: Number(f.size) || 0, parts: Math.max(1, Number(f.parts) || 1), at: S(f.at, 10), ...storedOf(f) }));
   if (!Object.keys(rows).length && !fleet && !files.length) return null;
-  return files.length ? { fleet, rows, files } : { fleet, rows };
+  // day: sonucun son yazıldığı gün; prev: önceki günün sıraları (raceDay.js stampResults; yarış günü "dünden fark")
+  const day = /^\d{4}-\d{2}-\d{2}$/.test(v.day || "") ? v.day : "";
+  const prev = Object.fromEntries(Object.entries(v.prev && typeof v.prev === "object" ? v.prev : {}).filter(([id]) => /^[\w-]{1,80}$/.test(id)).slice(0, 60).map(([id, p]) => [id, int(p, 500)]).filter(([, p]) => p));
+  return { fleet, rows, ...(files.length ? { files } : {}), ...(day ? { day } : {}), ...(Object.keys(prev).length ? { prev } : {}) };
 }
 
 // "3. / 24" ya da "3." ya da not
@@ -62,9 +73,23 @@ export function withResults(list, ids, res) {
     .map((a, i) => {
       const x = res?.rows?.[ids[i]];
       // r: sıralar (Instagram sonuç açıklaması kategori kategori yazar)
-      const r = x?.place ? { cls: x.cls || "", cat: x.cat || "", place: x.place, n: x.n || "", cp: x.cp || "", cn: x.cn || "", gp: x.gp || "", gn: x.gn || "" } : null;
+      const r = x?.place ? { cls: x.cls || "", cat: x.cat || "", place: x.place, n: x.n || "", cp: x.cp || "", cn: x.cn || "", gp: x.gp || "", gn: x.gn || "", ...(x.grp ? { grp: x.grp, fp: x.fp || "", fn: x.fn || "" } : {}) } : null;
       return { ...a, res: placeText(res, ids[i]), ...(r ? { r } : {}), _p: x?.place || 999 };
     })
     .sort((a, b) => a._p - b._p)
     .map(({ _p, ...a }) => a);
+}
+
+// Başka cihazdan gelen sonuç değişikliği (açık yarış sayfası yarışı dinler, races.js watchRace; Seyhun 2026-11-10): sonuçlar farklıysa
+// { results, athleteIds } (sporcular birleşir, sayfada yeni eklenen silinmez), aynıysa null
+export function remoteResults(cur, got) {
+  if (!cur || !got || JSON.stringify(cur.results || null) === JSON.stringify(got.results || null)) return null;
+  return { results: got.results, athleteIds: [...new Set([...(cur.athleteIds || []), ...(got.athleteIds || [])])] };
+}
+
+// Paylaş › Velora ile gelen sonuçta seçili gelen yarış (features/ios/SharedResults.jsx): bugün süren; yoksa en son başlamış olan;
+// o da yoksa en yakın yaklaşan. list yeniden eskiye sıralı (races.js loadRaces)
+export function defaultRace(list, today) {
+  const on = list.find((r) => r.startDate && r.startDate <= today && today <= (r.endDate || r.startDate));
+  return on || list.find((r) => r.startDate && r.startDate <= today) || list.filter((r) => r.startDate > today).at(-1) || list[0] || null;
 }

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Icon } from "@/components/ui/Icon";
+import { ListHead } from "@/components/ui/Row";
 import { useData } from "@/features/data/DataProvider";
 import { TLk, totalOf } from "@/lib/receipts";
 
@@ -78,26 +79,23 @@ export function PayBox({ r }) {
   );
 }
 
-// Ana hesap: fiş listesinin üstünde ödeme bekleyenler (tek dokunuşla "Öde")
+// Ana hesap: fiş listesinin üstünde ödeme bekleyenler (tek dokunuşla "Öde"); yeni tasarım (2026-11-03): başlık listenin dışında, satırlar ince çizgili kartta
 export function PendingPayments() {
   const { receipts, isStaff, nameOf } = useData();
   const list = receipts.filter((r) => r.payStatus === "pending").sort((a, b) => (a.date || "").localeCompare(b.date || ""));
   if (isStaff || !list.length) return null;
   const sum = list.reduce((a, r) => a + totalOf(r), 0);
   return (
-    <section className="mt-3 overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)]">
-      <div className="flex items-center justify-between bg-amber-50 px-4 py-2.5 text-amber-900">
-        <b className="text-[0.875rem] font-semibold">Ödeme bekleyen · {list.length}</b>
-        <b className="text-[0.875rem] font-semibold tabular-nums">{TLk(sum)}</b>
-      </div>
-      <ul className="divide-y divide-line">
+    <section>
+      <ListHead title={`Ödeme bekleyen · ${TLk(sum)}`} count={list.length} />
+      <ul className="divide-y divide-line overflow-hidden rounded-[1.25rem] border border-line bg-card">
         {list.map((r) => (
-          <li key={r.id} className="flex items-center gap-3 px-4 py-2.5">
-            <Link href={`/receipts/${r.id}`} className="min-w-0 flex-1 active:opacity-60">
-              <b className="block truncate text-[0.9375rem] font-medium">{r.merchant || "İsimsiz"}</b>
+          <li key={r.id} className="flex min-h-[3.5rem] items-center gap-3 px-3.5 py-2.5">
+            <Link href={`/receipts/${r.id}`} data-press="row" className="min-w-0 flex-1">
+              <b className="block truncate text-[0.9375rem] font-semibold">{r.merchant || "İsimsiz"}</b>
               <small className="block truncate text-[0.8125rem] text-mut">{[r.src === "garanti" ? "Garanti" : nameOf(r.createdByUid), r.scope === "personal" && "Kişisel", when(r.date)].filter(Boolean).join(" · ")}</small>
             </Link>
-            <span className="shrink-0 text-[0.9375rem] font-semibold tabular-nums">{TLk(totalOf(r))}</span>
+            <span className="shrink-0 text-[0.9375rem] font-bold tabular-nums">{TLk(totalOf(r))}</span>
             <PayButtons id={r.id} small personal={r.scope === "personal"} />
           </li>
         ))}

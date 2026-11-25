@@ -19,7 +19,9 @@ group("Uydurma metin ayıklama")([
 const SP = (want) => ({ desc: want, fn: speechText, ok: (r) => r === want });
 group("Sesli okunuş")([
   ["Yarın saat 14:30'da antrenman var 🚤", SP("Yarın saat on dört otuzda antrenman var")],
-  ["Rüzgar 12 kt, 18°C.", SP("Rüzgar 12 knot, 18 derece.")],
+  ["Rüzgar 12 kt, 18°C.", SP("Rüzgar 12 not, 18 derece.")],
+  ["rüzgâr 2–4 kn, yarın kaç knot? 15 knotluk", SP("rüzgâr 2 ile 4 not, yarın kaç not? 15 notluk")],
+  ["Knot ve 12 knots", SP("not ve 12 not")],
   ["Foça yarışı 7-11 Ekim'de.", SP("Foça yarışı 7 ile 11 Ekim'de.")],
   ["Otel kişi başı 3.500 TL (4 gece).", SP("Otel kişi başı 3.500 lira, 4 gece.")],
   ["**Toplam:** ₺12.400", SP("Toplam: 12.400 lira")],
@@ -110,6 +112,10 @@ group("Son yazı: tam çeviri mi parçalar mı")([
   ["tam çeviri var", { desc: "tam çeviri", fn: () => bestText("Yarın onda antrenman ekle", "yarın 10 antrenman ekle"), ok: (r) => r === "Yarın onda antrenman ekle" }],
   ["tam çeviri yok", { desc: "parçalar", fn: () => bestText("", "yarın 10 antrenman ekle"), ok: (r) => r === "yarın 10 antrenman ekle" }],
   ["tam çeviri kısa kalmış", { desc: "parçalar (söylenen kaybolmaz)", fn: () => bestText("Yarış oluştur", "Cumhuriyet yarışı oluştur, yarış için görsel hazırla, Mustafa geldi"), ok: (r) => r.startsWith("Cumhuriyet") }],
+  ["tam çevirinin sonu kesilmiş", { desc: "parçalar (son kelimeler kaybolmaz)", fn: () => bestText("Yarın saat onda antrenman ekle ve", "yarın saat 10 antrenman ekle ve Ali'ye haber ver"), ok: (r) => r.includes("haber ver") }],
+  ["dolgu ve düzeltme silinmiş (kısa ama tam)", { desc: "tam çeviri", fn: () => bestText("Toplantı saat 2'de olsun.", "toplantı şey saat 3'te yok 2'de olsun"), ok: (r) => r === "Toplantı saat 2'de olsun." }],
+  ["tek kelime", { desc: "tam çeviri", fn: () => bestText("Evet.", "evet"), ok: (r) => r === "Evet." }],
+  ["parça yok", { desc: "tam çeviri", fn: () => bestText("Notlarımı oku", ""), ok: (r) => r === "Notlarımı oku" }],
 ]);
 
 // Canlı yazı hattı (Gemini Live): Google'ın listesinden Live destekleyen modeller, yazı cevaplı flash önce
@@ -317,4 +323,86 @@ group("Ad düzeltmeleri (öğrenilen)")([
   ];
   const res = await Promise.all(rows.map(([, t]) => t.fn()));
   group("Ses çevirisi bekleme kaydı")(rows.map(([n, t], i) => [n, { ...t, fn: () => res[i] }]));
+}
+
+// Sesle parkur (Seyhun 2026-10-30 "parkuru daha çok sesle oluşturacağım, hatasız olması lazım"): ses tanımanın gerçekte yazdığı
+// biçimler (yazıyla sayı, "1. şamandıra", "bin'den komite", "12 nat", "12-15 knot", saat) doğru ölçüme dönmeli; yanlış ölçüm yazılmamalı
+const PKS = await import("@/lib/raceCourse");
+const pk = (r) => (r ? r.list.map((x) => (x.obs ? `${x.obs.kind}${x.obs.ref ? `:${x.obs.ref}` : ""} ${x.obs.deg}${x.obs.kn != null ? ` ${x.obs.kn}kn` : ""}${x.obs.spot ? ` @${x.obs.spot}` : ""}${x.obs.by !== "ben" ? ` ~${x.obs.by}` : ""}` : `orsa ${x.len.orsa}m`)).join(" | ") : "-");
+const PV = (want) => ({ desc: want, fn: (s) => pk(PKS.courseCommand(s)), ok: (r) => r === want });
+group("Sesle parkur: ses tanıma biçimleri")([
+  ["rüzgar üç yüz otuz on iki knot", PV("wind 330 12kn")],
+  ["Rüzgar üçyüz otuz 12 knot", PV("wind 330 12kn")],
+  ["rüzgar yüz yirmi derece on beş knot", PV("wind 120 15kn")],
+  ["Rüzgar otuz derece sekiz knot", PV("wind 30 8kn")],
+  ["Rüzgar 330° 12 knot", PV("wind 330 12kn")],
+  ["Rüzgar 330'dan esiyor 12 knot", PV("wind 330 12kn")],
+  ["Rüzgar 330 derece 12 nat", PV("wind 330 12kn")],
+  ["Rüzgar 330 derece 12 knat", PV("wind 330 12kn")],
+  ["Rüzgar 330 derece 12-15 knot", PV("wind 330 13.5kn")],
+  ["Rüzgar 12 ile 15 knot arası 330", PV("wind 330 13.5kn")],
+  ["Rüzgar 12-15 knot", PV("-")],
+  ["Saat 11'de rüzgar 330 12 knot", PV("wind 330 12kn")],
+  ["Bir rüzgar ölçümü 330 derece 12 knot", PV("wind 330 12kn")],
+  ["Hakem botu rüzgar 340 derece 14 knot diyor", PV("wind 340 14kn ~hakem")],
+  ["Orsa şamandırasında rüzgar 330 5 knot", PV("wind 330 5kn @m1")],
+]);
+group("Sesle parkur: şamandıra, hat, eksen")([
+  ["1. şamandıra 15 derece", PV("mark:m1 15")],
+  ["2. şamandıra 200 derece", PV("mark:m2 200")],
+  ["Orsa şamandırası 15", PV("mark:m1 15")],
+  ["Bir numaralı şamandıra 15 derece", PV("mark:m1 15")],
+  ["Bin'den komite 52", PV("line:pin 52")],
+  ["Binden komiteye 52 derece", PV("line:pin 52")],
+  ["Komite botundan pine 232 derece", PV("line:komite 232")],
+  ["Start hattı 52 derece", PV("line:komite 52")],
+  ["Hat 52 derece", PV("line:komite 52")],
+  ["Parkur yönü 320", PV("axis 320")],
+  ["Komite ekseni 320 verdi", PV("axis 320")],
+  ["Orsa ayağı 1200 metre", PV("orsa 1200m")],
+  ["Orsa şamandırası 0,8 mil", PV("-")],
+  ["bin burada", { desc: "pin konumu", fn: (s) => PKS.parseCourseText(s), ok: (r) => r?.pt === "pin" }],
+]);
+group("Sesle parkur: bir nefeste birkaç ölçüm")([
+  ["Rüzgar 330 derece 12 knot, komite ekseni 325 verdi, pinden komite 55, orsa 0,6 mil", PV("wind 330 12kn | axis 325 | line:pin 55 | orsa 1111m")],
+  ["Rüzgar 330 derece 12 knot. Eksen 320.", PV("wind 330 12kn | axis 320")],
+  ["rüzgar 330 derece 12 knot bir de eksen 320", PV("wind 330 12kn | axis 320")],
+  ["Eksen 320 rüzgar 330 12 knot", PV("axis 320 | wind 330 12kn")],
+  ["Komiteden pin 280 pinden komite 100", PV("line:komite 280 | line:pin 100")],
+  ["Rüzgar 330 derece 12 knot start hattı 52", PV("wind 330 12kn | line:komite 52")],
+]);
+group("Sesle parkur: geri alma")([
+  ...["geri al", "Yanlış.", "yanlış anladın", "sil", "sonuncuyu sil", "iptal"].map((s) => [s, { desc: "geri alır", fn: PKS.courseUndo, ok: (r) => r === true }]),
+  ...["Ali'nin planını sil", "rüzgar 330 sil", "geri al bunu Ali'ye gönder"].map((s) => [s, { desc: "geri alma değil", fn: PKS.courseUndo, ok: (r) => r === false }]),
+]);
+
+// Ortak seslendirme (lib/server/tts.js): önce Gemini-TTS (yönergeli), API kapalıysa Chirp 3 HD; ağ taklit edilir
+{
+  const realFetch = globalThis.fetch;
+  const TT = await import("@/lib/server/tts");
+  let queue = Promise.resolve(); // testler aynı anda başlar; fetch taklidi paylaşıldığı için sırayla
+  const run = (mode) => (text) => (queue = queue.then(() => once(mode, text)));
+  const once = async (mode, text) => {
+    const sent = [];
+    process.env.GOOGLE_TTS_KEY = "test";
+    globalThis.fetch = async (_u, init) => {
+      const b = JSON.parse(init.body);
+      sent.push(b);
+      if (b.voice.modelName && mode === "kapali") return new Response('{"error":"API disabled"}', { status: 403 });
+      return new Response(JSON.stringify({ audioContent: Buffer.from("mp3").toString("base64") }), { status: 200 });
+    };
+    try {
+      const r = await TT.synthesize({ text, voice: "Kore", style: "fitness", rate: mode === "yavas" ? 0.9 : 1 });
+      return { engine: r.engine, sent };
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  };
+  group("Ortak seslendirme")([
+    ["Gemini açık: doğal ses", { desc: "gemini, model + fitness yönergesi + Kore", fn: run("acik"), ok: (r) => r.engine === "gemini" && r.sent.length === 1 && r.sent[0].voice.modelName === TT.TTS_GEMINI_MODEL() && r.sent[0].input.prompt === TT.TTS_STYLES.fitness && r.sent[0].voice.name === "Kore" }],
+    ["Gemini yavaş hız", { desc: "yönergeye 'Biraz yavaş'", fn: run("yavas"), ok: (r) => /Biraz yavaş/.test(r.sent.at(-1).input.prompt) }],
+    ["Gemini kapalı: Chirp yedeği", { desc: "chirp, tr-TR-Chirp3-HD-Kore", fn: run("kapali"), ok: (r) => r.engine === "chirp" && r.sent.at(-1).voice.name === "tr-TR-Chirp3-HD-Kore" }],
+    ["Gemini kapalıyken bir daha denenmez", { desc: "doğrudan chirp", fn: run("acik"), ok: (r) => r.engine === "chirp" && !r.sent[0].voice.modelName }],
+    ["Aynı metin bellekten", { desc: "istek gitmez", fn: () => { run("acik")("Bellek denemesi."); return run("acik")("Bellek denemesi."); }, ok: (r) => r.sent.length === 0 }],
+  ]);
 }

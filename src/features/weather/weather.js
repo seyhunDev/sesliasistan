@@ -117,9 +117,15 @@ export function shape(j, now = new Date()) {
   const today = c.time.slice(0, 10);
   const days = d.time
     .map((t, i) => ({ date: t, code: d.weather_code[i], min: r(d.temperature_2m_min[i]), max: r(d.temperature_2m_max[i]),
-      wind: r(d.wind_speed_10m_max[i]), gust: r(d.wind_gusts_10m_max[i]), dir: d.wind_direction_10m_dominant[i] }))
+      wind: r(d.wind_speed_10m_max[i]), gust: r(d.wind_gusts_10m_max[i]), dir: d.wind_direction_10m_dominant[i], mm: d.precipitation_sum?.[i] ?? null }))
     .filter((x) => x.date > today)
     .slice(0, 5);
+  // Önceki 5 gün (Seyhun 2026-11-03): kapalı başlar, hava sayfasında "Önceki 5 gün" ile açılır; Open-Meteo'nun o günkü model değerleri (tahmin), gerçekleşen istasyondan
+  const past = d.time
+    .map((t, i) => ({ date: t, code: d.weather_code[i], min: r(d.temperature_2m_min[i]), max: r(d.temperature_2m_max[i]),
+      wind: r(d.wind_speed_10m_max[i]), gust: r(d.wind_gusts_10m_max[i]), dir: d.wind_direction_10m_dominant[i], mm: d.precipitation_sum?.[i] ?? null }))
+    .filter((x) => x.date < today)
+    .slice(-5);
   const todayRow = d.time.indexOf(today) >= 0 ? d.time.indexOf(today) : 0;
   // Yapay zeka için: önümüzdeki 48 saat, saat saat (kısa biçim)
   const h48 = h.time.slice(i0, i0 + 48).map((t, k) => {
@@ -128,7 +134,7 @@ export function shape(j, now = new Date()) {
   });
   // Gün detayı için: tüm saatler (bugün 00:00'dan itibaren, 7 gün; ana sayfanın 7 günlük şeridi her güne hava gösterir) kısa biçimde
   const hourly = h.time.map((t, i) => [t, r(h.temperature_2m[i]), h.weather_code[i], h.is_day ? h.is_day[i] : 1,
-    r(h.wind_speed_10m[i]), r(h.wind_gusts_10m[i]), r(h.wind_direction_10m[i]), h.precipitation_probability?.[i] ?? null]);
+    r(h.wind_speed_10m[i]), r(h.wind_gusts_10m[i]), r(h.wind_direction_10m[i]), h.precipitation_probability?.[i] ?? null, h.precipitation?.[i] ?? null, h.apparent_temperature?.[i] != null ? r(h.apparent_temperature[i]) : null]);
   return {
     at: now.getTime(),
     h48,
@@ -136,10 +142,11 @@ export function shape(j, now = new Date()) {
     now: { t: r(c.temperature_2m), code: c.weather_code, day: c.is_day !== 0, wind: r(c.wind_speed_10m), gust: r(c.wind_gusts_10m), dir: c.wind_direction_10m },
     today: {
       min: r(d.temperature_2m_min[todayRow]), max: r(d.temperature_2m_max[todayRow]), code: d.weather_code[todayRow],
-      wind: r(d.wind_speed_10m_max[todayRow]), gust: r(d.wind_gusts_10m_max[todayRow]), dir: d.wind_direction_10m_dominant[todayRow], date: today,
+      wind: r(d.wind_speed_10m_max[todayRow]), gust: r(d.wind_gusts_10m_max[todayRow]), dir: d.wind_direction_10m_dominant[todayRow], mm: d.precipitation_sum?.[todayRow] ?? null, date: today,
     },
     hours,
     days,
+    past,
   };
 }
 
@@ -148,7 +155,20 @@ export function dayHours(w, date) {
   if (!w?.hourly) return null;
   return w.hourly
     .filter(([t]) => t.startsWith(date))
-    .map(([time, t, code, day, wind, gust, dir, rain]) => ({ time, hh: time.slice(11, 13), t, code, day: !!day, wind, gust, dir, rain: rain ?? null }));
+    .map(([time, t, code, day, wind, gust, dir, rain, mm, feel]) => ({ time, hh: time.slice(11, 13), t, code: softCode(code, rain), day: !!day, wind, gust, dir, rain: rain ?? null, mm: mm ?? null, feel: feel ?? null }));
+}
+
+// Tahminde yağmur simgesi yalnız ihtimal %50 ve üstündeyse (Seyhun 2026-11-04 kart "İkisi de"): model ~10 km'lik karenin ortalamasını verir,
+// düşük ihtimalli "yağmurlu" saat noktada çoğu zaman kuru geçer; o saat "Kapalı" (bulut) gösterilir, mm yine yazılır. Radar şu anı ayrıca düzeltir (rainLine radarRows).
+export const wetCode = (c) => (c >= 51 && c <= 67) || (c >= 80 && c <= 82) || c >= 95;
+export function softCode(code, p) {
+  return wetCode(code) && p != null && p < 50 ? 3 : code;
+}
+// Günün simgesi (günlük kod): günün hiçbir saatinde ihtimal %50'ye varmıyorsa yağmurlu gösterilmez
+export function dayCode(code, rows) {
+  if (!wetCode(code)) return code;
+  const ps = (rows || []).map((h) => h.rain).filter((v) => v != null);
+  return ps.length && Math.max(...ps) < 50 ? 3 : code;
 }
 
 // Şu anki hava: veri 20 dakikadan yeniyse alındığı andaki değer (w.now); eskiyse (uygulama sabah açıldı, yenileme gelmedi ya da bağlantı yok)
@@ -162,6 +182,22 @@ export function nowOf(w, at = new Date()) {
   if (!row) return w.now || null;
   const [, t, code, day, wind, gust, dir] = row;
   return { t, code, day: !!day, wind, gust, dir };
+}
+
+// Saatlik yağış (mm) rengi (rüzgâr grafiğinin altındaki şerit; Seyhun 2026-10-26 "A · Altında renkli şerit"): hafif <1 açık mavi, orta 1–4 mavi,
+// kuvvetli 4–8 koyu mavi, çok kuvvetli 8+ mor; 0,1 altı boş
+export function mmTone(v) {
+  if (v == null || v < 0.1) return null;
+  return v < 1 ? "#8fb0d0" : v < 4 ? "#4f86c0" : v < 8 ? "#2b5f9e" : "#7b5cc4";
+}
+
+// Kuvvetli yağış uyarısı: saatte 4 mm ve üstü beklenen saatler. { from: "15:00", to: "17:00", total } (total: günün toplam yağışı, mm) ya da null
+export function heavyRain(rows) {
+  const hot = (rows || []).filter((h) => h.mm != null && h.mm >= 4);
+  if (!hot.length) return null;
+  const total = Math.round((rows || []).reduce((t, h) => t + (h.mm || 0), 0));
+  const end = String(+hot[hot.length - 1].hh + 1).padStart(2, "0");
+  return { from: `${hot[0].hh}:00`, to: `${end}:00`, total };
 }
 
 // Yelkene uygun saat aralıkları: gündüz, 7–16 kn, sağanak 22 kn altı. Örn. ["11–17"]
@@ -182,10 +218,10 @@ export function sailWindows(rows) {
 
 function url(p) {
   const q = new URLSearchParams({
-    latitude: p.lat, longitude: p.lon, timezone: p.tz, wind_speed_unit: "kn", forecast_days: "7",
+    latitude: p.lat, longitude: p.lon, timezone: p.tz, wind_speed_unit: "kn", forecast_days: "7", past_days: "5",
     current: "temperature_2m,weather_code,is_day,wind_speed_10m,wind_direction_10m,wind_gusts_10m",
-    hourly: "temperature_2m,weather_code,is_day,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation_probability",
-    daily: "weather_code,temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant",
+    hourly: "temperature_2m,weather_code,is_day,wind_speed_10m,wind_direction_10m,wind_gusts_10m,precipitation_probability,precipitation,apparent_temperature",
+    daily: "weather_code,temperature_2m_max,temperature_2m_min,wind_speed_10m_max,wind_gusts_10m_max,wind_direction_10m_dominant,precipitation_sum",
   });
   return `https://api.open-meteo.com/v1/forecast?${q}`;
 }
@@ -215,6 +251,25 @@ export async function loadWeather(force = false) {
   return data;
 }
 
+// Belli bir yerin havası (Bilgi › Yönet › Hava, Seyhun 2026-11-20 "yarışın yapıldığı yerdeki hava"): loadWeather ile aynı biçim,
+// seçili konumu değiştirmez; yer başına ayrı önbellek
+export async function loadWeatherAt(at, force = false) {
+  const p = { ...PLACE, ...at, tz: at.tz || PLACE.tz };
+  const key = `${KEY}@${placeKey(p)}`;
+  try {
+    const c = JSON.parse(localStorage.getItem(key) || "null");
+    if (!force && c && Date.now() - c.at < TTL) return c;
+  } catch {}
+  const res = await fetch(url(p), { signal: AbortSignal.timeout(10000) });
+  if (!res.ok) throw new Error(`Hava durumu alınamadı (${res.status})`);
+  const j = await res.json();
+  const data = { ...shape(j), place: placeKey(p), placeName: p.name, model: { lat: j.latitude, lon: j.longitude, elevation: j.elevation } };
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch {}
+  return data;
+}
+
 // ---- Yapay zeka için ----
 // Hava ile ilgili bir soru mu (yalnızca o zaman veri gönderilir; kota boşa gitmesin)
 const WX = new RegExp(
@@ -225,7 +280,7 @@ export const wantsWeather = (text) => WX.test(String(text || "").toLocaleLowerCa
 
 const DAYS = new Intl.DateTimeFormat("tr-TR", { weekday: "long", day: "numeric", month: "long", timeZone: PLACE.tz });
 const dname = (s) => DAYS.format(new Date(`${s}T12:00:00`));
-const wind = (kn, gust, dir) => `${windName(dir)[0]} (${windName(dir)[1]}) ${kn} kn, sağanak ${gust} kn, ${windLevel(kn).label.toLocaleLowerCase("tr-TR")}`;
+const wind = (kn, gust, dir) => `${windName(dir)[0]} (${windName(dir)[1]}, ${dirDeg(dir)}) ${kn} kn, sağanak ${gust} kn, ${windLevel(kn).label.toLocaleLowerCase("tr-TR")}`;
 
 // Yapay zekaya giden hava özeti (düz metin, kısa)
 export function weatherDigest(w) {
@@ -239,7 +294,7 @@ export function weatherDigest(w) {
   if (w.h48?.length) {
     lines.push("SAATLİK (48 saat; saat | °C | gökyüzü | rüzgâr):");
     w.h48.forEach(([t, temp, code, kn, gust, dir]) =>
-      lines.push(`${t.slice(5, 10)} ${t.slice(11, 16)} | ${temp}° | ${sky(code).label} | ${windName(dir)[1]} ${kn}/${gust} kn`),
+      lines.push(`${t.slice(5, 10)} ${t.slice(11, 16)} | ${temp}° | ${sky(code).label} | ${windName(dir)[1]} ${dirDeg(dir)} ${kn}/${gust} kn`),
     );
   }
   lines.push("GÜNLÜK:");

@@ -25,9 +25,10 @@ import { Thread } from "./Thread";
 import { applyRepeat, repeatLabel } from "@/lib/repeat";
 import { PlanActions } from "./PlanActions";
 import { TrainingLog } from "./TrainingLog";
-import { canLog } from "@/lib/trainingLog";
+import { antYonet, canLog } from "@/lib/trainingLog";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { FitWorkout } from "@/features/fitness/FitWorkout";
+import { FitPlanView } from "@/features/fitness/FitPlanView";
 import { NoteActions } from "./NoteActions";
 import { TaskInvoice } from "@/features/invoices/TaskInvoice";
 import { blank, check, firstNeed, fresh, tidy, toPatch } from "./drafts";
@@ -321,6 +322,15 @@ export function AddSheet({ open, onClose, seed }) {
     }
     : null;
 
+  // Fitness antrenmanı Plan sayfasında değil kendi ekranında açılır (Seyhun 2026-11-25; sporcuya verilen salt okunur görünüm aynı kalır)
+  if (edit?.kind === "plan" && rec?.fit && !locked) {
+    return (
+      <Screen voice full open={open} onClose={shut} title="Antrenman">
+        <FitPlanView key={rec.id} rec={rec} by={by} open={open} onClose={shut} onDelete={removeRecord} />
+      </Screen>
+    );
+  }
+
   return (
     <Screen voice open={open} onClose={shut} title={title}>
       {/* Üst çubuk (sabit) */}
@@ -385,20 +395,20 @@ export function AddSheet({ open, onClose, seed }) {
                 onRemindResend={rec && !isStaff ? () => resendRemind(edit.id) : undefined}
               />
             )}
-            {/* Antrenman sayfası: sayaç, yoklama, yarışlar, günlük (sporcu yetkisi olanda) */}
-            {edit.kind === "plan" && rec && !locked && canLog(rec, todayStr()) && canSeeAthletes(profile?.email) && (
+            {/* Bugünkü antrenman Yönet'te: süre, yoklama, günlük (sporcu yetkisi olanda; antrenman sayfası 2026-11-23'te kalktı) */}
+            {edit.kind === "plan" && rec && !locked && canLog(rec, todayStr()) && rec.date === todayStr() && canSeeAthletes(profile?.email) && (
               <button
                 type="button"
                 onClick={() => {
                   shut();
-                  router.push(`/training/day?id=${rec.id}`);
+                  router.push(antYonet(rec));
                 }}
                 className="mt-3 flex w-full items-center gap-3 rounded-2xl bg-card px-4 py-3 text-left shadow-[0_1px_3px_rgba(38,40,44,.05)] active:scale-[.99]"
               >
                 <Icon name="clock" className="size-5 shrink-0 text-acc" />
                 <span className="min-w-0 flex-1">
-                  <b className="block text-[0.9375rem] font-medium">Antrenman sayfası</b>
-                  <small className="block truncate text-[0.8125rem] text-mut">{rec.races?.length ? `${rec.races.length} yarış` : "Sayaç, yoklama, yarışlar"}</small>
+                  <b className="block text-[0.9375rem] font-medium">Yönet</b>
+                  <small className="block truncate text-[0.8125rem] text-mut">Süre, yoklama, günlük</small>
                 </span>
                 <Icon name="chev" className="size-4 text-mut" />
               </button>

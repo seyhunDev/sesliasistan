@@ -11,9 +11,9 @@ const PAY = { "kapıda-kart": "Kapıda kart", "kapıda-nakit": "Kapıda nakit" }
 export function OrderCard({ order, status, photo }) {
   const lines = order.lines || [];
   return (
-    <section className="relative overflow-hidden rounded-[1.5rem] bg-[#11203a] text-white" aria-label="Sipariş">
+    <section className="relative overflow-hidden rounded-[1.5rem] bg-[#0b1a33] text-white" aria-label="Sipariş">
       <Img src={photo} w={800} className="absolute inset-0 size-full !bg-transparent" />
-      <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(17,32,58,.15)_0%,rgba(17,32,58,.3)_25%,rgba(17,32,58,.88)_55%,#11203a_80%)]" aria-hidden="true" />
+      <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11, 26, 51,.15)_0%,rgba(11, 26, 51,.3)_25%,rgba(11, 26, 51,.88)_55%,#0b1a33_80%)]" aria-hidden="true" />
       <div className="relative flex min-h-[15rem] flex-col p-4">
         <div className="flex items-center justify-between gap-2">
           <span className="rounded-full bg-black/35 px-3 py-1.5 text-[0.8125rem] font-semibold backdrop-blur-md">{STATUS_NAMES[status]}</span>

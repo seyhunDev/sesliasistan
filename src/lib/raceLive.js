@@ -1,6 +1,9 @@
 // Yarış multimedya sayfası (/athletes/races/<id>/media) saf parçaları: rüzgâr kayıtları, startlar, fotoğraf/video künyeleri,
 // genel sıralama süzgeci ve asistan cümleleri. Kayıt orgs/{org}/raceLive/{yarışId} belgesinde (raceLiveStore.js):
 // { wind: [{ at, dir, kn, gust, src }], starts: [{ id, day, n, at, dir, kn, course, flag, note }], media: [{ id, kind, type, size, url, at, ath }] }
+import { cleanAgenda } from "./raceProgram";
+import { cleanSig } from "./raceSignals";
+import { FINAL_ORDER, finalsOnly, groupOf, isFinalGrp } from "./roundScore";
 // (ath: fotoğrafta/videoda etiketlenen sporcuların id'leri; phase/sec/end: çekildiği an start sayacına göre, momentOf).
 // Rüzgâr kaydının `src` alanı "elle" ya da ileride bağlanacak ölçüm cihazının adı: grafik ikisini aynı noktalarla çizer.
 
@@ -44,8 +47,9 @@ export const COURSES = ["Trapez", "Up-down", "Üçgen"];
 // Bayrak: yarış geçerli kalır. Geçersiz sayılan yarış (VOIDS, Seyhun 2026-10-18): tehir, genel geri çağırma ya da iptal; numarası sıradaki
 // yarışa geçer (tekrar koşulan yarış yine "2. yarış"), çekimlerinin başlığına sebep eklenir ("Genel geri çağırma · 2. yarış")
 export const FLAGS = ["Bireysel geri çağırma"];
-export const VOIDS = ["Tehir", "Genel geri çağırma", "İptal"];
-const OLD_VOID = { Ertelendi: "Tehir", "Genel geri çağırma": "Genel geri çağırma", İptal: "İptal" }; // eskiden bayrak olarak yazılanlar
+// Abandone (N bayrağı; Seyhun 2026-11-02 "abandone edilince yarış sayılmıyor, datası tutulur, aynı yarış tekrar start"): eskiden "İptal"
+export const VOIDS = ["Tehir", "Genel geri çağırma", "Abandone"];
+const OLD_VOID = { Ertelendi: "Tehir", "Genel geri çağırma": "Genel geri çağırma", İptal: "Abandone" }; // eskiden bayrak olarak yazılanlar
 // Parkur noktaları (Seyhun 2026-10-19): Süre'de Start · Şamandıra 1 · Şamandıra 2 · Finish kareleri; şamandıra eklenip çıkarılır.
 // Kareye dokununca o yarışın startından beri geçen saniye yazılır (yarış satırında marks: { "Şamandıra 1": 580 }).
 export const BUOYS = ["Start", "Şamandıra 1", "Şamandıra 2", "Finish"];
@@ -65,6 +69,14 @@ const cleanMarks = (m) =>
   );
 // Yarışın sıradaki noktası (çerçeveli kare): yazılmamış ilk nokta
 export const nextBuoy = (buoys, s) => buoys.find((b) => s?.marks?.[b] == null) || "";
+// Bizim sporcuların bitişi (Seyhun 2026-11-01, yeni akış "Bitiren kim?"): sırayla { id, name, t: startan beri sn }
+const cleanFins = (l) => {
+  const seen = new Set();
+  return l
+    .map((f) => ({ id: S(f?.id, 60), name: S(f?.name, 60), ...(num(f?.t, 36000) !== null ? { t: num(f.t, 36000) } : {}) }))
+    .filter((f) => f.id && f.name && !seen.has(f.id) && seen.add(f.id))
+    .slice(0, 40);
+};
 export function cleanStarts(list) {
   return (Array.isArray(list) ? list : [])
     .map((x) => ({
@@ -79,26 +91,167 @@ export function cleanStarts(list) {
       kn: num(x?.kn, 80),
       course: S(x?.course, 30),
       flag: FLAGS.includes(x?.flag) ? x.flag : "",
-      void: VOIDS.includes(x?.void) ? x.void : OLD_VOID[x?.flag] || "",
+      void: VOIDS.includes(x?.void) ? x.void : OLD_VOID[x?.void] || OLD_VOID[x?.flag] || "",
       note: S(x?.note, 200),
+      // grp: startın grubu (Mavi, Sarı…; grup grup yarışta aynı yarışın her grubu ayrı start, numara ortak)
+      ...(x?.grp ? { grp: S(String(x.grp).replace(/[^\p{L} ]/gu, ""), 20) } : {}),
       marks: cleanMarks(x?.marks),
+      ...(Array.isArray(x?.fins) && x.fins.length ? { fins: cleanFins(x.fins) } : {}),
+      // fw: finiş penceresinin sonu ("İlk finiş" + 15 dk; Seyhun 2026-11-05), dnf: pencere bitince bitirmeyenlere DNF yazıldı
+      ...(ISO(x?.fw) ? { fw: ISO(x.fw) } : {}),
+      ...(x?.dnf === true ? { dnf: true } : {}),
     }))
+    .map((x) => (x.fw && !x.fin && !x.void && Date.parse(x.fw) <= Date.now() ? { ...x, fin: x.fw } : x)) // pencere bittiyse sayfa açık olmasa da bitmiş sayılır
     .filter((x) => x.id && x.day && x.at)
     .sort((a, b) => a.at.localeCompare(b.at))
     .slice(-200);
 }
 
+// ph: yalnız çekildiği telefonda duran büyük video (Seyhun 2026-11-02 "belli boyutun üstündeyse sadece telefonda tutalım"):
+// adresi yok, küçük resmi buluttadır; istenince "Buluta yükle" ile url gelir, ph kalkar
 export function cleanMedia(list) {
   return (Array.isArray(list) ? list : [])
-    .map((m) => ({ id: ID.test(m?.id || "") ? m.id : "", kind: m?.kind === "video" ? "video" : "photo", type: S(m?.type, 40), size: Number(m?.size) || 0, url: /^https:\/\//.test(m?.url || "") ? S(m.url, 600) : "", at: ISO(m?.at), ...(/^https:\/\//.test(m?.thumb || "") ? { thumb: S(m.thumb, 600) } : {}), ath: cleanIds(m?.ath), ...(Number(m?.dur) > 0 ? { dur: Math.min(600, Math.round(m.dur)) } : {}), ...cleanMoment(m) }))
-    .filter((m) => m.id && m.url && m.at)
+    .map((m) => ({ id: ID.test(m?.id || "") ? m.id : "", kind: m?.kind === "video" ? "video" : "photo", type: S(m?.type, 40), size: Number(m?.size) || 0, url: /^https:\/\//.test(m?.url || "") ? S(m.url, 600) : "", at: ISO(m?.at), ...(/^https:\/\//.test(m?.thumb || "") ? { thumb: S(m.thumb, 600) } : {}), ath: cleanIds(m?.ath), ...(Number(m?.dur) > 0 ? { dur: Math.min(600, Math.round(m.dur)) } : {}), ...(Number(m?.w) > 0 && Number(m?.h) > 0 ? { w: Math.min(8000, Math.round(m.w)), h: Math.min(8000, Math.round(m.h)) } : {}), ...(typeof m?.asset === "string" && m.asset ? { asset: S(m.asset, 120) } : {}), ...(m?.ph === true && !/^https:\/\//.test(m?.url || "") ? { ph: true } : {}), ...cleanMoment(m) }))
+    .filter((m) => m.id && (m.url || m.ph) && m.at)
     .sort((a, b) => a.at.localeCompare(b.at))
     .slice(-400);
 }
 
 // Elle eklenen günler (antrenman: yarıştan önce ya da sonra; Seyhun 2026-10-18)
 export const cleanDays = (list) => [...new Set((Array.isArray(list) ? list : []).filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d || "")))].sort().slice(0, 60);
-export const cleanLive = (d) => ({ wind: cleanWind(d?.wind), starts: cleanStarts(d?.starts), media: cleanMedia(d?.media), days: cleanDays(d?.days), buoys: cleanBuoys(d?.buoys) });
+// Günün programı (Seyhun 2026-11-01 "ilk yönetim sayfası günün start saatini belirlemek"): day günü, at ilk start saati ("11:00"),
+// order yapılacak startlar [{ cls, grp, prep }] (Başlat ilkini kullanır ve listeden düşer; 2026-11-01), status: "" bekleniyor · "ap" ertelendi · "none" bugün yarış yok · "done" gün bitti (ekranda özet),
+// next yarının günü ve ilk start saati, showAt ekranın yeni güne geçeceği saat (varsayılan 06:00). Herkese açık ekranın evresi buna göre (livePhase).
+const HM = /^([01]\d|2[0-3]):[0-5]\d$/;
+const DAY = /^\d{4}-\d{2}-\d{2}$/;
+export const PLAN_STATUS = ["", "ap", "none", "done"];
+// Tek gruba tehir (Seyhun 2026-11-04 "tek gruba tehir"): bekleyen startın satırında ap { why, land, down, hours }; gün tehiri (plan.status "ap")
+// değişmez, öbür gruplar sürer. Satır tehirdeyken Başlat yok; down gelince ya da "İndir" ile kalkar.
+const cleanHold = (a) => ({ why: String(a?.why || "").slice(0, 60), land: !!a?.land, down: typeof a?.down === "string" && !Number.isNaN(Date.parse(a.down)) ? a.down.slice(0, 30) : "", hours: Number.isInteger(a?.hours) && a.hours >= 1 && a.hours <= 9 ? a.hours : 0 });
+export function cleanPlan(p) {
+  const hm = (v, d = "") => (HM.test(v || "") ? v : d);
+  const day = DAY.test(p?.day || "") ? p.day : "";
+  const order0 = (Array.isArray(p?.order) ? p.order : [])
+    .map((o) => ({ cls: String(o?.cls || "").slice(0, 20), grp: String(o?.grp || "").slice(0, 20), prep: String(o?.prep || "").slice(0, 8), ...(o?.ap && o.grp ? { ap: cleanHold(o.ap) } : {}) }))
+    .filter((o) => o.cls || o.grp);
+  // Final grupları açıklanan sınıfın (sette ya da bekleyen startlarda Altın/Gümüş/Bronz) renk grubu startları düşer (finalsOnly)
+  // Sınıf adı büyük/küçük harf ve boşluktan bağımsız; sınıfsız final satırı varsa bütün renk satırları düşer (Seyhun 2026-11-05 "hâlâ renk grupları duruyor")
+  const ck = (c) => String(c || "").trim().toLocaleLowerCase("tr");
+  const sets0 = (Array.isArray(p?.sets) ? p.sets : []).filter((x) => Array.isArray(x?.grps));
+  const finCls = new Set([...order0.filter((o) => isFinalGrp(o.grp)).map((o) => ck(o.cls)), ...sets0.filter((x) => x.grps.some(isFinalGrp)).map((x) => ck(x.cls))]);
+  const dropCol = (o) => o.grp && !isFinalGrp(o.grp) && (finCls.has("") || finCls.has(ck(o.cls)) || (!o.cls && finCls.size > 0));
+  const order1 = order0.filter((o) => !dropCol(o)).slice(0, 24);
+  // Bekleyen final startları sınıfın grup sırasıyla (Sporcu sekmesi / kurulumdaki sıra; yoksa Altın, Gümüş, Bronz, Zümrüt), yerleri aynı kalır
+  const rankOf = (o) => {
+    const set = sets0.find((x) => ck(x.cls) === ck(o.cls) && x.grps.some(isFinalGrp));
+    const i = set ? set.grps.findIndex((g) => groupOf(g) === groupOf(o.grp)) : -1;
+    return i >= 0 ? i : 10 + FINAL_ORDER.indexOf(groupOf(o.grp));
+  };
+  const finIdx = order1.map((o, i) => (isFinalGrp(o.grp) && !o.ap ? i : -1)).filter((i) => i >= 0);
+  const finRows = finIdx.map((i) => order1[i]).sort((a, b) => (ck(a.cls) === ck(b.cls) ? rankOf(a) - rankOf(b) : 0));
+  const order = order1.map((o, i) => (finIdx.includes(i) ? finRows[finIdx.indexOf(i)] : o));
+  const next = p?.next && DAY.test(p.next.day || "") ? { day: p.next.day, at: hm(p.next.at) } : null;
+  const status = PLAN_STATUS.includes(p?.status) ? p.status : "";
+  // Tehir (Seyhun 2026-11-01 "bir sebep belirterek tehir basabilirim, bir saatlik"): from eski saat, why sebep; at yeni saat (belirsizse boş)
+  // down (Seyhun 2026-11-02 "1 dk sonra indir, 5 dk sonra indir ya da belirsiz"): AP'nin ineceği an (ISO; "" belirsiz). İnince 1 dk sonra
+  // uyarı işareti, yani geri sayım: warn o an (ISO), warnBy kuran cihaz (geri sayımı o başlatır, aynı anda iki start açılmasın)
+  const iso = (v) => (typeof v === "string" && !Number.isNaN(Date.parse(v)) ? v.slice(0, 30) : "");
+  // auto (Seyhun 2026-11-03 "tehir indikten 1 dk sonra sürenin otomatik başlatılıp başlatılmayacağını seçebilmeliyim"): false ise inince geri sayım kendiliğinden başlamaz
+  // seq/dur (Seyhun 2026-11-03 start geri sayımı şeridi): tehir start dizisi sürerken çekildiyse dizinin durduğu an kalan saniye ve dizi süresi
+  const seq = Number.isFinite(p?.ap?.seq) ? { seq: Math.min(3600, Math.max(0, Math.round(p.ap.seq))), dur: Number.isFinite(p.ap.dur) ? Math.min(900, Math.max(60, Math.round(p.ap.dur))) : 300 } : {};
+  const ap = status === "ap" && p?.ap ? { from: hm(p.ap.from), why: String(p.ap.why || "").slice(0, 60), down: iso(p.ap.down), land: !!p.ap.land, auto: p.ap.auto !== false, hours: Number.isInteger(p.ap.hours) && p.ap.hours >= 1 && p.ap.hours <= 9 ? p.ap.hours : 0, ...seq } : null;
+  const warn = status === "ap" ? "" : iso(p?.warn);
+  const warnBy = warn ? String(p?.warnBy || "").slice(0, 12) : "";
+  // Günün grupları (Seyhun 2026-11-02 "startlar-yeni"): bir kez seçilir, "+ Yarış" bunlarla bir yarışın startlarını ekler
+  const grps = finalsOnly([...new Set((Array.isArray(p?.grps) ? p.grps : []).map((g) => String(g || "").slice(0, 20)).filter(Boolean))]).slice(0, 6);
+  // Birden çok sınıf (Seyhun 2026-11-02 "bir iki sınıf seçerim, sınıf seçiliyse grup seçerek başlarım"): sets [{ cls, grps }]; yoksa cls + grps
+  const sets = (Array.isArray(p?.sets) ? p.sets : [])
+    .map((x) => ({ cls: String(x?.cls || "").slice(0, 20), grps: finalsOnly([...new Set((Array.isArray(x?.grps) ? x.grps : []).map((g) => String(g || "").slice(0, 20)).filter(Boolean))]).slice(0, 6) }))
+    .filter((x) => x.cls)
+    .slice(0, 6);
+  // Günler (Seyhun 2026-11-02 "her gün startı 11 yapacağım"): daily her günün ilk start saati, times[gün] o güne özel saat, off yarış olmayan günler
+  const times = Object.fromEntries(Object.entries(p?.times && typeof p.times === "object" ? p.times : {}).filter(([d, v]) => DAY.test(d) && HM.test(v || "")).slice(0, 20));
+  const off = [...new Set((Array.isArray(p?.off) ? p.off : []).filter((d) => DAY.test(d || "")))].slice(0, 20);
+  // Turuncu bayrak (Seyhun 2026-11-02 "turuncu bayrak basılınca artık start öncesi"): çekildiği an (ISO); "" indi. Ekran yalnız o gün ve gün bitmemişken sayar
+  const orange = typeof p?.orange === "string" && !Number.isNaN(Date.parse(p.orange)) ? p.orange.slice(0, 30) : "";
+  // Ekrandaki ad (Seyhun 2026-11-04 "yarışmanın adını yönetim panelinden editleyebilmeliyim; başlık ve alt satır"): boşsa yarışın adı
+  const one = (v, n) => String(v || "").replace(/\s+/g, " ").trim().slice(0, n);
+  return { title: one(p?.title, 40), sub: one(p?.sub, 60), day, at: hm(p?.at), order, status, next, showAt: hm(p?.showAt, "06:00"), ap, grps, sets, cls: String(p?.cls || "").slice(0, 20), prep: String(p?.prep || "").slice(0, 8), daily: hm(p?.daily), times, off, orange, warn, warnBy, agenda: cleanAgenda(p?.agenda), sig: cleanSig(p?.sig) };
+}
+// Tehir cümlesi: "Rüzgâr yok · Karada" (sebep ve yer). Start saati yazılmaz (Seyhun 2026-11-02 "orada yanlış bilgi veriliyor"); iniş saati ve
+// uyarı işareti saati de yazılmaz (Seyhun 2026-11-03 "tehirin ineceği saati, uyarı işareti saatini göstermeyelim"): inişe kalan geri sayımda.
+// Yer her zaman yazar: Karada ya da Denizde (Seyhun 2026-11-04 "her şekilde karada mı denizde mi seçebilmeliyim")
+export function apText(plan) {
+  if (!plan || plan.status !== "ap") return "";
+  return [plan.ap?.why || "", apPlace(plan)].filter(Boolean).join(" · ");
+}
+export const apPlace = (plan) => (plan?.status === "ap" ? (plan.ap?.land ? "Karada" : "Denizde") : "");
+// Tehir indikten kaç dakika sonra uyarı işareti (Seyhun 2026-11-02 "karada çekiliyorsa indikten bir saat sonra, denizde bir dakika sonra
+// start verilebilir"; 2026-11-04 "deniz bir dakika, karada en az bir saat")
+export const apGap = (land) => (land ? 60 : 1);
+// Tehirin bayrağı (ekranda ve Yayın kartında): saatli tehir AP + sayı, karada AP üzeri H, denizde yalnız AP. Tehir plan.ap'tan okunur,
+// plan.sig'e yazılmaz (Seyhun 2026-11-04 "tehiri indirmem canlı yayına gitmedi": ayrı işaret kartı inişte kalıyordu)
+export const apSigId = (plan) => (plan?.ap?.hours ? `AP${plan.ap.hours}` : plan?.ap?.land ? "AP/H" : "AP");
+// ISO an → Türkiye saatiyle "12:31"
+export const trHm = (iso) => (Date.parse(iso || "") ? new Date(Date.parse(iso) + 3 * 3600e3).toISOString().slice(11, 16) : "");
+// Tehir (AP) çekilir: down dakika sonra iner (0 = belirsiz). Start saati belli değil (at boş). land: karada tehir (AP üstünde H).
+// auto: inince uyarı işareti (denizde 1 dk, karada 60 dk sonra) ve geri sayım kendiliğinden (Seyhun 2026-11-03 seçilebilir).
+// hours: saatli tehir (AP üzeri 1-9). Döndürür plan yaması. Tek yol: Yayın'daki her tehir düğmesi bu pencereden ve bu işlevden geçer.
+export function apRaise(plan, now, min, why, land = false, auto = true, hours = 0) {
+  const down = min ? new Date(now + min * 60e3).toISOString() : "";
+  return { status: "ap", at: "", ap: { from: plan?.ap?.from || plan?.at || "", why, down, land: !!land, auto: auto !== false, hours: hours || 0 }, warn: "" };
+}
+// Tehir iner (zamanı gelince kendiliğinden ya da "Tehiri indir"). auto açıkken: denizde 1 dk, karada 60 dk sonra uyarı işareti, geri sayım
+// kendiliğinden başlar; start saati o an belli olur. auto kapalıyken: geri sayım kendiliğinden başlamaz, start saati yazılmaz (komite Başlat'a basar).
+export function apLower(now, dur = 300, by = "", land = false, auto = true) {
+  if (auto === false) return { status: "", ap: null, warn: "", at: "" };
+  const gap = apGap(land) * 60e3;
+  const warn = new Date(now + gap).toISOString();
+  return { status: "", ap: null, warn, warnBy: by, at: trHm(new Date(now + gap + dur * 1000).toISOString()) };
+}
+// İnişi gelmiş tehir / gelmiş uyarı işareti
+export const apDue = (plan, now) => plan?.status === "ap" && !!plan.ap?.down && Date.parse(plan.ap.down) <= now;
+export const warnDue = (plan, now) => !!plan?.warn && Date.parse(plan.warn) <= now;
+// Tehirin inişi: 1 dk, 5 dk… sonra (Seyhun 2026-11-02); 1 dk: geri sayımda tehir (AP inince 1 dk sonra uyarı işareti; Seyhun 2026-11-02 "geri sayımda tehir 1 dakikalık olmalı")
+export const AP_MIN = [1, 5, 15, 30, 60];
+// "Rüzgâr değişken" (Seyhun 2026-11-03 "rüzgâr çok değişiyor ya, onu da koymamız lazım")
+export const AP_WHY = ["Rüzgâr yok", "Çok rüzgâr", "Rüzgâr değişken", "Yağış", "Fırtına", "Diğer"];
+// Saate dakika ekler: "11:00" + 60 → "12:00" (23:59'u aşmaz)
+export const addMin = (at, min) => {
+  if (!HM.test(at || "")) return "";
+  const t = Math.min(23 * 60 + 59, +at.slice(0, 2) * 60 + +at.slice(3) + min);
+  return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
+};
+export const planLabel = (o) => [o.cls, o.grp].filter(Boolean).join(" · ");
+// Ekranın günü (Seyhun 2026-11-02 "ekran yeni güne geçer'i 22.10 yaptım, geçmedi"): "Ekran yeni güne geçer" öğleden sonra bir saatse
+// (ör. 22:10) o saatten sonra ekran ertesi güne geçer (bugün yarış yok ya da gün bittiyse yarının programı, saati, rüzgârı); sabah bir
+// saatse (06:00) gün bittikten sonra ertesi sabah o saatte geçer (livePhase). Sayaç sürerken geçmez.
+export function screenDay(plan, now, timer = null) {
+  const tr = new Date(now + 3 * 3600e3).toISOString();
+  const today = tr.slice(0, 10);
+  const sa = cleanPlan(plan).showAt || "06:00";
+  if (sa < "12:00" || tr.slice(11, 16) < sa) return today;
+  if (timer && ((timer.end != null && now < timer.end + 3600e3) || timer.left != null)) return today;
+  return new Date(Date.parse(`${today}T12:00:00Z`) + 864e5).toISOString().slice(0, 10);
+}
+// Ekranın evresi: "race" sayaç sürüyor ya da bugün start var; "summary" gün bitti (ertesi gün showAt'e kadar); "wait" start bekleniyor
+export function livePhase({ plan, starts, timer, today, now = Date.now() }) {
+  const pl = plan || cleanPlan({});
+  const racing = (timer && timer.end != null) || (starts || []).some((x) => x.day === today && !x.void);
+  if (pl.status === "done" && pl.day) {
+    const nextDay = pl.next?.day || "";
+    const flip = nextDay ? Date.parse(`${nextDay}T${pl.showAt || "06:00"}:00+03:00`) : NaN;
+    return nextDay && now >= flip ? "wait" : "summary";
+  }
+  return racing ? "race" : "wait";
+}
+// Bekleme ekranının saydığı start: bugünün planı ya da yarınki (gün bittiyse next)
+export function planStartMs(plan, today) {
+  const pl = plan || cleanPlan({});
+  const pick = pl.status === "done" && pl.next ? pl.next : pl.day && pl.day >= today ? { day: pl.day, at: pl.at } : null;
+  return pick?.day && pick.at ? Date.parse(`${pick.day}T${pick.at}:00+03:00`) : null;
+}
+export const cleanLive = (d) => ({ wind: cleanWind(d?.wind), starts: cleanStarts(d?.starts), media: cleanMedia(d?.media), days: cleanDays(d?.days), buoys: cleanBuoys(d?.buoys), plan: cleanPlan(d?.plan) });
 
 // Günün kayıtları
 // Sayfadaki günler: yarışın günleri + çekim ya da start olan başka günler (deneme, erteleme). Yoksa o gün çekilen kaydedilir ama
@@ -109,16 +262,22 @@ export const UP_MAX = 3599;
 // Sayfa ilk açılırken (first) yalnız süren sayaç alınır; durmuş eski kayıt buradaki antrenman sayacını durdurmaz.
 // Denemeleri sıfırla (Seyhun 2026-10-19): elle eklenen günler, yarışlar (süreler, şamandıra zamanları), rüzgâr kayıtları, parkur noktaları
 // ve sayaç; fotoğraf/video yalnız istenirse. Yarışın kendisi, sonuçlar, evrak ve bütçe yarış belgesinde durur, dokunulmaz.
-export const resetCounts = (l) => ({ days: l?.days?.length || 0, starts: l?.starts?.length || 0, wind: l?.wind?.length || 0, media: l?.media?.length || 0 });
-export function resetPatch(media, now) {
-  const p = { days: [], starts: [], wind: [], buoys: cleanBuoys(), timer: { ...pickTimer({}), at: now } };
+// Yayın da sıfırlanır (Seyhun 2026-11-02 "denemeden sonra grupları, yarışları sıfırlayabilmeliyim"): program (bekleyen startlar, gruplar,
+// tehir), dönüşler ve ekrandaki görüntü/yazı da baştan başlar. Kayıt listesi (tekneler), parkur kartları ve canlı yayın linki kalır.
+export const resetCounts = (l) => ({ days: l?.days?.length || 0, starts: l?.starts?.length || 0, wind: l?.wind?.length || 0, media: l?.media?.length || 0, plan: l?.plan?.order?.length || 0 });
+// Yayını sıfırla (Seyhun 2026-11-02 "yayınla ilgili yaptığım her şey sıfırlanmalı, hazırladığımız her şey aynı kalıyor"): video linki,
+// gösterim de baştan; keep.plan verilirse programın günleri ve saatleri (daily, times, off, showAt) ve yarışın kurulumu (sınıflar, gruplar) kalır
+// keep.drone, keep.sources: drone ve canlı kaynak bağlantıları sıfırlamada kalır (Seyhun 2026-11-02 "sadece bağlanması kalsın")
+export function resetPatch(media, now, keep = {}) {
+  const kp = keep.plan ? { daily: keep.plan.daily, times: keep.plan.times, off: keep.plan.off, showAt: keep.plan.showAt, agenda: keep.plan.agenda, sets: keep.plan.sets, cls: keep.plan.cls, grps: keep.plan.grps } : {};
+  const p = { days: [], starts: [], wind: [], buoys: cleanBuoys(), timer: { ...pickTimer({}), at: now }, plan: cleanPlan(kp), rounds: {}, screen: { kind: "", mid: "", loop: false, pause: false, caption: "", at: new Date(now).toISOString() }, stream: { url: "", drone: keep.drone || "", sources: (keep.sources || []).filter((x) => x && x.id) }, courseShow: { auto: true, at: "", one: "" } };
   if (media) p.media = [];
   return p;
 }
 export const pickTimer = (t) => ({ dur: t?.dur ?? 300, end: t?.end ?? null, left: t?.left ?? null, mode: t?.mode || "", rid: t?.rid || "", zero: t?.zero ?? null, own: t?.own || "", where: t?.where || "" });
 // Sayacın sahibi (Seyhun 2026-10-21: "süreyi başlatıyorum, diğer yarışın sayımını açıyor"): sayaç telefonda tek, ama her sayfa yalnız kendi
 // başlattığını gösterir. own = sayacın sayfası (yol, antrenmanda ?id=plan). Biri planlı biri plansız antrenman adresiyse yol yeter (asistan
-// "/training/day" yazar, sayfa "?id=" ile açılmış olabilir). own'u olmayan eski kayıt her sayfanındır.
+// planlı/plansız adres yazmış olabilir, sayfa "?id=" ile açılmış olabilir). own'u olmayan eski kayıt her sayfanındır.
 export function ownedBy(own, here) {
   if (!own || own === here) return true;
   const [a, qa] = String(own).split("?");
@@ -201,13 +360,22 @@ export function newStart(starts, at, wind = [], forecast = null, rdays = null) {
 // Geçersiz yarış numara almaz: sıradaki geçerli yarışın numarasını taşır (tekrar koşulan yarışla aynı numara)
 // rdays (yarışın günleri) verilirse yarış dışındaki günler (antrenman) kendi içinde 1'den başlar, yarış serisini kaydırmaz
 const group = (day, rdays) => (rdays?.length && !rdays.includes(day) ? day : "seri");
+// Grup grup yarış (Seyhun 2026-11-02 inceleme): Sarı ve Mavi aynı "3. yarış"ı ayrı startlarla koşar.
+// Gruplu startın numarası grubun kendi sırası (Seyhun 2026-11-04 "o grubun kaçıncı yarışı"): grup ilerde de olsa geride de olsa
+// her grubun n'inci geçerli startı n. yarış (eskiden "son açılan yarışı paylaş" kuralı, Sarı 3'e geçince Kırmızı'nın 2'sini 3 yapıyordu).
+// Grup daha önce hiç koşmadıysa grupsuz son yarıştan devam eder.
 export function renumber(starts, rdays = null) {
-  const n = {};
+  const st = {};
   return cleanStarts(starts).map((x) => {
     const g = group(x.day, rdays);
-    const c = n[g] || 0;
-    if (!x.void) n[g] = c + 1;
-    return { ...x, n: c + 1 };
+    const s = (st[g] ||= { n: 0, free: 0, by: {} });
+    const n = x.grp ? (s.by[x.grp] ?? s.free) + 1 : s.n + 1;
+    if (!x.void) {
+      if (x.grp) s.by[x.grp] = n;
+      else s.free = n;
+      s.n = Math.max(s.n, n);
+    }
+    return { ...x, n };
   });
 }
 // Yarışın adı: elle verilen ad, yoksa "4. yarış"
@@ -215,14 +383,20 @@ export const raceName = (s) => (s ? s.name || `${s.n}. yarış` : "");
 // Başlık: geçersiz yarışın önüne sebebi ("Genel geri çağırma · 2. yarış")
 export const raceTitle = (s) => (s?.void ? `${s.void} · ${raceName(s)}` : raceName(s));
 // Serinin sıradaki yarışının numarası
-export const nextRaceNo = (starts, day = "", rdays = null) => (starts || []).filter((x) => !x.void && group(x.day, rdays) === group(day, rdays)).length + 1;
+// grp verilirse o grubun sıradaki startı (aynı yarışın diğer grubu numarayı paylaşır)
+export function nextRaceNo(starts, day = "", rdays = null, grp = "") {
+  const d = /^\d{4}-\d{2}-\d{2}$/.test(day) ? day : dayOf(new Date().toISOString());
+  const at = new Date(Math.max(Date.now(), ...(starts || []).map((x) => Date.parse(x.at) || 0)) + 60e3).toISOString();
+  const all = renumber([...(starts || []), { id: "zzznext", day: d, at, ...(grp ? { grp } : {}) }], rdays);
+  return all.find((x) => x.id === "zzznext")?.n || 1;
+}
 
 // ---- Yarış akışı (Süre sekmesi): Başlat yarışı açar (geri sayım), 0'da yarış başlar, "Yarışı bitir" bitirir ----
 // Her adım yeni liste döndürür; çağıran kaydeder ve önceki listeyi "Geri al" için saklar.
 // Başlat: geri sayım başlar, yarış satırı açılır (at: planlanan start anı, cd: geri sayımın başladığı an)
-export function beginRace(starts, nowMs, endMs, rdays = null) {
+export function beginRace(starts, nowMs, endMs, rdays = null, grp = "") {
   const id = `s${Math.round(endMs).toString(36)}`;
-  const s = { id, day: dayOf(new Date(endMs).toISOString()), n: 1, name: "", cd: new Date(nowMs).toISOString(), at: new Date(endMs).toISOString(), fin: "", dir: null, kn: null, course: "", flag: "", note: "" };
+  const s = { id, day: dayOf(new Date(endMs).toISOString()), n: 1, name: "", cd: new Date(nowMs).toISOString(), at: new Date(endMs).toISOString(), fin: "", dir: null, kn: null, course: "", flag: "", note: "", ...(grp ? { grp } : {}) };
   return { id, starts: renumber([...(starts || []).filter((x) => x.id !== id), s], rdays) };
 }
 // +30 sn / +1 dk: start anı kayar
@@ -239,7 +413,17 @@ export function zeroRace(starts, id, endMs, wind = [], rdays = null) {
   const w = newStart([], at, wind);
   return renumber((starts || []).map((x) => (x.id === id ? { ...x, at, dir: x.dir ?? w.dir, kn: x.kn ?? w.kn } : x)), rdays);
 }
-export const finishRace = (starts, id, finMs, rdays = null) => renumber((starts || []).map((x) => (x.id === id ? { ...x, fin: new Date(finMs).toISOString() } : x)), rdays);
+// Finiş penceresi açıksa bitiş en geç pencerenin sonu (sayfa geç açıldıysa da)
+export const finishRace = (starts, id, finMs, rdays = null) =>
+  renumber((starts || []).map((x) => (x.id === id ? { ...x, fin: new Date(x.fw ? Math.min(finMs, Date.parse(x.fw)) : finMs).toISOString() } : x)), rdays);
+// "İlk finiş" (Seyhun 2026-11-05): ilk tekne bitirince pencere açılır (varsayılan 15 dk), ±5 dk değişir, sonunda yarış kendiliğinden biter
+export const FIN_WIN = 15;
+export const openWin = (starts, id, nowMs, min = FIN_WIN) => (starts || []).map((x) => (x.id === id && !x.fin ? { ...x, fw: new Date(nowMs + min * 60e3).toISOString() } : x));
+export const moveWin = (starts, id, nowMs, dMin) =>
+  (starts || []).map((x) => (x.id === id && x.fw && !x.fin ? { ...x, fw: new Date(Math.max(nowMs + 60e3, Date.parse(x.fw) + dMin * 60e3)).toISOString() } : x));
+export const winLeft = (s, nowMs) => (s?.fw && !s.fin ? Math.max(0, Math.ceil((Date.parse(s.fw) - nowMs) / 1000)) : null);
+// Pencereli yarış bitti ama DNF henüz yazılmadı
+export const needDnf = (s) => !!(s?.fw && s.fin && !s.void && !s.dnf);
 export const dropRace = (starts, id, rdays = null) => renumber((starts || []).filter((x) => x.id !== id), rdays);
 // Yarışı geçersiz say (tehir / genel geri çağırma / iptal): bitiş = iptal anı (çekimleri o ana kadar bu yarışa düşer); reason boşsa geri geçerli
 export const voidRace = (starts, id, reason, atMs, rdays = null) =>
@@ -373,7 +557,7 @@ export const mediaOf = (media, athId) => (athId ? (media || []).filter((m) => m.
 // Gün sonu özeti (veliye / Instagram'a paylaşılan kart ve yazı). rows: yarış yerinin saatlik tahmini (yoksa null);
 // elle/cihazla yazılan rüzgâr varsa o, yoksa tahminin start saatleri (yoksa 10–18) arası kullanılır.
 // ours: [{ id, studentName }]; sıra yarış sonucundan (race.results.rows), en iyi sıradan.
-export function daySummary({ race, day, live, ours = [], rows = null, line = null }) {
+export function daySummary({ race, day, live, ours = [], rows = null, obs = null, line = null }) {
   const st = startsOn(live?.starts, day);
   const wl = windOn(live?.wind, day);
   const most = (dirs) => {
@@ -381,20 +565,34 @@ export function daySummary({ race, day, live, ours = [], rows = null, line = nul
     for (const d of dirs) c[dirShort(d)] = (c[dirShort(d)] || 0) + 1;
     return Object.entries(c).sort((a, b) => b[1] - a[1])[0]?.[0] || "";
   };
+  // Yarış saatleri (ilk startın saati .. son startın bir saat sonrası); yarış yoksa 10..18
+  const h0 = st.length ? +hm(st[0].at).slice(0, 2) : 10;
+  const h1 = st.length ? +hm(st[st.length - 1].at).slice(0, 2) + 1 : 18;
+  const span = (list) => (list || []).filter((x) => +x.hh >= h0 && +x.hh <= h1 && x.wind != null && x.dir != null);
+  const fromRows = (r, src) => {
+    const kn = r.map((x) => Math.round(x.wind));
+    const g = r.map((x) => x.gust).filter((x) => x != null);
+    return { lo: Math.min(...kn), hi: Math.max(...kn), gust: g.length ? Math.round(Math.max(...g)) : null, dir: most(r.map((x) => x.dir)), src, pts: r.map((x) => ({ hh: `${x.hh}:00`, kn: Math.round(x.wind) })) };
+  };
+  // Önce elle yazılan kayıt (eski Hava sekmesi), sonra en yakın istasyonun ölçümü, yoksa tahmin (Seyhun 2026-10-28)
   let wind = null;
   if (wl.length) {
     const kn = wl.map((w) => w.kn);
     const g = wl.map((w) => w.gust).filter((x) => x !== null);
     wind = { lo: Math.min(...kn), hi: Math.max(...kn), gust: g.length ? Math.max(...g) : null, dir: most(wl.map((w) => w.dir)), src: "ölçülen", pts: wl.map((w) => ({ hh: hm(w.at), kn: w.kn })) };
-  } else if (rows?.length) {
-    const h0 = st.length ? +hm(st[0].at).slice(0, 2) : 10;
-    const h1 = st.length ? +hm(st[st.length - 1].at).slice(0, 2) + 1 : 18;
-    const r = rows.filter((x) => +x.hh >= h0 && +x.hh <= h1);
-    if (r.length) {
-      const kn = r.map((x) => Math.round(x.wind));
-      wind = { lo: Math.min(...kn), hi: Math.max(...kn), gust: Math.round(Math.max(...r.map((x) => x.gust))), dir: most(r.map((x) => x.dir)), src: "tahmin", pts: r.map((x) => ({ hh: `${x.hh}:00`, kn: Math.round(x.wind) })) };
-    }
-  }
+  } else if (span(obs).length) wind = fromRows(span(obs), "ölçülen");
+  else if (span(rows).length) wind = fromRows(span(rows), "tahmin");
+  // Grafik (Seyhun 2026-10-29 "beklenti neydi, gerçekleşen ne oldu"): yarış saatlerinin bir saat önce/sonrası; beklenen = tahmin,
+  // gelen = elle kayıt ya da istasyon ölçümü. h ondalıklı saat; yarışların startı çizgiyle.
+  const c0 = h0 - 1, c1 = h1 + 1;
+  const inC = (h) => h >= c0 && h <= c1;
+  const hr = (iso) => { const t = hm(iso); return +t.slice(0, 2) + +t.slice(3, 5) / 60; };
+  const fc = (rows || []).filter((x) => x.wind != null && inC(+x.hh)).map((x) => ({ h: +x.hh, kn: Math.round(x.wind), g: x.gust != null ? Math.round(x.gust) : null }));
+  const ob = wl.length
+    ? wl.map((w) => ({ h: hr(w.at), kn: w.kn })).filter((x) => inC(x.h))
+    : (obs || []).filter((x) => x.wind != null && inC(+x.hh)).map((x) => ({ h: +x.hh, kn: Math.round(x.wind) }));
+  const rng = (l) => (l.length ? [Math.min(...l.map((x) => x.kn)), Math.max(...l.map((x) => x.kn))] : null);
+  const chart = fc.length || ob.length ? { from: c0, to: c1, fc, ob, exp: rng(fc.filter((x) => x.h >= h0 && x.h <= h1)), got: rng(ob.filter((x) => x.h >= h0 && x.h <= h1)), starts: st.map((x) => ({ n: x.n, h: hr(x.at), flag: !!(x.void || x.flag) })) } : null;
   const res = race?.results?.rows || {};
   const team = ours
     .map((a) => ({ name: a.studentName || a.name || "", place: res[a.id]?.place || 0, line: res[a.id]?.place ? (line ? line(res[a.id]) : `${res[a.id].place}.`) : "" }))
@@ -412,7 +610,7 @@ export function daySummary({ race, day, live, ours = [], rows = null, line = nul
     starts.length && `Yarışlar: ${starts.map((x) => `${x.n}. ${x.time}${x.flag ? ` (${x.flag.toLocaleLowerCase("tr-TR")})` : ""}`).join(" · ")}`,
     ranked.length && `Bizimkiler:\n${ranked.map((a) => `${a.place}. ${a.name}${a.line && a.line !== `${a.place}.` ? ` · ${a.line}` : ""}`).join("\n")}`,
   ].filter(Boolean).join("\n");
-  return { title: race?.name || "Yarış", sub, wind, windText, starts, team, text };
+  return { title: race?.name || "Yarış", sub, wind, windText, starts, team, text, chart };
 }
 
 // Sayaç bipleri. Yarış (start dizisi): başlatınca, 4:00 ve 1:00 kala (süre ondan uzunsa), son 10 saniye her saniye, 0'da uzun.
@@ -427,15 +625,43 @@ export function beepAt(left, mode = "") {
 }
 
 // Genel sıralama: sınıfın satırları süzülür (Genel, Junior, Bambino, Kızlar), sıra süzgeç içinde yeniden verilir
+// Süzgeçler: all (Genel), grp:Altın / grp:Gümüş … (final grupları), Junior, Bambino, girls (Kızlar), Junior-girls (Junior Kızlar), Bambino-girls
+const SUB_CATS = ["Junior", "Bambino"];
+const GRPS = ["Altın", "Gümüş", "Bronz", "Zümrüt"];
 export function sheetRows(fleet, filter = "all") {
   const rows = (fleet?.rows || []).map((r, i) => ({ ...r, i })); // i: sınıf listesindeki yeri (bizimkiler bununla işaretlenir)
-  const pick = filter === "girls" ? rows.filter((r) => r.sex === "K") : filter === "Junior" || filter === "Bambino" ? rows.filter((r) => r.cat === filter) : rows;
+  if (filter.startsWith("grp:")) return rows.filter((r) => r.grp === filter.slice(4)).map((r, k) => ({ ...r, pos: k + 1 }));
+  const [cat, girls] = filter === "girls" ? ["", true] : filter.endsWith("-girls") ? [filter.slice(0, -6), true] : [SUB_CATS.includes(filter) ? filter : "", false];
+  const pick = filter === "all" ? rows : rows.filter((r) => (!cat || r.cat === cat) && (!girls || r.sex === "K"));
   return pick.map((r, k) => ({ ...r, pos: k + 1 }));
 }
 export function sheetFilters(fleet) {
   const rows = fleet?.rows || [];
-  return [["all", "Genel"], ...["Junior", "Bambino"].filter((c) => rows.some((r) => r.cat === c)).map((c) => [c, c]), ...(rows.some((r) => r.sex === "K") ? [["girls", "Kızlar"]] : [])];
+  const cats = SUB_CATS.filter((c) => rows.some((r) => r.cat === c));
+  const girls = rows.some((r) => r.sex === "K");
+  return [
+    ["all", "Genel"],
+    ...GRPS.filter((g) => rows.some((r) => r.grp === g)).map((g) => [`grp:${g}`, g]),
+    ...cats.map((c) => [c, c]),
+    ...(girls ? [["girls", "Kızlar"]] : []),
+    ...cats.filter((c) => rows.some((r) => r.cat === c && r.sex === "K")).map((c) => [`${c}-girls`, `${c} Kızlar`]),
+  ];
 }
+// Her satırın genel dışındaki sıraları (Sonuçlar 3. satır): { i: [["Gümüş", 5, 40], ["Junior", 1, 18], ["Kızlar", 2, 12], ["Junior Kızlar", 1, 6]] }
+export function rowRanks(fleet) {
+  const out = {};
+  const add = (filter, label) => {
+    const l = sheetRows(fleet, filter);
+    for (const r of l) (out[r.i] ||= []).push([label, r.pos, l.length]);
+  };
+  for (const g of GRPS) add(`grp:${g}`, g);
+  for (const c of SUB_CATS) add(c, c);
+  add("girls", "Kızlar");
+  for (const c of SUB_CATS) add(`${c}-girls`, `${c} Kızlar`);
+  return out;
+}
+// Genel listede satırın kısa işareti: "Junior kız", "Junior", "Kız" (Senior ve erkekte boş)
+export const sheetTag = (r) => [SUB_CATS.includes(r?.cat) ? r.cat : "", r?.sex === "K" ? "kız" : ""].filter(Boolean).join(" ").replace(/^kız$/, "Kız");
 
 // ---- Asistan ----
 const low = (s) => String(s || "").toLocaleLowerCase("tr-TR");
@@ -444,7 +670,7 @@ const WORD_DIR = [
   [/kuzey|y[ıi]ld[ıi]z|\bk\b/, 0], [/g[uü]ney|k[ıi]ble|\bg\b/, 180], [/bat[ıi]|batı|\bb\b/, 270], [/do[gğ]u|\bd\b/, 90],
 ];
 const NUMS = { bir: 1, iki: 2, üç: 3, dört: 4, beş: 5, altı: 6, yedi: 7, sekiz: 8, dokuz: 9, on: 10, yirmi: 20, otuz: 30 };
-function numberIn(s, unit) {
+export function numberIn(s, unit) {
   const m = s.match(new RegExp(`(\\d{1,2})\\s*(?:${unit})`));
   if (m) return +m[1];
   const w = s.match(new RegExp(`\\b(on|yirmi|otuz)?\\s*(bir|iki|üç|dört|beş|altı|yedi|sekiz|dokuz)?\\s*(?:${unit})`));
@@ -480,4 +706,253 @@ export function liveRace(races, today, cur = "") {
   if (cur) return (races || []).find((r) => r.id === cur) || null;
   const on = (r) => r.startDate && r.startDate <= today && (r.endDate || r.startDate) >= today;
   return (races || []).find(on) || null;
+}
+
+// Yayın sayfasının "Bugün" listesi yarış yarış (Seyhun 2026-11-02 tasarım startlar-yeni): bugünün startları (biten, süren, abandone) ve
+// programda bekleyenler (plan.order) yarış numarasına göre toplanır. Bekleyenlerin numarası sırayla eklenmiş gibi hesaplanır
+// (grup grup yarışta aynı yarışın grupları ortak numara). Satır: { key, grp, state: done|live|void|next|wait, start?, i? (order sırası), retry }
+// Yarış: { n, state: done|live|"" , rows }
+export function dayRaces({ starts = [], order = [], grpOf = (x) => x.grp || "", liveIds = [], today = "", rdays = null }) {
+  const todays = starts.filter((x) => x.day === today);
+  const rows = todays.map((x) => {
+    const grp = grpOf(x);
+    const state = x.void ? "void" : liveIds.includes(x.id) || !x.fin ? "live" : "done";
+    return { key: x.id, n: x.n, grp, state, start: x };
+  });
+  let acc = [...starts];
+  const first = order.findIndex((x) => !x.ap);
+  order.forEach((o, i) => {
+    const n = nextRaceNo(acc, today, rdays, o.grp || "");
+    const at = new Date(Math.max(Date.now(), ...acc.map((x) => Date.parse(x.at) || 0)) + 60e3).toISOString();
+    acc = [...acc, { id: `zzp${i}`, day: today, at, ...(o.grp ? { grp: o.grp } : {}) }];
+    rows.push({ key: `p${i}`, n, grp: o.grp || "", state: o.ap ? "ap" : i === first ? "next" : "wait", i, plan: o });
+  });
+  // aynı yarışta aynı grubun abandone'dan sonraki startı "tekrar"
+  rows.forEach((r, k) => {
+    r.retry = rows.slice(0, k).some((p) => p.n === r.n && p.grp === r.grp && p.state === "void");
+  });
+  const ns = [...new Set(rows.map((r) => r.n))].sort((a, b) => a - b);
+  return ns.map((n) => {
+    const rs = rows.filter((r) => r.n === n);
+    const state = rs.some((r) => r.state === "live") ? "live" : rs.every((r) => r.state === "done" || r.state === "void") && rs.some((r) => r.state === "done") ? "done" : "";
+    return { n, state, rows: rs };
+  });
+}
+// "+ Yarış": günün gruplarıyla bir sonraki yarışın startları (grup yoksa tek start)
+export const raceOrder = (plan) => {
+  const sets = plan?.sets?.length ? plan.sets : [{ cls: plan?.cls || "Optimist", grps: plan?.grps || [] }];
+  return sets.flatMap((x) => (x.grps.length ? x.grps : [""]).map((grp) => ({ cls: x.cls || "Optimist", grp, prep: plan?.prep || "P" })));
+};
+
+// Bir günün ilk start saati: o güne özel saat, yoksa her günün saati
+export const dayTime = (plan, d) => plan?.times?.[d] || plan?.daily || "";
+// Yeni güne geçiş: plan eski bir günde kaldıysa bugünün planı (ilk start günün saatinden, bekleyenler düşer; yarış yok günü "none").
+// Sunucu (/api/canli) ve Yayın sayfası kullanır; böylece Yayın açılmadan da ekran bugünün saatini sayar.
+export function rollPlan(plan, today) {
+  const pl = cleanPlan(plan);
+  if (!today || (pl.day && pl.day >= today)) return pl;
+  const status = pl.off.includes(today) ? "none" : "";
+  return { ...pl, day: today, at: dayTime(pl, today) || (pl.next?.day === today ? pl.next.at : ""), order: pl.day ? [] : pl.order, status, next: null, ap: null };
+}
+
+// Manuel girilen rüzgâr (Seyhun 2026-11-02): Yayın/parkurda o saat için girilen ölçüm (parkur rüzgâr kaydı ya da canlı rüzgâr)
+// istasyonun yerine o saatin sütunu olur; saat başına son ölçüm. Saat ve gün Türkiye saatiyle.
+export function windByHour(data, now) {
+  const day = new Date(now + 3 * 3600e3).toISOString().slice(0, 10);
+  const obs = (data.course?.obs || []).filter((o) => o.kind === "wind").map((o) => ({ at: o.at, dir: o.deg, kn: o.kn }));
+  const out = {};
+  for (const x of [...(data.wind || []), ...obs]) {
+    if (x?.kn == null || !x.at || Number.isNaN(Date.parse(x.at))) continue;
+    const t = new Date(Date.parse(x.at) + 3 * 3600e3).toISOString();
+    if (t.slice(0, 10) !== day) continue;
+    const hh = t.slice(11, 13);
+    if (!out[hh] || out[hh].at < x.at) out[hh] = { at: x.at, wind: Math.round(x.kn), dir: x.dir ?? null };
+  }
+  return out;
+}
+// Bugün girilen tüm manuel rüzgâr ölçümleri (Seyhun 2026-11-02 "daha sık saat aralığı varsa onu da gösterelim"): grafikte
+// kendi dakikasına nokta; h = Türkiye saatiyle kesirli saat (14.5 = 14:30)
+export function windPoints(data, now) {
+  const day = new Date(now + 3 * 3600e3).toISOString().slice(0, 10);
+  const obs = (data.course?.obs || []).filter((o) => o.kind === "wind").map((o) => ({ at: o.at, kn: o.kn }));
+  return [...(data.wind || []), ...obs]
+    .filter((x) => x?.kn != null && x.at && !Number.isNaN(Date.parse(x.at)))
+    .map((x) => ({ t: new Date(Date.parse(x.at) + 3 * 3600e3).toISOString(), kn: Math.round(x.kn) }))
+    .filter((x) => x.t.slice(0, 10) === day)
+    .map((x) => ({ h: +x.t.slice(11, 13) + +x.t.slice(14, 16) / 60, kn: x.kn }))
+    .sort((a, b) => a.h - b.h);
+}
+// Saat eşleme (NTP gibi): ölçümlerden en kısa gidiş-dönüşlü olanın ortası; { off: sunucu − cihaz (ms), rtt }
+export function bestOffset(samples) {
+  const ok = samples.filter((x) => x && Number.isFinite(x.server) && x.t1 >= x.t0);
+  if (!ok.length) return null;
+  const b = ok.reduce((a, x) => (x.t1 - x.t0 < a.t1 - a.t0 ? x : a));
+  return { off: Math.round(b.server - (b.t0 + b.t1) / 2), rtt: b.t1 - b.t0 };
+}
+
+// Yarışa günler varken (Seyhun 2026-11-02 "6 gün sonra bir yarış; kaç gün kaldı, o tarihlerdeki beklenen rüzgâr"): yarış günleri
+// (başlangıç–bitiş, programda yarış olmayan günler düşer) ve her gün ilk start saatinden 4 saat boyunca beklenen ortalama rüzgâr, en sert sağanak, start'taki yön.
+// hourly [{ t: "2026-11-08T11", wind, gust, dir }] (open-meteo); tahmini olmayan gün yine listelenir (wind null).
+export function raceDays(start, end, plan) {
+  if (!DAY.test(start || "")) return [];
+  const off = new Set(plan?.off || []);
+  const out = [];
+  const last = DAY.test(end || "") && end >= start ? end : start;
+  for (let d = start; d <= last && out.length < 10; d = plus(d, 1)) if (!off.has(d)) out.push(d);
+  return out;
+}
+export function aheadWind(hourly, days, plan) {
+  const at = (d) => plan?.times?.[d] || plan?.daily || "";
+  return days.map((day) => {
+    const a = at(day);
+    const h0 = a ? +a.slice(0, 2) : 11;
+    const win = (hourly || []).filter((r) => r.t?.slice(0, 10) === day && +r.t.slice(11, 13) >= h0 && +r.t.slice(11, 13) <= h0 + 4 && r.wind != null);
+    const first = win.find((r) => +r.t.slice(11, 13) === h0) || win[0];
+    const gs = win.map((r) => r.gust).filter((g) => g != null);
+    return { day, at: a, wind: win.length ? Math.round(win.reduce((s, r) => s + r.wind, 0) / win.length) : null, gust: gs.length ? Math.max(...gs) : null, dir: first?.dir ?? null };
+  });
+}
+// Bugünden yarışın ilk gününe kaç gün (Türkiye günü); geçtiyse 0
+export const daysUntil = (day, today) => (DAY.test(day || "") && DAY.test(today || "") ? Math.max(0, Math.round((Date.parse(`${day}T12:00:00Z`) - Date.parse(`${today}T12:00:00Z`)) / 864e5)) : 0);
+
+// Turuncu bayrak çekili mi (bugün, gün bitmemiş): canlı ekran "Start öncesi"ne geçer
+export const orangeUp = (plan, today) => !!plan?.orange && plan.status !== "done" && new Date(Date.parse(plan.orange) + 3 * 3600e3).toISOString().slice(0, 10) === today;
+// "Bugün yarış yok" ekranı (Seyhun 2026-11-02 örnek A): bugünden sonraki ilk yarış günü ve ilk start saati (yarış yok günleri atlanır)
+export function nextRaceDay(plan, today, start, end) {
+  const d = raceDays(start, end, plan).find((x) => x > today);
+  return d ? { day: d, at: dayTime(plan, d) || plan?.at || "" } : null;
+}
+
+// Start sırası (Seyhun 2026-11-04 "sarı, mavi, kırmızı diye sıralamak istiyorum"): sets'in sırası = sınıf sırası, grps'in sırası = sınıfın içinde
+// grup sırası. setsUp: düz listedeki k. startı bir öne al (sınıfın ilk grubuysa bütün sınıf bir önceki sınıfın önüne geçer)
+export function setsUp(sets, k) {
+  const flat = sets.flatMap((x, i) => (x.grps.length ? x.grps : [""]).map((g, j) => ({ i, j })));
+  const at = flat[k];
+  if (!at || k === 0) return sets;
+  const out = sets.map((x) => ({ ...x, grps: [...x.grps] }));
+  if (at.j > 0) {
+    const g = out[at.i].grps;
+    [g[at.j - 1], g[at.j]] = [g[at.j], g[at.j - 1]];
+  } else [out[at.i - 1], out[at.i]] = [out[at.i], out[at.i - 1]];
+  return out;
+}
+// Bekleyen startları yeni sıraya göre diz: her yarışın startları (bir grup tekrar edince yeni yarış başlar) kendi içinde sıralanır
+export function orderBySets(order, sets) {
+  const key = (x) => `${x.cls || ""}|${x.grp || ""}`;
+  const rank = new Map(raceOrder({ sets }).map((x, i) => [key(x), i]));
+  const chunks = [];
+  let seen = null;
+  for (const x of order) {
+    if (!seen || seen.has(key(x))) chunks.push([]), (seen = new Set());
+    seen.add(key(x));
+    chunks.at(-1).push(x);
+  }
+  const r = (x) => rank.get(key(x)) ?? 999;
+  return chunks.flatMap((c) => c.map((x, i) => ({ x, i })).sort((a, b) => r(a.x) - r(b.x) || a.i - b.i).map((o) => o.x));
+}
+
+// Grup ekleme (Seyhun 2026-11-08 "sarı, mavi, kırmızı grubumuz var, onları ekleyebiliyor olmam lazım; şurası sadece sarı gözüküyor"):
+// sınıfa yeni grup gelince (elle, sesle, Sporcu sekmesi, kurulum ya da renk listesi) bekleyen her yarışa o grubun startı da girer.
+// Yarış = sınıfın eski bütün gruplarını taşıyan bekleyen startlar (genel geri çağırmadan dönen tek grup start'ı yarış sayılmaz, eski grup tekse sayılır).
+const lowCls = (c) => String(c || "").trim().toLocaleLowerCase("tr");
+export function fillOrder(order, oldSets, sets) {
+  const key = (x) => `${x.cls || ""}|${x.grp || ""}`;
+  const chunks = [];
+  let seen = null;
+  for (const x of order || []) {
+    if (!seen || seen.has(key(x))) chunks.push([]), (seen = new Set());
+    seen.add(key(x));
+    chunks.at(-1).push({ ...x });
+  }
+  let n = (order || []).length;
+  for (const set of sets || []) {
+    const was = (oldSets || []).find((x) => lowCls(x.cls) === lowCls(set.cls))?.grps || [];
+    const add = set.grps.filter((g) => !was.includes(g));
+    if (!add.length) continue;
+    for (const c of chunks) {
+      const mine = c.filter((x) => lowCls(x.cls) === lowCls(set.cls));
+      if (!mine.length) continue;
+      const prep = mine[0].prep || "";
+      if (!was.length) {
+        const bare = mine.find((x) => !x.grp);
+        if (!bare) continue;
+        bare.grp = add[0];
+        for (const g of add.slice(1)) if (n < 24) c.push({ cls: mine[0].cls, grp: g, prep }), n++;
+        continue;
+      }
+      if (!was.every((g) => mine.some((x) => x.grp === g))) continue;
+      for (const g of add) if (n < 24 && !mine.some((x) => x.grp === g)) c.push({ cls: mine[0].cls, grp: g, prep }), n++;
+    }
+  }
+  return orderBySets(chunks.flat(), sets);
+}
+// Elle ya da sesle grup ekle: sınıf verilmezse ilk sınıf. Final grupları açıklanmış sınıfa renk grubu eklenmez. Dönüş plan yaması ya da null (yeni grup yok)
+export function addGrps(plan, grps, cls = "") {
+  const sets0 = plan?.sets?.length ? plan.sets : [{ cls: plan?.cls || "Optimist", grps: plan?.grps || [] }];
+  const i = Math.max(0, cls ? sets0.findIndex((x) => lowCls(x.cls) === lowCls(cls)) : 0);
+  const set = sets0[i];
+  if (!set) return null;
+  const fin = set.grps.some(isFinalGrp);
+  const add = (grps || []).filter((g) => g && !set.grps.includes(g) && (!fin || isFinalGrp(g)));
+  if (!add.length) return null;
+  const sets = sets0.map((x, k) => (k === i ? { ...x, grps: [...x.grps, ...add].slice(0, 6) } : x));
+  return { sets, cls: sets[0].cls, grps: sets[0].grps, order: fillOrder(plan?.order || [], sets0, sets), added: add.filter((g) => sets[i].grps.includes(g)), to: set.cls };
+}
+// "mavi grubu ekle", "kırmızı ve yeşil grupları ekle", "grup ekle sarı" → { add: ["Mavi", …], say }
+const GRP_SAY = [["Sarı", "sar[ıi]"], ["Mavi", "mavi"], ["Kırmızı", "k[ıi]rm[ıi]z[ıi]"], ["Yeşil", "ye[sş]il"], ["Pembe", "pembe"], ["Altın", "alt[ıi]n"], ["Gümüş", "g[üu]m[üu][sş]"], ["Bronz", "bronz"]];
+export function grpCommand(raw) {
+  const s = String(raw || "").toLocaleLowerCase("tr");
+  if (!/gru[bp]/.test(s) || !/\bekle/.test(s)) return null;
+  const add = GRP_SAY.filter(([, re]) => new RegExp(`(^|[^a-zçğıöşü])${re}`).test(s)).map(([g]) => g);
+  return add.length ? { add, say: s } : null;
+}
+
+// Tek gruba tehir: grubun bekleyen startları tehirde, sıranın sonuna gider (sıradaki start tehirde olmayan grup olur)
+export function grpHold(order, grp, a) {
+  const hold = cleanHold(a);
+  const mine = order.filter((o) => o.grp === grp).map((o) => ({ ...o, ap: hold }));
+  return [...order.filter((o) => o.grp !== grp), ...mine];
+}
+// Grubun tehiri iner: satırlar tehirsiz, sıranın başına (en uzun bekleyen); öbür tehirdekiler sonda kalır
+export function grpRelease(order, grp) {
+  const mine = order.filter((o) => o.grp === grp).map(({ ap, ...o }) => o);
+  return [...mine, ...order.filter((o) => o.grp !== grp)];
+}
+// Tehirdeki gruplar: [{ grp, ap }] (her grup bir kez)
+export const heldGrps = (order) => [...new Map((order || []).filter((o) => o.ap && o.grp).map((o) => [o.grp, o.ap])).entries()].map(([grp, ap]) => ({ grp, ap }));
+// İnişi gelmiş grup tehirleri
+export const grpDue = (order, now) => heldGrps(order).filter((x) => x.ap.down && Date.parse(x.ap.down) <= now).map((x) => x.grp);
+
+// Aynı anda iki telefon (Seyhun 2026-11-04 "iki telefonun birbirini ezmesi"): starts ve plan.order bütün liste yazılıyordu; biri Kırmızı'yı
+// başlatırken öteki Sarı'yı bitirirse son yazan ötekinin değişikliğini silerdi. Yazmadan önce sunucudaki liste okunur ve yalnız bu telefonun
+// değiştirdikleri uygulanır. known: bu telefonun en son gördüğü sunucu listesi, mine: bu telefonun yazmak istediği, srv: şimdi sunucudaki.
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+export function mergeStarts(known, mine, srv) {
+  if (same(known, srv)) return mine;
+  const K = new Map(known.map((x) => [x.id, x]));
+  const M = new Map(mine.map((x) => [x.id, x]));
+  const S = new Map(srv.map((x) => [x.id, x]));
+  const out = [];
+  for (const x of srv) {
+    if (M.has(x.id)) out.push(K.has(x.id) && same(M.get(x.id), K.get(x.id)) ? x : M.get(x.id)); // ben değiştirmediysem sunucudaki
+    else if (!K.has(x.id)) out.push(x); // başka telefonun yeni startı
+    // ben sildim (gördüğüm listede vardı, benimkinde yok)
+  }
+  for (const x of mine) if (!S.has(x.id) && !(K.has(x.id) && same(x, K.get(x.id)))) out.push(x); // benim yeni startım (öteki sildiyse ve ben dokunmadıysam gelmez)
+  return out.sort((a, b) => (Date.parse(a.at) || 0) - (Date.parse(b.at) || 0));
+}
+// Bekleyen startlar (kimliksiz satırlar): sunucudakinden benim çıkardıklarım çıkar, eklediklerim sona eklenir; kimse değiştirmediyse benimki
+export function mergeOrder(known, mine, srv) {
+  if (same(known, srv)) return mine;
+  const take = (list, items) => {
+    const out = [...list];
+    for (const it of items) {
+      const k = out.findIndex((x) => same(x, it));
+      if (k >= 0) out.splice(k, 1);
+    }
+    return out;
+  };
+  const removed = take(known, mine);
+  const added = take(mine, known);
+  return [...take(srv, removed), ...added];
 }

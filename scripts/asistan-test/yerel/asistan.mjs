@@ -113,7 +113,7 @@ group("Sayfa açma (bozuk ses)")([
   ["alışverş listesini aç", NV({ page: "shopping" })], ["spor cuları aç", NV({ page: "athletes" })], ["Planlarım.", NV({ page: "plans" })],
   ["Fişlerim.", NV({ page: "receipts" })], ["Görevlerim", NV({ page: "tasks" })], ["Takvimim", NV({ page: "calendar" })],
   ["Geri dön.", NV({ back: true })], ["geri git", NV({ back: true })], ["Bir önceki sayfaya dön.", NV({ back: true })], ["tamam geri dön lütfen", NV({ back: true })],
-  ["Ali'ye geri dönüş yap", NV(null)], ["yarın kamp planla", NV(null)], ["toplantıyı ayarla", NV(null)], ["yarış evrakını aç", NV({ page: "races" })],
+  ["Ali'ye geri dönüş yap", NV(null)], ["yarın kamp planla", NV(null)], ["toplantıyı ayarla", NV(null)], ["yarış evrakını aç", NV({ page: "races" })], ["yarış takvimini aç", NV({ page: "raceCalendar" })], ["tüm yarışları göster", NV({ page: "raceCalendar" })], ["yarışlar sayfasını aç", NV({ page: "races" })],
 ]);
 
 
@@ -271,6 +271,17 @@ group("Sohbet arşivi ve silme (sesle)")([
   ["Ali ile konuşmayı sil", { desc: "yol: chatOp (ana hesap)", fn: (s) => routeOfMd(s, { owner: true }), ok: (r) => r === "chatOp" }],
   ["Ali ile konuşmayı sil", { desc: "çalışanda chatOp yok", fn: (s) => routeOfMd(s, {}), ok: (r) => r !== "chatOp" }],
 ]);
+
+// Tümünü okundu say sesle (assistantLocal.js chatReadAllAsk, assistRoute.js chatReadAll; Mesajlar ⋯ ile aynı)
+{
+  const { chatReadAllAsk } = await import("@/lib/assistantLocal");
+  const RA = (want) => ({ desc: want ? "tümünü okundu say" : "değil", fn: (s) => chatReadAllAsk(s), ok: (r) => r === want });
+  group("Tümünü okundu say (sesle)")([
+    ["tüm mesajları okundu say", RA(true)], ["Bütün sohbetleri okundu işaretle.", RA(true)], ["mesajların hepsini okundu yap", RA(true)],
+    ["mesajları oku", RA(false)], ["Ali'nin mesajını okundu say", RA(false)], ["notlarımı oku", RA(false)],
+    ["tüm mesajları okundu say", { desc: "yol: chatReadAll", fn: (s) => routeOfMd(s, {}), ok: (r) => r === "chatReadAll" }],
+  ]);
+}
 
 // Fiş Kişisel ↔ Kulüp sesle (assistMore.js receiptScopeCommand; Garanti kart mailinden gelen fişler Kişisel başlar)
 const RSM = await import("@/lib/assistMore");
@@ -613,7 +624,7 @@ group("Göreve göre ara yazı")([
     ["envantere 3 telsiz ekle", { desc: "envanter ekleme", fn: inventoryWork, ok: (w) => w === "Envantere ekleniyor" }],
     ["2 şamandıra kayboldu", { desc: "envanterden çıkarma", fn: inventoryWork, ok: (w) => w === "Envanterden çıkarılıyor" }],
     ["kaç telsiz var", { desc: "envanter sorusu", fn: inventoryWork, ok: (w) => w === "Envantere bakılıyor" }],
-    ["istem", { desc: "yapay zeka istemi kısa", fn: () => tasksPrompt(), ok: (p) => p.length < 3100 && /envanter/i.test(p) }], // 2026-10-18: +rüzgâr kaydı, start sayacı; 2026-10-19: +sohbet arşivi; 2026-10-20: +yoklama, kulüp, fatura/harcama/mesaj sorusu; 2026-10-23: +yemek siparişi; 2026-10-24: +market sepeti
+    ["istem", { desc: "yapay zeka istemi kısa", fn: () => tasksPrompt(), ok: (p) => p.length < 3140 && /envanter/i.test(p) }], // 2026-10-18: +rüzgâr kaydı, start sayacı; 2026-10-19: +sohbet arşivi; 2026-10-20: +yoklama, kulüp, fatura/harcama/mesaj sorusu; 2026-10-23: +yemek siparişi; 2026-10-24: +market sepeti; 2026-11-13: +tümünü okundu say
   ]);
 }
 
@@ -735,6 +746,9 @@ group("Göreve göre ara yazı")([
     ["bilgi notunu hazırla", C("veli bilgi notu (hepsi)", M.raceHereCommand, (r) => r?.op === "sheet" && !r.name)],
     ["Ali'nin bilgi notunu hazırla", C("veli bilgi notu (tek sporcu)", M.raceHereCommand, (r) => r?.op === "sheet" && /ali/i.test(r.name))],
     ["herkesin veli notunu çıkar", C("veli notu herkes", M.raceHereCommand, (r) => r?.op === "sheet" && !r.name)],
+    ["Ali'nin bütçesini gönder", C("tek sporcunun bütçesi", M.raceHereCommand, (r) => r?.op === "sheet" && r.only === "budget" && /ali/i.test(r.name))],
+    ["Zeynep'in bütçe payını çıkar", C("tek sporcunun bütçe payı", M.raceHereCommand, (r) => r?.op === "sheet" && r.only === "budget" && /zeynep/i.test(r.name))],
+    ["herkesin bütçesini hazırla", C("herkesin bütçesi", M.raceHereCommand, (r) => r?.op === "sheet" && r.only === "budget" && !r.name)],
     ["yarışı planlara ekle", C("planlara", M.raceHereCommand, (r) => r?.op === "plan")],
     ["vize başvurusu yapıldı", C("iş yapıldı", M.raceHereCommand, (r) => r?.op === "step" && r.done && r.words === "vize başvurusu")],
     ["velilere imzalat işini yaptım", C("iş yaptım", M.raceHereCommand, (r) => r?.op === "step" && r.done && r.words === "velilere imzalat")],
@@ -1706,5 +1720,19 @@ group("Temiz başlık ve sorusuz ekleme")([
   group("Testler: raporlar")([
     ["son sonuçlar", { desc: "her testin en yeni sonucu", fn: () => RS.lastResults(reps), ok: (r) => r["ses.okuma"].pass === 1 && r["asistan.ornek"].pass === 22 }],
     ["paylaşılan metin", { desc: "başlık, özellik › test, ✗ ve nedeni", fn: () => RS.reportText(reps[1]), ok: (r) => /^TEST RAPORU · .* · 22\/25 geçti · 9 sn/.test(r) && /Ses › Sesli okuma: 0\/1\n✗ Ses gelmedi \(Ses anahtarı yok\)/.test(r) }],
+  ]);
+}
+
+// Mesajdaki dosyadan plan sesle (lib/chatPlan.js chatPlanAsk, assistRoute.js chatPlan, isler/mesajPlan.js)
+{
+  const { chatPlanAsk } = await import("@/lib/chatPlan");
+  const { routeOf } = await import("@/lib/assistRoute");
+  const CP = (who) => ({ desc: who === null ? "mesajdan plan değil" : `dosyadan plan${who ? ` (${who})` : ""}`, fn: (s) => chatPlanAsk(s), ok: (r) => (who === null ? r === null : r?.who === who) });
+  group("Mesajdaki dosyadan plan (sesle)")([
+    ["son dosyayı planlara ekle", CP("")], ["mesajdaki belgeyi takvime ekle", CP("")], ["Ali'nin attığı programı plana ekle", CP("Ali")],
+    ["Sanver'in gönderdiği PDF'i planlarıma ekle", CP("Sanver")], ["Ali'den gelen talimatı planlara kaydet", CP("Ali")], ["son mesajdaki fotoğrafı plana ekle", CP("")],
+    ["yarın 10'da antrenman planı ekle", CP(null)], ["plan ekle", CP(null)], ["antrenman programı ekle", CP(null)], ["fitness programını planlara ekle", CP(null)], ["talimatı planlara ekle", CP(null)], ["son mesajımı sil", CP(null)],
+    ["Ali'nin attığı programı plana ekle", { desc: "yol: chatPlan", fn: (s) => routeOf(s, { owner: true }), ok: (r) => r === "chatPlan" }],
+    ["son dosyayı planlara ekle", { desc: "sporcu tarafında yok", fn: (s) => routeOf(s, { athleteSide: true }), ok: (r) => r !== "chatPlan" }],
   ]);
 }

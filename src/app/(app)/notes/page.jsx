@@ -130,7 +130,7 @@ export default function NotesPage() {
   const pill0 = "flex h-9 shrink-0 items-center rounded-full border px-3.5 text-[0.8125rem] font-semibold";
 
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
+    <main className="split mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Notlar">
         <header className="flex items-center gap-2.5">
           <BackButton href="/" />
@@ -138,7 +138,7 @@ export default function NotesPage() {
             <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Notlar</h1>
             <p className="truncate text-[0.8125rem] text-white/65">{nAll ? `${nAll} not` : "Not yok"}</p>
           </div>
-          <Link href="/notes/new" data-press className="raised act-main flex h-9 shrink-0 items-center gap-1 rounded-xl border px-3.5 text-[0.875rem] font-semibold">
+          <Link href="/notes/new" data-press className="btn btn-primary btn-sm shrink-0 gap-1">
             <Icon name="plus" className="size-4" />
             Not
           </Link>
@@ -164,7 +164,7 @@ export default function NotesPage() {
             {chips.length > 1 && (
               <div className="-mx-5 mt-3 flex gap-2 overflow-x-auto px-5 pb-0.5 [scrollbar-width:none]">
                 {chips.map(([k, l, c]) => (
-                  <button key={k} type="button" onClick={() => setF(k)} aria-pressed={f === k} data-press className={`${pill0} ${f === k ? "border-white bg-white text-[#11203a]" : "ck-glass text-white"}`}>
+                  <button key={k} type="button" onClick={() => setF(k)} aria-pressed={f === k} data-press className={`${pill0} ${f === k ? "border-white bg-white text-[#0b1a33]" : "ck-glass text-white"}`}>
                     {l}
                     <span className="ml-1.5 tabular-nums opacity-70">{c}</span>
                   </button>
@@ -175,7 +175,7 @@ export default function NotesPage() {
         )}
       </section>
 
-      <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
+      <div className="split-main relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
         {logNotes.length > 0 && (
           <section className="overflow-hidden rounded-[1.25rem] border border-line bg-card">
             <button onClick={() => setShowLog(!showLog)} data-press="row" className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left text-[0.8125rem]">
@@ -224,7 +224,9 @@ export default function NotesPage() {
           Arşiv ›
         </Link>
 
-        <WordCard />
+        <div className="split-side">
+          <WordCard />
+        </div>
       </div>
     </main>
   );

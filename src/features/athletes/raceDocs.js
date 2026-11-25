@@ -263,12 +263,16 @@ function grid(p, cols, rows, th = 0.6) {
   cols.forEach((x) => p.line(x, rows[0], x, rows.at(-1), th));
 }
 
+// Yazıların muhatabı her zaman kulübün ili (Seyhun 2026-11-24 "her zaman İzmir Gençlik Spor yazmalı; Muğla'da yarış olunca Muğla yazdı"):
+// valilik ve gençlik spor il müdürlüğü İzmir; yarışın yapılacağı il (r.city) yalnız "… ilinde düzenlenecek" ve "Yeri"nde.
+export const HOME_CITY = "İZMİR";
+
 // ---- 1) Okul izni yazısı ----
 function schoolLetter(pdf, f, r, list) {
   const page = pdf.addPage([W, H]);
   const p = painter(page);
   p.text("GENÇLİK VE SPOR İL MÜDÜRLÜĞÜNE", 186, 92, f.serifB, 12);
-  p.text(up(r.city), 396, 113, f.serifB, 12);
+  p.text(HOME_CITY, 396, 113, f.serifB, 12);
   const x = 74;
   const w = 461;
   const lead = 20.7;
@@ -333,14 +337,14 @@ function kafile(pdf, f, r, list, coach) {
   const p = painter(page);
   p.text("(EK-2)", 527, 95, f.serifB, 12, "right");
   p.text("T.C.", W / 2, 110, f.serif, 12, "center");
-  p.text(`${up(r.city)} VALİLİĞİ`, W / 2, 124, f.serif, 12, "center");
+  p.text(`${HOME_CITY} VALİLİĞİ`, W / 2, 124, f.serif, 12, "center");
   p.text("Gençlik ve Spor İl Müdürlüğü", W / 2, 139, f.serif, 12, "center");
   p.text("Sayı", 74, 167, f.serif, 12);
   p.text(`:${r.year} -`, 106, 167, f.serif, 12);
   p.text("Konu", 74, 181, f.serif, 12);
   p.text(":Kafile Onayı", 106, 181, f.serif, 12);
   p.text(dmy(r.letterDate), 527, 167, f.serif, 12, "right");
-  p.text(`${up(r.city)} GENÇLİK VE SPOR İL MÜDÜRLÜĞÜNE`, W / 2, 210, f.serif, 12, "center");
+  p.text(`${HOME_CITY} GENÇLİK VE SPOR İL MÜDÜRLÜĞÜNE`, W / 2, 210, f.serif, 12, "center");
 
   // Faaliyet tablosu
   const c1 = [72, 272, 527];
@@ -396,7 +400,7 @@ function kafile(pdf, f, r, list, coach) {
 function travel(pdf, f, r, list, coach) {
   const page = pdf.addPage([W, H]);
   const p = painter(page);
-  p.text(`${up(r.city)} GENÇLİK VE SPOR İL MÜDÜRLÜĞÜNE`, W / 2, 142, f.serifB, 12, "center");
+  p.text(`${HOME_CITY} GENÇLİK VE SPOR İL MÜDÜRLÜĞÜNE`, W / 2, 142, f.serifB, 12, "center");
   p.text("(Spor Faaliyetleri Birimi)", W / 2, 156, f.serifB, 12, "center");
   const x = 42;
   const w = 520;
@@ -934,12 +938,12 @@ function entryForm(pdf, f, r, c, cls, list) {
   signBox(page, p, f, L + 6, top + 6, up(c.name));
 }
 
-// Otel konaklama izninin bilgileri: otel adı yalnız yazıldıysa (talimattaki oteller öneri olarak seçilir);
+// Otel konaklama izninin bilgileri: otel Yolculuk'taki otellerden seçilir (2026-10-28 tek yer; Yolculuk'ta tek otel varsa o);
 // tarih, ad, yer ve imzalayan kulüp izin yazısıyla aynı yerden gelir
 export function hotelInfo(r) {
   const c = clubInfo(r);
   return {
-    hotel: String(r.hotelName || "").trim(),
+    hotel: String(r.hotelName || "").trim() || (Array.isArray(r.hotels) && r.hotels.filter((h) => h?.name).length === 1 ? String(r.hotels.find((h) => h?.name).name).trim() : ""),
     from: r.hotelFrom || r.startDate,
     to: r.hotelTo || r.hotelFrom || r.endDate || r.startDate,
     event: c.event,

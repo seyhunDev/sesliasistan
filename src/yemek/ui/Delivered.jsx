@@ -26,9 +26,9 @@ export function Delivered({ order, photo, onRate, onClose }) {
     await onRate(n, note.trim());
   };
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col overflow-hidden bg-[#11203a] text-white" role="dialog" aria-label="Teslim edildi" onPointerDown={() => setTouched(true)}>
+    <div className="fixed inset-0 z-[60] flex flex-col overflow-hidden bg-[#0b1a33] text-white" role="dialog" aria-label="Teslim edildi" onPointerDown={() => setTouched(true)}>
       <Img src={photo} w={900} className="absolute inset-0 size-full !bg-transparent" />
-      <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(17,32,58,.35)_0%,rgba(17,32,58,.15)_30%,rgba(17,32,58,.85)_62%,#11203a_80%)]" aria-hidden="true" />
+      <span className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11, 26, 51,.35)_0%,rgba(11, 26, 51,.15)_30%,rgba(11, 26, 51,.85)_62%,#0b1a33_80%)]" aria-hidden="true" />
       <div className="relative flex justify-end px-4 pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <button type="button" onClick={onClose} aria-label="Kapat" data-press className="grid size-11 place-items-center rounded-full bg-black/30 backdrop-blur-md">
           <Icon name="x" className="size-5" />
@@ -40,7 +40,7 @@ export function Delivered({ order, photo, onRate, onClose }) {
         <p className="mt-6 text-[1rem] font-semibold">Nasıldı?</p>
         {writing && (
           <input autoFocus value={note} onChange={(e) => setNote(e.target.value)} maxLength={120} placeholder="Not"
-            className="mt-3 h-12 w-full rounded-2xl border border-white/25 bg-white/10 px-4 text-base text-white outline-none placeholder:text-white/50 focus:border-[#67e8f9]" />
+            className="mt-3 h-12 w-full rounded-2xl border border-white/25 bg-white/10 px-4 text-base text-white outline-none placeholder:text-white/50 focus:border-[#8fb3ff]" />
         )}
         <div className="mt-3 flex justify-between">
           {[1, 2, 3, 4, 5].map((n) => (
@@ -50,7 +50,7 @@ export function Delivered({ order, photo, onRate, onClose }) {
           ))}
         </div>
         {!writing && (
-          <button type="button" onClick={() => setWriting(true)} className="mt-4 text-[0.9375rem] font-semibold text-[#67e8f9]">Not ekle</button>
+          <button type="button" onClick={() => setWriting(true)} className="mt-4 text-[0.9375rem] font-semibold text-[#8fb3ff]">Not ekle</button>
         )}
       </div>
     </div>

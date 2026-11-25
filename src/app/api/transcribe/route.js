@@ -7,9 +7,11 @@ import { audioSecs, sttBody, sttText, sttVocab } from "@/lib/speech/geminiStt";
 
 export const runtime = "nodejs";
 
-// Sık kelimeler: kulüp işleri, tekne sınıfları ve asistanın sayfa adları (komutlar doğru yazılsın: "Optimus" değil "Optimist")
+// Sık kelimeler: kulüp işleri, tekne sınıfları, parkur sözleri ("bin" değil "pin", "nat" değil "knot") ve asistanın sayfa adları
+// (komutlar doğru yazılsın: "Optimus" değil "Optimist")
 const HINT =
   "Spor kulübü, yelken, antrenman, yarış, regat, ayak, Optimist, ILCA, Laser, 420, 470, Techno 293, iQFoil, Finn, Nacra, ıskota, fiş, fatura, KDV, " +
+  "rüzgar, knot, derece, eksen, pin, komite, orsa, apaz, şamandıra, " +
   "plan, görev, not, yoklama, takvim, planlar, görevler, notlar, fişler, yarışlar, sporcular, mesajlar, ayarlar, ana sayfa, aç, git, göster.";
 const MIN = 60 * 1000;
 const BUDGET = 9500; // işlevin toplam süresi (Netlify eşzamanlı işlev sınırı ~10 sn): yedek servisler kalan süreyle denenir

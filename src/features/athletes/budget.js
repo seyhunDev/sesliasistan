@@ -53,6 +53,8 @@ export function cleanItem(x) {
       ? { cap, beds: Math.min(cap, Math.max(1, int(x?.beds ?? cap, 10))), rooms: Math.max(1, int(x?.rooms ?? 1, 30)), who: x?.who === "staff" ? "staff" : "athlete" }
       : {}),
     ...(x?.est === true && num(x?.amount) > 0 ? { est: true } : {}),
+    // Kısa not (Seyhun 2026-11-16): kalemin altında ve çıktıda görünür
+    ...(S(x?.note, 140) ? { note: S(x.note, 140) } : {}),
     ...(onlyOf(x?.only).length ? { only: onlyOf(x.only) } : {}),
   };
 }
@@ -182,6 +184,11 @@ export function totals(b, athletes, ids = null) {
 
 // Bir sporcunun ödeyeceği toplam (ortak pay + yalnız ona ait kalemler)
 export const forAthlete = (t, id) => t.lines.filter((l) => !l.only || l.only.includes(id)).reduce((n, l) => n + l.share, 0);
+// Ortak kalem (Seyhun 2026-11-16, gösterim B "Ortak · 4"): toplamı birden çok sporcuya bölünen kalemde kaç sporcuya bölündüğü; değilse 0
+export const splitCount = (l, t) => {
+  const n = l.only?.length || t.athletes;
+  return !l.club && l.unit !== "athlete" && n > 1 && l.total - l.share > 0.005 ? n : 0;
+};
 // Sporcunun kalemleri
 export const linesFor = (t, id) => t.lines.filter((l) => l.share > 0 && (!l.only || l.only.includes(id)));
 
@@ -209,15 +216,27 @@ export function howText(l, t) {
     const calc = [l.cap > 1 ? `${tl(l.amount)} ÷ ${l.cap} × ${l.beds}` : tl(l.amount)];
     if (l.rooms > 1) calc.push(`${l.rooms} oda`);
     if (l.qty > 1) calc.push(`${l.qty} gece`);
-    return `${roomText(l)} · ${calc.join(" × ")}`;
+    // Antrenörün odası sporculara bölünür: kaç sporcuya bölündüğü yazar
+    const split = l.who === "staff" && !l.club && t?.athletes ? ` · ${l.only?.length || t.athletes} sporcuya bölünür` : "";
+    return `${roomText(l)} · ${calc.join(" × ")}${split}`;
   }
   const parts = [tl(l.amount)];
   if (l.qty > 1) parts.push(`${l.qty} ${l.cat === "Konaklama" ? "gece" : "adet"}`);
+  // Ortak kalem: otel odasındaki gibi kaç sporcuya bölündüğü yazar (Seyhun 2026-11-06 "kaç kişi arasında bölüşüldüğünü")
+  const n = l.only?.length || t?.athletes || 0;
+  const tail = l.unit === "shared" ? (!l.club && n ? ` · ${n} sporcuya bölünür` : " (ortak)") : "";
   if (l.only) {
     if (l.unit === "athlete" || l.unit === "person") parts.push(`${l.only.length} sporcu`);
-    return parts.join(" × ") + (l.unit === "shared" ? " (ortak)" : "");
+    return parts.join(" × ") + tail;
   }
   if (l.unit === "athlete") parts.push(`${t.athletes} sporcu`);
   if (l.unit === "person") parts.push(`${t.people} kişi`);
-  return parts.join(" × ") + (l.unit === "shared" ? " (ortak)" : "");
+  return parts.join(" × ") + tail;
+}
+
+// Kalemin alt satırı (Seyhun 2026-11-16): hesap, ortaksa sonunda "· Ortak · 4 sporcu" ("4 sporcuya bölünür" tekrar edilmez)
+export function howLine(l, t) {
+  const n = splitCount(l, t);
+  const how = howText(l, t);
+  return n ? `${how.replace(/ · \d+ sporcuya bölünür$/, "")} · Ortak · ${n} sporcu` : how;
 }

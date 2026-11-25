@@ -13,7 +13,7 @@ export function RowList({ children, className = "" }) {
 
 // lead: soldaki küçük şey (kişi yuvarlağı); warn: alt satır kehribar (gerçek uyarı)
 // Kutu görünümü (ana sayfa Kulüp, Seyhun "A · Kutular" 2026-10-24): RowTiles içindeki satırlar ikili kutu olur: üstte küçük cyan ad,
-// ortada büyük değer (right), altında tek satır (sub). Sayfalar aynı satırları değiştirmeden iki görünümde kullanır.
+// ortada büyük değer (right), altında tek satır (sub). Büyük değerin altında pay var: kesilen kutuda "14 gün"ün g'si kesilmesin (Seyhun 2026-11-04). Sayfalar aynı satırları değiştirmeden iki görünümde kullanır.
 const TileCtx = createContext(false);
 export function RowTiles({ children }) {
   return (
@@ -25,12 +25,12 @@ export function RowTiles({ children }) {
 function Tile({ href, onClick, title, sub, right, warn, label }) {
   const body = (
     <>
-      <span className="truncate text-[0.75rem] font-semibold text-[#22d3ee]">{title}</span>
-      {right != null && <span className="truncate text-[1.25rem] font-bold leading-tight tracking-[-.02em] tabular-nums">{right}</span>}
-      {sub && <small className={`truncate text-[0.75rem] ${warn ? "text-warn" : "text-white/60"}`}>{sub}</small>}
+      <span className="truncate text-[0.75rem] font-semibold text-mut">{title}</span>
+      {right != null && <span className="-mb-[0.15em] truncate pb-[0.15em] text-[1.25rem] font-bold leading-tight tracking-[-.02em] tabular-nums">{right}</span>}
+      {sub && <small className={`truncate text-[0.75rem] ${warn ? "text-warn" : "text-mut"}`}>{sub}</small>}
     </>
   );
-  const cls = "food-card flex min-h-[5.25rem] min-w-0 flex-col gap-0.5 rounded-[1.125rem] px-3 py-2.5 text-left";
+  const cls = "hb-card flex min-h-[5.25rem] min-w-0 flex-col gap-0.5 rounded-[1.125rem] px-3 py-2.5 text-left";
   if (href) return <Link href={href} data-press aria-label={label} className={cls}>{body}</Link>;
   if (onClick) return <button type="button" data-press aria-label={label} onClick={onClick} className={cls}>{body}</button>;
   return <div className={cls}>{body}</div>;
@@ -57,11 +57,12 @@ export function Row({ href, onClick, lead, title, sub, right, warn = false, chev
 }
 
 // Bölüm başlığı (listelerin üstünde): küçük büyük harfli gri ad ve sayı, sağda tek eylem ("Tümü ›" gibi)
-export function ListHead({ title, count, href, more = "Tümü", id }) {
+export function ListHead({ title, count, href, more = "Tümü", id, action = null }) {
   return (
     <div className="mb-1.5 flex items-center justify-between gap-3 px-1">
-      <h2 id={id} className="min-w-0 truncate text-[0.8125rem] font-bold tracking-[.04em] text-mut">
-        {title.toLocaleUpperCase("tr-TR")}
+      {/* Büyük harf CSS ile (html lang="tr"); açık temada (.acik) normal harf, globals.css .lh */}
+      <h2 id={id} className="lh min-w-0 truncate text-[0.8125rem] font-bold tracking-[.04em] text-mut">
+        {title}
         {count ? <span className="ml-1.5 font-semibold tabular-nums">{count}</span> : null}
       </h2>
       {href && (
@@ -69,6 +70,7 @@ export function ListHead({ title, count, href, more = "Tümü", id }) {
           {more} ›
         </Link>
       )}
+      {action}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { authErrorMessage, login, resetPassword } from "@/lib/auth";
 import { cleanLogin, validLogin } from "@/lib/kinds";
+import { useSailingReturn } from "@/lib/sailingReturn";
 
 // Yeni kayıt yalnızca NEXT_PUBLIC_ALLOW_SIGNUP=1 iken açık
 const SIGNUP = process.env.NEXT_PUBLIC_ALLOW_SIGNUP === "1";
@@ -31,6 +32,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [move, setMove] = useState(""); // adım değişince form yandan kayar: "" (ilk açılış) | fwd | back
+  const sailing = useSailingReturn(); // Velora Sailing'den gelen: kayıt her zaman açık
   const ok = validLogin(id);
   const isEmail = id.includes("@");
 
@@ -81,7 +83,7 @@ export default function LoginPage() {
   }
 
   const errorBox = error && (
-    <p role="alert" className="mt-3 rounded-xl bg-rec/20 px-3.5 py-2.5 text-[0.875rem] text-white">
+    <p role="alert" className="mt-3 rounded-xl bg-rec/10 px-3.5 py-2.5 text-[0.875rem] text-rec">
       {error}
     </p>
   );
@@ -89,9 +91,9 @@ export default function LoginPage() {
   if (step === "sent") {
     return (
       <div key={step} {...stepProps}>
-        <h1 className="text-[1.25rem] font-semibold text-white">E-postanı kontrol et</h1>
-        <p className="mt-2 text-[0.9375rem] leading-relaxed text-white/70">
-          <b className="font-semibold text-white">{cleanLogin(id)}</b> adresine kayıtlı bir hesap varsa şifre sıfırlama bağlantısı gönderdik. Gelmediyse gereksiz (spam) klasörüne de bak.
+        <h1 className="text-[1.25rem] font-semibold text-fg">E-postanı kontrol et</h1>
+        <p className="mt-2 text-[0.9375rem] leading-relaxed text-mut">
+          <b className="font-semibold text-fg">{cleanLogin(id)}</b> adresine kayıtlı bir hesap varsa şifre sıfırlama bağlantısı gönderdik. Gelmediyse gereksiz (spam) klasörüne de bak.
         </p>
         <Button className="mt-6" onClick={() => go("pw", true)}>Girişe dön</Button>
       </div>
@@ -101,10 +103,10 @@ export default function LoginPage() {
   if (step === "pw") {
     return (
       <form onSubmit={onSubmit} key={step} {...stepProps}>
-        <h1 className="mb-3.5 text-[1.25rem] font-semibold text-white">Şifre</h1>
+        <h1 className="mb-3.5 text-[1.25rem] font-semibold text-fg">Şifre</h1>
         {/* Şifre yöneticisi hangi hesap olduğunu bilsin */}
         <input type="text" name="username" autoComplete="username" value={cleanLogin(id)} readOnly tabIndex={-1} aria-hidden="true" className="sr-only" />
-        <div className="ck-glass mb-3 flex h-12 items-center gap-2 rounded-[0.875rem] pl-3.5 pr-1">
+        <div className="mb-3 border border-line bg-card flex h-12 items-center gap-2 rounded-[0.875rem] pl-3.5 pr-1">
           <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">{cleanLogin(id)}</span>
           <Button type="button" variant="text" size="sm" onClick={() => { setPassword(""); go("id", true); }}>Değiştir</Button>
         </div>
@@ -138,7 +140,7 @@ export default function LoginPage() {
 
   return (
     <form onSubmit={onSubmit} key={step} {...stepProps}>
-      <h1 className="mb-3.5 text-[1.25rem] font-semibold text-white">Giriş yap</h1>
+      <h1 className="mb-3.5 text-[1.25rem] font-semibold text-fg">Giriş yap</h1>
       <div className="relative">
         <input
           className={`auth-in ${ok ? "pr-14" : ""}`}
@@ -163,9 +165,9 @@ export default function LoginPage() {
       <Button type="submit" disabled={!ok} className="mt-3.5 h-[3.375rem]">
         Devam
       </Button>
-      {SIGNUP && (
-        <p className="mt-5 text-center text-[0.875rem] text-white/60">
-          Hesabın yok mu? <Link href="/register" className="font-semibold text-[#67e8f9]">Kayıt ol</Link>
+      {(SIGNUP || sailing) && (
+        <p className="mt-5 text-center text-[0.875rem] text-mut">
+          Hesabın yok mu? <Link href="/register" className="font-semibold text-acc">Kayıt ol</Link>
         </p>
       )}
     </form>

@@ -1,13 +1,18 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { Splash } from "@/components/ui/Splash";
 import { Button } from "@/components/ui/Button";
 import { ToastProvider } from "@/components/ui/ToastProvider";
+import { ConfirmProvider } from "@/components/ui/ConfirmProvider";
 import { TimerSound } from "@/features/training/Countdown";
+import { TimerChip } from "@/features/training/TimerChip";
+import { GibiGorBar } from "@/features/auth/GibiGorBar";
 import { IosBridge } from "@/features/ios/IosBridge";
+import { BilgiSync } from "@/features/bilgi/BilgiSync";
+import { AntTemizle } from "@/features/training/AntTemizle";
 import { AppLock } from "@/features/ios/AppLock";
 import { DataProvider } from "@/features/data/DataProvider";
 import { ChatProvider } from "@/features/chat/ChatProvider";
@@ -28,13 +33,21 @@ import { UpdateNote } from "@/features/pwa/UpdateNote";
 import { NewVersionBar } from "@/features/pwa/NewVersionBar";
 import { Onboarding } from "@/features/onboarding/Onboarding";
 import { TryAssistant } from "@/features/onboarding/TryAssistant";
+import { SportGate } from "@/sports/SportGate";
 import { installTrail } from "@/lib/navTrail";
 import { NavProgress } from "@/components/ui/NavProgress";
+import { OpenTimer } from "@/components/ui/OpenTimer";
+import { SyncLine } from "@/components/ui/SyncLine";
 import { SwipeBack } from "@/components/ui/SwipeBack";
 
 export default function AppLayout({ children }) {
   const { user, profile, loading, error } = useAuth();
   const router = useRouter();
+  // Uygulama içinden açılan canlı ekran (app/(app)/athletes/(..)canli): uygulama ayakta kalır, yalnız alt çubuk ve uygulamanın
+  // açılır notları görünmez (canlı ekranın kendi geri ve "Yeni sürüm" çubuğu var)
+  // Sporcu bilgi ekranı (/bilgi) da tek ekran: alt çubuk ve açılır notlar yok
+  const path = usePathname();
+  const live = path.startsWith("/canli") || path === "/bilgi" || path === "/bilgi/yonet";
 
   // Geri düğmeleri gelinen sayfaya dönsün diye uygulama içi geçmiş izlenir
   useEffect(() => installTrail(), []);
@@ -68,6 +81,7 @@ export default function AppLayout({ children }) {
 
   return (
     <ToastProvider>
+     <ConfirmProvider>
       <TtsProvider>
         <DataProvider>
          <ChatProvider>
@@ -79,19 +93,26 @@ export default function AppLayout({ children }) {
                 <AssistantProvider>
                  <DockProvider>
                   <NavProgress />
+                  <OpenTimer />
+                  <SyncLine />
                   <SwipeBack />
                   <OfflineBanner />
-                  <UpdateNote />
-                  <NewVersionBar />
+                  {!live && <UpdateNote />}
+                  {!live && <NewVersionBar />}
                   <PushSync profile={profile} />
                   {children}
-                  <TabBarHost />
+                  {!live && <TabBarHost />}
+                  {!live && <TimerChip />}
+                  {!live && <GibiGorBar />}
                   <BrainSync />
                   <OpenFromUrl />
                   <InboxSeen />
-                  <Onboarding />
-                  <TryAssistant />
+                  {!live && <Onboarding />}
+                  {!live && <TryAssistant />}
+                  {!live && <SportGate />}
                   <TimerSound />
+                  <BilgiSync />
+                  <AntTemizle />
                   <IosBridge />
                   <AppLock />
                  </DockProvider>
@@ -104,6 +125,7 @@ export default function AppLayout({ children }) {
          </ChatProvider>
         </DataProvider>
       </TtsProvider>
+     </ConfirmProvider>
     </ToastProvider>
   );
 }

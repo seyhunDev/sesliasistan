@@ -7,7 +7,6 @@ import { Loader } from "@/components/ui/Loader";
 import { useToast } from "@/components/ui/ToastProvider";
 import { authFetch } from "@/lib/authFetch";
 import { AroundMap } from "./AroundMap";
-import { RaceWeather } from "./RaceWeather";
 import { KINDS, cleanAround, distText, gatherAround, isApple, minText, placeLink, routeLink } from "./raceAround";
 import { raceHotels } from "./races";
 
@@ -35,7 +34,7 @@ async function askAi(r, data) {
 
 // Yarış › Çevre: yarış alanı ve otel çevresi (ulaşım, market, eczane, restoran, gezilecek yerler, harita).
 // Yalnız "Getir"e basınca istenir; sonuç yarışın `around` alanına kaydedilir, istenen yer silinir.
-export function AroundView({ r, onChange, onWeather }) {
+export function AroundView({ r, onChange }) {
   const toast = useToast();
   const a = cleanAround(r.around);
   const [venueName, setVenueName] = useState(a?.venue.q || r.notice?.venue || "");
@@ -80,8 +79,6 @@ export function AroundView({ r, onChange, onWeather }) {
 
   return (
     <>
-      <RaceWeather r={r} onChange={onWeather} />
-
       <Label>YARIŞ ALANI VE OTEL</Label>
       <div className={`${card} divide-y divide-line overflow-hidden`}>
         <label className="block px-4 py-2.5">
@@ -102,10 +99,8 @@ export function AroundView({ r, onChange, onWeather }) {
         {busy ? <Loader size="sm" className="text-white" label={busy} /> : <Icon name="spark" className="size-[1.125rem]" />}
         {busy ? `${busy}…` : a ? "Yeniden getir" : "Yapay zekayla getir"}
       </button>
-      <p className="mt-2 px-1 text-[0.75rem] text-mut">
-        {a?.at ? `${madeText(a.at)} getirildi. ` : "Ulaşım, yakındaki market, eczane, restoranlar ve gezilecek yerler haritada gösterilir. "}
-        {"Yerler OpenStreetMap'ten gelir; yapay zeka ulaşımı özetler ve gezilecek yerleri seçer."}
-      </p>
+      {/* açıklama yazısı kalktı (Seyhun 2026-11-04 sadeleştirme); yalnız ne zaman getirildiği */}
+      {a?.at && <p className="mt-2 px-1 text-[0.75rem] text-mut">{madeText(a.at)} getirildi · OpenStreetMap</p>}
 
       {a && (
         <>

@@ -99,16 +99,16 @@ export function RollPanel({ inSheet = false, day = "", onSaved }) {
     const days = Array.from({ length: 7 }, (_, i) => shift(last, i - 6));
     const marked = (d) => active.some((a) => stateOf(a, d));
     const pill0 = "flex h-9 shrink-0 items-center rounded-full border px-3.5 text-[0.8125rem] font-semibold";
-    const glass = "ck-glass shadow-[0_2px_0_rgba(0,0,0,.35)] data-[pressed]:translate-y-px";
+    const glass = "ck-glass data-[pressed]:translate-y-px";
     const close = (f) => () => {
       setMenu(false);
       f();
     };
     return (
       <main data-theme="dark" className="navy page-navy mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
-        <section className="ck -mx-5 px-5 pb-5 pt-[calc(0.75rem+env(safe-area-inset-top))]" style={{ background: "radial-gradient(120% 70% at 88% 0%, rgba(34, 211, 238, .38), transparent 62%)" }} aria-label="Yoklama">
+        <section className="ck -mx-5 px-5 pb-5 pt-[calc(0.75rem+env(safe-area-inset-top))]" style={{ background: "radial-gradient(120% 70% at 88% 0%, rgba(61, 123, 255, .38), transparent 62%)" }} aria-label="Yoklama">
           <header className="flex items-center gap-2.5">
-            <BackButton href="/athletes" />
+            <BackButton href="/" />
             <h1 className="min-w-0 flex-1 truncate text-[1.375rem] font-bold tracking-[-.02em]">Yoklama</h1>
             {ok && (
               <button type="button" onClick={() => setMenu(true)} data-press aria-label="Yoklama seçenekleri" className="btn btn-round relative size-10">
@@ -175,7 +175,7 @@ export function RollPanel({ inSheet = false, day = "", onSaved }) {
               <p className="mb-2 mt-4 px-0.5 text-[0.75rem] font-semibold uppercase tracking-wide text-mut">Sınıf</p>
               <div className="flex flex-wrap gap-2">
                 {[{ id: "", name: "Tümü" }, ...usedClasses].map((c) => (
-                  <button key={c.id || "all"} type="button" onClick={close(() => setCls(c.id))} aria-pressed={cls === c.id} data-press className={`${pill0} ${cls === c.id ? "border-white bg-white text-[#11203a]" : "ck-glass text-white"}`}>
+                  <button key={c.id || "all"} type="button" onClick={close(() => setCls(c.id))} aria-pressed={cls === c.id} data-press className={`${pill0} ${cls === c.id ? "border-white bg-white text-[#0b1a33]" : "ck-glass text-white"}`}>
                     {c.name}
                   </button>
                 ))}

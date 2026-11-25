@@ -385,6 +385,9 @@ export function raceHereCommand(raw) {
     const name = w && !/(herkes|hepsi|tüm|bütün|sporcular|bu yarış|yarış)/u.test(w[1]) ? nameOf(w[1]) : "";
     return { op: "sheet", name };
   }
+  // Tek sporcunun bütçe çıktısı: "Ali'nin bütçesini gönder", "Ayşe'nin bütçe payını çıkar", "herkesin bütçesini hazırla"
+  const bm = t.match(/^(.+?)['’]?(?:n?[ıiuü]n) (?:bütçe|payı|bütçe payı)\p{L}*(?: çıktısını| pdf\p{L}*)? (?:hazırla|çıkar|oluştur|gönder|paylaş|aç|göster|yazdır|al)\p{L}*$/u);
+  if (bm) return { op: "sheet", name: /(herkes|hepsi|tüm|bütün|sporcular)/u.test(bm[1]) ? "" : nameOf(bm[1]), only: "budget" };
   if (/^(bu )?(yarışı|yarış kaydını) sil\p{L}*$/u.test(t)) return { op: "delete" };
   if (/(yarışı )?(planlara|takvime|planlarıma) ekle/u.test(t) && !/\d/.test(t) && t.split(" ").length <= 5) return { op: "plan" };
   const fleet = t.match(/tekne sayısı (\d{1,3})|(\d{1,3}) tekne (yarıştı|katıldı|vardı)/u);

@@ -1,0 +1,134 @@
+import { NextResponse } from "next/server";
+import { requireUser, unauthorized } from "@/lib/server/auth";
+import { adminDb, adminReady } from "@/lib/server/admin";
+import { canSeeAthletes } from "@/features/athletes/access";
+import { fileUrl } from "@/lib/siteBoard";
+import { FieldValue } from "firebase-admin/firestore";
+import { getStorage } from "firebase-admin/storage";
+import { freshActs } from "@/lib/siteDocs";
+import { KNOWN, cachedList, mergeSite, pageCache, siteList } from "@/lib/server/raceSiteSync";
+import { ackSig } from "@/lib/server/ackSign";
+
+export const runtime = "nodejs";
+
+// Yarış sitesi (TYF Yelken Ligi, lib/siteBoard.js; Seyhun 2026-11-03), yalnız ana hesap:
+// GET ?season=2026-2027        → sezonlar, ayaklar, sınıflar ve belgeleri (Yarışlar › Siteden ekranı; kaydedilmiş listeden)
+// GET ?file=292893             → sitedeki belgenin kendisi (yarış ilanı telefonda okunur, yarış ondan açılır)
+// GET ?race=<yarış>&key=<anahtar> → alınmış belgenin bizdeki kopyası (Storage'dan sunucu okur; telefondan doğrudan indirme
+//                                  "max retry" ile düşüyordu, Seyhun 2026-11-04)
+// POST { raceId, site }         → yarışı izlemeye al (raceSite/{org}_{yarış}); belgeler arka planda hemen alınır ve kullanılır
+// POST { raceId, off: true }    → izlemeyi bırak (alınmış belgeler yarışta kalır)
+// POST { raceId, now: true }    → hemen bak (yarış sayfasındaki "Şimdi bak")
+// POST { raceId, into: <yarış> } → siteden alınan yarışı var olan yarışa birleştir (Seyhun 2026-11-07), raceSiteSync.mergeSite
+const bad = (error, status = 400) => NextResponse.json({ error }, { status });
+
+async function who(request) {
+  const au = await requireUser(request);
+  if (!au.ok) return { res: unauthorized(au) };
+  if (au.staff || !canSeeAthletes(au.email)) return { res: bad("Bu ekran yalnız ana hesapta.", 403) };
+  return { au };
+}
+
+export async function GET(request) {
+  const { au, res } = await who(request);
+  if (!au) return res;
+  const q = new URL(request.url).searchParams;
+  const fid = q.get("file");
+  if (fid) {
+    if (!/^\d{1,9}$/.test(fid)) return bad("Belge yok.");
+    const r = await fetch(fileUrl(fid), { headers: { "user-agent": "Mozilla/5.0 (Velora)" }, signal: AbortSignal.timeout(30000) }).catch(() => null);
+    if (!r?.ok) return bad("Belge siteden alınamadı.", 502);
+    const buf = await r.arrayBuffer();
+    if (buf.byteLength > 25 * 1024 * 1024) return bad("Belge çok büyük.", 413);
+    return new NextResponse(buf, { headers: { "content-type": r.headers.get("content-type") || "application/pdf", "cache-control": "private, max-age=600" } });
+  }
+  const raceId = q.get("race");
+  const key = q.get("key");
+  if (raceId || key) {
+    if (!/^[A-Za-z0-9]{6,40}$/.test(raceId || "") || !/^[A-Za-z0-9_-]{1,120}$/.test(key || "")) return bad("Belge yok.");
+    if (!adminReady()) return bad("Sunucu ayarı eksik.", 500);
+    const rec = (await adminDb().collection("orgs").doc(au.uid).collection("raceLive").doc(raceId).collection("site").doc(key).get()).data();
+    const path = rec?.file?.path || "";
+    if (!path.startsWith(`orgs/${au.uid}/noticeFiles/`)) return bad("Belge bulunamadı.", 404);
+    // Netlify işlevinin cevabı en çok 6 MB: büyük belge telefondan doğrudan indirilir
+    if ((rec.file.size || 0) > 5.5 * 1024 * 1024) return bad("big", 413);
+    try {
+      const [buf] = await getStorage().bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET).file(path).download();
+      return new NextResponse(buf, { headers: { "content-type": rec.file.type || "application/pdf", "cache-control": "private, max-age=3600" } });
+    } catch (e) {
+      console.warn("[race-site] belge", path, e.message);
+      return bad(`Belge depodan okunamadı (${e.code || e.message}).`, 502);
+    }
+  }
+  // Siteden ekranını açan ana hesap yeni yarış bildirimini alır (raceSiteSync.scanNew)
+  if (adminReady()) adminDb().collection("raceSite").doc(KNOWN).set({ owners: FieldValue.arrayUnion(au.uid) }, { merge: true }).catch(() => {});
+  try {
+    // Kaydedilmiş listeden (raceSiteSync.cachedList); sunucu ayarı yoksa siteden
+    const season = q.get("season") || "";
+    if (!adminReady()) return NextResponse.json(await siteList(pageCache(), season));
+    // fresh: son 14 günde sitede yeni görülen yarışlar { act: ilk görülme } (+ Yarış penceresinde "Yeni"; siteDocs.freshActs)
+    const [list, known] = await Promise.all([cachedList(adminDb(), pageCache(), season), adminDb().collection("raceSite").doc(KNOWN).get().catch(() => null)]);
+    return NextResponse.json({ ...list, fresh: freshActs(known?.data()?.news) });
+  } catch (e) {
+    console.warn("[race-site] liste", e.message);
+    return bad("Yarış sitesine ulaşılamadı, biraz sonra tekrar dene.", 502);
+  }
+}
+
+const S = (v, n) => String(v ?? "").trim().slice(0, n);
+
+export async function POST(request) {
+  const { au, res } = await who(request);
+  if (!au) return res;
+  if (!adminReady()) return bad("Sunucu ayarı eksik.", 500);
+  const body = await request.json().catch(() => ({}));
+  const raceId = S(body.raceId, 40);
+  if (!/^[A-Za-z0-9]{6,40}$/.test(raceId)) return bad("Yarış yok.");
+  const orgId = au.uid;
+  const db = adminDb();
+  const race = await db.collection("orgs").doc(orgId).collection("races").doc(raceId).get();
+  if (!race.exists) return bad("Yarış bulunamadı.", 404);
+  const ref = db.collection("raceSite").doc(`${orgId}_${raceId}`);
+  if (body.off) {
+    await ref.set({ on: false }, { merge: true });
+    return NextResponse.json({ ok: true });
+  }
+  if (body.into) {
+    const into = S(body.into, 40);
+    if (!/^[A-Za-z0-9]{6,40}$/.test(into) || into === raceId) return bad("Birleştirilecek yarış yok.");
+    try {
+      await mergeSite({ db, orgId, from: raceId, to: into });
+      return NextResponse.json({ ok: true, id: into });
+    } catch (e) {
+      console.warn("[race-site] birleştir", e.message);
+      return bad(e.message || "Birleştirilemedi.", 400);
+    }
+  }
+  const r = race.data();
+  let entry;
+  if (body.site) {
+    const s = body.site;
+    if (!/^\d{1,9}$/.test(String(s.act || ""))) return bad("Sınıf yok.");
+    const old = (await ref.get()).data() || {};
+    entry = {
+      on: true, orgId, raceId,
+      act: String(s.act), cls: S(s.cls, 40), season: S(s.season, 9), n: Number(s.n) || 1, legNo: /^\d{1,4}$/.test(String(s.legNo || "")) ? String(s.legNo) : "",
+      name: S(r.name || s.name, 120), startDate: S(r.startDate, 10), endDate: S(r.endDate, 10),
+      seen: old.act === String(s.act) ? old.seen || [] : [],
+      at: new Date().toISOString(),
+    };
+    await ref.set(entry);
+  } else {
+    const snap = await ref.get();
+    if (!snap.exists || !snap.data().on) return bad("Bu yarış siteden izlenmiyor.");
+    entry = { ...snap.data(), name: S(r.name, 120) || snap.data().name, startDate: S(r.startDate, 10), endDate: S(r.endDate, 10) };
+    await ref.set({ name: entry.name, startDate: entry.startDate, endDate: entry.endDate }, { merge: true });
+  }
+  // İş arka plan işlevinde (indirme, yapay zeka; netlify/functions/race-site-background.mjs)
+  const t = String(Date.now());
+  const ids = [ref.id];
+  const origin = process.env.URL || new URL(request.url).origin;
+  const r2 = await fetch(`${origin}/.netlify/functions/race-site-background`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ids, t, s: ackSig("race-site", "run", t, ids.join(",")) }) }).catch(() => null);
+  if (!r2 || r2.status >= 400) return NextResponse.json({ ok: true, started: false, error: "Belgeler şimdi alınamadı; birazdan kendiliğinden alınır." });
+  return NextResponse.json({ ok: true, started: true });
+}

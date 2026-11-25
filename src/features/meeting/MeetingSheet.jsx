@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useEffect, useRef, useState } from "react";
 import { Screen } from "@/components/ui/Screen";
 import { Icon } from "@/components/ui/Icon";
@@ -59,6 +60,7 @@ const TYPE = { plan: "Plan", task: "Görev", note: "Not" };
 // Çıkanlar (sorumlulu görevler, planlar, gönderilecek mesajlar, başlıklı özet) önce gösterilir; kayıtlar onaylanınca
 // kaydedilir (kayıt ekranı), mesajlar tek tek "Gönder" ile gider (kendiliğinden gönderilmez).
 export function MeetingSheet({ open, onClose }) {
+  const confirmAsk = useConfirm();
   const toast = useToast();
   const { openAdd } = useAdd();
   const { members = [], isStaff } = useData();
@@ -110,8 +112,8 @@ export function MeetingSheet({ open, onClose }) {
     await run(m);
   }
 
-  function abort() {
-    if (!window.confirm("Kayıt silinsin mi? Şimdiye kadar konuşulanlar kaybolur.")) return;
+  async function abort() {
+    if (!(await confirmAsk({ title: "Kayıt silinsin mi?", text: "Şimdiye kadar konuşulanlar kaybolur." }))) return;
     const id = live.current?.id;
     live.current = null;
     rec.cancel();
@@ -148,13 +150,13 @@ export function MeetingSheet({ open, onClose }) {
   }
 
   // Gönderilmemiş mesaj varsa ekrandan çıkmadan sorulur
-  const unsentOk = () => {
+  const unsentOk = async () => {
     const n = msgs.filter((m) => m.state !== "sent").length;
-    return !n || window.confirm(`${n} mesaj gönderilmedi. Yine de devam edilsin mi?`);
+    return !n || (await confirmAsk({ title: "Devam edilsin mi?", text: `${n} mesaj gönderilmedi.`, yes: "Devam", danger: false }));
   };
 
-  function toDrafts() {
-    if (!unsentOk()) return;
+  async function toDrafts() {
+    if (!(await unsentOk())) return;
     const r = out.result;
     const note = { type: "note", title: `Toplantı: ${r.title}`, body: summaryText(r), date: "", endDate: "", time: "", place: "", link: false, cat: "Toplantı" };
     const items = onlyTalk(r) ? [note] : [note, ...r.items];
@@ -163,15 +165,15 @@ export function MeetingSheet({ open, onClose }) {
     openAdd({ prefill: { text: `Toplantı: ${r.title}`, items, message: said, engine: "ai" } });
   }
 
-  function asNote(text, title = "Toplantı metni") {
-    if (view === "result" && !unsentOk()) return;
+  async function asNote(text, title = "Toplantı metni") {
+    if (view === "result" && !(await unsentOk())) return;
     close(true);
     openAdd({ prefill: { text: title, items: [{ type: "note", title, body: text, date: "", endDate: "", time: "", place: "", link: false, cat: "Toplantı" }], message: "Toplantı metnini not olarak hazırladım.", engine: "local" } });
   }
 
-  function close(force) {
+  async function close(force) {
     if (rec.status === "rec" || rec.status === "paused") return toast("Önce kaydı bitir ya da vazgeç");
-    if (force !== true && view === "result" && !unsentOk()) return;
+    if (force !== true && view === "result" && !(await unsentOk())) return;
     setView("home");
     setOut(null);
     setMsgs([]);

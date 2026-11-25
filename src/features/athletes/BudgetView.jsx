@@ -7,10 +7,11 @@ import { Icon } from "@/components/ui/Icon";
 import { Hero, Label, Seg, Stat, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
-import { CATS, UNITS, WHO, cleanBudget, cleanItem, cleanRooms, emptyBudget, forAthlete, howText, nearReceipts, newId, roomFromNotice, roomLine, roomPeople, spentTotal, tl, totals } from "./budget";
+import { CATS, UNITS, WHO, cleanBudget, cleanItem, cleanRooms, emptyBudget, forAthlete, howLine, nearReceipts, newId, roomFromNotice, roomLine, roomPeople, spentTotal, tl, totals } from "./budget";
 import { useData } from "@/features/data/DataProvider";
 import { totalTL } from "@/lib/receipts";
 import { buildBudgetPdf } from "./budgetDoc";
+import { BUDGET_ONLY, buildAthleteSheet } from "./athleteSheet";
 import { shareFile } from "./fileActions";
 import { PdfViewer } from "@/components/ui/PdfViewer";
 import { loadFonts } from "./raceDocs";
@@ -44,6 +45,7 @@ export function BudgetView({ r, athletes, onChange }) {
   const [busy, setBusy] = useState(false);
   const [pdfBusy, setPdfBusy] = useState(false);
   const [view, setView] = useState(null); // açık çıktı (uygulama içinde, kapat düğmesiyle)
+  const [viewTitle, setViewTitle] = useState("Bütçe çıktısı");
   const [link, setLink] = useState(false); // fiş bağlama
   const { receipts = [] } = useData();
   const spent = b.spent || [];
@@ -84,11 +86,29 @@ export function BudgetView({ r, athletes, onChange }) {
       const name = `${r.name.trim().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") || "yaris"}-butce.pdf`;
       const f = new File([bytes], name, { type: "application/pdf" });
       if (share) await shareFile(f);
-      else setView(f);
+      else {
+        setViewTitle("Bütçe çıktısı");
+        setView(f);
+      }
     } catch (e) {
       toast(e?.message || "Çıktı hazırlanamadı");
     }
     setPdfBusy(false);
+  };
+
+  // Tek sporcunun bütçesi: yalnız onun payı, kalem kalem (bilgi notunun bütçe bölümü); açılır, Paylaş ile gönderilir
+  const [oneBusy, setOneBusy] = useState("");
+  const onePdf = async (a) => {
+    setOneBusy(a.id);
+    try {
+      const bytes = await buildAthleteSheet({ ...r, budget: b }, [a], await loadFonts(), athletes.length, BUDGET_ONLY);
+      const base = `${r.name.trim().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") || "yaris"}`;
+      setViewTitle(`${a.studentName} · bütçe`);
+      setView(new File([bytes], `${base}-${a.studentName.replace(/[^\p{L}\p{N}]+/gu, "-")}-butce.pdf`, { type: "application/pdf" }));
+    } catch (e) {
+      toast(e?.message || "Çıktı hazırlanamadı");
+    }
+    setOneBusy("");
   };
 
   const groups = CATS.map((c) => [c, t.lines.filter((l) => l.cat === c)]).filter(([, l]) => l.length);
@@ -175,7 +195,10 @@ export function BudgetView({ r, athletes, onChange }) {
                     l.est && <span className="ml-1.5 rounded-md bg-acc/10 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-acc">tahmini</span>
                   )}
                 </b>
-                <span className="block truncate text-[0.8125rem] text-mut">{howText(l, t)}</span>
+                <span className="block break-words text-[0.8125rem] text-mut">
+                  {howLine(l, t)}
+                </span>
+                {l.note && <span className="block break-words text-[0.8125rem] text-fg2">{l.note}</span>}
                 {l.only && <span className="block truncate text-[0.8125rem] font-medium text-acc">Yalnız {l.only.map((id) => nameOf[id]).filter(Boolean).join(", ")}</span>}
               </span>
               <b className="shrink-0 text-[0.9375rem] tabular-nums">{tl(l.total)}</b>
@@ -204,7 +227,6 @@ export function BudgetView({ r, athletes, onChange }) {
           {busy ? "Hazırlanıyor…" : "Talimattaki ücretleri ve otelleri ekle"}
         </button>
       )}
-      <p className="mt-2 px-1 text-[0.75rem] text-mut">Alttaki asistana söyleyebilirsin: “Bütçeye otel kişi başı gecelik 3500 lira ekle”, “minibüs toplam 6000, kulüp öder”, “3 kişilik oda gecelik 3200, bizden 1 sporcu kalıyor”.</p>
 
       {athletes.length > 0 && b.items.length > 0 && (
         <>
@@ -213,16 +235,19 @@ export function BudgetView({ r, athletes, onChange }) {
             {athletes.map((a) => {
               const on = !!b.paid?.[a.id];
               return (
-                <li key={a.id}>
+                <li key={a.id} className="flex items-center">
                   <button
                     type="button"
                     onClick={() => set({ paid: Object.fromEntries(Object.entries({ ...b.paid, [a.id]: !on }).filter(([, v]) => v)) })}
                     aria-pressed={on}
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg"
+                    className="flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 pr-2 text-left active:bg-bg"
                   >
                     <span className={`grid size-6 shrink-0 place-items-center rounded-full ring-2 ${on ? "bg-ok text-white ring-ok" : "ring-line"}`}>{on && <Icon name="check" className="size-4 [stroke-width:3]" />}</span>
                     <span className={`min-w-0 flex-1 truncate text-[0.9375rem] ${on ? "text-mut" : "font-medium"}`}>{a.studentName}</span>
                     <span className="shrink-0 text-[0.875rem] tabular-nums text-mut">{tl(forAthlete(t, a.id))}</span>
+                  </button>
+                  <button type="button" onClick={() => onePdf(a)} disabled={!!oneBusy} data-press className="btn btn-text btn-sm mr-2 shrink-0 text-acc">
+                    {oneBusy === a.id ? "…" : "Çıktı"}
                   </button>
                 </li>
               );
@@ -245,7 +270,7 @@ export function BudgetView({ r, athletes, onChange }) {
         </div>
       </div>
 
-      {view && <PdfViewer title="Bütçe çıktısı" load={() => Promise.resolve(view)} onClose={() => setView(null)} />}
+      {view && <PdfViewer title={viewTitle} load={() => Promise.resolve(view)} onClose={() => setView(null)} />}
 
       <Sheet open={!!edit} onClose={() => setEdit(null)} title={edit?.id ? "Kalemi düzenle" : "Kalem ekle"}>
         {edit && <ItemForm key={edit.id || "new"} item={edit} athletes={athletes} nights={b.nights} hotels={raceHotels(r)} onSave={saveItem} onRemove={edit.id ? () => removeItem(edit.id) : null} />}
@@ -299,6 +324,7 @@ function ItemForm({ item, athletes, nights, hotels, onSave, onRemove }) {
         ))}
       </div>
       <input value={x.title} onChange={(e) => put("title")(e.target.value)} placeholder="Kalem adı (ör. Kayıt ücreti)" className={field} />
+      <input value={x.note || ""} onChange={(e) => put("note")(e.target.value)} maxLength={140} placeholder="Not" className={field} />
       <div className="flex items-center gap-2">
         <input value={x.amount} onChange={(e) => put("amount")(e.target.value.replace(/[^\d.,]/g, ""))} inputMode="decimal" placeholder={room ? "Odanın gecelik fiyatı (oda toplamı)" : "Tutar"} className={`${field} flex-1`} />
         <span className="text-[0.9375rem] font-semibold text-mut">₺</span>

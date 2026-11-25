@@ -4,14 +4,19 @@ import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/ui/BackButton";
 import { Button } from "@/components/ui/Button";
 import { Field } from "@/components/ui/Field";
+import { Icon } from "@/components/ui/Icon";
 import { Loading } from "@/components/ui/Loader";
 import { ListHead, Row, RowList, Tag } from "@/components/ui/Row";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
-import { askWord, loadDeck, updateDeck } from "@/features/words/wordData";
-import { WordView } from "@/features/words/WordView";
-import { cachedDeck, deckCounts, findWord, knowWord, knownList, pageCard, reviewWord, studyRows, studyWord, topicStats } from "@/lib/englishWords";
+import { askWord, loadDeck, moreWord, updateDeck } from "@/features/words/wordData";
+import { primeEn, sayEn } from "@/features/words/WordView";
+import { WordTalk } from "@/features/words/WordTalk";
+import { ChunkStudy } from "@/features/words/ChunkStudy";
+import { ChunkPics } from "@/features/words/ChunkPics";
+import { chunkById, chunkState, chunkTopics, finishChunk, knowChunk, knownChunkRows, nextChunk, patternText, resetChunk, studyChunkRows } from "@/lib/englishChunkStudy";
+import { cachedDeck, findWord, hasMore, knowWord, knownList, missWord, pageCard, quizFor, reviewWord, sentencesOf, setMore, studyRows, studyWord, topicStats } from "@/lib/englishWords";
 import { todayStr } from "@/lib/utils/format";
 
 const DAYS = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
@@ -26,25 +31,171 @@ function dueText(due, today) {
 }
 const dayText = (d) => (d ? `${at(d).getDate()} ${MONTHS[at(d).getMonth()]}` : "");
 
-// İngilizce (Seyhun 2026-10-22: "kelime listesi olsun, hazır cümleler olsun… öğrendiğimi yazarım, öğrenilenlere kaydedilir, sıradakini
-// öğrenirim"; örnek /mnt/project-files/ingilizce-kelime/sayfa-ornek.png). Lacivert üstte Kelimeler / Cümleler ve sayılar; altta
-// "Sıradaki" kartı (Öğrendim → Öğrendiklerim'e, Sonraki → kaydetmeden geçer). Kelimelerde Çalışıyorum (tekrar günü) ve
-// Öğrendiklerim; Cümlelerde konular (dokununca kart o konudan gelir). Ekle: yazılan kelime/cümlenin kartını yapay zeka hazırlar,
-// çalışmaya girer. Deste kelime kartıyla aynı (orgs/{orgId}/english/deck, features/words/wordData.js).
+const CYAN = "text-[#8fb3ff]";
+// Arka plan: soluk şehir fotoğrafı (ücretsiz lisanslı Unsplash), aşağı doğru koyu zemine karışır. Yüklenemezse yalnız koyu zemin.
+const BG = "https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=900&q=60&auto=format&fit=crop";
+// Arka plan resmi CSS ile: yüklenemezse kırık resim simgesi çıkmaz, koyu zemin kalır
+function Photo() {
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 top-0 h-[34rem] overflow-hidden">
+      <div style={{ backgroundImage: `url(${BG})` }} className="size-full bg-cover bg-center opacity-35" />
+      <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(11,22,40,.55)_0%,rgba(11,22,40,.85)_55%,#081429_100%)]" />
+    </div>
+  );
+}
+
+// Kalıplar zemini: lacivert üstünde mor ve camgöbeği ışık (fotoğraf yok)
+function Glow() {
+  return <div aria-hidden="true" className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_45%_at_85%_0%,#3a1d4a_0%,rgba(58,29,74,0)_60%),radial-gradient(90%_40%_at_0%_8%,#123a52_0%,rgba(18,58,82,0)_65%)]" />;
+}
+const patternRow = (c) => patternText(c);
+
+// Cümlede kelimenin geçtiği yer mavi
+function Marked({ text, word }) {
+  if (!word) return text;
+  const i = text.toLowerCase().indexOf(word.toLowerCase());
+  if (i < 0) return text;
+  return (
+    <>
+      {text.slice(0, i)}
+      <span className={CYAN}>{text.slice(i, i + word.length)}</span>
+      {text.slice(i + word.length)}
+    </>
+  );
+}
+
+// Dokununca İngilizcesi okunan satır: İngilizce, altında soluk Türkçesi
+function Line({ e, t, word, who }) {
+  return (
+    <button type="button" onClick={() => sayEn(e)} className="block w-full text-left">
+      <span className="block text-[1.0625rem] leading-snug text-white/90">
+        {who && <i className="mr-2 text-[0.8125rem] not-italic text-white/35">{who}</i>}
+        <Marked text={e} word={word} />
+      </span>
+      {t && <span className={`mt-0.5 block text-[0.875rem] leading-snug text-white/40 ${who ? "pl-5" : ""}`}>{t}</span>}
+    </button>
+  );
+}
+
+// Kart: kelime (ya da cümle) ekranı doldurur; anlamı, türü, örnek cümleler ve kısa diyalog. Her İngilizce satır dokununca okunur.
+function Card({ w, wait }) {
+  const phrase = w.kind === "phrase";
+  const ex = phrase ? [] : sentencesOf(w);
+  return (
+    <div className="py-6">
+      <button type="button" onClick={() => sayEn(w.en)} className="block text-left">
+        <span className={`block font-bold tracking-[-.03em] ${phrase ? "text-[2.125rem] leading-[1.15]" : "break-words text-[3.25rem] leading-[1.05]"}`}>{w.en}</span>
+      </button>
+      <p className={`mt-2.5 text-[1.25rem] font-medium ${CYAN}`}>{w.tr}</p>
+      <button type="button" onClick={() => sayEn(w.en)} className="mt-4 inline-flex items-center gap-1.5 text-[0.875rem] text-white/50">
+        <Icon name="volume" className={`size-[1.125rem] ${CYAN}`} />
+        {phrase ? w.topic || "Eklediklerim" : w.type}
+      </button>
+      {ex.length > 0 && (
+        <div className="mt-9 space-y-4">
+          {ex.map((x) => (
+            <Line key={x.e} e={x.e} t={x.t} word={w.en} />
+          ))}
+        </div>
+      )}
+      {w.dlg?.length > 0 && (
+        <div className={`${ex.length ? "mt-7" : "mt-10"} space-y-3`}>
+          {w.dlg.map((x, i) => (
+            <Line key={i} e={x.e} t={x.t} word={phrase ? "" : w.en} who={i % 2 ? "B" : "A"} />
+          ))}
+        </div>
+      )}
+      {wait && !w.dlg?.length && (
+        <div aria-label="Örnekler hazırlanıyor" className="mt-9 space-y-3">
+          {[80, 64, 72].map((n) => (
+            <div key={n} style={{ width: `${n}%` }} className="h-3.5 animate-pulse rounded-full bg-white/8" />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const ASK = { mean: "ANLAMINI SEÇ", blank: "BOŞLUĞU DOLDUR", en: "İNGİLİZCESİNİ SEÇ", listen: "DİNLE, ANLAMINI SEÇ" };
+// Sına: üç soru; şıkka dokununca doğru yeşil, yanlış kırmızı görünür, "Devam" ile sıradaki. Bitince sonuç.
+function Quiz({ qs, step, picked, onPick }) {
+  const q = qs[step];
+  const parts = q.kind === "blank" ? q.ask.split("___") : null;
+  return (
+    <div className="py-6">
+      <small className="text-[0.8125rem] tracking-[.04em] text-white/45">{ASK[q.kind]}</small>
+      {q.kind === "listen" ? (
+        <button type="button" onClick={() => sayEn(q.say)} aria-label="Dinle" className="mt-4 grid size-20 place-items-center rounded-full bg-[#8fb3ff]/14">
+          <Icon name="volume" className={`size-9 ${CYAN}`} />
+        </button>
+      ) : (
+        <p className="mt-3 text-[1.75rem] font-semibold leading-[1.3]">
+          {parts ? (
+            <>
+              {parts[0]}
+              <span className="mx-1 inline-block w-28 border-b-2 border-[#8fb3ff] align-baseline" />
+              {parts[1]}
+            </>
+          ) : (
+            q.ask
+          )}
+        </p>
+      )}
+      {q.kind === "blank" && (
+        <button type="button" onClick={() => sayEn(q.say)} className="mt-4 inline-flex items-center gap-1.5 text-[0.875rem] text-white/50">
+          <Icon name="volume" className={`size-[1.125rem] ${CYAN}`} />
+          dinle
+        </button>
+      )}
+      <div className="mt-8">
+        {q.opts.map((o, i) => {
+          const done = picked != null;
+          const look = done && i === q.ok ? "font-semibold text-[#9fe7c6]" : done && i === picked ? "text-[#f3a39a]" : "text-white/75";
+          return (
+            <button key={o} type="button" disabled={done} onClick={() => onPick(i)} className={`flex w-full items-center justify-between gap-3 border-b border-white/8 py-3.5 text-left text-[1.1875rem] ${look}`}>
+              <span className="min-w-0">{o}</span>
+              {done && i === q.ok && <Icon name="check" className="size-5 shrink-0" />}
+              {done && i === picked && i !== q.ok && <Icon name="x" className="size-5 shrink-0" />}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// İngilizce (Seyhun 2026-10-26: "fitness sayfası gibi, arka planlı… kelimeyle ilgili cümleler olsun, diyalog olsun… öyle hemen
+// öğrendim, neyi öğrendin?… İngilizce her şeyi tıklayarak duyabilmeliyiz"; "asıl amaç bir kelimeyi veya bir cümleyi öğrenmek,
+// onu ön plana çıkaralım"; örnek /mnt/project-files/ingilizce-kelime/yeni/ornek-2.png). Koyu, soluk fotoğraflı ekranda tek kart:
+// kelime ya da cümle büyük, anlamı, örnek cümleler ve kısa diyalog (yapay zeka bir kez hazırlar, desteye yazılır). Altta Geç ve
+// Sına (3 soru: hepsi doğruysa Öğrendiklerim'e, değilse yarın yeniden). Listeler, konular ve Ekle "⋯" içinde.
+// Deste kelime kartıyla aynı (orgs/{orgId}/english/deck, features/words/wordData.js).
 export default function EnglishPage() {
   const { profile, isOwner } = useAuth();
   const orgId = isOwner ? profile?.orgId || "" : "";
   const toast = useToast();
   const today = todayStr();
   const [deck, setDeck] = useState(null);
-  const [kind, setKind] = useState("word");
+  // Kalıp (varsayılan, Seyhun 2026-11-02 "kalıp bloklama") · Kelime · Cümle
+  const [kind, setKind] = useState("chunk");
+  const [cTopic, setCTopic] = useState("");
+  const [cSkip, setCSkip] = useState([]);
+  const [cPin, setCPin] = useState("");
   const [topic, setTopic] = useState("");
   const [skip, setSkip] = useState([]);
-  const [busy, setBusy] = useState(false);
+  const [pin, setPin] = useState("");
+  const [menu, setMenu] = useState(false);
+  const [pics, setPics] = useState(false);
   const [allKnown, setAllKnown] = useState(false);
   const [add, setAdd] = useState(false);
   const [text, setText] = useState("");
   const [adding, setAdding] = useState(false);
+  const [wait, setWait] = useState("");
+  const [tried, setTried] = useState([]);
+  // Sına: { w, qs, step, picked, right, done }
+  const [quiz, setQuiz] = useState(null);
+  // Konuş: konuşulan kart (WordTalk); bitince Sına'ya geçilebilir
+  const [talk, setTalk] = useState(null);
 
   useEffect(() => {
     let live = true;
@@ -57,33 +208,81 @@ export default function EnglishPage() {
     };
   }, [orgId]);
 
-  const cur = useMemo(() => (deck ? pageCard(deck, { kind, today, topic, skip }) : null), [deck, kind, today, topic, skip]);
+  const chunk = useMemo(() => (deck && kind === "chunk" ? (cPin && chunkById(cPin)) || nextChunk(deck, { today, topic: cTopic, skip: cSkip }) : null), [deck, kind, cPin, today, cTopic, cSkip]);
+  const nextC = () => {
+    if (chunk) setCSkip((s) => [...s, chunk.id]);
+    setCPin("");
+  };
+  const openC = (id) => {
+    setCPin(id);
+    setMenu(false);
+  };
+  const cur = useMemo(() => (deck && kind !== "chunk" ? (pin && findWord(deck, pin)) || pageCard(deck, { kind, today, topic, skip }) : null), [deck, pin, kind, today, topic, skip]);
   // Tekrarı gelen çalışma kelimesi gösterilince o günün tekrarı sayılır (kelime kartındaki gibi)
   const curKey = cur?.status === "study" && (!cur.due || cur.due <= today) ? cur.en : "";
   useEffect(() => {
     if (curKey) updateDeck(orgId, (d) => reviewWord(d, curKey, today)).catch(() => {});
   }, [curKey, orgId, today]);
 
+  // Kartın ek örnekleri yoksa bir kez hazırlanır ve desteye yazılır (bu açılışta aynı kart için yeniden sorulmaz)
+  const need = cur && !hasMore(cur) && !tried.includes(cur.en) ? cur : null;
+  useEffect(() => {
+    if (!need) return;
+    Promise.resolve()
+      .then(() => {
+        setTried((t) => [...t, need.en]);
+        setWait(need.en);
+        return moreWord(need);
+      })
+      .then((m) => updateDeck(orgId, (d) => setMore(d, need.en, m)))
+      .then(setDeck, () => {})
+      .finally(() => setWait((v) => (v === need.en ? "" : v)));
+  }, [need, orgId]);
+
   const save = async (fn) => {
-    setBusy(true);
     try {
       setDeck(await updateDeck(orgId, fn));
       return true;
     } catch {
       toast("Kaydedemedim, bağlantıyı kontrol et");
       return false;
-    } finally {
-      setBusy(false);
     }
   };
-  const learned = async () => {
-    if (cur && (await save((d) => knowWord(d, cur.en, today)))) toast("Öğrendiklerine eklendi");
+  const next = () => {
+    if (!cur) return;
+    setSkip((s) => [...s, cur.en]);
+    setPin("");
   };
-  const next = () => cur && setSkip((s) => [...s, cur.en]);
   const pickKind = (k) => {
     setKind(k);
     setTopic("");
     setSkip([]);
+    setPin("");
+  };
+  const open = (w) => {
+    setPin(w.en);
+    setMenu(false);
+  };
+  const startQuiz = () => cur && setQuiz({ w: cur, qs: quizFor(deck, cur), step: 0, picked: null, right: 0, done: false });
+  const pickOpt = (i) => setQuiz((z) => ({ ...z, picked: i, right: z.right + (i === z.qs[z.step].ok ? 1 : 0) }));
+  const goOn = async () => {
+    const z = quiz;
+    if (z.done) {
+      // Sınanan kart geçilir (yanlışsa yarına kaldı, doğruysa öğrenildi): sıradaki gelir
+      setQuiz(null);
+      setSkip((s) => [...s, z.w.en]);
+      setPin("");
+      return;
+    }
+    if (z.step + 1 < z.qs.length) {
+      const q = z.qs[z.step + 1];
+      if (q.kind === "listen") sayEn(q.say);
+      setQuiz({ ...z, step: z.step + 1, picked: null });
+      return;
+    }
+    const all = z.right === z.qs.length;
+    setQuiz({ ...z, done: true });
+    await save((d) => (all ? knowWord(d, z.w.en, today) : missWord(d, z.w, today)));
   };
   const addNew = async () => {
     const t = text.trim();
@@ -96,7 +295,7 @@ export default function EnglishPage() {
         setText("");
         setSkip([]);
         setTopic("");
-        toast(`Çalışmaya eklendi: ${w.en}`);
+        setPin(w.en);
       }
     } catch (e) {
       toast(e?.message || "Hazırlayamadım, tekrar dene");
@@ -105,115 +304,254 @@ export default function EnglishPage() {
     }
   };
 
-  const n = deck ? deckCounts(deck, kind) : null;
+  const isChunk = kind === "chunk";
+  const cTopics = deck && isChunk ? chunkTopics(deck) : [];
+  const cStudy = deck && isChunk ? studyChunkRows(deck) : [];
+  const cKnown = deck && isChunk ? knownChunkRows(deck) : [];
   const studying = deck ? studyRows(deck, kind) : [];
   const known = deck ? knownList(deck, kind) : [];
   const topics = deck && kind === "phrase" ? topicStats(deck) : [];
   const shown = allKnown ? known : known.slice(0, 5);
+  const q = quiz && !quiz.done ? quiz : null;
 
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--dome-h,var(--stage-h,6rem))+2rem)]">
-      <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="İngilizce">
-        <header className="flex items-center gap-2.5">
-          <BackButton href="/" />
-          <h1 className="min-w-0 flex-1 truncate text-[1.375rem] font-bold tracking-[-.02em]">İngilizce</h1>
-          <button type="button" data-press onClick={() => setAdd(true)} className="raised h-10 rounded-xl border px-4 text-[0.9375rem] font-semibold">
-            Ekle
-          </button>
-        </header>
-        <div className="mt-4 grid grid-cols-2 gap-2">
-          {[
-            ["word", "Kelimeler"],
-            ["phrase", "Cümleler"],
-          ].map(([k, l]) => (
-            <button key={k} type="button" data-press aria-pressed={kind === k} onClick={() => pickKind(k)} className={`raised h-11 rounded-xl border text-[0.9375rem] font-semibold ${kind === k ? "ck-sel" : ""}`}>
-              {l}
-            </button>
-          ))}
-        </div>
-        <div className="mt-4 grid grid-cols-3 gap-2">
-          {[
-            [n?.study, "Çalışıyorum"],
-            [n?.known, "Öğrendim"],
-            [n?.list, "Sırada"],
-          ].map(([v, l]) => (
-            <div key={l}>
-              <b className="block text-[1.625rem] font-bold tabular-nums tracking-[-.02em]">{v ?? "–"}</b>
-              <small className="text-[0.8125rem] text-white/65">{l}</small>
+    <main data-theme="dark" className="navy fit-dark relative mx-auto flex min-h-dvh max-w-[30rem] flex-col px-6 pb-[calc(var(--dome-h,var(--stage-h,6rem))+1rem)]">
+      {isChunk ? <Glow /> : <Photo />}
+      {isChunk ? (
+        !deck ? (
+          <section className="relative flex flex-1 items-center justify-center">
+            <Loading label="Yükleniyor" />
+          </section>
+        ) : chunk ? (
+          <ChunkStudy
+            key={chunk.id}
+            c={chunk}
+            deck={deck}
+            today={today}
+            topic={cTopic}
+            orgId={orgId}
+            onSave={(right) => (setCPin(chunk.id), save((d) => finishChunk(d, chunk.id, today, right)))}
+            onNext={nextC}
+            onSkip={nextC}
+            onOpen={openC}
+            onMenu={() => setMenu(true)}
+          />
+        ) : (
+          <>
+            <header className="relative flex items-center justify-between pt-[calc(0.75rem+env(safe-area-inset-top))]">
+              <BackButton href="/" className="opacity-60" />
+              <Button variant="icon" size="sm" aria-label="Konular ve listeler" onClick={() => setMenu(true)} className="!text-white/50">
+                <Icon name="more" className="size-5" />
+              </Button>
+            </header>
+            <section className="relative flex flex-1 items-center">
+              <p className="text-[1.25rem] font-semibold">{cTopic ? "Bu konunun bütün kalıplarını öğrendin." : "Bütün kalıpları öğrendin."}</p>
+            </section>
+          </>
+        )
+      ) : talk ? (
+        <WordTalk
+          w={talk}
+          onClose={() => setTalk(null)}
+          onQuiz={() => {
+            setPin(talk.en);
+            setQuiz({ w: talk, qs: quizFor(deck, talk), step: 0, picked: null, right: 0, done: false });
+            setTalk(null);
+          }}
+        />
+      ) : (
+      <>
+      <header className="relative flex items-center justify-between gap-3 pt-[calc(0.75rem+env(safe-area-inset-top))] text-[0.875rem] text-white/45">
+        {quiz ? (
+          <>
+            <Button variant="icon" size="sm" aria-label="Sınavı kapat" onClick={() => setQuiz(null)} className="!text-white/50">
+              <Icon name="x" className="size-5" />
+            </Button>
+            <span className="tabular-nums">{quiz.done ? "" : `${quiz.step + 1} / ${quiz.qs.length}`}</span>
+            <span className="size-9" />
+          </>
+        ) : (
+          <>
+            <BackButton href="/" className="opacity-60" />
+            <div className="flex items-center gap-1">
+              {[
+                ["chunk", "Kalıp"],
+                ["word", "Kelime"],
+                ["phrase", "Cümle"],
+              ].map(([k, l], i) => (
+                <span key={k} className="flex items-center gap-1">
+                  {i > 0 && <span aria-hidden="true">·</span>}
+                  <button type="button" aria-pressed={kind === k} onClick={() => pickKind(k)} className={`px-1.5 py-2 ${kind === k ? "font-semibold text-white/85" : ""}`}>
+                    {l}
+                  </button>
+                </span>
+              ))}
             </div>
-          ))}
-        </div>
+            <Button variant="icon" size="sm" aria-label="Listeler ve ekle" onClick={() => setMenu(true)} className="!text-white/50">
+              <Icon name="more" className="size-5" />
+            </Button>
+          </>
+        )}
+      </header>
+
+      <section className="relative flex flex-1 flex-col justify-center" aria-label="İngilizce">
+        {!deck && <Loading label="Yükleniyor" />}
+        {deck && !quiz && (cur ? <Card w={cur} wait={wait === cur.en} /> : <p className="text-[1.25rem] font-semibold">{kind === "phrase" ? "Bu konunun hepsini öğrendin." : "Listedeki her kelimeyi öğrendin."}</p>)}
+        {q && <Quiz qs={q.qs} step={q.step} picked={q.picked} onPick={pickOpt} />}
+        {quiz?.done && (
+          <div className="py-6">
+            <b className="block text-[3.25rem] font-bold leading-none tabular-nums tracking-[-.03em]">
+              {quiz.right} / {quiz.qs.length}
+            </b>
+            <button type="button" onClick={() => sayEn(quiz.w.en)} className="mt-4 block text-left text-[1.5rem] font-semibold">
+              {quiz.w.en}
+            </button>
+            <p className={`mt-1.5 text-[1.0625rem] ${quiz.right === quiz.qs.length ? "text-[#9fe7c6]" : "text-white/55"}`}>{quiz.right === quiz.qs.length ? "Öğrendiklerine eklendi" : "Yarın yeniden soracağım"}</p>
+          </div>
+        )}
       </section>
 
-      <div className="relative -mx-5 -mt-6 min-h-[50vh] space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-4">
-        {!deck && <Loading label="Yükleniyor" />}
-        {deck && (
-          <section className="rounded-[1.25rem] border border-line bg-card px-4 pb-3.5 pt-3.5" aria-label="Sıradaki">
-            <span className="text-[0.6875rem] font-bold tracking-[.08em] text-acc">
-              {cur ? `SIRADAKİ · ${cur.status === "study" ? "ÇALIŞ" : (cur.topic || (kind === "phrase" ? "Eklediklerim" : "B2")).toLocaleUpperCase("tr-TR")}` : "SIRADAKİ"}
-            </span>
-            {cur ? (
-              <>
-                <WordView w={cur} />
-                <div className="mt-3.5 flex gap-2">
-                  <Button variant="secondary" full onClick={next} disabled={busy}>
-                    Sonraki
-                  </Button>
-                  <Button full onClick={learned} loading={busy}>
-                    Öğrendim
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <p className="py-4 text-[0.9375rem] font-semibold">{kind === "phrase" ? "Bu konunun hepsini öğrendin." : "Listedeki her kelimeyi öğrendin."}</p>
-            )}
-          </section>
-        )}
+      {deck && (cur || quiz) && (
+        <footer className="relative flex items-center justify-between gap-3">
+          {quiz ? <span /> : (
+            <Button variant="text" onClick={next} className="!px-0 !text-white/50">
+              Geç
+            </Button>
+          )}
+          {!quiz && (
+            <Button variant="text" onClick={startQuiz} className="!text-white/50">
+              Sına
+            </Button>
+          )}
+          {(!quiz || quiz.picked != null || quiz.done) && (
+            <Button
+              variant="secondary"
+              full={false}
+              onClick={() => {
+                if (quiz) return goOn();
+                primeEn();
+                setTalk(cur);
+              }}
+              className="!h-12 !rounded-full !border-0 !bg-none !bg-[#8fb3ff]/14 !px-7 !text-[#8fb3ff] !shadow-none"
+            >
+              {!quiz ? "Konuş" : quiz.done ? "Sıradaki" : "Devam"}
+            </Button>
+          )}
+        </footer>
+      )}
+      </>
+      )}
 
-        {deck && kind === "phrase" && (
+      <Sheet open={menu && isChunk} onClose={() => setMenu(false)} navy title="Kalıplar">
+        <div className="space-y-6 pb-1">
           <section>
             <ListHead title="Konular" />
             <RowList>
-              {topics.map((t) => (
-                <Row key={t.topic} title={t.topic} right={<span className={topic === t.topic ? "text-acc" : "text-mut"}>{`${t.known}/${t.total}`}</span>} onClick={() => (setTopic(topic === t.topic ? "" : t.topic), setSkip([]))} chev={false} />
+              <Row title="Hepsi" right={<span className={!cTopic ? "text-acc" : "text-mut"}>{`${cTopics.reduce((n, t) => n + t.done, 0)}/${cTopics.reduce((n, t) => n + t.total, 0)}`}</span>} onClick={() => (setCTopic(""), setCSkip([]), setCPin(""), setMenu(false))} chev={false} />
+              {cTopics.map((t) => (
+                <Row key={t.topic} title={t.topic} right={<span className={cTopic === t.topic ? "text-acc" : "text-mut"}>{`${t.done}/${t.total}`}</span>} onClick={() => (setCTopic(t.topic), setCSkip([]), setCPin(""), setMenu(false))} chev={false} />
               ))}
             </RowList>
           </section>
-        )}
+          {cStudy.length > 0 && (
+            <section>
+              <ListHead title="Çalışıyorum" count={cStudy.length} />
+              <RowList>
+                {cStudy.map((c) => (
+                  <Row key={c.id} title={patternRow(c)} sub={c.tr} onClick={() => openC(c.id)} chev={false} right={<span className="whitespace-nowrap rounded-full bg-accbg px-2 py-0.5 text-[0.75rem] font-semibold text-acc">{dueText(chunkState(deck, c.id)?.due, today)}</span>} />
+                ))}
+              </RowList>
+            </section>
+          )}
+          {cKnown.length > 0 && (
+            <section>
+              <ListHead title="Öğrendiklerim" count={cKnown.length} />
+              <RowList>
+                {cKnown.map((c) => (
+                  <Row key={c.id} title={patternRow(c)} sub={c.tr} onClick={() => openC(c.id)} chev={false} right={<Tag tone="st">{dayText(chunkState(deck, c.id)?.kd)}</Tag>} />
+                ))}
+              </RowList>
+            </section>
+          )}
+          {chunk && chunkState(deck, chunk.id)?.st !== "known" && (
+            <Button variant="secondary" onClick={() => save((d) => knowChunk(d, chunk.id, today)).then(() => (setMenu(false), nextC()))}>
+              Bu kalıbı zaten biliyorum
+            </Button>
+          )}
+          {chunk && chunkState(deck, chunk.id)?.st === "known" && (
+            <Button variant="secondary" onClick={() => save((d) => resetChunk(d, chunk.id)).then(() => setMenu(false))}>
+              Bu kalıbı yeniden çalış
+            </Button>
+          )}
+          {orgId && (
+            <Button variant="secondary" onClick={() => (setMenu(false), setPics(true))}>
+              Resimler
+            </Button>
+          )}
+          <Button variant="text" onClick={() => (pickKind("word"), setMenu(false))}>
+            Kelimelerim ve cümlelerim
+          </Button>
+        </div>
+      </Sheet>
 
-        {deck && studying.length > 0 && (
-          <section>
-            <ListHead title="Çalışıyorum" count={studying.length} />
-            <RowList>
-              {studying.map((w) => (
-                <Row key={w.en} title={w.en} sub={w.tr} right={<span className="whitespace-nowrap rounded-full bg-accbg px-2 py-0.5 text-[0.75rem] font-semibold text-acc">{dueText(w.due, today)}</span>} />
-              ))}
-            </RowList>
-          </section>
-        )}
+      <Sheet open={pics && isChunk} onClose={() => setPics(false)} navy title="Resimler">
+        {pics && orgId && <ChunkPics orgId={orgId} onOpen={(id) => (setPics(false), openC(id))} />}
+      </Sheet>
 
-        {deck && known.length > 0 && (
-          <section>
-            <div className="mb-1.5 flex items-center justify-between gap-3 px-1">
-              <h2 className="text-[0.8125rem] font-bold tracking-[.04em] text-mut">
-                ÖĞRENDİKLERİM <span className="ml-1 font-semibold tabular-nums">{known.length}</span>
-              </h2>
-              {known.length > 5 && (
-                <button type="button" onClick={() => setAllKnown((v) => !v)} className="text-[0.8125rem] font-semibold text-acc">
-                  {allKnown ? "Daha az" : "Tümü ›"}
-                </button>
-              )}
-            </div>
-            <RowList>
-              {shown.map((w) => (
-                <Row key={w.en} title={w.en} sub={w.tr} right={w.kd ? <Tag tone="st">{dayText(w.kd)}</Tag> : null} />
-              ))}
-            </RowList>
-          </section>
-        )}
-      </div>
+      <Sheet open={menu && !isChunk} onClose={() => setMenu(false)} navy title={kind === "phrase" ? "Cümleler" : "Kelimeler"}>
+        <div className="space-y-6 pb-1">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setMenu(false);
+              setAdd(true);
+            }}
+          >
+            {kind === "phrase" ? "Cümle ekle" : "Kelime ekle"}
+          </Button>
+          {topics.length > 0 && (
+            <section>
+              <ListHead title="Konular" />
+              <RowList>
+                {topics.map((t) => (
+                  <Row key={t.topic} title={t.topic} right={<span className={topic === t.topic ? "text-acc" : "text-mut"}>{`${t.known}/${t.total}`}</span>} onClick={() => (setTopic(topic === t.topic ? "" : t.topic), setSkip([]), setPin(""), setMenu(false))} chev={false} />
+                ))}
+              </RowList>
+            </section>
+          )}
+          {studying.length > 0 && (
+            <section>
+              <ListHead title="Çalışıyorum" count={studying.length} />
+              <RowList>
+                {studying.map((w) => (
+                  <Row key={w.en} title={w.en} sub={w.tr} onClick={() => open(w)} chev={false} right={<span className="whitespace-nowrap rounded-full bg-accbg px-2 py-0.5 text-[0.75rem] font-semibold text-acc">{dueText(w.due, today)}</span>} />
+                ))}
+              </RowList>
+            </section>
+          )}
+          {known.length > 0 && (
+            <section>
+              <div className="mb-1.5 flex items-center justify-between gap-3 px-1">
+                <h2 className="text-[0.8125rem] font-bold tracking-[.04em] text-mut">
+                  ÖĞRENDİKLERİM <span className="ml-1 font-semibold tabular-nums">{known.length}</span>
+                </h2>
+                {known.length > 5 && (
+                  <button type="button" onClick={() => setAllKnown((v) => !v)} className="text-[0.8125rem] font-semibold text-acc">
+                    {allKnown ? "Daha az" : "Tümü ›"}
+                  </button>
+                )}
+              </div>
+              <RowList>
+                {shown.map((w) => (
+                  <Row key={w.en} title={w.en} sub={w.tr} onClick={() => open(w)} chev={false} right={w.kd ? <Tag tone="st">{dayText(w.kd)}</Tag> : null} />
+                ))}
+              </RowList>
+            </section>
+          )}
+        </div>
+      </Sheet>
 
-      <Sheet open={add} onClose={() => !adding && setAdd(false)} title={kind === "phrase" ? "Cümle ekle" : "Kelime ekle"}>
+      <Sheet open={add} onClose={() => !adding && setAdd(false)} navy title={kind === "phrase" ? "Cümle ekle" : "Kelime ekle"}>
         <div className="space-y-4 pb-1">
           <Field
             label={kind === "phrase" ? "İngilizce ya da Türkçe cümle" : "İngilizce ya da Türkçe kelime"}

@@ -1,0 +1,8 @@
+## Nerede kaldım
+- Planlar sayfası sadeleşti (Seyhun: "daha düzenli, sürekli göze yazı çarpıyor; bugün plan varsa ve önemli varsa ayrı güzel bir tasarım"; örnek onaylandı: `/mnt/project-files/planlar/sade/ornek.png`; telefonda denenmedi). Lacivert üstte: geri, Planlar, Takvim, kişi seçimi (simge; seçilince camgöbeği olur, seçilen ad Bugün kartında yazar), + Plan. Altında Bugün kartı (`ck-plan`, ana sayfadaki plan kartıyla aynı renk): bugünün bütün planları saat sırasıyla, süren ya da sıradaki büyük yazıyla ("ŞU AN"/"SIRADAKİ", saat aralığı, yer), saati geçen ve iptal soluk, çakışan "Çakışıyor"; bugün plan yoksa "Bugün plan yok" + sıradaki. Eski "Şu an/Sıradaki + Sonra" kutuları, alt satırdaki "Bu hafta N plan" yazısı ve kişi çipleri kalktı. Açık zeminde Önemli: önemli planlar (`isImportant`) yan yana kaydırılan çerçeveli kartlarda, gün kutusu + "5 gün kaldı"/"Yarın"; bu planlar aşağıda tekrar etmez. Yaklaşan: yarından sonrası tek liste, plan başına tek satır (gün yalnız günün ilk satırında, saat ya da "3 gün"/"Gün", kategori çizgisi, ad); süre, yer ve "Ana hesap" etiketi satırdan kalktı (plana dokununca görünür), yalnız başkasına atanmış ya da başkasının eklediği planda baş harf; altında yalnız "Saat çakışıyor" ya da "İptal · neden". Sola kaydırma Bitti / Sil, Arşiv ve İngilizce kelime kartı aynı. Yalnız `src/app/(app)/plans/page.jsx` değişti. Uygulamada sahte veriyle açılıp görüntüsü kontrol edildi.
+
+## Sıradaki işler
+0. Planlar'ı telefonda aç: Bugün kartı, Önemli kartları ve Yaklaşan listesi örnekteki gibi mi; kişi simgesinden birini seç, Bugün kartında adı yazmalı.
+
+## Tasarım
+- Planlar: her plan tek yerde görünür (bugün kartı, Önemli ya da Yaklaşan); listede satır başına tek satır, ayrıntı plana dokununca (Seyhun 2026-11-01).

@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BackButton } from "@/components/ui/BackButton";
@@ -97,6 +98,7 @@ const avgTiming = () => {
 };
 
 export function TestsPage() {
+  const confirmAsk = useConfirm();
   const { profile } = useAuth();
   const toast = useToast();
   const router = useRouter();
@@ -124,7 +126,7 @@ export function TestsPage() {
     const list = RUNNABLE.filter((t) => keys.includes(t.key));
     if (!list.length) return toast("Önce test seç");
     const ai = list.find((t) => t.ai);
-    if (ai && !confirm(`${ai.name} yapay zekaya ${ai.sub().split(" ")[0]} istek gönderir (kayıt yapılmaz). Başlasın mı?`)) return;
+    if (ai && !(await confirmAsk({ title: "Yapay zeka testi başlasın mı?", text: `${ai.name} · ${ai.sub().split(" ")[0]} istek gönderir, kayıt yapılmaz.`, yes: "Başlat", danger: false }))) return;
     const ctl = new AbortController();
     stop.current = ctl;
     const t0 = Date.now();
@@ -198,7 +200,7 @@ export function TestsPage() {
         <header className="flex items-center gap-2.5">
           <BackButton href="/settings" />
           <h1 className="min-w-0 flex-1 truncate text-[1.375rem] font-bold tracking-[-.02em]">Testler</h1>
-          <button type="button" onClick={() => setSheet({ kind: "reports" })} data-press className="raised flex h-9 shrink-0 items-center rounded-xl border px-3.5 text-[0.875rem] font-semibold">
+          <button type="button" onClick={() => setSheet({ kind: "reports" })} data-press className="btn btn-secondary btn-sm shrink-0">
             Raporlar
           </button>
         </header>
@@ -219,17 +221,17 @@ export function TestsPage() {
                 <span className="text-[1.375rem] text-white/50"> / {gh.total}</span>
               </b>
               <span className="mt-2 block h-[0.4375rem] overflow-hidden rounded-full bg-white/15" aria-hidden="true">
-                <span className="block h-full rounded-full bg-[#67e8f9]" style={{ width: `${Math.round((gh.pass / Math.max(1, gh.total)) * 100)}%` }} />
+                <span className="block h-full rounded-full bg-[#8fb3ff]" style={{ width: `${Math.round((gh.pass / Math.max(1, gh.total)) * 100)}%` }} />
               </span>
             </>
           )}
         </button>
 
         <div className="mt-4 grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => start(RUNNABLE.map((t) => t.key))} disabled={!!run} data-press className="raised flex h-11 items-center justify-center rounded-xl border text-[0.9375rem] font-semibold disabled:opacity-40">
+          <button type="button" onClick={() => start(RUNNABLE.map((t) => t.key))} disabled={!!run} data-press className="btn btn-secondary h-11 text-[0.9375rem]">
             Hepsini çalıştır
           </button>
-          <button type="button" onClick={() => start([...sel])} disabled={!run && !sel.size} data-press className="raised act-main flex h-11 items-center justify-center rounded-xl border text-[0.9375rem] font-semibold disabled:opacity-40">
+          <button type="button" onClick={() => start([...sel])} disabled={!run && !sel.size} data-press className="btn btn-primary h-11 text-[0.9375rem]">
             {run ? "Durdur" : `Seçilenler${sel.size ? ` (${sel.size})` : ""}`}
           </button>
         </div>

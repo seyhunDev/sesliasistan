@@ -67,15 +67,19 @@ export function DelBadge({ rec }) {
   );
 }
 
-// Boş durum
-export function Empty({ icon, title, sub }) {
+// Boş durum (ortak eylemler 2026-11-09): süs simgesi yok; tek satır ve varsa ekle düğmesi ("+ Görev").
+// icon eski çağrılar için kabul edilir ama çizilmez.
+export function Empty({ icon, title, sub, add, onAdd }) {
   return (
-    <div className={`${card} mt-4 flex flex-col items-center px-6 py-9 text-center`}>
-      <span className="grid size-12 place-items-center rounded-2xl bg-acc/10 text-acc">
-        <Icon name={icon} className="size-6" />
-      </span>
-      <b className="mt-3 text-[0.9375rem] font-semibold">{title}</b>
-      {sub && <p className="mt-1 text-[0.8125rem] leading-snug text-mut">{sub}</p>}
+    <div className={`${card} mt-4 flex flex-col items-center gap-3 px-6 py-7 text-center`}>
+      <b className="text-[0.9375rem] font-semibold text-mut">{title}</b>
+      {sub && <p className="-mt-2 text-[0.8125rem] leading-snug text-mut">{sub}</p>}
+      {add && onAdd && (
+        <button type="button" onClick={onAdd} data-press className="btn btn-primary btn-sm px-4">
+          <Icon name="plus" className="size-4" />
+          {add}
+        </button>
+      )}
     </div>
   );
 }

@@ -2,17 +2,23 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
+import { Button } from "@/components/ui/Button";
 import { todayStr } from "@/lib/utils/format";
+import { RACE_SECS } from "@/lib/raceMenu";
+import { useAuth } from "@/features/auth/AuthProvider";
 import { Label, Seg, card } from "@/components/ui/Page";
 import { Sheet } from "@/components/ui/Sheet";
 import { PdfViewer } from "@/components/ui/PdfViewer";
 import { Loading } from "@/components/ui/Loader";
 import { useToast } from "@/components/ui/ToastProvider";
+import { jobDone, jobFail, startJob } from "@/lib/jobs";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { DOC_TEXT } from "./EditAthlete";
 import { EXPIRY, raceExpired } from "@/lib/expiry";
-import { placeText as resPlace, resultsOpen, withResults } from "@/lib/raceResults";
-import { RaceResults } from "./RaceResults";
+import { withResults } from "@/lib/raceResults";
+import { ourPlaces } from "@/lib/raceDay";
 import { isActive } from "./data";
 import { COACH_DOCS, COACH_FIELDS, DOCS, DOC_DEFAULT, cleanDocs, buildRaceDocs, cleanCoach, clubInfo, coachMissing, hotelInfo, loadFonts, missing, nextNo, phoneMissing, rangeText, splitPages } from "./raceDocs";
 import { raceNames } from "./raceNames";
@@ -21,22 +27,34 @@ import { dropNoticeFile, loadNoticeFile, noticeName, noticePdf, saveNoticeFile }
 import { NoticeDetails, NoticeUpload } from "./NoticeView";
 import { RaceHotels } from "./RaceHotels";
 import { MailTo } from "@/features/mail/MailTo";
-import { openFile, shareFile } from "./fileActions";
+import { openFile, printFile, shareFile } from "./fileActions";
 import { BudgetView } from "./BudgetView";
 import { tl, totals } from "./budget";
-import { buildAthleteSheet, sheetParts } from "./athleteSheet";
+import { BUDGET_ONLY, buildAthleteSheet, sheetParts } from "./athleteSheet";
 import { AroundView } from "./AroundView";
+import { RaceWxRows } from "./RaceWx";
+import { Fold, RaceSeg, RaceStats } from "./raceUi";
+import { ResultsAdd } from "./ResultCards";
+import { RaceTrack } from "./RaceTrack";
+import { RaceAdd } from "./RaceAddSheet";
+import { ContactLinks } from "./ContactLinks";
+import { FORM_DOCS, FORM_NAMES, TaskLinks, isFinal } from "./TaskLinks";
+import { takeRaceDraft } from "./raceDraft";
+import { RaceDayTop, useRacePhase } from "./RaceDayTop";
 import { RACE_KEY } from "@/features/posts/postModel";
 import { loadPosts } from "@/features/posts/posts";
-import { racePlansOf, racePostOf } from "./raceLinks";
+import { racePlanSync, racePlansOf, racePostOf } from "./raceLinks";
 import { dropExtras, dropRaceFile, getExtras, getRaceFile, saveExtras, saveRaceFile } from "./raceFiles";
 import { RACE_FILE_MAX, dropRaceStored, loadRaceFile, moveLocalExtras, uploadRaceFile } from "./raceStore";
-import { cleanDone, cleanNotice, cleanSkips, cleanTodos, doneSteps, hiddenCount, mergeHotels, raceHotels, shiftDay, stepsOf, todoKey, tripRows } from "./races";
+import { cleanDone, cleanNotice, racesNow, DOC_FIELDS, docsHash, cleanSkips, cleanTodos, doneSteps, hiddenCount, mergeHotels, raceHotels, shiftDay, stepsOf, todoKey, tripRows } from "./races";
 import { initials, leftText, placeText } from "./RaceList";
+import { fromShared } from "@/lib/sharedRace";
 
 const withHotels = (p, n) => (p.notice ? { ...p, notice: cleanNotice({ ...p.notice, hotels: n.hotels }), hotels: mergeHotels(p.hotels, n.hotels) } : p);
 const shortDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
 const daysTo = (d) => Math.round((new Date(`${d}T12:00:00`) - new Date(`${todayStr()}T12:00:00`)) / 864e5);
+// Sporcunun evrağa giren bilgileri (özet için; yoklama, son görülme gibi alanlar evrağı eskitmesin)
+const docPerson = (a) => Object.fromEntries(Object.entries(a).filter(([k]) => /^(id|student|parent|father|mother|school|letterSchool|sailNo|licen|tyf|boatClass|currentClassId|phone|relation)/.test(k)).sort());
 const madeText = (iso) => new Date(iso).toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 const sizeText = (n) => (n >= 1048576 ? `${(n / 1048576).toFixed(1).replace(".", ",")} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 const partName = (all, title) => `${all.replace(/-evrak\.pdf$/, "")}-${title.replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "")}.pdf`;
@@ -72,8 +90,8 @@ function FileRow({ tag, title, sub, onOpen, onShare, onRemove }) {
       <button type="button" onClick={onOpen} data-press="row" className="flex min-w-0 flex-1 items-center gap-3 py-3 text-left">
         <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-rec/10 text-[0.625rem] font-bold text-rec">{tag}</span>
         <span className="min-w-0 flex-1">
-          <b className="block truncate text-[0.9375rem] font-semibold">{title}</b>
-          <span className="block truncate text-[0.8125rem] text-mut">{sub}</span>
+          <b className="block break-words text-[0.9375rem] font-semibold">{title}</b>
+          <span className="block break-words text-[0.8125rem] text-mut">{sub}</span>
         </span>
       </button>
       <button type="button" onClick={onShare} aria-label={`${title} paylaş`} data-press className="btn btn-icon size-10 shrink-0 text-acc">
@@ -106,7 +124,7 @@ function PeopleList({ people, openPdf, share }) {
         <li key={p.id} className="flex items-center gap-1 pl-1">
           <button type="button" onClick={() => openPdf(p.file)} data-press="row" className="flex min-w-0 flex-1 items-center gap-2.5 py-2.5 text-left">
             <span className="grid size-7 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.6875rem] font-bold text-acc">{initialsOf(p.name)}</span>
-            <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{p.name}</span>
+            <span className="min-w-0 flex-1 break-words text-[0.9375rem]">{p.name}</span>
           </button>
           <button type="button" onClick={() => share(p.file)} aria-label={`${p.name} paylaş`} data-press className="btn btn-icon size-10 shrink-0 text-acc">
             <Icon name="up" className="size-5" />
@@ -146,19 +164,33 @@ function Check({ on, tone = "ok" }) {
   );
 }
 
+// Yolculuk satırı: "Çar 11 Kas"
+const tripDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "short", day: "numeric", month: "short" });
+
 // Tek yarış: özet (yapılacaklar, not, takvim), sporcular, bilgiler, evrak.
 // Kayıt işleri dışarıdan gelir: onSave(yarış, kimlik) → kimlik, onDelete(kimlik), onPlan(yarış) → bool,
 // onNoticePlan(yarış) → eklenen plan sayısı (talimattaki son tarihler), onSaveAthlete(sporcu, değişiklik)
 // coach: hesabın antrenör bilgileri (users/{uid}.coach), onCoach(bilgi) kaydeder
-export function RaceEditor({ head = null, alert = null, orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, plans = [], onOpenPlan, menu = false, onMenu, onPlan, onNoticePlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach }) {
+// ⋯ menüsünün bölümleri (?sec=) ve multimedya işleri (?do=); liste lib/raceMenu.js
+const PREP = ["sum", "docs", "trip", "budget"]; // Hazırlık sekmesinin bölümleri
+const SECS = [...RACE_SECS.map(([k]) => k), "site", "belge"]; // site: Takip (?sec=site); belge: siteden gelen belgelerin tamamı
+
+export function RaceEditor({ sec = "", uid = "", head = null, alert = null, sharedList = [], orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, plans = [], onOpenPlan, menu = false, onMenu, onPlan, onNoticePlan, onSyncPlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach, siteDocs = null, siteNew = 0, onResultsFile = null }) {
+  const { isOwner } = useAuth(); // Canlı ekran yalnız ana hesapta
+  const router = useRouter();
   const toast = useToast();
+  const confirmIt = useConfirm();
   const [r, setR] = useState(start);
   const [noticeInfo, setNoticeInfo] = useState(false);
   // Yeni yarış önce tek soruyla başlar: talimat var mı? (talimatla ya da elle ad, tarih, yer) → sonra sayfa
   const [begun, setBegun] = useState(!!start.id);
-  const [manual, setManual] = useState(false);
-  const [tab, setTab] = useState("sum");
-  const [edit, setEdit] = useState(false); // yarışın adı, tarihi, yeri (başlık kartına dokununca)
+  // Tek ⋯ (Seyhun 2026-10-30, yaris-yapi): multimedya sayfasının ⋯ menüsünden gelen bölüm ?sec= ile açılır (prep, people, docs, trip, budget, edit, del)
+  const [sec0] = useState(sec);
+  // Sitesi bağlı yarış yarış günü dışında Takip ile açılır (Seyhun 2026-11-05)
+  // Hazırlık her zaman "sum" (yeni görünüm 2026-11-06: yarış günü de sekmeler sayfada; eski ?sec=prep bağlantıları Hazırlık'ı açar)
+  // Sade (Seyhun 2026-11-09 "Yap", örnek yaris-tasarim öneri): yarış günü ve sonrası Takip, yarıştan önce Hazırlık açılır
+  const [tab, setTab] = useState(() => (sec0 === "prep" ? "sum" : SECS.includes(sec0) ? sec0 : siteDocs && start.startDate && todayStr() >= start.startDate ? "site" : "sum"));
+  const [edit, setEdit] = useState(sec0 === "edit"); // yarışın adı, tarihi, yeri (başlık kartına dokununca)
   // Sekmeye ya da yarış bilgisi penceresine git
   const go = (t) => (t === "edit" ? setEdit(true) : setTab(t));
   const [pick, setPick] = useState(false);
@@ -171,12 +203,15 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
   const [stale, setStale] = useState(false); // hazır evrak bir bilgi değişince geçersiz oldu (yeniden hazırlanmalı)
   const [mailText, setMailText] = useState(""); // hazır PDF'in mail metni
   const [made, setMade] = useState(null); // { at, pages } hazırlanma zamanı (bu cihazda saklı)
+  // Bu cihazdaki kopyaya bakıldı mı (Seyhun 2026-10-26: "hiçbir değişiklik olmadan evrak yenilemesi istiyor"): bakılana kadar "yenile" denmez
+  const [checked, setChecked] = useState(false);
   const [parts, setParts] = useState([]); // her belge ayrı PDF: [{ key, title, file, pages }]
   const [extras, setExtras] = useState([]); // eski düzen: yalnız bu telefonda kalan eklenen evrak [{ id, name, type, blob, at }] (Firebase'e gönderilir)
   // Hazır PDF bu cihazda saklıdır; sayfaya dönünce yeniden hazırlamak gerekmez
   useEffect(() => {
     let live = true;
     getRaceFile(start.id).then((f) => {
+      if (live) setChecked(true);
       if (!live || !f?.blob) return;
       setFile(new File([f.blob], f.name, { type: "application/pdf" }));
       if (Array.isArray(f.docs) && f.docs.length && !startDocs) setDocs(cleanDocs(f.docs));
@@ -204,8 +239,10 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
     setDocs(next);
     setR((p) => ({ ...p, docs: next }));
   };
+  // Yalnız değer gerçekten değişince (aynı sporcuyu yeniden eklemek, aynı oteli seçmek evrakı bozmaz)
+  const same = (a, b) => (Array.isArray(a) ? a.join() === (b || []).join() : (a ?? "") === (b ?? ""));
   const set = (k) => (v) => {
-    dropFile();
+    if (!same(v, latest.current[k])) dropFile();
     setR((p) => {
       const n = { ...p, [k]: v };
       // İzin aralığı varsayılan olarak yarıştan bir gün önce başlar, bir gün sonra biter
@@ -221,8 +258,8 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
   // Kulüp yazısı alanı: boşsa yarıştaki değer görünür (tarihlerde değer olarak)
   const club = clubInfo(r);
   const hotel = hotelInfo(r);
-  // Talimattaki oteller öneri olarak çıkar (dokununca otel adı olur)
-  const hotels = [...new Set(raceHotels(r).map((h) => String(h?.name || "").trim()).filter(Boolean))].slice(0, 4);
+  // Otel izninde Yolculuk'taki oteller seçilir (dokununca otel adı olur)
+  const hotels = [...new Set(raceHotels(r).map((h) => String(h?.name || "").trim()).filter(Boolean))].slice(0, 6);
   const clubDate = (k, v) => <input type="date" value={r[k] || v || ""} onChange={(e) => set(k)(e.target.value)} className={input} />;
 
   const byId = new Map(athletes.map((a) => [a.id, a]));
@@ -251,7 +288,7 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
   const coachLast = useRef(coach);
   const [coachSaved, setCoachSaved] = useState(false);
   const setCoachField = (k) => (v) => {
-    dropFile();
+    if (!same(v, coach[k])) dropFile();
     coachDirty.current = true;
     setCoach((c) => ({ ...c, [k]: v }));
   };
@@ -265,6 +302,12 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
     }, 800);
     return () => clearTimeout(t);
   }, [coach, onCoach]);
+  // Evrak hazır mı, eski mi (Seyhun 2026-11-12 "belgeler hazırlandıysa ve değişiklik olmadıysa tekrar hazırla butonu gösterilmesin"):
+  // hazırlarken belgeye giren bilgilerin özeti yarışa yazılır (docsKey); şimdiki özet farklıysa evrak eski. Başka cihazda hazırlanıp
+  // değişmediyse de hazır sayılır (PDF bu cihazda yoksa "Aç" onu burada yeniden üretir, buton "hazırla" demez).
+  const docsKeyNow = docsHash([DOC_FIELDS.map((k) => r[k] ?? ""), docs, forDocs.map(docPerson), coach]);
+  const docsOld = r.docsKey ? !!r.docsAt && r.docsKey !== docsKeyNow : stale;
+  const docsReady = !!file || (!!r.docsAt && !docsOld && (!!r.docsKey || !checked));
   useEffect(() => () => void (coachDirty.current && onCoach?.(cleanCoach(coachLast.current))), [onCoach]);
   // Başka cihazda (ya da bu cihazda başka sayfada) kaydedilen bilgi gelince alanlar güncellenir (yazarken değil)
   const savedKey = JSON.stringify(cleanCoach(savedCoach));
@@ -276,11 +319,19 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
   const coachLack = coachOn ? coachMissing(coach, docs) : [];
   // Seçili belgelerde boş kalacak antrenör alanları (sarı görünür)
   // Bilgiler tamamsa antrenör bölümü kapalı gelir (her yarışta yeniden sorulmuyor gibi görünsün diye), Düzenle ile açılır
-  const [coachOpen, setCoachOpen] = useState(() => coachMissing(cleanCoach(savedCoach), startDocs || DOC_DEFAULT).length > 0);
+  const [coachOpen, setCoachOpen] = useState(false); // antrenör formu alttan pencerede (2026-11-04; sayfada uzun liste olmasın)
   const coachLackKeys = coachOn ? COACH_FIELDS.map(([k]) => k).filter((k) => coachMissing({ ...coach, [k]: "" }, docs).length > coachLack.length) : [];
   const expired = chosen.filter((a) => raceExpired(a, r).length); // yarışın son günü itibarıyla süresi geçmiş belge
   const fixList = chosen.filter((a) => incomplete.includes(a) || expired.includes(a));
   const coachRef = useRef(null);
+  const budgetRef = useRef(null);
+  const tripRef = useRef(null);
+  const docsRef = useRef(null);
+  // Hazırlık'ın içindeki bölüme kayar: "budget" Bütçe'ye, "trip" Yolculuk'a, "docs" Evrak'a (⋯, asistan, Sporcular › Evraka git)
+  useEffect(() => {
+    const ref = { budget: budgetRef, trip: tripRef, docs: docsRef }[tab];
+    if (ref) setTimeout(() => ref.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+  }, [tab]);
   // Yetkili adı eksikken Eksikler'de yazılır; yazarken kutu yer değiştirmesin diye bu açılışta orada kalır
   const [signerAsk] = useState(() => !(start.signer || "").trim());
 
@@ -291,11 +342,15 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
   const queue = useRef(Promise.resolve());
   const latest = useRef(r);
   const dirty = useRef(false);
+  // Sayfanın bildiği son kayıt: kaydederken yalnız bundan farklı alanlar yazılır (başka yerin yazdığı alan geri yazılmaz)
+  const base = useRef(start.id ? start : null);
   const save = useCallback(() => {
     const data = latest.current;
     dirty.current = false;
     queue.current = queue.current.then(async () => {
-      id.current = await onSave(data, id.current);
+      const was = id.current ? base.current : null;
+      id.current = await onSave(data, id.current, was);
+      base.current = { ...data, id: id.current };
       setRid(id.current || "");
     });
     return queue.current;
@@ -321,7 +376,9 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
       const p = latest.current;
       if (n.startDate !== p.startDate || n.endDate !== p.endDate || n.athleteIds.join() !== p.athleteIds.join()) dropFile();
       first.current = !dirty.current; // asistanın değişikliği kaydedildi; sayfada bekleyen değişiklik varsa birlikte yazılır
-      setR({ ...p, athleteIds: n.athleteIds, note: n.note, city: n.city, district: n.district, startDate: n.startDate, endDate: n.endDate, leaveStart: n.leaveStart, leaveEnd: n.leaveEnd, budget: n.budget, results: n.results });
+      const got = { athleteIds: n.athleteIds, note: n.note, city: n.city, district: n.district, startDate: n.startDate, endDate: n.endDate, leaveStart: n.leaveStart, leaveEnd: n.leaveEnd, budget: n.budget, results: n.results, notice: n.notice === undefined ? p.notice : n.notice };
+      if (base.current) base.current = { ...base.current, ...got }; // başka yerde kaydedildi: sayfa bunları yeniden yazmaz
+      setR({ ...p, ...got });
     };
     window.addEventListener("sa-race-saved", on);
     return () => window.removeEventListener("sa-race-saved", on);
@@ -353,11 +410,13 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
     }
     if (!docs.length) return toast("En az bir belge seç");
     setBusy(true);
+    // Üstteki iş göstergesinde (lib/jobs.js): sayfadan çıkılsa da hazırlanırken ve bitince görünür
+    const job = startJob({ name: `${r.name.trim() || "Yarış"} evrakı`, steps: ["Hazırlanıyor"] });
     try {
       // Evrak tarihi tüm belgelerde aynı: ilk hazırlamada (docsAt yok) bugün yazılır, "Yenile"de değişmez (sonra elle değiştirilebilir).
       // Eski yarışlardaki tarih yarışın açıldığı gündü; ilk hazırlamada o da bugüne çekilir.
-      const dated = r.docsAt ? { ...r, letterDate: r.letterDate || todayStr() } : { ...r, letterDate: todayStr(), docsAt: new Date().toISOString() };
-      if (dated.letterDate !== r.letterDate || dated.docsAt !== r.docsAt) {
+      const dated = { ...(r.docsAt ? { ...r, letterDate: r.letterDate || todayStr() } : { ...r, letterDate: todayStr(), docsAt: new Date().toISOString() }), docsKey: docsKeyNow };
+      if (dated.letterDate !== r.letterDate || dated.docsAt !== r.docsAt || dated.docsKey !== r.docsKey) {
         latest.current = dated;
         first.current = true; // kaydı aşağıda yapıyoruz, tekrar kaydedilmesin
         setR(dated);
@@ -393,8 +452,9 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
       if (id.current) saveRaceFile({ id: id.current, blob: new Blob([bytes], { type: "application/pdf" }), name, docs, pages, at, mailText: text, parts: each });
       setTab("docs");
       if (!r.checks?.docs) put("checks", { ...r.checks, docs: true });
+      jobDone(job, { text: `Hazır · ${pages} sayfa` });
     } catch (e) {
-      toast(e?.message || "Belgeler hazırlanamadı");
+      jobFail(job, { text: e?.message || "Belgeler hazırlanamadı" });
     }
     setBusy(false);
   };
@@ -413,6 +473,35 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
     setMailing(false);
   };
   const share = (f = file) => shareFile(f);
+  // Kesin kayıt formları (antrenör kayıt + katılım bildirim) tek PDF; bilgiler değişmedikçe aynı dosya kullanılır.
+  // Telefonda paylaşım dokunuştan hemen sonra istenir: hazırlama uzun sürüp izin düşerse dosya hazır kalır, ikinci basışta gider.
+  const [forms, setForms] = useState(null); // { key, file }
+  const [formBusy, setFormBusy] = useState("");
+  const formAct = async (kind) => {
+    if (!chosen.length) return go("people"), toast("En az bir sporcu seç");
+    let f = forms?.key === docsKeyNow ? forms.file : null;
+    if (!f) {
+      setFormBusy(kind);
+      try {
+        const docR = { ...r, letterDate: r.letterDate || todayStr(), endDate: r.endDate || r.startDate };
+        const bytes = await buildRaceDocs(docR, forDocs, await loadFonts(), FORM_DOCS, coach);
+        const slug = r.name.trim().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") || "yaris";
+        f = new File([bytes], `${slug}-kesin-kayit.pdf`, { type: "application/pdf" });
+        setForms({ key: docsKeyNow, file: f });
+      } catch (e) {
+        toast(e?.message || "Formlar hazırlanamadı");
+      }
+      setFormBusy("");
+      if (!f) return;
+    }
+    if (kind === "print") return printFile(f);
+    if (!navigator.canShare?.({ files: [f] })) return openFile(f, true);
+    try {
+      await navigator.share({ files: [f], title: f.name });
+    } catch (e) {
+      if (e?.name === "NotAllowedError") toast("Formlar hazır, Gönder'e yeniden bas");
+    }
+  };
   const [signOpen, setSignOpen] = useState(false);
   const [openPart, setOpenPart] = useState(null); // sporcuları açık belge (veli izni, kulüp izni)
   // Evrak uygulama içinde açılır (üstte kapat düğmesi); yeni sekmede açılınca uygulamaya dönüş yoktu
@@ -441,23 +530,29 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
     addFiles(metas);
     if (metas.length === ok.length) toast(metas.length > 1 ? `${metas.length} evrak eklendi` : "Evrak eklendi");
   };
-  const removeStored = async (x) => {
-    if (!confirm(`"${x.name}" silinsin mi?`)) return;
-    setR((p) => ({ ...p, files: (p.files || []).filter((f) => f.id !== x.id) }));
-    dropRaceStored(orgId, x);
-  };
+  const removeStored = (x) =>
+    confirmIt({
+      title: `"${x.name}" silinsin mi?`,
+      run: async () => {
+        await dropRaceStored(orgId, x);
+        setR((p) => ({ ...p, files: (p.files || []).filter((f) => f.id !== x.id) }));
+      },
+    });
   // Kayıtlı evrakı aç/paylaş: dosya bu cihazda yoksa indirilir; indirilemezse adresi açılır
   const storedFile = async (x, then) => {
     const f = await loadRaceFile(x);
     if (f) return then(f);
     window.open(x.url, "_blank");
   };
-  const removeExtra = async (x) => {
-    if (!confirm(`"${x.name}" silinsin mi?`)) return;
-    const next = extras.filter((e) => e.id !== x.id);
-    setExtras(next);
-    await saveExtras(id.current, next);
-  };
+  const removeExtra = (x) =>
+    confirmIt({
+      title: `"${x.name}" silinsin mi?`,
+      run: async () => {
+        const next = extras.filter((e) => e.id !== x.id);
+        setExtras(next);
+        await saveExtras(id.current, next);
+      },
+    });
   // Eski düzen: yalnız bu telefonda kalan evrakı Firebase'e gönderir
   const sendLocal = async () => {
     await queue.current.catch(() => {});
@@ -484,7 +579,7 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
   };
   const toPlan = async () => {
     if (!r.name.trim() || !r.startDate) return toast("Önce yarış adı ve başlangıç tarihi");
-    if (await onPlan(r)) {
+    if (await onPlan({ ...r, id: id.current || "" })) {
       put("planAdded", true);
       toast("Planlara eklendi");
     }
@@ -510,6 +605,15 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
     }
     setReading(false);
   };
+  // "+ Yarış" penceresinden gelen iş (raceDraft): talimat okunur ya da elle yazılan bilgilerle yarış başlar
+  const drafted = useRef(false);
+  useEffect(() => {
+    if (start.id || drafted.current) return;
+    drafted.current = true;
+    const d = takeRaceDraft();
+    if (d?.notice) loadNotice(d.notice);
+    else if (d?.fields) (setR((p) => ({ ...p, ...d.fields })), setBegun(true), setTab("sum"));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // mode: new (ilk talimat), update (farkları gördü, bilgileri güncelle), keep (yalnız dosyayı sakla), same (bilgiler aynı)
   const takeNotice = async (n, pdf, mode) => {
     if (mode === "new" || mode === "update") {
@@ -560,38 +664,60 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
   const loadViewer = useCallback(() => loadNoticeFile(orgId, noticeFileMeta), [orgId, noticeFileMeta]);
   // Talimat menüsü (başlığın altındaki talimat satırının ayar düğmesi): aç, yenisini yükle, kaldır
   const [noticeMenu, setNoticeMenu] = useState(false);
-  const dropNotice = () => {
-    if (!confirm("Yarış talimatı kaldırılsın mı? Talimattan gelen işler ve bilgiler silinir; yarışın adı, tarihi, yeri kalır.")) return;
-    const old = latest.current.noticeFile;
-    setR((p) => ({ ...p, notice: null, noticeFile: null }));
-    if (old?.id) dropNoticeFile(orgId, old);
-    setNoticeMenu(false);
-    toast("Talimat kaldırıldı");
-  };
+  const dropNotice = () =>
+    confirmIt({
+      title: "Yarış talimatı kaldırılsın mı?",
+      text: "Talimattan gelen işler ve bilgiler silinir; yarışın adı, tarihi, yeri kalır.",
+      yes: "Kaldır",
+      run: async () => {
+        const old = latest.current.noticeFile;
+        if (old?.id) await Promise.resolve(dropNoticeFile(orgId, old)).catch(() => {});
+        setR((p) => ({ ...p, notice: null, noticeFile: null }));
+        setNoticeMenu(false);
+        toast("Talimat kaldırıldı");
+      },
+    });
   const noticePlan = async () => {
     if (!r.name.trim()) return toast("Önce yarış adı");
-    const n = await onNoticePlan(r);
+    const n = await onNoticePlan({ ...r, id: id.current || "" });
     if (n > 0) {
       put("notice", { ...r.notice, planned: true });
       toast(`${n} son tarih planlara eklendi`);
     } else toast("Planlara eklenemedi");
   };
 
-  const remove = async () => {
-    if (!id.current || !confirm(`"${r.name}" silinsin mi? Sporcu kartları etkilenmez.`)) return;
-    dirty.current = false;
-    await queue.current.catch(() => {});
-    dropRaceFile(id.current);
-    dropExtras(id.current);
-    for (const f of latest.current.files || []) dropRaceStored(orgId, f);
-    dropNoticeFile(orgId, latest.current.noticeFile);
-    for (const m of latest.current.results?.files || []) dropNoticeFile(orgId, m);
-    await onDelete(id.current);
+  useEffect(() => {
+    if (!sec0) return;
+    const u = new URL(window.location.href);
+    u.searchParams.delete("sec");
+    window.history.replaceState(window.history.state, "", u.pathname + u.search);
+    if (sec0 === "del") remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // Silme onayı alttan pencere; "Sil"e basınca silme bitene kadar düğmede dönen halka, sonra sayfa kapanır (Seyhun 2026-11-04)
+  const remove = () => {
+    if (!id.current) return;
+    confirmIt({
+      title: `"${r.name}" silinsin mi?`,
+      text: "Sporcu kartları etkilenmez.",
+      yes: "Yarışı sil",
+      run: async () => {
+        dirty.current = false;
+        await queue.current.catch(() => {});
+        dropRaceFile(id.current);
+        dropExtras(id.current);
+        for (const f of latest.current.files || []) dropRaceStored(orgId, f);
+        dropNoticeFile(orgId, latest.current.noticeFile);
+        for (const m of latest.current.results?.files || []) dropNoticeFile(orgId, m);
+        await onDelete(id.current);
+      },
+    });
   };
 
   // Veli bilgi notu: seçili her sporcuya tek sayfa (yolculuk, program, konaklama, sporcu payı)
   const [sheetIds, setSheetIds] = useState(null); // null: hepsi
   const [sheetBusy, setSheetBusy] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
   // kapatılan bölümler false; seçim bu cihazda saklanır (yarış sayfası veriler gelince çizildiği için ilk çizimde okunabilir)
   const [sheetShow, setSheetShow] = useState(() => {
     try {
@@ -608,14 +734,14 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
     } catch {}
   };
   const sheetList = sheetIds ? chosen.filter((a) => sheetIds.includes(a.id)) : chosen;
-  const makeSheet = async (list = sheetList) => {
+  const makeSheet = async (list = sheetList, money = false) => {
     if (!list.length) return toast("En az bir sporcu seç");
     setSheetBusy(true);
     try {
-      const bytes = await buildAthleteSheet(latest.current, list, await loadFonts(), chosen.length, sheetShow);
+      const bytes = await buildAthleteSheet(latest.current, list, await loadFonts(), chosen.length, money ? BUDGET_ONLY : sheetShow);
       const base = `${(latest.current.name || "yaris").trim().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-|-$/g, "") || "yaris"}`;
       const who = list.length === 1 ? `-${list[0].studentName.replace(/[^\p{L}\p{N}]+/gu, "-")}` : "";
-      setDocView(new File([bytes], `${base}${who}-bilgi-notu.pdf`, { type: "application/pdf" }));
+      setDocView(new File([bytes], `${base}${who}-${money ? "butce" : "bilgi-notu"}.pdf`, { type: "application/pdf" }));
     } catch (e) {
       toast(e?.message || "Bilgi notu hazırlanamadı");
     }
@@ -627,18 +753,23 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
     const on = (e) => {
       const d = e.detail || {};
       if (d.id && d.id !== id.current) return;
-      setTab("sheet");
-      setSheetIds(d.ids?.length ? d.ids : null);
-      sheetAsk.current = d.ids?.length ? d.ids : "all";
+      // "Ali'nin bütçesini gönder": Bütçe sekmesi açılır, yalnız bütçe payı hazırlanır (Paylaş ile gönderilir)
+      if (d.only === "budget") setTab("budget");
+      else {
+        setTab("docs");
+        setSheetOpen(true);
+        setSheetIds(d.ids?.length ? d.ids : null);
+      }
+      sheetAsk.current = { ids: d.ids?.length ? d.ids : "all", money: d.only === "budget" };
     };
     window.addEventListener("sa-race-sheet", on);
     return () => window.removeEventListener("sa-race-sheet", on);
   }, []);
   useEffect(() => {
     if (!sheetAsk.current || !chosen.length) return;
-    const ids = sheetAsk.current;
+    const { ids, money } = sheetAsk.current;
     sheetAsk.current = null;
-    makeSheet(ids === "all" ? chosen : chosen.filter((a) => ids.includes(a.id)));
+    makeSheet(ids === "all" ? chosen : chosen.filter((a) => ids.includes(a.id)), money);
   });
   const parts4 = sheetParts(r, chosen.length);
 
@@ -650,7 +781,7 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
   const hotelCount = raceHotels(r).length;
   const stat = [
     ["people", "users", "Sporcu", !chosen.length ? "Sporcu seçilmedi" : incomplete.length ? `${chosen.length} sporcu · ${incomplete.length} bilgi eksik` : `${chosen.length} sporcu · bilgiler tamam`, chosen.length > 0 && !incomplete.length, chosen.length ? "Sporcu bilgilerini tamamla" : "Sporcuları ekle"],
-    ["docs", "receipt", "Evrak", file ? `Hazır · ${made?.pages || pages} sayfa` : stale || r.docsAt ? "Eski, yenilenmeli" : "Hazırlanmadı", !!file, stale || r.docsAt ? "Evrakı yenile" : "Evrakı hazırla"],
+    ["docs", "receipt", "Evrak", file ? `Hazır · ${made?.pages || pages} sayfa` : docsOld ? "Eski, yenilenmeli" : docsReady ? "Hazır" : r.docsAt ? "Bu cihazda yok" : "Hazırlanmadı", docsReady, docsOld ? "Evrakı yenile" : docsReady ? "Evrakı aç" : "Evrakı hazırla"],
     ["trip", "nav", "Yolculuk", trip.length ? [trip[0][1], hotelCount && `${hotelCount} otel`].filter(Boolean).join(" · ") : "Çıkış girilmedi", trip.length > 0, "Yolculuğu yaz"],
     ["budget", "wallet", "Bütçe", money.lines.length ? (chosen.length ? `${money.varies ? "Ortak pay" : "Sporcu başı"} ${tl(money.perAthlete)}` : `Toplam ${tl(money.total)}`) : "Kalem yok", money.lines.length > 0, "Bütçeyi çıkar"],
   ];
@@ -687,7 +818,19 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
   };
   const dueOpen = (r.notice?.deadlines || []).filter((d) => d.date && daysTo(d.date) >= 0).length;
   // Yarış kartı: plan, son tarihler, gönderi (Seyhun 2026-10-20: "gönderisi hazırlandıysa o gönderiyi gösterelim"; "plandaysa planda gösterelim")
-  const links = racePlansOf(r, plans);
+  const links = racePlansOf({ ...r, id: rid }, plans);
+  // Yarışın planı yarışı izler (tek kural, raceLinks.js): ad ya da tarih değişince plan ve son tarih planları da değişir; eski planlara yarış kimliği
+  // yazılır. Yazarken her harfte değil, durunca (1,5 sn) yazılır; yalnız kimlik eklenecekse hemen.
+  const sync = rid && onSyncPlan ? racePlanSync({ ...r, id: rid }, links) : [];
+  const syncKey = JSON.stringify(sync);
+  useEffect(() => {
+    const list = JSON.parse(syncKey);
+    if (!list.length) return;
+    const onlyId = list.every(([, x]) => Object.keys(x).join() === "raceId");
+    const t = setTimeout(() => list.forEach(([pid, x]) => onSyncPlan(pid, x)), onlyId ? 0 : 1500);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [syncKey]);
   const inPlan = links.main || (r.planAdded && !plans.length ? {} : null);
   // Gönderiler yarış açılınca bir kez okunur (yalnız kayıtlı yarışta; okunamazsa "Gönderi hazırla" görünür)
   const [posts, setPosts] = useState(null);
@@ -709,14 +852,17 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
   const todoList = steps.filter((x) => x.key !== "docs").sort((x, y) => order.indexOf(x.group) - order.indexOf(y.group));
   const doneTasks = doneList.filter((x) => x.key !== "docs");
   const [showDone, setShowDone] = useState(false);
+  // Yolculuk sekmesinde açık satır (Gidiş, Dönüş, Otel, Yarış alanı, Bütçe); aynı anda bir tane
+  const [fold, setFold] = useState("");
+  const flipFold = (k) => setFold((f) => (f === k ? "" : k));
   // Yarış kartının satırı: sol ad, sağda durum (ya da mor işlem), altında kısa bilgi
   // Tek satır (Seyhun 2026-10-26: "çok yer kaplıyor, liste gibi"): solda başlık, ortada değer, sağda kısa ek bilgi
   const linkRow = ({ k, title, main, sub, act, onClick, href, right }) => {
     const body = (
       <>
-        <span className="w-[5.5rem] shrink-0 truncate text-[0.875rem] text-mut">{title}</span>
-        <span className={`min-w-0 flex-1 truncate text-[0.9375rem] ${act ? "font-semibold text-acc" : "font-medium"}`}>{main}</span>
-        {(right || sub) && <span className="max-w-[45%] shrink-0 truncate text-[0.8125rem] text-mut">{right || sub}</span>}
+        <span className="w-[5.5rem] shrink-0 break-words text-[0.875rem] text-mut">{title}</span>
+        <span className={`min-w-0 flex-1 break-words text-[0.9375rem] ${act ? "font-semibold text-acc" : "font-medium"}`}>{main}</span>
+        {(right || sub) && <span className="max-w-[45%] shrink-0 break-words text-right text-[0.8125rem] text-mut">{right || sub}</span>}
         {!act && <Icon name="chev" className="size-4 shrink-0 text-mut/60" />}
       </>
     );
@@ -750,24 +896,34 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
       (post
         ? { k: "post", title: "Instagram", main: post.headline || post.race?.name || "Gönderi", sub: ["Hazırlandı", post.at && shortDay(new Date(post.at).toLocaleDateString("sv-SE"))].filter(Boolean).join(" · "), thumb: post.thumb || "", href: `/posts/${post.id}` }
         : { k: "post", title: "Instagram", main: "Gönderi hazırla", act: true, href: "/posts/new", onClick: toPost }),
-    r.notice && { k: "notice", title: "Talimat", main: "Program, ücret, iletişim", onClick: () => setNoticeInfo((v) => !v) },
+    // Talimat tek satır (2026-10-28): aç, bilgiler, değiştir, sil aynı pencerede; yoksa "Talimat yükle"
+    r.notice
+      ? { k: "notice", title: "Talimat", main: r.noticeFile ? "PDF · program, ücret" : "Program, ücret, iletişim", onClick: () => setNoticeInfo(true) }
+      : { k: "notice", title: "Talimat", main: "Talimat yükle", act: true, onClick: () => setNoticeMenu(true) },
   ].filter(Boolean);
+  // İş satırı (Seyhun 2026-11-13 "kesik gösterilmesin, tam gösterilsin"): ad ve not tam, alt alta; notta telefon varsa Ara, adres varsa Harita
   const taskRow = (s) => {
     const left = s.date ? daysTo(s.date) : null;
     return (
-      <li key={s.key} className="flex items-center gap-1 pl-1">
-        <button type="button" onClick={() => markStep(s, true)} aria-label={`${s.label}: yapıldı`} data-press className="btn btn-icon shrink-0">
+      <li key={s.key} className="flex flex-wrap items-start gap-1 pl-1 sm:flex-nowrap">
+        <button type="button" onClick={() => markStep(s, true)} aria-label={`${s.label}: yapıldı`} data-press className="btn btn-icon mt-0.5 shrink-0">
           <span className="size-[1.375rem] rounded-full border-2 border-line" />
         </button>
-        <span className="min-w-0 flex-1 truncate py-2.5 text-[0.9375rem] font-medium">{s.label}</span>
+        <span className="min-w-0 flex-1 py-2.5">
+          <span className="block break-words text-[0.9375rem] font-medium leading-snug">{s.label}</span>
+          {s.detail && <span className="mt-0.5 block break-words text-[0.8125rem] leading-snug text-mut">{s.detail}</span>}
+          {!s.detail && isFinal(s.label) && !r.abroad && <span className="mt-0.5 block break-words text-[0.8125rem] leading-snug text-mut">{FORM_NAMES}</span>}
+          {s.detail && <ContactLinks text={s.detail} place={placeText(r)} />}
+        </span>
         {left !== null && left <= 14 ? (
-          <span className={`shrink-0 rounded-lg px-2 py-0.5 text-[0.6875rem] font-semibold tabular-nums ${left < 0 ? "bg-bg text-mut" : left <= 7 ? "bg-rec/10 text-rec" : "bg-amber-500/15 text-amber-700"}`}>
+          <span className={`mt-3 shrink-0 rounded-lg px-2 py-0.5 text-[0.6875rem] font-semibold tabular-nums ${left < 0 ? "bg-bg text-mut" : left <= 7 ? "bg-rec/10 text-rec" : "bg-amber-500/15 text-amber-700"}`}>
             {left < 0 ? "Geçti" : left === 0 ? "Bugün" : `${left} gün`}
           </span>
         ) : (
-          <span className="max-w-[35%] shrink-0 truncate text-[0.8125rem] text-mut">{s.date ? shortDay(s.date) : s.detail || stepSrc[s.group]}</span>
+          <span className="mt-3 shrink-0 text-[0.8125rem] text-mut">{s.date ? shortDay(s.date) : s.detail ? "" : stepSrc[s.group]}</span>
         )}
-        <button type="button" onClick={() => dropStep(s)} aria-label={`${s.label}: listeden çıkar`} data-press className="btn btn-icon btn-sm shrink-0 text-mut/60">
+        <TaskLinks label={s.label} abroad={r.abroad} busy={formBusy} onSend={() => formAct("send")} onPrint={() => formAct("print")} />
+        <button type="button" onClick={() => dropStep(s)} aria-label={`${s.label}: listeden çıkar`} data-press className="btn btn-icon btn-sm mt-1.5 shrink-0 text-mut/60">
           <Icon name="x" className="size-3.5" />
         </button>
       </li>
@@ -807,109 +963,102 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
   // Lacivert üst (yeni tasarım 2026-10-21; Seyhun: "sekme butonları önemli, ön planda olsun"): kalan gün ve hazırlık çubuğu,
   // Multimedya · Talimat, altında büyük sekme düğmeleri (her birinde kısa durum; eksikse sarı). Özet'teki eski Hazırlık listesi bu düğmelere geçti.
   const left = r.startDate ? daysTo(r.startDate) : null;
-  const doneN = stat.filter((x) => x[4]).length;
+  // Seyhun 2026-10-26: "Hazırlık tamam 3/4, niye?" Sayılan dört bölüm (Sporcu, Evrak, Yolculuk, Bütçe); Plan, Not ve çıkarılan işler sayılmaz.
+  // Eksik bölüm adıyla yazılır, "tamam" yalnız işler bitip dört bölüm de tamamsa.
+  // Yarış günü (Seyhun 2026-10-26: "önemli olan hava durumu ve multimedya, o ikisini ön planda tutmalıyız"): başlangıçtan bitişe
+  // üstte büyük Multimedya ve günün rüzgârı; Özet yerine "Bugün" (kalan iş kısa notta, dokununca açılır)
+  const today = todayStr();
+  const raceDay = !over && !!r.startDate && today >= r.startDate;
+  const dayAll = raceDay ? Math.round((new Date(`${r.endDate || r.startDate}T12:00:00`) - new Date(`${r.startDate}T12:00:00`)) / 864e5) + 1 : 0;
+  // Yarış günü üstü günün evresine göre (RaceDayTop: A rüzgâr · B sonuçlar · C gün bitti + yarın)
+  const { phase, races: dayRaces } = useRacePhase(r, orgId, rid, raceDay);
+  // iPad yatay ve Mac (sol menü, Seyhun 2026-11-05 "iPad için daha özel bir tasarım"): solda lacivert (başlık, hava, harita, Yayına git),
+  // sağda sekmeler ve sekmenin içi (CSS split); Takip (sonuçlar) hep görünür
   const tabs = [
-    ["sum", "Özet", over ? "Bitti" : todoList.length ? `${todoList.length} iş` : "Tamam", false],
-    ["people", "Sporcu", !chosen.length ? "Seçilmedi" : incomplete.length ? `${incomplete.length} eksik` : `${chosen.length} kişi`, !stat[0][4]],
-    ["docs", "Evrak", file ? "Hazır" : stale || r.docsAt ? "Yenile" : "Hazır değil", !stat[1][4]],
-    ["trip", "Yolculuk", trip.length ? "Yazıldı" : "Yok", !stat[2][4]],
-    ["budget", "Bütçe", money.lines.length ? tl(chosen.length ? money.perAthlete : money.total) : "Yok", !stat[3][4]],
-    ["sheet", "Veli", "Bilgi notu", false],
+    // Yarış günü (Seyhun 2026-10-29): hazırlık, plan ve not altta görünmez; "Hazırlık" sekmesine dokununca açılır, yeniden dokununca kapanır.
+    // Yarıştan önce eskisi gibi Özet.
+    // Yarış takip (Seyhun 2026-11-05): sitesi bağlı yarışta ilk sekme Takip (sonuçlar, duyurular, talimatlar; RaceTrack), Özet'in adı Hazırlık.
+    // Bizim hazırladığımız evrak Evrak'ta (2026-11-04 "ayrı tutmamız lazım")
+    ...(siteDocs ? [["site", "Takip", siteNew ? `${siteNew} yeni` : "", false, siteNew || 0]] : []),
+    // Dört sekme (Seyhun 2026-11-09 sade öneri): Hazırlık'ın içinde Yapılacaklar, Yolculuk (Bütçe) ve Evrak; eski "docs"/"trip"/"budget"
+    // bağlantıları Hazırlık'ı açıp o bölüme kayar
+    ["sum", over ? "Özet" : "Hazırlık", over ? "Bitti" : todoList.length ? `${todoList.length} iş` : "Tamam", !over && (!stat[1][4] || !stat[2][4] || !stat[3][4])],
+    ["people", "Sporcular", !chosen.length ? "Seçilmedi" : incomplete.length ? `${incomplete.length} eksik` : `${chosen.length} kişi`, !stat[0][4]],
+    ...(siteDocs ? [["belge", "Belgeler", "", false]] : []),
   ];
+  const prep = PREP.includes(tab);
   // Seyhun 2026-10-26 (örnek A, yaris-tasarim/ozet-liste): üstte kalan gün + yanında Multimedya (ayrı, açık renk), altında tek satır
   // kaydırılabilir sekmeler (eksikse sarı nokta). Talimat yüklüyse düğme yok, ⋯ içinde "Talimatı gör".
-  const mediaBtn = rid && (
-    <Link href={`/athletes/races/${rid}/media`} data-press className="flex h-10 shrink-0 items-center gap-2 rounded-full bg-[#67e8f9] px-4 text-[0.9375rem] font-bold text-[#06283a] shadow-[0_3px_0_#2aa9bd] active:translate-y-px active:shadow-none">
-      <Icon name="video" className="size-[1.125rem]" />
-      Multimedya
-    </Link>
-  );
+  // Sekmeler: telefonda lacivertin altında, geniş ekranda sağdaki açık gövdenin başında
+  // Sekmeler tek parça seçici (yeni görünüm 2026-11-06); telefonda üstte, geniş ekranda sağ bölümün başında
+  // Yarış kart (2026-11-07): sekmeler her ekranda açık gövdenin başında, lacivertin altında
+  const nav = <RaceSeg tabs={tabs} value={prep ? "sum" : tab} onChange={setTab} className="mb-1" />;
+  // Üst (yeni görünüm 2026-11-06): yarış günü RaceDayTop (büyük tek satır, Hava/Harita satırı, Yayına git), öncesinde yalnız Hava ve Harita satırları
   const top = (
     <>
-      {!over && left != null ? (
-        <div className="mt-4">
-          <span className="flex items-center justify-between gap-3">
-            <span className="flex min-w-0 items-baseline gap-2">
-              {left > 1 ? (
-                <>
-                  <b className="text-[2.375rem] font-bold leading-none tracking-[-.04em] tabular-nums">{left}</b>
-                  <span className="text-[0.9375rem] font-semibold text-white/75">gün kaldı</span>
-                </>
-              ) : (
-                <b className="truncate text-[1.75rem] font-bold leading-none tracking-tight">{leftText(r)}</b>
-              )}
-            </span>
-            {mediaBtn}
-          </span>
-          <span className="mt-3 block h-1.5 overflow-hidden rounded-full bg-white/20" aria-hidden="true">
-            <span className="block h-full rounded-full bg-[#67e8f9]" style={{ width: `${Math.round((doneN / stat.length) * 100)}%` }} />
-          </span>
-          <span className="mt-1.5 flex justify-between text-[0.78rem] text-white/70">
-            <span>Hazırlık</span>
-            <span className="tabular-nums">
-              {doneN} / {stat.length} tamam{todoList.length ? ` · ${todoList.length} iş` : ""}
-            </span>
-          </span>
-        </div>
-      ) : (
-        mediaBtn && <div className="mt-4 flex justify-end">{mediaBtn}</div>
-      )}
-      {!r.notice && (
-        <button type="button" onClick={() => setNoticeMenu(true)} data-press className="raised mt-3 flex h-10 w-full items-center justify-center rounded-xl border text-[0.9375rem] font-semibold">
-          Talimat yükle
-        </button>
-      )}
-      <nav aria-label="Bölümler" className="-mx-5 mt-4 flex gap-1.5 overflow-x-auto px-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        {tabs.map(([k, name, , warn]) => {
-          const on = tab === k;
-          return (
-            <button key={k} type="button" aria-pressed={on} onClick={() => setTab(k)} data-press className={`raised flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3.5 text-[0.875rem] font-semibold ${on ? "ck-sel" : ""}`}>
-              {warn && !over && <span className="size-1.5 rounded-full bg-[#ffd59a]" aria-label="eksik" />}
-              {name}
-            </button>
-          );
-        })}
-      </nav>
+      {raceDay && rid ? (
+        <RaceDayTop r={r} rid={rid} chosen={chosen} phase={phase} races={dayRaces} dayAll={dayAll} track={!!siteDocs} onResultsFile={onResultsFile} />
+      ) : rid ? (
+        <>
+          {/* Canlı ekran · Yayın düğmeleri kalktı (Seyhun 2026-11-09 "yayın butonuna şimdilik gerek yok"): Canlı başlıkta (yarış günleri), Yayın ⋯ içinde */}
+          {/* Yarıştan önce üst kart (Seyhun 2026-11-09 sade öneri): Hazırlık · Sporcu · Evrak */}
+          {!over && (
+            <div className="mt-4">
+              <RaceStats
+                className="mb-2.5"
+                items={[
+                  ["Hazırlık", todoList.length || "Tamam", todoList.length ? "iş" : ""],
+                  ["Sporcu", chosen.length, "kişi"],
+                  ["Evrak", docsReady ? "Hazır" : "Yok", ""],
+                ]}
+              />
+              <RaceWxRows r={{ ...r, id: rid }} />
+            </div>
+          )}
+        </>
+      ) : null}
     </>
   );
+  // Üst (açık tema 2026-11-23; önce lacivertti): başlık ve bilgi şeridi; geniş ekranda solda sabit sütun (split-top)
   const navy = (body) => (
-    <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label={r.name || "Yarış"}>
+    <section className="rzt split-top pb-4 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label={r.name || "Yarış"}>
       {head}
       {body}
     </section>
   );
-  const light = "relative -mx-5 -mt-6 rounded-t-[1.75rem] bg-bg px-5 pb-1 pt-0.5";
+  const light = "rzc-body bg-bg pb-4";
+  const secWrap = (body) => (
+    <div className={`${light} race-body`}>
+      {nav}
+      {body}
+    </div>
+  );
 
   if (!begun) {
-    const form = r.notice || manual;
+    const form = !!r.notice;
     return (
       <>
         {navy(null)}
         <div className={light}>
         {!form ? (
           <>
-            <h2 className="mt-6 px-1 text-[1.375rem] font-semibold leading-tight">Yarış talimatın var mı?</h2>
-            <p className="mt-1.5 px-1 text-[0.9375rem] text-mut">Varsa yükle, bilgileri ben doldurayım.</p>
-            <div className="mt-4">
-              <NoticeUpload busy={reading} onFile={loadNotice} onText={loadNotice} title="Talimatı yükle" sub="PDF, fotoğraf ya da metin. Ad, tarih, yer, program, son tarihler, ücret ve oteller dolar." />
+            {sharedList.length > 0 && !reading && <SharedPick list={sharedList} onPick={(s) => (setR((p) => ({ ...p, ...fromShared(s) })), setBegun(true), setTab("sum"))} />}
+            {/* Üç yol (Seyhun 2026-11-09 "TFF'den seç, manuel, talimatla"; "+ Yarış" penceresiyle aynı gövde, RaceAddSheet.RaceAdd) */}
+            <div className="ra-page mt-2">
+              <RaceAdd
+                site={isOwner}
+                orgId={orgId}
+                uid={uid}
+                races={racesNow(orgId) || []}
+                busy={reading}
+                onNotice={loadNotice}
+                onManual={(f) => (setR((p) => ({ ...p, ...f })), setBegun(true), setTab("sum"))}
+              />
             </div>
-            {!reading && (
-              <button type="button" onClick={() => setManual(true)} className={`${card} mt-3 flex w-full items-center gap-3 px-4 py-3.5 text-left`}>
-                <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-bg text-mut">
-                  <Icon name="edit" className="size-5" />
-                </span>
-                <span className="min-w-0 flex-1">
-                  <b className="block text-[0.9375rem] font-semibold">Talimat yok, elle başla</b>
-                  <span className="block text-[0.8125rem] text-mut">Adı, tarihi ve yeri yaz; talimatı sonra da ekleyebilirsin.</span>
-                </span>
-                <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
-              </button>
-            )}
           </>
         ) : (
           <>
-            <h2 className="mt-6 px-1 text-[1.375rem] font-semibold leading-tight">{r.notice ? "Talimattan okundu" : "Yarışın bilgileri"}</h2>
-            <p className="mt-1.5 px-1 text-[0.9375rem] text-mut">{r.notice ? "Kontrol et, yanlış varsa düzelt." : "Gerisini sonra eklersin."}</p>
+            <h2 className="mt-6 px-1 text-[1.375rem] font-semibold leading-tight">Talimattan okundu</h2>
             <Seg value={r.abroad ? "out" : "in"} onChange={(v) => setAbroad(v === "out")} options={[["in", "Yurt içi"], ["out", "Yurt dışı"]]} className="mt-4" />
             <Group className="mt-3">
               <Row label="Yarış adı">
@@ -938,11 +1087,6 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
               Devam
               <Icon name="chev" className="size-4" />
             </button>
-            {!r.notice && (
-              <button type="button" onClick={() => setManual(false)} data-press className="btn btn-text btn-sm mt-2 w-full text-acc">
-                Talimatla başla
-              </button>
-            )}
           </>
         )}
         </div>
@@ -954,12 +1098,13 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
     <>
       {/* Sağ üstteki ⋯ (Seyhun 2026-10-20: "editleme, silme… bir ayarlar butonuyla ulaşabildiğimiz şeyler olmalı") */}
       <Sheet open={menu} onClose={() => onMenu?.(false)} title="Yarış">
+        {/* Yayın ⋯ içinde (Seyhun 2026-11-09 "yayın butonuna şimdilik gerek yok, başka bir yerde buton olarak kullan"); Canlı başlıkta */}
         <ul className={`${card} divide-y divide-line overflow-hidden`}>
           {[
+            isOwner && start.id && ["Yayın", () => router.push(`/athletes/races/${start.id}/yayin`)],
             ["Bilgileri düzenle", () => setEdit(true)],
-            r.noticeFile && ["Talimatı gör", noticeOpen],
-            r.notice && ["Talimatı değiştir", () => setNoticeMenu(true)],
-            r.notice && ["Talimatı sil", dropNotice, true],
+            // Kendi açtığın yarışı sitedeki yarışa bağla (Seyhun 2026-11-07 "hem kendim oluşturabilmeliyim hem siteden ekleyebilmeliyim")
+            isOwner && start.id && !r.site?.act && ["Siteden bağla", () => router.push(`/athletes/races/site?into=${start.id}`)],
           ]
             .filter(Boolean)
             .map(([l, fn, red]) => (
@@ -977,6 +1122,91 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
             </button>
           </div>
         )}
+      </Sheet>
+
+      {/* Veli bilgi notu (2026-10-28: ayrı Veli sekmesi kalktı, Evrak'ta bir satır; içi bu pencerede) */}
+      <Sheet open={sheetOpen} onClose={() => setSheetOpen(false)} title="Veli bilgi notu">
+          <Label right={chosen.length ? `${sheetList.length}/${chosen.length}` : ""}>SPORCULAR</Label>
+          {!chosen.length ? (
+            <button type="button" onClick={() => (setSheetOpen(false), setTab("people"))} className={`${card} flex w-full items-center gap-3 px-4 py-3.5 text-left`}>
+              <Icon name="users" className="size-5 shrink-0 text-acc" />
+              <span className="flex-1 text-[0.9375rem] font-semibold">Önce sporcuları ekle</span>
+              <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
+            </button>
+          ) : (
+            <ul className={`${card} divide-y divide-line overflow-hidden`}>
+              <li>
+                <button type="button" onClick={() => setSheetIds(sheetIds ? null : [])} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
+                  <Check on={!sheetIds} tone="acc" />
+                  <b className="flex-1 text-[0.9375rem] font-semibold">Hepsi</b>
+                </button>
+              </li>
+              {chosen.map((a) => {
+                const on = !sheetIds || sheetIds.includes(a.id);
+                const toggle = () => {
+                  const cur = sheetIds || chosen.map((x) => x.id);
+                  const next = on ? cur.filter((x) => x !== a.id) : [...cur, a.id];
+                  setSheetIds(next.length === chosen.length ? null : next);
+                };
+                return (
+                  <li key={a.id}>
+                    <button type="button" onClick={toggle} data-press="row" className="flex w-full items-center gap-3 px-4 py-2.5 text-left">
+                      <Check on={on} tone="acc" />
+                      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.6875rem] font-semibold text-acc">{initials(a.studentName)}</span>
+                      <span className="min-w-0 flex-1 break-words text-[0.9375rem]">{a.studentName}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+
+          <Label>NOTTA NELER OLSUN</Label>
+          <ul className={`${card} divide-y divide-line overflow-hidden`}>
+            {parts4.map(([title, sub, ok, to, key]) => {
+              const on = ok && sheetShow[key] !== false;
+              return (
+                <li key={key} className="flex items-center">
+                  <button type="button" onClick={() => ok && toggleShow(key)} disabled={!ok} data-press="row" className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left">
+                    <Check on={on} tone="acc" />
+                    <span className="min-w-0 flex-1">
+                      <b className={`block text-[0.9375rem] font-semibold ${on ? "" : "text-mut"}`}>{title}</b>
+                      <span className="block break-words text-[0.8125rem] text-mut">{sub}</span>
+                    </span>
+                  </button>
+                  {!ok && to !== "sum" && (
+                    <button type="button" onClick={() => (setSheetOpen(false), to === "notice" ? setNoticeMenu(true) : setTab(to))} data-press className="btn btn-text btn-sm shrink-0 text-acc">
+                      {to === "notice" ? "Talimat" : "Ekle"}
+                    </button>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+          <p className="mt-2 px-1 text-[0.75rem] text-mut">İşaretli bölümler notta görünür. Son tarihler bilgi içindir, 7 gün ve daha az kalanlar vurgulanır.</p>
+
+          <button type="button" onClick={() => (setSheetOpen(false), makeSheet())} disabled={sheetBusy || !sheetList.length} data-press className="btn btn-primary mt-5 w-full">
+            {sheetBusy ? "Hazırlanıyor…" : `Bilgi notunu hazırla · ${sheetList.length} sayfa`}
+          </button>
+      </Sheet>
+
+      <Sheet open={noticeInfo && !!r.notice} onClose={() => setNoticeInfo(false)} title="Yarış talimatı">
+        <ul className={`${card} divide-y divide-line overflow-hidden`}>
+          {[
+            r.noticeFile && ["Talimatı aç", noticeOpen],
+            ["Değiştir", () => setNoticeMenu(true)],
+            ["Sil", dropNotice, true],
+          ]
+            .filter(Boolean)
+            .map(([l, fn, red]) => (
+              <li key={l}>
+                <button type="button" data-press="row" onClick={() => (setNoticeInfo(false), fn())} className={`block w-full px-4 py-3.5 text-left text-[1rem] font-medium ${red ? "text-rec" : ""}`}>
+                  {l}
+                </button>
+              </li>
+            ))}
+        </ul>
+        {r.notice && <NoticeDetails n={r.notice} />}
       </Sheet>
 
       <Sheet open={noticeMenu} onClose={() => setNoticeMenu(false)} title="Yarış talimatı">
@@ -1017,11 +1247,11 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
       </Sheet>
 
       {navy(top)}
-      <div className={light}>
+      {secWrap(<>
         {alert}
-      {tab === "sum" && (
+      {prep && (
         <>
-          {over && <RaceDone r={r} chosen={chosen} money={money} steps={steps} doneCount={doneList.length} onTab={setTab} onMark={(st) => markStep(st, true)} />}
+          {over && <RaceDone r={r} chosen={chosen} money={money} steps={steps} doneCount={doneList.length} onTab={setTab} onMark={(st) => markStep(st, true)} resHref={rid ? `/athletes/races/${rid}/sonuclar` : ""} track={!!siteDocs} onResultsFile={onResultsFile} />}
           {!over && (
             <>
               <Label right={todoList.length ? `${todoList.length} iş` : ""}>Yapılacaklar</Label>
@@ -1061,10 +1291,10 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
               />
             </li>
           </ul>
-          {r.notice && noticeInfo && <NoticeDetails n={r.notice} />}
 
         </>
       )}
+
 
       {tab === "people" && (
         <>
@@ -1077,46 +1307,34 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
           ) : !athletes.length ? (
             <Loading label="Sporcular yükleniyor" className="py-8" />
           ) : !chosen.length ? (
-            <div className={`${card} flex flex-col items-center px-6 py-8 text-center`}>
-              <span className="grid size-14 place-items-center rounded-full bg-acc/10 text-acc">
-                <Icon name="users" className="size-7" />
-              </span>
-              <b className="mt-3 text-[1.0625rem] font-semibold">Katılacak sporcuları ekle</b>
-              <span className="mt-1 text-[0.8125rem] text-mut">Evrak için önce sporcuları seç</span>
-              <button type="button" onClick={() => setPick(true)} data-press className="btn btn-primary mt-5 w-full">
-                <Icon name="plus" className="size-5" />
-                Sporcu ekle
-              </button>
-            </div>
+            <button type="button" onClick={() => setPick(true)} data-press className="btn btn-primary w-full">
+              Sporcu ekle
+            </button>
           ) : (
-            <div className={`${card} divide-y divide-line overflow-hidden`}>
-              <button type="button" onClick={() => setPick(true)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left text-acc">
-                <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10">
-                  <Icon name="plus" className="size-5" />
-                </span>
-                <b className="text-[0.9375rem] font-semibold">Sporcu ekle ya da çıkar</b>
-              </button>
+            /* Yeni görünüm (2026-11-06, yeni-dil/ornek.png 3): satırda ad, altında eksik ya da lisans, sağda tek durum; satıra dokununca bilgi penceresi */
+            <div className="rz-list">
               {chosen.map((a) => {
                 const miss = missing(a, docs);
                 const gone = raceExpired(a, r);
+                const sub = gone.length
+                  ? gone.map((x) => `${x.label} ${x.date.slice(8, 10)}.${x.date.slice(5, 7)}’de biter`).join(" · ")
+                  : miss.length
+                    ? miss.join(", ")
+                    : [a.licenseNo && `Lisans ${a.licenseNo}`, a.studentSchool || a.studentSchoolAndClass].filter(Boolean).join(" · ");
                 return (
-                  <div key={a.id} className="flex items-center gap-3 px-4 py-3">
-                    <Link href={`/athletes/${a.id}`} className="flex min-w-0 flex-1 items-center gap-3 active:opacity-60">
-                      <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.8125rem] font-semibold text-acc">{initials(a.studentName)}</span>
-                      <span className="min-w-0 flex-1">
-                        <b className="block truncate text-[0.9375rem] font-semibold">{a.studentName}</b>
-                        <span className={`block truncate text-[0.8125rem] ${miss.length ? "text-amber-700" : "text-mut"}`}>
-                          {miss.length ? `${miss.length} bilgi eksik: ${miss.join(", ")}` : [a.licenseNo && `Lisans ${a.licenseNo}`, a.studentSchool || a.studentSchoolAndClass].filter(Boolean).join(" · ")}
-                        </span>
-                        {gone.length > 0 && <span className="block truncate text-[0.75rem] font-medium text-rec">{gone.map((x) => `${x.label} bitişi ${x.date.slice(8, 10)}.${x.date.slice(5, 7)}, yarışta geçersiz`).join(" · ")}</span>}
-                      </span>
-                    </Link>
-                    <button type="button" onClick={() => setFix(a)} className={`h-8 shrink-0 rounded-full px-3 text-[0.8125rem] font-semibold ring-1 ${miss.length || gone.length ? "bg-amber-500/10 text-amber-700 ring-amber-500/30" : "text-acc ring-line"}`}>
-                      {miss.length || gone.length ? "Tamamla" : "Bilgi"}
-                    </button>
-                  </div>
+                  <button key={a.id} type="button" onClick={() => setFix(a)} data-press="row" className="rz-row w-full text-left">
+                    <span className="rz-k">
+                      {a.studentName}
+                      {sub && <small>{sub}</small>}
+                    </span>
+                    <span className={`rz-v font-semibold ${gone.length ? "rz-rec" : miss.length ? "rz-warn" : "rz-ok"}`}>{gone.length ? "Geçersiz" : miss.length ? `${miss.length} eksik` : "Tamam"}</span>
+                    <span className="rz-chev" aria-hidden="true" />
+                  </button>
                 );
               })}
+              <button type="button" onClick={() => setPick(true)} data-press="row" className="rz-row w-full text-left text-[1rem] font-medium text-acc">
+                Sporcu ekle ya da çıkar
+              </button>
             </div>
           )}
           {lost > 0 && <p className="mt-2 px-1 text-[0.75rem] text-mut">{lost} sporcu artık listede yok, belgeye girmez.</p>}
@@ -1126,146 +1344,93 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
               <Icon name="chev" className="size-4" />
             </button>
           )}
-          {athletes.length > 0 && resultsOpen(r, todayStr()) && (
-            <RaceResults
-              orgId={orgId}
-              race={{ ...r, id: rid || r.id }}
-              athletes={chosen}
-              club={athletes.filter(isActive)}
-              onChange={(v) => put("results", v)}
-              onAddAthletes={(ids) => set("athleteIds")([...new Set([...latest.current.athleteIds, ...ids])])}
-              onOpen={(f) => openPdf(f)}
-            />
-          )}
         </>
       )}
 
-      {tab === "sheet" && (
-        <>
-          <p className="mt-4 px-1 text-[0.875rem] leading-relaxed text-mut">Her sporcuya tek sayfa. Notta görünecek bölümleri aşağıdan seç, veliye gönder.</p>
-          <Label right={chosen.length ? `${sheetList.length}/${chosen.length}` : ""}>SPORCULAR</Label>
-          {!chosen.length ? (
-            <button type="button" onClick={() => setTab("people")} className={`${card} flex w-full items-center gap-3 px-4 py-3.5 text-left`}>
-              <Icon name="users" className="size-5 shrink-0 text-acc" />
-              <span className="flex-1 text-[0.9375rem] font-semibold">Önce sporcuları ekle</span>
-              <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
-            </button>
-          ) : (
-            <ul className={`${card} divide-y divide-line overflow-hidden`}>
-              <li>
-                <button type="button" onClick={() => setSheetIds(sheetIds ? null : [])} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
-                  <Check on={!sheetIds} tone="acc" />
-                  <b className="flex-1 text-[0.9375rem] font-semibold">Hepsi</b>
-                </button>
-              </li>
-              {chosen.map((a) => {
-                const on = !sheetIds || sheetIds.includes(a.id);
-                const toggle = () => {
-                  const cur = sheetIds || chosen.map((x) => x.id);
-                  const next = on ? cur.filter((x) => x !== a.id) : [...cur, a.id];
-                  setSheetIds(next.length === chosen.length ? null : next);
-                };
-                return (
-                  <li key={a.id}>
-                    <button type="button" onClick={toggle} data-press="row" className="flex w-full items-center gap-3 px-4 py-2.5 text-left">
-                      <Check on={on} tone="acc" />
-                      <span className="grid size-8 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.6875rem] font-semibold text-acc">{initials(a.studentName)}</span>
-                      <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{a.studentName}</span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+      {/* Yolculuk ve bütçe (yeni görünüm 2026-11-06, yeni-dil/ornek.png 4): uzun form yerine özet satırlar, dokununca yerinde açılır */}
+      {prep && (
+        <div ref={tripRef} className="scroll-mt-4">
+          <Label>Yolculuk</Label>
+          <Fold label="Gidiş" value={[r.departDate && tripDay(r.departDate), r.departTime].filter(Boolean).join(" · ") || "Yazılmadı"} open={fold === "go"} onToggle={() => flipFold("go")}>
+            <Group>
+              <Pair>
+                <Row label="Çıkış günü">{tripField("departDate", "", "date")}</Row>
+                <Row label="Çıkış saati">{tripField("departTime", "", "time")}</Row>
+              </Pair>
+              <Row label="Çıkış yeri">{tripField("departFrom", "Dikili, kulüp önü")}</Row>
+              <Row label="Buluşma noktası">{tripField("meetPoint", "Çıkış yeriyle aynıysa boş bırak")}</Row>
+            </Group>
+          </Fold>
+          <Fold label="Dönüş" value={[r.returnDate && tripDay(r.returnDate), r.returnTime].filter(Boolean).join(" · ") || "Yazılmadı"} open={fold === "back"} onToggle={() => flipFold("back")}>
+            <Group>
+              <Pair>
+                <Row label="Dönüş günü">{tripField("returnDate", "", "date")}</Row>
+                <Row label="Dönüş saati">{tripField("returnTime", "", "time")}</Row>
+              </Pair>
+            </Group>
+          </Fold>
+          <Fold label="Otel" value={raceHotels(r).map((h) => h.name).filter(Boolean).join(", ") || "Yok"} open={fold === "hotel"} onToggle={() => flipFold("hotel")}>
+            <RaceHotels hotels={raceHotels(r)} onChange={(list) => put("hotels", list)} onRooms={r.noticeFile ? rereadRooms : null} roomsBusy={roomsBusy} />
+          </Fold>
+          <Fold label="Yarış alanı" value={r.around?.venue?.name || r.notice?.venue || ""} open={fold === "area"} onToggle={() => flipFold("area")}>
+            <AroundView r={r} onChange={(a) => put("around", a)} />
+          </Fold>
 
-          <Label>NOTTA NELER OLSUN</Label>
-          <ul className={`${card} divide-y divide-line overflow-hidden`}>
-            {parts4.map(([title, sub, ok, to, key]) => {
-              const on = ok && sheetShow[key] !== false;
-              return (
-                <li key={key} className="flex items-center">
-                  <button type="button" onClick={() => ok && toggleShow(key)} disabled={!ok} data-press="row" className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left">
-                    <Check on={on} tone="acc" />
-                    <span className="min-w-0 flex-1">
-                      <b className={`block text-[0.9375rem] font-semibold ${on ? "" : "text-mut"}`}>{title}</b>
-                      <span className="block truncate text-[0.8125rem] text-mut">{sub}</span>
-                    </span>
-                  </button>
-                  {!ok && to !== "sum" && (
-                    <button type="button" onClick={() => (to === "notice" ? setNoticeMenu(true) : setTab(to))} data-press className="btn btn-text btn-sm shrink-0 text-acc">
-                      {to === "notice" ? "Talimat" : "Ekle"}
-                    </button>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-          <p className="mt-2 px-1 text-[0.75rem] text-mut">İşaretli bölümler notta görünür. Son tarihler bilgi içindir, 7 gün ve daha az kalanlar vurgulanır.</p>
-
-          <button type="button" onClick={() => makeSheet()} disabled={sheetBusy || !sheetList.length} className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-deep text-[0.9375rem] font-semibold text-white disabled:opacity-40">
-            <Icon name="print" className="size-5" />
-            {sheetBusy ? "Hazırlanıyor…" : `Bilgi notunu hazırla · ${sheetList.length} sayfa`}
-          </button>
-        </>
+          <div ref={budgetRef} className="scroll-mt-4">
+            <div className="h-6" />
+            <Fold label="Bütçe" value={[money.total ? tl(money.total) : "", chosen.length ? `${chosen.filter((a) => r.budget?.paid?.[a.id]).length}/${chosen.length} ödedi` : ""].filter(Boolean).join(" · ") || "Yok"} open={fold === "budget" || tab === "budget"} onToggle={() => (tab === "budget" ? setTab("trip") : flipFold("budget"))}>
+              <BudgetView r={r} athletes={chosen} onChange={(b) => put("budget", b)} />
+            </Fold>
+          </div>
+        </div>
       )}
 
-      {tab === "budget" && <BudgetView r={r} athletes={chosen} onChange={(b) => put("budget", b)} />}
-
-      {tab === "trip" && (
-        <>
-          <Label>YOLCULUK</Label>
-          <Group>
-            <Pair>
-              <Row label="Çıkış günü">{tripField("departDate", "", "date")}</Row>
-              <Row label="Çıkış saati">{tripField("departTime", "", "time")}</Row>
-            </Pair>
-            <Row label="Çıkış yeri">{tripField("departFrom", "Dikili, kulüp önü")}</Row>
-            <Row label="Buluşma noktası">{tripField("meetPoint", "Çıkış yeriyle aynıysa boş bırak")}</Row>
-            <Pair>
-              <Row label="Dönüş günü">{tripField("returnDate", "", "date")}</Row>
-              <Row label="Dönüş saati">{tripField("returnTime", "", "time")}</Row>
-            </Pair>
-          </Group>
-
-          <RaceHotels hotels={raceHotels(r)} onChange={(list) => put("hotels", list)} onRooms={r.noticeFile ? rereadRooms : null} roomsBusy={roomsBusy} />
-
-          <AroundView r={r} onChange={(a) => put("around", a)} onWeather={(w) => put("weather", w)} />
-        </>
+      {/* Siteden gelen belgeler Dokümanlar sekmesinde (2026-11-04); sekme kapalıyken de bağlı (yeni gelenler işlenir) */}
+      {siteDocs && rid && (
+        <div hidden={tab !== "site" && tab !== "belge"}>
+          <RaceTrack orgId={orgId} race={{ ...r, id: rid }} chosen={chosen} view={tab === "belge" ? "docs" : "track"} onAll={() => setTab("belge")} more={siteDocs(tab === "site" || tab === "belge")} onResultsFile={onResultsFile} />
+        </div>
       )}
-
-      {tab === "docs" && (
-        <>
-          {/* Hazır evrak bir bilgi değişince ya da bu telefonda yoksa: yenile uyarısı */}
-          {!file && (stale || r.docsAt) && chosen.length > 0 && (
-            <div className="mt-4 flex items-center gap-3 rounded-2xl bg-amber-500/10 px-4 py-3 ring-1 ring-amber-500/30">
-              <Icon name="alert" className="size-5 shrink-0 text-amber-600" />
-              <span className="min-w-0 flex-1">
-                <b className="block text-[0.9375rem] font-semibold">Evrak eski, yenile</b>
-                <span className="block text-[0.8125rem] text-mut">{stale ? "Bir bilgi değişti, önceki evrak geçersiz." : "Daha önce hazırlanmıştı; bu telefonda yok ya da bir bilgi değişti."}</span>
-              </span>
-              <button type="button" onClick={make} disabled={busy} className="h-9 shrink-0 rounded-full bg-amber-600 px-4 text-[0.8125rem] font-semibold text-white disabled:opacity-50">
-                {busy ? "Hazırlanıyor…" : "Yenile"}
-              </button>
-            </div>
-          )}
-
-          {/* Özet: hazır evrak tek kartta */}
-          {file && (
-            <div className="mt-4 rounded-3xl bg-deep px-5 py-4 text-white">
-              <p className="truncate text-[0.6875rem] font-semibold uppercase tracking-wider text-white/70">Evrak · {r.name || "yarış"}</p>
-              <b className="mt-0.5 block text-[1.375rem] font-bold">{parts.length} belge hazır</b>
-              <span className="block text-[0.8125rem] text-white/80">{[`${made?.pages || pages} sayfa`, made?.at && `${madeText(made.at)} hazırlandı`, `${chosen.length} sporcu`].filter(Boolean).join(" · ")}</span>
-              <div className="mt-3 flex gap-2">
-                <button type="button" onClick={() => openPdf()} className="h-10 flex-1 rounded-full bg-white text-[0.875rem] font-semibold text-deep">Tümünü aç</button>
-                <button type="button" onClick={() => share()} className="h-10 flex-1 rounded-full bg-white/15 text-[0.875rem] font-semibold">Paylaş</button>
-                {onMail && (
-                  <button type="button" onClick={() => setMailPick(true)} disabled={mailing} aria-label="Mail at" className="grid size-10 shrink-0 place-items-center rounded-full bg-white/15 disabled:opacity-50">
-                    <Icon name="mail" className="size-5" />
-                  </button>
+      {prep && (
+        <div ref={docsRef} className="scroll-mt-4">
+          <Label>Evrak</Label>
+          {/* Evrak tek satır (Seyhun 2026-11-12 "belgeleri hazırla butonu daha iyi bir yerde"; örnek ev-*.png "Yap"): alttaki yapışık çubuk
+              yok; solda durum, sağda düğmeler. Hazırsa Paylaş · Aç (Mail varsa o da); hazırlanmadıysa Hazırla; bilgi değiştiyse Yenile;
+              başka cihazda hazırlandıysa Aç (burada üretir). Hazır ve değişmemişse Hazırla hiç çıkmaz. */}
+          {chosen.length > 0 && (
+            <div className="rz-list mt-4">
+              <div className="rz-row rz-doc">
+                <span className="rz-k">
+                  {file ? `${parts.length} belge hazır` : docsOld ? "Evrak eski" : docsReady ? "Evrak hazır" : "Evrak"}
+                  <small>
+                    {file
+                      ? [`${made?.pages || pages} sayfa`, made?.at && `${madeText(made.at)} hazırlandı`, `${chosen.length} sporcu`].filter(Boolean).join(" · ")
+                      : docsOld
+                        ? "Bir bilgi değişti"
+                        : docsReady
+                          ? "Başka cihazda hazırlandı"
+                          : [`${docs.length} belge`, pages && `${pages} sayfa`, `${chosen.length} sporcu`].filter(Boolean).join(" · ")}
+                  </small>
+                </span>
+                {file ? (
+                  <>
+                    {onMail && (
+                      <Button variant="secondary" size="sm" full={false} onClick={() => setMailPick(true)} disabled={mailing}>
+                        {mailing ? "…" : "Mail"}
+                      </Button>
+                    )}
+                    <Button variant="secondary" size="sm" full={false} onClick={() => share()}>
+                      Paylaş
+                    </Button>
+                    <Button size="sm" full={false} onClick={() => openPdf()}>
+                      Aç
+                    </Button>
+                  </>
+                ) : (
+                  <Button size="sm" full={false} onClick={make} disabled={busy}>
+                    {docsOld ? "Yenile" : docsReady ? "Aç" : "Hazırla"}
+                  </Button>
                 )}
-                <button type="button" onClick={make} disabled={busy} className="h-10 flex-1 rounded-full bg-white/15 text-[0.875rem] font-semibold disabled:opacity-50">
-                  {busy ? "…" : "Yenile"}
-                </button>
               </div>
             </div>
           )}
@@ -1277,14 +1442,12 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
               <div className={`${card} divide-y divide-line overflow-hidden`}>
                 {!ready[0][1] && (
                   <button type="button" onClick={() => setEdit(true)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
-                    <Icon name="alert" className="size-[1.125rem] shrink-0 text-rec" />
                     <span className="flex-1 text-[0.875rem] font-medium">{ready[0][0]}</span>
                     <span className="text-[0.8125rem] font-semibold text-acc">Düzelt</span>
                   </button>
                 )}
                 {!chosen.length && (
                   <button type="button" onClick={() => setTab("people")} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
-                    <Icon name="alert" className="size-[1.125rem] shrink-0 text-rec" />
                     <span className="flex-1 text-[0.875rem] font-medium">Sporcu seçilmedi</span>
                     <span className="text-[0.8125rem] font-semibold text-acc">Sporcu ekle</span>
                   </button>
@@ -1292,7 +1455,6 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
                 {signerAsk && (
                   <div className={r.signer.trim() ? "" : "bg-amber-500/5"}>
                     <p className="flex items-center gap-3 px-4 pt-3 text-[0.875rem] font-medium">
-                      <Icon name={r.signer.trim() ? "check" : "alert"} className={`size-[1.125rem] shrink-0 ${r.signer.trim() ? "text-ok" : "text-rec"}`} />
                       Belgeleri imzalayan kulüp yetkilisi
                     </p>
                     <Pair>
@@ -1306,27 +1468,24 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
                   const gone = raceExpired(a, r);
                   return (
                     <button key={a.id} type="button" onClick={() => setFix(a)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
-                      <Icon name="alert" className="size-[1.125rem] shrink-0 text-amber-600" />
                       <span className="min-w-0 flex-1">
-                        <b className="block truncate text-[0.875rem] font-medium">{a.studentName}</b>
-                        <span className="block truncate text-[0.75rem] text-mut">{[miss.length && `Eksik: ${miss.join(", ")}`, gone.length && `${gone.map((x) => x.label).join(", ")} yarışta geçersiz`].filter(Boolean).join(" · ")}</span>
+                        <b className="block break-words text-[0.875rem] font-medium">{a.studentName}</b>
+                        <span className="block break-words text-[0.75rem] text-mut">{[miss.length && `Eksik: ${miss.join(", ")}`, gone.length && `${gone.map((x) => x.label).join(", ")} yarışta geçersiz`].filter(Boolean).join(" · ")}</span>
                       </span>
                       <span className="text-[0.8125rem] font-semibold text-acc">Tamamla</span>
                     </button>
                   );
                 })}
                 {coachLack.length > 0 && (
-                  <button type="button" onClick={() => (setCoachOpen(true), setTimeout(() => coachRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50))} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
-                    <Icon name="alert" className="size-[1.125rem] shrink-0 text-amber-600" />
+                  <button type="button" onClick={() => setCoachOpen(true)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
                     <span className="min-w-0 flex-1">
                       <b className="block text-[0.875rem] font-medium">Antrenör bilgisi</b>
-                      <span className="block truncate text-[0.75rem] text-mut">Eksik: {coachLack.join(", ")}</span>
+                      <span className="block break-words text-[0.75rem] text-mut">Eksik: {coachLack.join(", ")}</span>
                     </span>
                     <span className="text-[0.8125rem] font-semibold text-acc">Tamamla</span>
                   </button>
                 )}
               </div>
-              <p className="mt-2 px-1 text-[0.75rem] text-mut">Kırmızılar olmadan evrak hazırlanmaz; diğerleri belgede boş kalır.</p>
             </>
           )}
 
@@ -1342,7 +1501,7 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
                   const people = part?.people || [];
                   const more = on && (DOC_SET.includes(k) || (k === "coach" && !docs.includes("entry")) || people.length > 0);
                   const open = more && openPart === k;
-                  const warn = on && k === "hotel" && !(r.hotelName || "").trim() ? "Otel adı boş, elle yazılacak" : "";
+                  const warn = on && k === "hotel" && !hotel.hotel ? "Otel seçilmedi, elle yazılacak" : "";
                   const status = !on ? "Seçili değil" : warn || (part ? `Hazır · ${docSub(k, part)}` : docSub(k));
                   const main = () => (!on ? pickDoc(k, true) : more ? setOpenPart(open ? null : k) : part ? openPdf(part.file) : pickDoc(k, false));
                   return (
@@ -1355,8 +1514,8 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
                         </button>
                         <button type="button" onClick={main} aria-expanded={more ? open : undefined} data-press="row" className="flex min-w-0 flex-1 items-center gap-2 py-3 text-left">
                           <span className="min-w-0 flex-1">
-                            <b className={`block truncate text-[0.9375rem] font-semibold ${on ? "" : "text-mut"}`}>{label}</b>
-                            <span className={`block truncate text-[0.8125rem] ${warn ? "text-amber-600" : part ? "text-acc" : "text-mut"}`}>{status}</span>
+                            <b className={`block break-words text-[0.9375rem] font-semibold ${on ? "" : "text-mut"}`}>{label}</b>
+                            <span className={`block break-words text-[0.8125rem] ${warn ? "text-amber-600" : part ? "text-acc" : "text-mut"}`}>{status}</span>
                           </span>
                           {more && <Icon name="chev" className={`size-5 shrink-0 text-mut transition-transform ${open ? "rotate-90" : ""}`} />}
                         </button>
@@ -1408,22 +1567,29 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
                   )}
                   {on && k === "hotel" && (
                     <div className="mx-4 mb-3">
-                      <div className="divide-y divide-line overflow-hidden rounded-xl bg-bg ring-1 ring-line">
-                        <Row label="Otel adı">{field("hotelName", "Boş kalırsa elle yazılır")}</Row>
+                      {/* Otel tek yerde, Yolculuk'ta (2026-10-28): burada yalnız seçilir; Yolculuk'ta otel yoksa ad elle yazılır */}
+                      {hotels.length > 0 || hotel.hotel ? (
+                        <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Otel">
+                          {(hotel.hotel && !hotels.includes(hotel.hotel) ? [hotel.hotel, ...hotels] : hotels).map((n) => {
+                            const sel = hotel.hotel === n;
+                            return (
+                              <button key={n} type="button" role="radio" aria-checked={sel} onClick={() => set("hotelName")(sel ? "" : n)} className={`rounded-full px-3 py-1.5 text-[0.8125rem] font-semibold ${sel ? "bg-acc text-white" : "bg-acc/10 text-acc"}`}>
+                                {n}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <button type="button" onClick={() => setTab("trip")} data-press className="btn btn-text btn-sm text-acc">
+                          {"Oteli Yolculuk'a ekle"}
+                        </button>
+                      )}
+                      <div className="mt-2 divide-y divide-line overflow-hidden rounded-xl bg-bg ring-1 ring-line">
                         <Pair>
                           <Row label="Giriş">{clubDate("hotelFrom", hotel.from)}</Row>
                           <Row label="Çıkış">{clubDate("hotelTo", hotel.to)}</Row>
                         </Pair>
                       </div>
-                      {!(r.hotelName || "").trim() && hotels.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          {hotels.map((n) => (
-                            <button key={n} type="button" onClick={() => set("hotelName")(n)} className="rounded-full bg-acc/10 px-3 py-1 text-[0.8125rem] font-semibold text-acc">
-                              {n}
-                            </button>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   )}
                   {on && k === (docs.includes("entry") ? "entry" : "coach") && (
@@ -1457,15 +1623,21 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
               </ul>
             </div>
           ))}
-          {file && <p className="mt-2 px-1 text-[0.75rem] text-mut">Hazır evrak bu telefonda saklanır. Sporcu kartında bir bilgiyi değiştirdiysen {"Yenile'ye bas."}</p>}
+          <Label>VELİ</Label>
+          <button type="button" onClick={() => setSheetOpen(true)} data-press="row" className={`${card} flex w-full items-center gap-3 px-4 py-3 text-left`}>
+            <span className="min-w-0 flex-1">
+              <b className="block break-words text-[0.9375rem] font-semibold">Veli bilgi notu</b>
+              <span className="block break-words text-[0.8125rem] text-mut">{chosen.length ? `${chosen.length} sayfa · yolculuk, program, sporcu payı` : "Önce sporcuları ekle"}</span>
+            </span>
+            <Icon name="chev" className="size-5 shrink-0 text-mut" />
+          </button>
 
           <Label>ORTAK BİLGİLER</Label>
           <div className={`${card} overflow-hidden`}>
             <button type="button" onClick={() => setSignOpen(!signOpen)} aria-expanded={signOpen} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
-              <Icon name="edit" className="size-5 shrink-0 text-acc" />
               <span className="min-w-0 flex-1">
                 <b className="block text-[0.9375rem] font-semibold">İmza ve tarih</b>
-                <span className="block truncate text-[0.8125rem] text-mut">{[r.signer.trim() && `${r.signer.trim()}${r.signerTitle?.trim() ? `, ${r.signerTitle.trim()}` : ""}`, r.letterDate ? `evrak tarihi ${rangeText(r.letterDate, r.letterDate)}` : "evrak tarihi ilk hazırlamada yazılır"].filter(Boolean).join(" · ")}</span>
+                <span className="block break-words text-[0.8125rem] text-mut">{[r.signer.trim() && `${r.signer.trim()}${r.signerTitle?.trim() ? `, ${r.signerTitle.trim()}` : ""}`, r.letterDate ? `evrak tarihi ${rangeText(r.letterDate, r.letterDate)}` : "evrak tarihi ilk hazırlamada yazılır"].filter(Boolean).join(" · ")}</span>
               </span>
               <Icon name="chev" className={`size-5 shrink-0 text-mut transition-transform ${signOpen ? "rotate-90" : ""}`} />
             </button>
@@ -1489,17 +1661,15 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
           {coachOn && (
             <div ref={coachRef} className="scroll-mt-4">
               <Label right={coachSaved ? "kaydedildi ✓" : "hesabına kaydedilir"}>{tyf ? "ANTRENÖR VE DESTEK BOTU" : "ANTRENÖR"}</Label>
-              {!coachOpen ? (
-                <button type="button" onClick={() => setCoachOpen(true)} className={`${card} flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg`}>
-                  <Icon name="user" className="size-5 shrink-0 text-acc" />
-                  <span className="min-w-0 flex-1">
-                    <b className="block truncate text-[0.9375rem] font-semibold">{coach.name || "Antrenör"}</b>
-                    <span className="block text-[0.8125rem] text-mut">{coachLack.length ? `Eksik: ${coachLack.join(", ")}` : "Bilgiler hesabında kayıtlı, belgelere kendiliğinden yazılır"}</span>
-                  </span>
-                  <span className="text-[0.8125rem] font-semibold text-acc">Düzenle</span>
-                </button>
-              ) : (
-              <>
+              <button type="button" onClick={() => setCoachOpen(true)} className={`${card} flex w-full items-center gap-3 px-4 py-3 text-left active:bg-bg`}>
+                <span className="min-w-0 flex-1">
+                  <b className="block break-words text-[0.9375rem] font-semibold">{coach.name || "Antrenör"}</b>
+                  <span className="block text-[0.8125rem] text-mut">{coachLack.length ? `Eksik: ${coachLack.join(", ")}` : "Bilgiler hesabında kayıtlı, belgelere kendiliğinden yazılır"}</span>
+                </span>
+                <span className="text-[0.8125rem] font-semibold text-acc">Düzenle</span>
+              </button>
+              <Sheet open={coachOpen} onClose={() => setCoachOpen(false)} title={tyf ? "Antrenör ve destek botu" : "Antrenör"}>
+                <div>
               <Group>
                 {COACH_FIELDS.filter(([k]) => tyf || !TYF_ONLY.includes(k)).map(([k, label, mode]) => (
                   <Row key={k} label={label} className={coach[k] || !coachLackKeys.includes(k) ? "" : "bg-amber-500/5"}>
@@ -1514,9 +1684,11 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
                   </Row>
                 ))}
               </Group>
-              <p className="mt-2 px-1 text-[0.75rem] text-mut">Bir kez yaz, hesabına kaydedilir; sonraki yarışlarda ve diğer cihazlarda hazır gelir. Boş kalan alan formda boş çıkar.</p>
-              </>
-              )}
+                </div>
+                <button type="button" onClick={() => setCoachOpen(false)} data-press className="btn btn-primary mt-4 w-full">
+                  Tamam
+                </button>
+              </Sheet>
             </div>
           )}
 
@@ -1560,12 +1732,8 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
             ))}
             <li>
               <button type="button" disabled={upload != null} onClick={() => pickExtra.current?.click()} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
-                <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-acc/10 text-acc">
-                  <Icon name="plus" className="size-5" />
-                </span>
                 <span className="min-w-0 flex-1">
                   <b className="block text-[0.9375rem] font-semibold text-acc">{upload != null ? `Yükleniyor… %${Math.round(upload * 100)}` : "Evrak ekle"}</b>
-                  <span className="block text-[0.8125rem] text-mut">Kayıt formu, sağlık raporu, dekont… (PDF ya da fotoğraf)</span>
                 </span>
               </button>
               <input
@@ -1581,38 +1749,11 @@ export function RaceEditor({ head = null, alert = null, orgId, start, athletes, 
             </li>
           </ul>
 
-        </>
-      )}
-
-      {/* Alt çubuk: belge hazırla → aç / paylaş */}
-      <div data-pagebar="" className={`${tab !== "docs" || file ? "hidden " : ""}fixed inset-x-0 bottom-0 z-40 bg-gradient-to-t from-bg via-bg to-transparent px-5 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-6`}>
-        <div className="mx-auto flex max-w-[26rem] gap-2">
-          {file ? (
-            <>
-              <button type="button" onClick={() => openPdf()} data-press className="btn btn-secondary text-acc">
-                <Icon name="print" className="size-5" />
-                Aç
-              </button>
-              {onMail && (
-                <button type="button" onClick={() => setMailPick(true)} disabled={mailing} aria-label="Mail at" data-press className="btn btn-secondary text-acc">
-                  <Icon name="mail" className="size-5" />
-                  {mailing ? "…" : "Mail"}
-                </button>
-              )}
-              <button type="button" onClick={() => share()} className="flex h-12 flex-1 items-center justify-center gap-1.5 rounded-xl bg-deep text-[0.9375rem] font-semibold text-white">
-                <Icon name="up" className="size-5" />
-                Paylaş / Yazdır
-              </button>
-            </>
-          ) : (
-            <button type="button" onClick={make} disabled={busy} className="flex h-12 flex-1 items-center justify-center gap-2 rounded-xl bg-deep text-[0.9375rem] font-semibold text-white disabled:opacity-50">
-              <Icon name="print" className="size-5" />
-              {busy ? "Hazırlanıyor…" : pages ? `Belgeleri hazırla · ${pages} sayfa` : "Belgeleri hazırla"}
-            </button>
-          )}
         </div>
-      </div>
+      )}
+      </>)}
 
+      <div>
       <Sheet open={!!ask} onClose={() => setAsk(null)} title="Talimat farklı">
         {ask && (
           <>
@@ -1681,7 +1822,7 @@ function Pick({ open, athletes, value, onClose, onChange }) {
             <button type="button" onClick={() => toggle(a.id)} aria-pressed={sel.has(a.id)} data-press="row" className="flex w-full items-center gap-3 py-2.5 text-left">
               <Check on={sel.has(a.id)} tone="acc" />
               <span className="grid size-8 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.6875rem] font-semibold text-acc">{initials(a.studentName)}</span>
-              <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{a.studentName}</span>
+              <span className="min-w-0 flex-1 break-words text-[0.9375rem]">{a.studentName}</span>
             </button>
           </li>
         ))}
@@ -1768,12 +1909,10 @@ function DocFields({ a, onSave, onClose, onSaved }) {
 
 // Biten yarışın özeti (Seyhun: "tamamlanan yarışta hazırlıkları göstermeye gerek yok; kaç gün sürdü, kimler katıldı,
 // sonuçları, bütçe durumu"; yapılmadan kalan işler bilgi olarak, istenirse yine yapıldı işaretlenir)
-function RaceDone({ r, chosen, money, steps, doneCount, onTab, onMark }) {
+function RaceDone({ r, chosen, money, steps, doneCount, onTab, onMark, resHref, track = false, onResultsFile = null }) {
   const from = r.startDate, to = r.endDate || r.startDate;
   const days = from ? Math.round((new Date(`${to}T12:00:00`) - new Date(`${from}T12:00:00`)) / 864e5) + 1 : 0;
-  const rows = r.results?.rows || {};
-  const ranked = [...chosen].sort((a, b) => (rows[a.id]?.place || 999) - (rows[b.id]?.place || 999));
-  const anyResult = chosen.some((a) => rows[a.id]);
+  const placed = ourPlaces(r.results, chosen);
   const paid = chosen.filter((a) => r.budget?.paid?.[a.id]).length;
   const stats = [
     [days ? `${days} gün` : "–", from ? rangeText(from, to) : "Tarih yok"],
@@ -1786,34 +1925,35 @@ function RaceDone({ r, chosen, money, steps, doneCount, onTab, onMark }) {
       <div className={`${card} grid grid-cols-3 divide-x divide-line`}>
         {stats.map(([big, small]) => (
           <div key={small} className="min-w-0 px-2 py-3 text-center">
-            <b className="block truncate text-[1.0625rem] font-semibold tabular-nums">{big}</b>
-            <span className="block truncate text-[0.75rem] text-mut">{small}</span>
+            <b className="block break-words text-[1.0625rem] font-semibold tabular-nums">{big}</b>
+            <span className="block break-words text-[0.75rem] text-mut">{small}</span>
           </div>
         ))}
       </div>
 
-      <Label right={anyResult && r.results?.fleet ? `${r.results.fleet} tekne` : ""}>SONUÇLAR</Label>
-      <ul className={`${card} divide-y divide-line overflow-hidden`}>
-        {!chosen.length && <li className="px-4 py-3 text-[0.875rem] text-mut">Bu yarışa sporcu eklenmemiş.</li>}
-        {ranked.map((a) => {
-          const t = resPlace(r.results, a.id);
-          return (
-            <li key={a.id} className="flex items-center gap-3 px-4 py-2.5">
-              <span className="grid size-8 shrink-0 place-items-center rounded-full bg-acc/10 text-[0.6875rem] font-semibold text-acc">{initials(a.studentName)}</span>
-              <span className="min-w-0 flex-1 truncate text-[0.9375rem]">{a.studentName}</span>
-              <span className={`shrink-0 text-[0.8125rem] ${t ? "font-semibold" : "text-mut"}`}>{t || "Sonuç yok"}</span>
-            </li>
-          );
-        })}
-        {chosen.length > 0 && (
-          <li>
-            <button type="button" onClick={() => onTab("people")} data-press="row" className="flex w-full items-center gap-2 px-4 py-3 text-left text-[0.875rem] font-semibold text-acc">
-              <Icon name={anyResult ? "edit" : "plus"} className="size-4" />
-              {anyResult ? "Sonuçları düzenle" : "Sonuçları ekle"}
-            </button>
-          </li>
-        )}
-      </ul>
+      {/* Sonuçların yeri yarışın sonuç sayfası /sonuclar (2026-11-01): burada bizimkilerin sırası tek satır; sitesi bağlı yarışta sonuçlar
+          Takip'te, burada tekrar yazılmaz (Seyhun 2026-11-08 "iki defa sonuçları gösteriyoruz") */}
+      {!track && (
+        <Label
+          right={
+            <span className="flex items-center gap-2">
+              {r.results?.fleet ? `${r.results.fleet} tekne` : ""}
+              <ResultsAdd onFile={onResultsFile} />
+            </span>
+          }
+        >
+          SONUÇLAR
+        </Label>
+      )}
+      {track ? null : resHref ? (
+        <Link href={resHref} className={`${card} flex min-h-[2.875rem] items-center gap-3 px-4 py-2.5 active:bg-bg`}>
+          <span className={`min-w-0 flex-1 break-words text-[0.9375rem] ${placed.length ? "font-medium" : "text-mut"}`}>{placed.length ? placed.map((x) => `${x.name.split(" ")[0]} ${x.place}.`).join(" · ") : chosen.length ? "Sonuç yok" : "Sporcu eklenmemiş"}</span>
+          <span className="shrink-0 text-[0.875rem] font-semibold text-acc">{placed.length ? "Tümü" : "PDF yükle"}</span>
+          <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
+        </Link>
+      ) : (
+        <p className={`${card} px-4 py-3 text-[0.875rem] text-mut`}>Sonuç yok</p>
+      )}
 
       <Label>BÜTÇE</Label>
       <button type="button" onClick={() => onTab("budget")} className={`${card} block w-full divide-y divide-line overflow-hidden text-left`}>
@@ -1850,6 +1990,35 @@ function RaceDone({ r, chosen, money, steps, doneCount, onTab, onMark }) {
           </ul>
           <p className="mt-2 px-1 text-[0.75rem] text-mut">Yarış bitti, bunlar bilgi için duruyor. Yaptıysan daireye dokun.</p>
         </>
+      )}
+    </>
+  );
+}
+
+// Yeni yarış: başka kulübün (ya da ana hesabın) eklediği yarışlardan seç; talimat, tarih ve yer hazır gelir (lib/sharedRace.js)
+function SharedPick({ list, onPick }) {
+  const [all, setAll] = useState(false);
+  const shown = all ? list : list.slice(0, 5);
+  return (
+    <>
+      <h2 className="mt-6 px-1 text-[1.375rem] font-semibold leading-tight">Ortak yarışlardan seç</h2>
+      <ul className={`${card} mt-3 divide-y divide-line overflow-hidden`}>
+        {shown.map((s) => (
+          <li key={s.id}>
+            <button type="button" onClick={() => onPick(s)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
+              <span className="min-w-0 flex-1">
+                <b className="block break-words text-[0.9375rem] font-semibold">{s.name}</b>
+                <span className="block break-words text-[0.8125rem] text-mut">{[placeText(s), rangeText(s.startDate, s.endDate), s.noticeFile && "Talimat var"].filter(Boolean).join(" · ")}</span>
+              </span>
+              <Icon name="chev" className="size-4 shrink-0 text-mut/60" />
+            </button>
+          </li>
+        ))}
+      </ul>
+      {list.length > 5 && !all && (
+        <button type="button" onClick={() => setAll(true)} data-press className="btn btn-text btn-sm mt-1 w-full text-acc">
+          Tümü ({list.length})
+        </button>
       )}
     </>
   );

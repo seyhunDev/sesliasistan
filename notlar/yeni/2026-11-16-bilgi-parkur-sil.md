@@ -1,0 +1,5 @@
+## Nerede kaldım
+- 2026-11-16 Bilgi Yönet › Parkur: sıfırla / tek tek değiştir / sil (Seyhun: "konumları sıfırlayabilmemiz, istediğimizi değiştirebilmemiz ya da tamamen silebilmemiz gerekiyor; parkuru kaldırıp yeniden oluşturacağım"; telefonda denenmedi). `BilgiAdmin.jsx` `ParkurEdit` altında: **Şamandıraları sıfırla** (elle düzeltilen şamandıra varsa; `parkur.marks: null`, hepsi rüzgâr + hakem botundan yeniden hesaplanır) ve kırmızı **Parkuru sil** (onay penceresi `useConfirm`; `saveBilgi(org, { parkur: null })`: tip, rüzgâr, hakem botu, uzunluklar, şamandıralar gider; link kopyası `bilgiAcik/{anahtar}` de aynı yazımla temizlenir; ekranlarda harita boşalır). Hakem botu satırında **Kaldır** (yalnız hakem botu konumu silinir). Tek şamandırayı değiştirmek zaten vardı (satıra dokun → koordinat / Konumum / Otomatik). Lint temiz; ekran görüntüsü alınmadı (sayfa giriş + Firestore ister).
+
+## Sıradaki işler
+- Telefonda Yönet › Parkur › Parkuru sil → onay → harita boşalıyor mu, yeniden kurulum (rüzgâr + hakem botu) çalışıyor mu dene.

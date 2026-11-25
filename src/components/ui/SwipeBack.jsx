@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { canGoBack, goBack } from "@/lib/navTrail";
 import { edgeStart, swipeAxis, swipeDone } from "@/lib/swipeBack";
+import { setNavKind } from "@/lib/navProgress";
 
 // Kenardan kaydırarak geri (iPhone uygulamaları gibi): ana ekrana eklenen uygulamada (Safari çubuğu yokken)
 // ekranın sol kenarından sağa çekince sayfa parmağı izler, bırakınca önceki sayfaya dönülür. Safari'de ve
@@ -32,7 +33,8 @@ export function SwipeBack() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!standaloneIos()) return;
+    // iPhone uygulamasının yeni sürümü kenardan geriyi kendisi yapar (önceki sayfanın görüntüsü altta görünür; VeloraViewController)
+    if (!standaloneIos() || navigator.userAgent.includes("VeloraKaydir")) return;
     let g = null; // süren hareket: { x, y, t, axis, el, href, dx }
 
     const page = () => {
@@ -54,7 +56,8 @@ export function SwipeBack() {
       g = null;
       if (e.touches.length !== 1) return;
       const p = e.touches[0];
-      if (!edgeStart(p.clientX, window.location.pathname) || blocked()) return;
+      // Canlı ekranın kendi kenardan geri hareketi var (liveScreen/InAppBack)
+      if (!edgeStart(p.clientX, window.location.pathname) || window.location.pathname.startsWith("/canli") || blocked()) return;
       const link = document.querySelector("[data-back]");
       if (!link && !canGoBack()) return;
       g = { x: p.clientX, y: p.clientY, t: Date.now(), axis: "", el: null, href: link?.getAttribute("href") || "/", dx: 0 };
@@ -81,6 +84,7 @@ export function SwipeBack() {
       if (!swipeDone(dx, Date.now() - t, window.innerWidth)) return move(el, 0, true);
       move(el, window.innerWidth, true);
       setTimeout(() => {
+        setNavKind("none", 1500); // sayfa parmakla zaten kaydı: geçiş animasyonu ikinci kez oynamasın
         goBack(router, href);
         // Yeni sayfa açılınca bu öğe kalkar; açılmazsa (aynı sayfada kalındıysa) yerine döner
         setTimeout(() => el?.isConnected && clear(el), 900);

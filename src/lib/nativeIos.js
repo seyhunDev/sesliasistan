@@ -33,19 +33,38 @@ export function showTimer(t) {
 
 // Üstünde sayaç akan iPhone kamerası (Medya › Kayıt; VeloraKamera.swift). Bu parça olmadan kurulmuş eski uygulamada yok (false).
 export const hasCamera = () => typeof plugin()?.camera === "function";
-// t: { end (ms), paused, left (sn), title } ya da null (sayaç yok). Sonuç File (lastModified = kaydın bittiği an) ya da null (vazgeçildi)
-export async function nativeCamera(t) {
-  const r = await plugin().camera(t || {});
+// t: { end (ms), paused, left (sn), title } ya da null (sayaç yok). Sonuç File (lastModified = kaydın bittiği an; asset = videonun
+// Fotoğraflar'daki kimliği) ya da null (vazgeçildi)
+// onTaken(kind): "Videoyu Kullan"a basılınca (uygulama "cameraTaken" der; eski kurulumda kamera dosyayı verince), dosya hazırlanmadan
+export async function nativeCamera(t, onTaken) {
+  const p = plugin();
+  const h = onTaken && p.addListener ? p.addListener("cameraTaken", (e) => onTaken(e?.kind || "video")) : null;
+  const off = () => Promise.resolve(h).then((x) => x?.remove?.()).catch(() => {});
+  let r;
+  try {
+    r = await p.camera(t || {});
+  } finally {
+    off();
+  }
   if (!r || r.cancel || (!r.path && !r.file)) return null;
+  onTaken?.(r.kind || "video");
   const blob = r.file && typeof plugin().cameraRead === "function" ? await readNative(r) : await (await fetch(r.path)).blob();
-  return new File([blob], r.name || (r.kind === "video" ? "video.mov" : "foto.jpg"), { type: r.type || blob.type, lastModified: Math.round(r.end || Date.now()) });
+  const f = new File([blob], r.name || (r.kind === "video" ? "video.mov" : "foto.jpg"), { type: r.type || blob.type, lastModified: Math.round(r.end || Date.now()) });
+  if (r.asset) f.asset = r.asset;
+  return f;
+}
+
+// Seyhun 2026-10-26: Velora'dan silinen video Fotoğraflar'dan da silinsin. iPhone kendisi onay sorar. Eski kurulumda yok (null).
+export async function deletePhotos(ids) {
+  const p = plugin();
+  if (typeof p?.photosDelete !== "function" || !ids.length) return null;
+  return p.photosDelete({ ids }).catch(() => null);
 }
 
 // Seyhun 2026-10-26: "Kayıt uygulamaya alınamadı". Sayfa canlı siteden açık, capacitor:// adresini fetch okuyamıyor; dosya
 // eklentiden 2 MB'lık parçalarla (base64) alınır, son parçada telefondaki geçici dosya silinir.
-async function readNative(r) {
+async function readNative(r, len = 2 * 1024 * 1024) {
   const parts = [];
-  const len = 2 * 1024 * 1024;
   for (let off = 0; ; off += len) {
     const { data, done } = await plugin().cameraRead({ file: r.file, offset: off, length: len });
     const bin = atob(data || "");
@@ -55,6 +74,20 @@ async function readNative(r) {
     if (done || !bin.length) break;
   }
   return new Blob(parts, { type: r.type || "" });
+}
+
+// Galeriden video, kopyasız (Seyhun 2026-11-08 "galerimde zaten var, iki defa kullanmaya gerek yok"; VeloraKamera.swift galleryPick):
+// Fotoğraflar seçicisi; videonun kendisi alınmaz. Sonuç { items: [{ asset, dur (sn), at (ms), th }], miss } ya da null (vazgeçildi).
+// Bu parça olmadan kurulmuş eski uygulamada yok (hasGallery false; web dosya seçicisi kullanılır).
+export const hasGallery = () => typeof plugin()?.galleryPick === "function";
+export async function galleryPick() {
+  const r = await plugin().galleryPick({});
+  return r?.cancel ? null : { items: Array.isArray(r?.items) ? r.items : [], miss: r?.miss || 0 };
+}
+// Fotoğraflar'daki videonun oynatılacak / yüklenecek geçici kopyası (Blob, yalnız bellekte; telefondaki geçici dosya okununca silinir)
+export async function galleryBlob(asset) {
+  const r = await plugin().galleryOpen({ asset });
+  return readNative(r, 6 * 1024 * 1024);
 }
 
 // Plan alarmları: [{ key, at (ms), title }] (lib/planAlarm.js alarmItems). Sonuç { kind: "alarm" | "notification", count }
@@ -130,4 +163,37 @@ export const iosBadgeKind = () => {
 };
 export function setIosBadge(count) {
   return plugin()?.badge?.({ count }).catch(() => {});
+}
+
+// Pusula (Parkur › Pusula; VeloraPlugin.swift Pusula): kameranın baktığı yön, telefonun kendi pusulası gibi (yerçekimi + manyetik alan).
+// fn({ mag, true, acc }): true gerçek kuzey (konum izni yoksa -1), acc 0 ayarsız. Bu parça olmadan kurulmuş eski uygulamada yok (null).
+export const hasCompass = () => typeof plugin()?.compassStart === "function";
+export function startCompass(fn) {
+  const p = plugin();
+  if (typeof p?.compassStart !== "function" || !p.addListener) return null;
+  const h = p.addListener("compass", (e) => fn(e || {}));
+  p.compassStart().catch(() => {});
+  return () => {
+    Promise.resolve(h).then((x) => x?.remove?.()).catch(() => {});
+    p.compassStop?.().catch(() => {});
+  };
+}
+
+// Paylaş › Velora ile gelen dosyalar (WhatsApp'taki sonuç PDF'i ya da fotoğrafı; VeloraPaylas eki, Seyhun 2026-11-10).
+// Alınan dosyalar telefondan silinir. Bu parça olmadan kurulmuş eski uygulamada ve tarayıcıda boş liste.
+export const hasShare = () => typeof plugin()?.sharedTake === "function";
+export async function takeShared() {
+  const p = plugin();
+  if (typeof p?.sharedTake !== "function") return [];
+  try {
+    const { list = [] } = (await p.sharedTake()) || {};
+    return list.map((x) => {
+      const bin = atob(x.data || "");
+      const buf = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
+      return new File([buf], x.name || "sonuc.pdf", { type: x.type || "application/pdf" });
+    });
+  } catch {
+    return [];
+  }
 }

@@ -16,6 +16,7 @@ import { authFetch } from "@/lib/authFetch";
 import { db } from "@/lib/firebase/clientApp";
 import { KINDS, KIND_LABEL, RELATIONS, kindOf, shownLogin, suggestUsername, validUsername } from "@/lib/kinds";
 import { assigneesOf } from "@/lib/people";
+import { LoginResult } from "./LoginResult";
 import { TLk, totalOf } from "@/lib/receipts";
 import { isUpcoming } from "@/lib/utils/format";
 
@@ -33,9 +34,6 @@ const birthParts = (iso) => {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || "");
   return m ? { year: +m[1], month: +m[2], day: +m[3] } : null;
 };
-// Kolay paylaşım: giriş bilgileri WhatsApp ile
-const shareText = (name, login, pw) =>
-  `Merhaba ${name.split(" ")[0]}, Velora uygulamasına giriş bilgilerin:\n${typeof location !== "undefined" ? location.origin : ""}\nGiriş: ${login}\nŞifre: ${pw}\nGirdikten sonra şifreni Ayarlar'dan değiştirebilirsin.`;
 const randomPw = () => Array.from(crypto.getRandomValues(new Uint32Array(2)), (n) => n.toString(36)).join("").slice(0, 8);
 
 // Kişi ekle / düzenle (ana hesap): ad, tür, yakınlık/unvan, telefon, e-posta, doğum günü; hesap aç/kapat, şifre; sil.
@@ -53,6 +51,7 @@ export function PersonSheet({ open, onClose, person, defaultKind = "staff", init
       kind: kindOf(person || { kind: prefill?.kind || defaultKind }),
       relation: src.relation || "",
       title: src.title || "",
+      coach: src.coach === true,
       phone: src.phone || "",
       email: src.email || "",
       birth: src.birth || "",
@@ -84,6 +83,7 @@ export function PersonSheet({ open, onClose, person, defaultKind = "staff", init
       kind: f.kind,
       relation: f.kind === "family" ? f.relation : "",
       title: f.kind === "staff" ? f.title.trim() : "",
+      coach: f.kind === "staff" && f.coach,
       phone: f.phone.replace(/[^\d+ ]/g, "").trim(),
       email: f.email.trim().toLowerCase(),
       birth: f.birth,
@@ -108,7 +108,9 @@ export function PersonSheet({ open, onClose, person, defaultKind = "staff", init
         onClose(ref.id);
       } else {
         await updateDoc(doc(db, "orgs", myUid, "members", person.uid), data);
-        if (hasAccount && (name !== person.name || f.kind !== kindOf(person))) await call("PATCH", { uid: person.uid, name, kind: f.kind }).catch((err) => toast(err.message));
+        const coachNow = f.kind === "staff" && f.coach;
+        if (hasAccount && (name !== person.name || f.kind !== kindOf(person) || coachNow !== (person.coach === true)))
+          await call("PATCH", { uid: person.uid, name, kind: f.kind, coach: coachNow }).catch((err) => toast(err.message));
         await syncBirthday(person.uid, name);
         toast("Kaydedildi");
         onClose();
@@ -125,8 +127,8 @@ export function PersonSheet({ open, onClose, person, defaultKind = "staff", init
     if (!login.includes("@") && !validUsername(login)) return toast("Kullanıcı adı: en az 3 karakter; harf, rakam ve nokta");
     setBusy(true);
     try {
-      await call("POST", { memberId: person.uid, name: f.name.trim() || person.name, kind: f.kind, login, password: acc.password });
-      setMade({ login, password: acc.password });
+      const r = await call("POST", { memberId: person.uid, name: f.name.trim() || person.name, kind: f.kind, login, password: acc.password });
+      setMade({ login: r.member?.login || login, password: acc.password });
       toast("Hesap açıldı");
     } catch (err) {
       toast(err.message);
@@ -194,6 +196,12 @@ export function PersonSheet({ open, onClose, person, defaultKind = "staff", init
             </div>
           )}
           {f.kind === "staff" && <Field label="Görevi / unvanı (isteğe bağlı)" placeholder="Antrenör, muhasebe…" value={f.title} onChange={set("title")} />}
+          {/* Antrenör (Seyhun 2026-11-24): kendi Yönet ekranı açılır, kendi sporcularına link gönderir; verisi kulübünkinden ayrı */}
+          {f.kind === "staff" && (
+            <button type="button" onClick={() => setF((x) => ({ ...x, coach: !x.coach }))} aria-pressed={f.coach} className={chip(f.coach)}>
+              Antrenör
+            </button>
+          )}
           <div className="grid grid-cols-2 gap-3">
             <Field label="Telefon" type="tel" inputMode="tel" autoComplete="off" placeholder="05xx…" value={f.phone} onChange={set("phone")} />
             <Field label="Doğum günü" type="date" value={f.birth} onChange={set("birth")} />
@@ -246,28 +254,7 @@ export function PersonSheet({ open, onClose, person, defaultKind = "staff", init
 
       {(step === "account" || step === "password") &&
         (made ? (
-          <div className="space-y-3 pb-2">
-            <div className={section}>
-              <p className="text-[0.8125rem] text-mut">Giriş bilgileri — kişiye ilet:</p>
-              <p className="mt-1.5 text-[1rem]">
-                Giriş: <b className="font-semibold">{made.login}</b>
-              </p>
-              <p className="text-[1rem]">
-                Şifre: <b className="font-semibold tabular-nums">{made.password}</b>
-              </p>
-            </div>
-            <a
-              href={`https://wa.me/${(f.phone || "").replace(/\D/g, "").replace(/^0/, "90")}?text=${encodeURIComponent(shareText(f.name || person.name, made.login, made.password))}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex h-11 items-center justify-center gap-2 rounded-xl bg-[#25d366] text-[0.9375rem] font-semibold text-white"
-            >
-              <Icon name="whatsapp" className="size-5" /> WhatsApp ile gönder
-            </a>
-            <Button variant="ghost" onClick={() => onClose()}>
-              Tamam
-            </Button>
-          </div>
+          <LoginResult name={f.name || person.name} login={made.login} password={made.password} phone={f.phone} onDone={() => onClose()} />
         ) : (
           <form onSubmit={step === "account" ? openAccount : changePassword} className="space-y-4 pb-2">
             {step === "account" && (

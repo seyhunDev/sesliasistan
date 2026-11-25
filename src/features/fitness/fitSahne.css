@@ -1,0 +1,26 @@
+/* Fitness "Sahne" (Seyhun 2026-11-25 "Yap"; örnek project-files/fitness-sade/sahne.html): ana sayfadaki Sahne dili (features/home/sporcu.css) ile aynı.
+   Koyu zemin #0b0b0c, kutular #17171a, dar büyük başlık (Barlow Condensed, --lv-font-c), tek vurgu limon; turuncu yalnız antrenman kartında.
+   main.fs açıkken renk değişkenleri body'de de değişir: alttan açılan pencereler (Sheet, body'ye çizilir) ve alt çubuk da koyu olur. */
+.fs, body:has(main.fs), body.fs-body, .fs-root {
+  color-scheme: dark;
+  --bg: #0b0b0c; --card: #17171a; --fg: #fff; --fg2: #e4e4e7; --mut: #a1a1aa; --mut2: #71717a; --line: #26262b; --fill: #1f1f22;
+  --acc: #d4ff3a; --acc2: #d4ff3a; --on-acc: #111; --accbg: rgba(212, 255, 58, .12); --deep: #17171a;
+  --rec: #ff6b6b; --ok: #d4ff3a; --warn: #fbbf5c; --warnbg: rgba(251, 191, 92, .12);
+  --fs-lime: #d4ff3a; --fs-fit: #ff7a1a; --fs-red: #ff6b6b;
+}
+html:has(main.fs), body:has(main.fs) { background: #0b0b0c !important; }
+main.fs, .fs-root { background: #0b0b0c; color: #fff; }
+:is(.fs, .fs-root) .btn, body:is(:has(main.fs), .fs-body) .btn { --btn-gray: #1f1f22; }
+.fs-c { font-family: var(--lv-font-c), var(--font-num), system-ui, sans-serif; font-weight: 800; text-transform: uppercase; line-height: .9; letter-spacing: .01em; }
+.fs-k { font-size: .75rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--mut); }
+/* Üst çubuk: ana sayfadaki yuvarlak düğmeler, ortada küçük büyük harfli ad ve tarih, limon + */
+.fs-rb { width: 2.5rem; height: 2.5rem; border-radius: 50%; background: #1f1f22; border: 1px solid #2e2e33; color: #fff; display: grid; place-items: center; flex-shrink: 0; }
+.fs-rb.fs-add { background: var(--fs-lime); border-color: var(--fs-lime); color: #111; }
+.fs-date { flex: 1; min-width: 0; text-align: center; font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* Kutular ve satırlar */
+.fs-list { background: #17171a; border: 1px solid #26262b; border-radius: 1.25rem; overflow: hidden; }
+.fs-pill { border: 1.5px solid var(--fs-lime); color: var(--fs-lime); border-radius: 999px; padding: .4rem .85rem; font-weight: 800; font-size: .875rem; flex-shrink: 0; }
+.fs-pill.fs-g { border-color: #3f3f46; color: #fff; }
+/* Antrenman kartı: ana sayfadaki turuncu fitness kartı */
+.fs-hero { position: relative; border-radius: 1.5rem; overflow: hidden; border: 1px solid #3b2414;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 25%, rgba(0, 0, 0, .85)), radial-gradient(120% 90% at 85% 5%, #7c2d12, #120b06 70%); }

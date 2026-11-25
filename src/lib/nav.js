@@ -2,7 +2,7 @@
 // Yapay zekaya gitmeden çözülür (anında). Emin olunamayan cümlelerde null döner; o zaman yapay zekaya sorulur.
 // Dönüş: { page } | { back: true } | { chat: "team" | "family" | "athletes" } | { chatWith: "<kişi adı>" } | null
 
-// need: sayfayı kimler açabilir (AssistantSheet denetler) — athletes: sporcu yetkisi · athleteSide: sporcu/veli · owner: ana hesap · receipts: fiş ekleyebilen
+// need: sayfayı kimler açabilir (AssistantSheet denetler) — athletes: sporcu yetkisi · athleteSide: sporcu/veli · yonet: sporcu yetkisi ya da antrenör · owner: ana hesap · receipts: fiş ekleyebilen
 export const PAGES = {
   home: { path: "/", label: "Ana sayfa" },
   calendar: { path: "/calendar", label: "Takvim" },
@@ -25,8 +25,9 @@ export const PAGES = {
   attendance: { path: "/athletes/attendance", label: "Yoklama", need: "athletes" },
   athletes: { path: "/athletes", label: "Sporcular", need: "athletes" },
   races: { path: "/athletes/races", label: "Yarışlar", need: "athletes" },
+  raceCalendar: { path: "/races", label: "Yarış takvimi (bütün yarışlar, talimat, sonuçlar)" },
   training: { path: "/training", label: "Antrenman günlüğü" },
-  trainingDay: { path: "/training/day", label: "Antrenman sayfası (sayaç, yoklama, yarışlar)", need: "athletes" },
+  trainingDay: { path: "/bilgi/yonet", label: "Antrenman (Yönet: süre, yoklama, günlük)", need: "yonet" }, // ana hesap ya da antrenör
   weather: { path: "/weather", label: "Hava durumu" },
   wind: { path: "/wind", label: "Rüzgâr haritası" },
   sea: { path: "/sea", label: "Deniz trafiği (gemiler, Sahil Güvenlik, acil)" },
@@ -35,9 +36,10 @@ export const PAGES = {
   myAttendance: { path: "/my-attendance", label: "Yoklamam", need: "athleteSide" },
   shopping: { path: "/shopping", label: "Alışveriş listesi" },
   sanal: { path: "/sanal", label: "Market (Velora Sanal: market alışverişi, sipariş)" },
+  sailing: { path: "/sailing", label: "Velora Sailing (yelken kuralları, taktik animasyonları, simülatör)" },
   birthdays: { path: "/birthdays", label: "Doğum günleri" },
   schedule: { path: "/schedule", label: "Ders programı" },
-  english: { path: "/english", label: "İngilizce (kelimeler ve hazır cümleler)" },
+  english: { path: "/english", label: "İngilizce (kalıplar, kelimeler ve hazır cümleler)" },
   archive: { path: "/archive", label: "Arşiv" },
   settings: { path: "/settings", label: "Ayarlar" },
   people: { path: "/staff", label: "Kişiler", need: "owner" },
@@ -80,11 +82,12 @@ const TARGETS = [
   ["trainingDay", /(^|\s)(antrenman sayfa\S*|antrenman ekran\S*|sayaç\S*|geri sayım\S*)/],
   ["training", /(^|\s)(antrenman günlü\S*|günlü(k|ğü|ğe)\S*)(?=\s|$)/],
   ["dues", /(^|\s)(aidat\S*)(?=\s|$)/],
+  ["raceCalendar", /(^|\s)(yarış takvim\S*|ortak yarış\S*|tüm yarış\S*|bütün yarış\S*)/],
   ["races", /(^|\s)(yarış evrak\S*|yarışlar\S*|yarış sayfa\S*|evrak\S*)/],
   ["birthdays", /(^|\s)doğum ?gün\S*/],
   ["schedule", /(^|\s)(ders\S*|okul programı\S*)/],
   ["shopping", /(^|\s)(alışveriş\S*|market\S*|alınacak\S*)/],
-  ["english", /(^|\s)(ingilizce (sayfa|ekran|çalış|öğren|kelimeler|cümleler)\S*|kelimelerim\S*)|^ingilizce$/],
+  ["english", /(^|\s)(ingilizce (sayfa|ekran|çalış|öğren|kelimeler|cümleler|kalıp)\S*|kelimelerim\S*|kalıp\S* (ile |la |le )?(ingilizce )?(çalış|öğren|aç|göster)\S*)|^ingilizce$/],
   ["archive", /(^|\s)arşiv\S*/],
   ["settings", /(^|\s)(ayar\S*|tercih\S*)/],
   ["invoices", /(^|\s)fatura\S*/],
@@ -108,6 +111,9 @@ const TARGETS = [
 
 // Tek başına söylenen sayfa adları ("ayarlar", "ana sayfa", "planlar sayfası", "planlarım", "fişlerim")
 const BARE = /^(ana ?sayfa|ana ekran|ayarlar|(mesajlar|planlar|görevler|notlar|fişler|faturalar|ödemeler|yarışlar|derslerim|etkinlikler|gönderiler)(ım|im)?|[iı]nstagram|medya|ingilizce|takvim(im)?|notlarım|arşiv|kişiler|yoklama|yoklamam|yarış evrakı|alışveriş listesi|doğum günleri|dersler|ders programı|aidatlar|borçlar(ım)?|alacaklar(ım)?|antrenman günlüğü|antrenman sayfası|sayaç|geri sayım|envanter(im)?|demirbaşlar|fitness?|fitnes|beslenme|rüzg[aâ]r haritası|ruzgar haritası|windy|deniz trafiği|gemiler)( sayfası| ekranı)?$/;
+
+// İngilizce kalıp çalışma (fiil "çalış/öğren" sayfa açma fiili sayılmadığı için ayrı)
+const CHUNK_STUDY = /^(hadi |bana )?(ingilizce )?kalıp\S*( ile| la| le)?( ingilizce)?( (çalış|öğren|tekrar)\S*)?$/;
 
 // Önceki sayfaya dönüş ("geri dön", "geri git", "bir önceki sayfaya dön"): kısa ve başka iş içermeyen cümleler
 const BACK = /^(?:(?:tamam|şimdi|hadi|bir)\s+)?(?:geri (?:dön|git|gel|gidelim|dönelim)\S*|(?:bir )?önceki sayfa\S*(?: (?:dön|git|aç|geç)\S*)?|geri)(?: lütfen)?$/;
@@ -170,6 +176,8 @@ export function localNavigate(text, { names = [] } = {}) {
   if ((QUESTION.test(t) && !polite) || TIME_W.test(t) || OTHER_JOB.test(t)) return null;
   // "motor yağı görevini yeniden aç": kaydı yeniden açma (yapay zeka yapar), sayfa açma değil
   if (/(görev|not|plan)\S*\s+(yeniden|tekrar|geri)\s+aç/.test(t)) return null;
+  // "kalıp çalış", "ingilizce kalıp çalışalım", "kalıplarla ingilizce öğren": İngilizce sayfası (Kalıplar)
+  if (CHUNK_STUDY.test(t)) return { page: "english" };
   const verb = VERB.test(t) || polite;
   const chatWords = CHAT_W.test(t);
   const peopleWords = PEOPLE_W.test(t);

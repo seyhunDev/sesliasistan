@@ -1,12 +1,16 @@
 // Yarış multimedya sayfası işleri (elle yapılanların sesle yapılanı):
-// "rüzgar 15 knot kuzeybatı" → o günün yarışına rüzgâr kaydı (saat şimdi); "5 dakikalık sayacı başlat" → start sayacı başlar,
+// "rüzgar 15 knot kuzeybatı" → o günün yarışına rüzgâr kaydı (saat şimdi); "parkur ekseni 320", "pinden komite 110" → o günün
+// Parkur ölçümü, bir cümlede birkaçı da (Parkur sekmesindeki Yön ekle / Pusula ile aynı kayıt, kart hemen çizilir); "5 dakikalık sayacı başlat" → start sayacı başlar,
 // yarışın Süre sekmesi açılır (bugün yarış yoksa antrenman sayfası). Yarış: açık yarış ya da multimedya sayfası, yoksa bugün süren yarış.
 import { liveRace, timerCommand, windCommand, dirShort } from "@/lib/raceLive";
-import { addWind } from "@/features/athletes/raceLiveStore";
+import { addCourseMany, addWind, loadCourse, saveCourse } from "@/features/athletes/raceLiveStore";
+import { COURSE_WORD, cleanCourse, degText, cleanObs, courseAsk, courseCommand, courseRelative, courseUndo, obsTitle } from "@/lib/raceCourse";
+import { courseView } from "@/features/raceMedia/courseView";
+import { askCourseAi } from "@/services/courseService";
 import { startTimer } from "@/features/training/Countdown";
 import { todayStr } from "@/lib/utils/format";
 
-const pageRace = (path) => /^\/athletes\/races\/([\w-]+)(?:\/media)?$/.exec(path || "")?.[1] || "";
+const pageRace = (path) => /^\/athletes\/races\/([\w-]+)(?:\/media|\/yayin)?$/.exec(path || "")?.[1] || "";
 const raceFor = (ctx) => {
   const cur = pageRace(ctx.path);
   return liveRace(ctx.races?.current || [], todayStr(), cur && cur !== "new" ? cur : "");
@@ -14,7 +18,9 @@ const raceFor = (ctx) => {
 
 export async function windLogCmd(ctx, s, viaVoice) {
   const { owner, racer, raceOrg, reply, done, setPhase } = ctx;
-  const wc = owner && racer ? windCommand(s) : null;
+  // parkur cümlesinde birden çok ölçüm varsa (rüzgâr da içinde) parkura yazılır (courseCmd)
+  // Parkur sekmesi açıkken rüzgâr da parkura yazılır (courseCmd; "parkurdaki rüzgâr değişik", Seyhun 2026-10-29)
+  const wc = owner && racer && !courseView() && !(courseCommand(s)?.list.length > 1) ? windCommand(s) : null;
   if (!wc) return undefined;
   const r = raceFor(ctx);
   if (!r) {
@@ -38,10 +44,118 @@ export async function timerCmd(ctx, s, viaVoice) {
   const tc = racer ? timerCommand(s) : null;
   if (!tc) return undefined;
   const r = raceFor(ctx);
-  const own = r ? `/athletes/races/${r.id}/media` : "/training/day";
+  const own = r ? `/athletes/races/${r.id}/yayin` : "/bilgi/yonet"; // yarış yoksa antrenman: Yönet (2026-11-23)
   startTimer(tc.sec, r ? "start" : "", own); // sayaç gidilen sayfanın (kendi sayfasında görünür)
-  const href = r ? `${own}?tab=sure` : own;
+  const href = own;
   if (`${window.location.pathname}${window.location.search}` !== href) router.push(href);
   done(`Sayaç başladı: ${tc.sec / 60} dakika.`, { engine: "local" }, viaVoice);
+  return true;
+}
+
+// Ekrandaki parkurun son rüzgârı ve ekseni (yapay zekâya göreli cümleler için)
+function lastVals(c) {
+  const obs = cleanCourse(c || {}).obs;
+  const w = [...obs].reverse().find((x) => x.kind === "wind");
+  const a = [...obs].reverse().find((x) => x.kind === "axis");
+  return { wind: w ? { deg: w.deg, kn: w.kn } : null, axis: a ? a.deg : null };
+}
+
+// Parkur (Seyhun 2026-10-30 "parkurdaki asistan öncelikli olarak parkurla çalışmalı, yapay zekadan hızlıca cevap alalım"):
+// önce telefondaki kurallar (tek/çoklu ölçüm); Parkur sekmesi açıksa sorular ("hangi taraf avantajlı", "rüzgar ne kadar döndü"),
+// göreli cümleler ("rüzgar 10 derece sağa döndü", "2 knot düştü"), anlaşılmazsa parkur yapay zekâsı (/api/course-parse, ≤5 sn).
+// Yazılan yer: açık Parkur sekmesinin yarışı ve günü (courseView.js), yoksa bugün süren yarış.
+// Son parkur yazımı: hemen ardından "geri al" / "yanlış" denirse o ölçümler silinir (ses yanlış anladıysa)
+export const UNDO_MS = 3 * 60 * 1000;
+let lastWrite = null; // { t, org, id, day, ids, len, prevLen }
+export const courseJust = () => !!lastWrite && Date.now() - lastWrite.t < UNDO_MS;
+export const courseAt = () => lastWrite?.t || 0; // canlı ekranın "geri al"ı hangisinin son olduğuna bakar (canliEkran.js)
+
+export async function courseCmd(ctx, s, viaVoice) {
+  const { owner, racer, raceOrg, reply, done, setPhase } = ctx;
+  if (!owner || !racer) return undefined;
+  if (courseUndo(s) && courseJust()) {
+    const w = lastWrite;
+    lastWrite = null;
+    setPhase?.("thinking");
+    try {
+      const c = await loadCourse(w.org, w.id, w.day);
+      await saveCourse(w.org, w.id, w.day, { ...c, obs: c.obs.filter((o) => !w.ids.includes(o.id)), len: w.len ? w.prevLen || {} : c.len });
+      done("Geri aldım, son yazdığımı sildim.", { engine: "local" }, viaVoice);
+    } catch {
+      reply("Geri alamadım. Saha sekmesinde ölçüme dokunup Sil'e bas.", { fail: true, engine: "local" }, viaVoice);
+    }
+    return true;
+  }
+  const v = courseView();
+  const cur = v ? v.get() : null;
+  // Yayın › Parkur açık (Seyhun 2026-11-05 "ayrı Konuş olmasın, bizim asistan yapsın"): kart, rota, tür, grubun kartı ve ölçümler
+  // sekmenin kendi yazıcısıyla (apply); sorular ve parkurla ilgisiz cümleler aşağıya / diğer işlere geçer
+  if (v?.apply && !courseAsk(s, cur)) {
+    const { courseVoice } = await import("@/features/broadcast/courseVoice");
+    setPhase?.("thinking");
+    const r = await courseVoice(s, cur);
+    if (r.error) {
+      reply("Parkur için yapay zekâya ulaşamadım. Kısa söyle: “rüzgar 330, 12 knot”, “eksen 320”.", { fail: true, engine: "local" }, viaVoice);
+      return true;
+    }
+    if (r.need) {
+      reply(r.need === "axis" ? "Önce parkur eksenini söyle, örneğin “eksen 320”." : "Önce rüzgârın derecesini ve hızını söyle, örneğin “rüzgar 330, 12 knot”.", { engine: "local" }, viaVoice);
+      return true;
+    }
+    if (!r.none) {
+      try {
+        const said = (await v.apply(r)) || [];
+        done(said.length ? `Yazdım: ${said.map((x) => x.t).join(" · ")}.` : "Tamam.", { engine: "local" }, viaVoice);
+      } catch (e) {
+        reply(e?.message && !/fetch|network|permission/i.test(e.message) ? e.message : "Parkura yazamadım, tekrar dene.", { fail: true, engine: "local" }, viaVoice);
+      }
+      return true;
+    }
+  }
+  let cc = courseCommand(s);
+  if (!cc && v) {
+    const ans = courseAsk(s, cur);
+    if (ans) {
+      done(ans, { engine: "local" }, viaVoice);
+      return true;
+    }
+    const rel = courseRelative(s, cur);
+    if (rel?.need) {
+      reply(rel.need === "axis" ? "Önce parkur eksenini söyle, örneğin “eksen 320”." : "Önce rüzgârın derecesini ve hızını söyle, örneğin “rüzgar 330, 12 knot”.", { engine: "local" }, viaVoice);
+      return true;
+    }
+    if (rel) cc = rel;
+    else if (COURSE_WORD.test(String(s).toLocaleLowerCase("tr-TR")) || /\d/.test(s)) {
+      setPhase?.("thinking");
+      const ai = await askCourseAi(s, lastVals(cur));
+      if (ai.items) cc = { list: ai.items };
+      else if (ai.error) {
+        reply("Parkur için yapay zekâya ulaşamadım. Kısa söyle: “rüzgar 330, 12 knot”, “eksen 320”.", { fail: true, engine: "local" }, viaVoice);
+        return true;
+      }
+    }
+  }
+  if (!cc) return undefined;
+  const r = v ? { id: v.id } : raceFor(ctx);
+  if (!r) {
+    reply("Bugün süren bir yarış yok. Parkuru yarışın Saha sekmesinden ekleyebilirsin.", { engine: "local" }, viaVoice);
+    return true;
+  }
+  const day = v?.day || todayStr();
+  const at = Date.now();
+  // birkaç ölçüm aynı anda söylenince sıraları kalsın diye saatleri 1 ms arayla
+  const list = cc.list.filter((x) => x.obs).map((x, i) => cleanObs({ ...x.obs, at: new Date(at + i).toISOString() })).filter(Boolean);
+  const len = cc.list.find((x) => x.len)?.len || null;
+  if (!list.length && !len) return undefined;
+  setPhase?.("thinking");
+  try {
+    await addCourseMany(raceOrg, r.id, day, list, len);
+    lastWrite = { t: Date.now(), org: raceOrg, id: r.id, day, ids: list.map((o) => o.id), len: !!len, prevLen: cur ? cleanCourse(cur).len : null };
+    const said = list.map((o) => `${obsTitle(o)} ${degText(o)}${o.range ? " arası" : ""}${o.kn != null ? `, ${String(o.kn).replace(".", ",")} knot` : ""}`);
+    if (len) said.push(`orsa ayağı ${len.orsa} m`);
+    done(`Yazdım: ${said.join(" · ")}.`, { engine: "local" }, viaVoice);
+  } catch {
+    reply("Parkura yazamadım, tekrar dene.", { fail: true, engine: "local" }, viaVoice);
+  }
   return true;
 }

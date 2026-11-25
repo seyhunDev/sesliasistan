@@ -5,7 +5,7 @@
 // (EARLY dışındakiler taslak/kart cevabından sonra) çözülür.
 import { reportAsk } from "@/lib/assistReport";
 import { testsAsk } from "@/features/tests/testWords";
-import { chatOpAsk, isEnd, isNoMore, msgArchAsk, msgDeleteAsk, undoLast } from "@/lib/assistantLocal";
+import { chatOpAsk, chatReadAllAsk, isEnd, isNoMore, msgArchAsk, msgDeleteAsk, undoLast } from "@/lib/assistantLocal";
 import { wantsLog, bareLog, isLogAnswer } from "@/lib/trainingLog";
 import { wantsEvent } from "@/features/events/eventWords";
 import { wantsInventory } from "@/features/inventory/invWords";
@@ -40,12 +40,16 @@ import { inboxClearAsk } from "@/lib/inbox";
 import { resultsAsk } from "@/lib/resultSheet";
 import { debtAsk, debtCommand } from "@/lib/debts";
 import { wordCommand } from "@/lib/englishWords";
-import { timerCommand, windCommand } from "@/lib/raceLive";
-import { resultCommand } from "@/lib/raceVoice";
+import { grpCommand, timerCommand, windCommand } from "@/lib/raceLive";
+import { penCommand, roundCommand, routeCommand, screenCommand } from "@/lib/raceRounds";
+import { bilgiCommand } from "@/lib/bilgi";
+import { COURSE_WORD, courseAsk, courseCommand, courseRelative, courseUndo } from "@/lib/raceCourse";
+import { trainCommand, raceToday } from "@/lib/trainVoice";
 import { attQueryAsk } from "@/lib/attQuery";
 import { clubAsk } from "@/lib/clubAsk";
 import { infoAsk } from "@/lib/infoAsk";
 import { contactScanCommand } from "@/lib/contactQr";
+import { chatPlanAsk } from "@/lib/chatPlan";
 
 // Soru gibi (soru cümlesi ya da "göster", "listele", "özetle"): yerel akışlara cevap sayılmaz
 export const QUESTION = { test: (s) => isQuestion(s) || /(?<![\p{L}])(ne var|göster\p{L}*|listele\p{L}*|özetle\p{L}*)(?![\p{L}])/u.test(String(s || "").toLocaleLowerCase("tr-TR")) };
@@ -74,10 +78,19 @@ export function moreKind(s, c = {}) {
   // "ödenmemiş faturalar neler", "bu ay ne kadar harcadık", "okunmamış mesajım var mı"
   const ia = infoAsk(s, c.today || "2000-01-01");
   if (ia && (ia.kind !== "invoices" || owner)) return "infoAsk";
+  if (owner && bilgiCommand(s)) return "bilgi";
+  // Canlı ekran (isler/canliEkran.js): şamandıra dönüşü, parkur sırası, ekranda gösterme; az önce yazılan dönüşü "geri al"
+  if (owner && racer && (routeCommand(s) || roundCommand(s) || screenCommand(s) || grpCommand(s) || penCommand(s) || (c.roundJust && courseUndo(s)))) return "liveScreen";
+  // Antrenman sesle (isler/antrenmanSes.js; Yönet'in süresi): "2 dakika başlat", "sayacı bitir", "antrenmanı kaydet"; yarış günü Yönet dışında Yayın'ın
+  if (owner && racer && trainCommand(s) && (path.startsWith("/bilgi/yonet") || (!path.startsWith("/athletes/races/") && !raceToday(c.races || [], c.today || "2000-01-01")))) return "trainVoice";
   if (racer && timerCommand(s)) return "raceTimer";
+  if (owner && racer && c.courseJust && courseUndo(s)) return "raceCourse"; // parkura az önce yazılanı "geri al" / "yanlış"
+  if (owner && racer && courseCommand(s)?.list.length > 1) return "raceCourse"; // "rüzgar kuzeybatı 12 knot, eksen 320" parkura
+  // Parkur sekmesi açık (c.onCourse; uygulamada isler/yarisMedya courseView): soru, göreli cümle, rüzgâr ve sayılı/parkur sözlü her cümle parkura
+  if (owner && racer && c.onCourse && (courseCommand(s) || courseAsk(s, {}) || courseRelative(s, {}) || COURSE_WORD.test(s.toLocaleLowerCase("tr-TR")) || /\d/.test(s))) return "raceCourse";
   if (owner && racer && windCommand(s)) return "raceWind";
+  if (owner && racer && courseCommand(s)) return "raceCourse";
   if (onRace && racer && raceHereCommand(s)) return "raceHere";
-  if (owner && racer && !onRace && resultCommand(s)) return "trainResult";
   if (owner && receiptPayCommand(s)) return "receiptPay";
   if (owner && receiptScopeCommand(s)) return "receiptScope";
   if (owner && racer && absentNotifyCommand(s)) return "absent";
@@ -116,6 +129,14 @@ export function routesOf(s, c = {}) {
   const mf = messageFirst(s);
   const { owner, isStaff, racer, athleteSide, path = "", today = "" } = c;
   const nav = (x) => localNavigate(x, { names: c.names || [] });
+  // Parkura az önce sesle yazılan yanlışsa: "geri al", "yanlış", "sil" (3 dk içinde; isler/yarisMedya courseJust) son eklenen kayıt silmeden önce
+  if (owner && racer && c.courseJust && courseUndo(s)) add("more", { kind: "raceCourse" });
+  // Canlı ekrana az önce yazılan dönüş: "geri al" (3 dk; liveScreen/liveActions roundJust); "ekranda 1. yarışın startını göster" yarışı açmaz
+  if (owner && racer && c.roundJust && courseUndo(s)) add("more", { kind: "liveScreen" });
+  const scr = owner && racer && screenCommand(s);
+  if (scr) add("more", { kind: "liveScreen" });
+  // Bilgi ekranı (isler/bilgi.js): "bilgi ekranına yaz: …" Mesajlar'a değil ekrana gider
+  if (owner && bilgiCommand(s)) add("more", { kind: "bilgi" });
   // Adım adım antrenman ekranı açık: "tamam", "sonraki", "bu hareketi atla" ekrandaki antrenmanı yürütür
   if (c.guide && guideWord(s)) add("guide");
   if ((isEnd(s) && !mf) || (c.askedMore && isNoMore(s))) add("close");
@@ -130,10 +151,14 @@ export function routesOf(s, c = {}) {
   // Ana hesap: "Ali ile konuşmayı arşivle", "Ali'yle sohbeti herkes için sil" (silme onaylı; ChatProvider archive/deleteChat)
   const co = owner && !c.drafts ? chatOpAsk(s) : null;
   if (co) add("chatOp", { co });
+  if (!c.drafts && chatReadAllAsk(s)) add("chatReadAll");
+  // "Ali'nin attığı programı planlara ekle", "son dosyayı plana ekle": mesajdaki dosyadan plan (isler/mesajPlan.js)
+  const cp = !c.drafts && !athleteSide ? chatPlanAsk(s) : null;
+  if (cp) add("chatPlan", { cp });
   // Fitness sayfasında ya da açık fitness planında "bugünkü antrenmanı yaptım" fitness'tır, yelken günlüğü değil
   const fitFirst = c.fitHere && owner && !isStaff && wantsFitness(s, true);
   if (!mf && !athleteSide && !fitFirst && wantsLog(s) && bareLog(s)) add("logBare");
-  if (!mf && !athleteSide && !fitFirst && (wantsLog(s) || (c.logHere && isLogAnswer(s)))) add("log");
+  if (!mf && !athleteSide && !fitFirst && (wantsLog(s) || (c.logHere && isLogAnswer(s) && !trainCommand(s)))) add("log"); // Antrenman sayfasında "2 dakika başlat" günlük değil
   if (!mf && !isStaff && wantsEvent(s)) add("event");
   if (!mf && !isStaff && wantsInventory(s, !!c.invPage) && !nav(s)) add("inventory");
   // "Mete'nin kilosu 52" sporcunun ölçümüdür: Fitness sayfasında da beslenme/fitness'a gitmez
@@ -160,7 +185,7 @@ export function routesOf(s, c = {}) {
   if (!mf && !isStaff && !c.onPost && wantsPost(s)) add("post");
   const ra = !mf && owner && racer ? resultsAsk(s) : null;
   if (ra) add("results", { ra });
-  if (racer && (raceAsk(s) || (wantsRaceOpen(s) && /yarış|regat/i.test(s) && findRace(s, c.races || [], today)))) add("raceOpen");
+  if (racer && !scr && (raceAsk(s) || (wantsRaceOpen(s) && /yarış|regat/i.test(s) && findRace(s, c.races || [], today)))) add("raceOpen");
   if (wantsPerson(s) && !(owner && contactScanCommand(s)) && !(owner && racer && athleteCommand(s)?.op === "add")) add("person");
   // Halka açık kameralar: "kameraları aç", "Ayvalık kameralarını göster" (isler/kamera.js); tekil "kamerayı aç" fiş kamerasıdır
   const cq = !mf && !athleteSide ? camsAsk(s) : null;

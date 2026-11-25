@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Label, card } from "@/components/ui/Page";
 import { useToast } from "@/components/ui/ToastProvider";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { dropSheet, resultLine } from "@/lib/resultSheet";
 import { dropNoticeFile, loadNoticeFile } from "./noticeFile";
 import { importResults, importToast } from "./resultsImport";
@@ -11,13 +12,14 @@ import { dropSheetDoc } from "./raceLiveStore";
 
 const box = "h-10 w-16 rounded-lg bg-bg px-2 text-center text-[0.9375rem] tabular-nums outline-none focus:ring-1 focus:ring-acc";
 
-// Yarış başlayınca Sporcular sekmesinde: sonuç PDF'i yüklenir, yapay zeka listeyi okur, bizim sporcular bulunur;
+// Multimedya › Sonuçlar › "Elle yaz" penceresinde (upload=false; 2026-10-28 sonuçların tek yeri Multimedya; eskiden Sporcu sekmesindeydi): sonuç PDF'i yüklenir, yapay zeka listeyi okur, bizim sporcular bulunur;
 // her sporcuya kategori (Optimist Senior/Junior/Bambino, ILCA 4…) sırası ve kızlar sırası yazılır.
 // Belge yarışta saklanır (her cihazdan açılır). Belge yoksa sıra elle de yazılır (tekne sayısı + sıra).
 // Sporcu kartında yarış geçmişi, asistan ("Ali'nin sonuçları") ve Instagram sonuç gönderisi buradan beslenir.
 // athletes: yarıştaki sporcular; club: kulübün bütün etkin sporcuları (yarışta seçili olmayan bulunursa yarışa eklenir)
-export function RaceResults({ orgId, race, athletes, club = [], onChange, onAddAthletes, onOpen }) {
+export function RaceResults({ orgId, race, athletes, club = [], onChange, onAddAthletes, onOpen, upload: canUpload = true }) {
   const toast = useToast();
+  const ask = useConfirm();
   const res = race.results || { fleet: "", rows: {} };
   const files = res.files || [];
   const pickRef = useRef(null);
@@ -45,17 +47,20 @@ export function RaceResults({ orgId, race, athletes, club = [], onChange, onAddA
       toast(e?.message || "Belge açılamadı");
     }
   };
-  const drop = (meta) => {
-    if (!confirm("Bu sonuç belgesi ve ondan okunan sıralar silinsin mi?")) return;
-    onChange(dropSheet(res, meta.id));
-    dropNoticeFile(orgId, meta);
-    if (race.id) dropSheetDoc(orgId, race.id, meta.id);
-  };
+  const drop = (meta) =>
+    ask({
+      title: "Sonuç belgesi silinsin mi?",
+      text: "Ondan okunan sıralar da silinir.",
+      run: async () => {
+        await Promise.all([Promise.resolve(dropNoticeFile(orgId, meta)).catch(() => {}), race.id ? dropSheetDoc(orgId, race.id, meta.id) : null]);
+        onChange(dropSheet(res, meta.id));
+      },
+    });
 
   const sorted = [...athletes].sort((a, b) => (res.rows?.[a.id]?.place || 999) - (res.rows?.[b.id]?.place || 999));
   return (
     <>
-      <Label right={files.length ? `${files.length} belge` : ""}>SONUÇLAR</Label>
+      {canUpload && <Label right={files.length ? `${files.length} belge` : ""}>SONUÇLAR</Label>}
       <section className={`${card} overflow-hidden`}>
         {files.map((m) => (
           <div key={m.id} className="flex items-center gap-1 border-b border-line pl-4 pr-1.5">
@@ -71,19 +76,21 @@ export function RaceResults({ orgId, race, athletes, club = [], onChange, onAddA
             </button>
           </div>
         ))}
+        {canUpload && (
         <button type="button" onClick={() => pickRef.current?.click()} disabled={busy} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left text-acc disabled:opacity-60">
           <span className="grid size-10 shrink-0 place-items-center rounded-full bg-acc/10">
-            {busy ? <span className="size-5 animate-spin rounded-full border-2 border-acc/25 border-t-acc" /> : <Icon name="plus" className="size-5" />}
+            <Icon name="plus" className="size-5" />
           </span>
           <span className="min-w-0 flex-1">
-            <b className="block text-[0.9375rem] font-semibold">{busy ? "Sonuçlar okunuyor…" : files.length ? "Başka sonuç ekle" : "Sonuç PDF'i yükle"}</b>
-            <span className="block text-[0.8125rem] text-mut">{busy ? "Yarım dakika kadar sürebilir" : "Sporcularımızı bulur, genel, Junior ve kızlar sırasını yazar"}</span>
+            <b className="block text-[0.9375rem] font-semibold">{files.length ? "Başka sonuç ekle" : "Sonuç PDF'i yükle"}</b>
+            <span className="block text-[0.8125rem] text-mut">Sporcularımızı bulur, genel, Junior ve kızlar sırasını yazar</span>
           </span>
         </button>
+        )}
         <input ref={pickRef} type="file" accept="application/pdf,image/*,.pdf" className="hidden" onChange={(e) => (upload(e.target.files?.[0]), (e.target.value = ""))} />
 
         {sorted.length > 0 && (
-          <ul className="divide-y divide-line border-t border-line">
+          <ul className={`divide-y divide-line ${canUpload || files.length ? "border-t border-line" : ""}`}>
             {sorted.map((a) => {
               const x = res.rows?.[a.id];
               const line = x?.cls ? resultLine(x) : "";
@@ -110,7 +117,7 @@ export function RaceResults({ orgId, race, athletes, club = [], onChange, onAddA
           </label>
         )}
       </section>
-      <p className="mt-2 px-1 text-[0.75rem] text-mut">Önce genel sıra; Junior ve Bambino ayrıca kendi içinde, kızlar da kendi içinde sıralanır. Kızlar sırası için sporcu kartındaki cinsiyet kullanılır. Sonuçlar sporcu kartında da görünür.</p>
+      {canUpload && <p className="mt-2 px-1 text-[0.75rem] text-mut">Önce genel sıra; Junior ve Bambino ayrıca kendi içinde, kızlar da kendi içinde sıralanır. Kızlar sırası için sporcu kartındaki cinsiyet kullanılır. Sonuçlar sporcu kartında da görünür.</p>}
     </>
   );
 }

@@ -7,33 +7,58 @@ import { Countdown, useTimerRun } from "@/features/training/Countdown";
 import { mmss } from "@/lib/raceScore";
 import { saveBuoys } from "@/features/athletes/raceLiveStore";
 import { raceDays } from "@/features/athletes/raceWeather";
-import { COURSES, FLAGS, VOIDS, addBuoy, atOf, dropBuoy, nextBuoy, upSec, dirShort, dropRace, hm, newStart, raceName, raceTime, raceTitle, renumber, startsOn } from "@/lib/raceLive";
+import { COURSES, FLAGS, VOIDS, addBuoy, atOf, dropBuoy, finishRace, nextBuoy, upSec, dirShort, dropRace, hm, newStart, raceName, raceTime, raceTitle, renumber, startsOn } from "@/lib/raceLive";
 import { Button } from "@/components/ui/Button";
+import { FinishTap } from "@/features/training/TrainFlow";
+import { raceFinish, readTimer } from "@/features/training/Countdown";
 
 // Süre (Seyhun 2026-10-18): yarış akışı (useRaceFlow: Başlat · İptal · Yarışı bitir, sebep sorma, Geri al). Yarışlar bütün seri boyunca
 // numaralanır (2. gün 4. yarıştan devam eder); adı, saatleri ve iptal durumu dokununca değişir. Yarış günü sayfa bu sekmeyle açılır.
 // Düzen (Seyhun 2026-10-19 onayı, örnek yaris-tasarim/multimedya/sure-yeni-2.png): sayaca dokununca başlar; altta Start · Şamandıra ·
-// Finish kareleri; günün yarışları tek satır ("Liste ›" açar). Alt şeritte ana düğme (Başlat · Durdur · Devam · Bitir; rüzgâr Hava sekmesinde, çekim alttaki Kayıt ile; Seyhun 2026-10-22).
+// Finish kareleri; altında seçili günün yarışları liste (2026-10-28). Alt şeritte ana düğme (Başlat · Durdur · Devam · Bitir; rüzgâr Hava sekmesinde, çekim alttaki Kayıt ile; Seyhun 2026-10-22).
 // Sayaç dizisi: 5 dk açılır; başlatınca, 4:00 ve 1:00 kala, son 10 sn her saniye, 0'da uzun bip.
-const PRESETS = [60, 120, 300, 600];
 const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short", weekday: "short" });
 
-export function TimerTab({ orgId, race, day, live, onChange, rf, onReset }) {
+// Büyük sayaç lacivert üstte (RaceMedia Shell top), listesi ve kareler açık alanda
+// rec: ana düğmenin yanında Kayıt (Start sekmesi, Seyhun 2026-10-30)
+export function TimerHead({ race, live, rf, rec = null }) {
+  const tr = useTimerRun();
+  const cur = tr.t.end != null || tr.t.left != null ? live.starts.find((x) => x.id === rf.ridOf(tr.t)) : null;
+  return <Countdown dark mode="start" race={rf.flow} title={cur ? raceName(cur) : ""} where={race?.name || "Yarış"} bottom rec={rec} />;
+}
+
+// Start sekmesi (Seyhun 2026-10-30, yaris-yapi "Süre ve Medya birleşir"): günün yarışları listesi; her yarışın çekimleri kendi satırında
+// (MediaTab list ile). useStartList satırları, Yarış ekle'yi, Start · Şamandıra · Finish karelerini ve düzenleme penceresini verir.
+export function TimerTab(props) {
+  const L = useStartList(props);
+  return (
+    <>
+      {L.marks}
+      <Label right={L.today.length || ""}>Yarışlar</Label>
+      <ul className={`${card} divide-y divide-line overflow-hidden`}>
+        {L.empty}
+        {[...L.today].reverse().map((s) => (
+          <li key={s.id}>{L.row(s)}</li>
+        ))}
+        <li>{L.add}</li>
+      </ul>
+      {L.sheet}
+    </>
+  );
+}
+
+export function useStartList({ orgId, race, day, live, onChange, rf, ours = [] }) {
   const tr = useTimerRun();
   const timer = tr.t;
   const [edit, setEdit] = useState(null); // düzenlenen yarış
-  const [list, setList] = useState(false); // bugünün yarışları (eskiden sayfanın altındaki liste)
   const { flow, ridOf, save, undo } = rf;
   const cur = timer.end != null || timer.left != null ? live.starts.find((x) => x.id === ridOf(timer)) : null; // durmuş geri sayım da (Devam bekler)
   const rdays = raceDays(race);
   const add = () => {
-    setList(false);
     const now = new Date();
     const s = newStart(live.starts, atOf(day, `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`), live.wind, null, rdays);
     if (s) setEdit({ ...s, fresh: true });
   };
-  // Yarışlar gün gün; seçili gün en üstte, sonra öbür günler yeniden eskiye
-  const days = [...new Set(live.starts.map((x) => x.day))].sort((a, b) => (a === day ? -1 : b === day ? 1 : b.localeCompare(a)));
   // Kareye dokununca o yarışın startından beri geçen süre yazılır (8 sn "Geri al")
   const mark = (b) => {
     if (!cur || timer.end == null) return;
@@ -43,81 +68,54 @@ export function TimerTab({ orgId, race, day, live, onChange, rf, onReset }) {
     undo(`${b} · ${mmss(sec)}`, before);
   };
   const setBuoys = (next) => onChange({ buoys: next }, () => saveBuoys(orgId, race.id, next));
-  const state = (s) => (s.void ? "" : s.fin ? raceTime(s) : cur?.id === s.id ? (tr.up ? "yarışta" : "geri sayım") : "");
+  const state = (s) => (s.void ? "" : s.fin ? `${raceTime(s)} sürdü` : cur?.id === s.id ? (tr.up ? "yarışta" : "geri sayım") : "");
 
   const today = startsOn(live.starts, day);
-  const last = [...today].reverse().find((x) => x.fin && !x.void);
+  // Bitiren kim? (yeni akış, Seyhun 2026-11-01): bu yarıştaki sporcularımız; dokununca sıra ve süre start satırına (fins) yazılır,
+  // hepsi dokununca yarış biter
+  const people = ours.map((a) => ({ id: a.id, name: a.studentName || a.name || "" })).filter((a) => a.name);
+  const asRace = (s) => ({ id: s.id, name: raceName(s), startAt: Date.parse(s.at), finishes: s.fins || [] });
+  const withFins = (id, fins, list = live.starts) => list.map((x) => (x.id === id ? { ...x, fins } : x));
+  const finishAll = (x) => {
+    const t = readTimer();
+    const before = live.starts;
+    const next = finishRace(withFins(cur.id, x.finishes), cur.id, stamp(), rdays);
+    save(next);
+    if (ridOf(t) === cur.id) raceFinish(null);
+    const s = next.find((o) => o.id === cur.id);
+    undo(`${raceName(s)} bitti${raceTime(s) ? ` · ${raceTime(s)}` : ""}`, before, t);
+  };
 
-  return (
-    <>
-      <Countdown
-        mode="start"
-        presets={PRESETS}
-        race={flow}
-        title={cur ? raceName(cur) : ""}
-        where={race?.name || "Yarış"}
-        bottom
-      />
-      {!!cur && tr.up && !cur.void && <Marks buoys={live.buoys} s={cur} on onMark={mark} onBuoys={setBuoys} />}
-      <button type="button" onClick={() => setList(true)} data-press="row" className="mt-3 flex w-full items-center justify-between px-1 py-1 text-left text-[0.875rem]">
-        <span className="min-w-0 truncate text-mut">
-          {today.length ? `Bugün ${today.length} yarış${last ? ` · son ${raceName(last)} ${raceTime(last)}` : ""}` : "Bugün yarış yok"}
+  return {
+    today,
+    marks:
+      !!cur && tr.up && !cur.void ? (
+        <>
+          {people.length > 0 && <FinishTap race={asRace(cur)} people={people} onSave={(x) => save(withFins(cur.id, x.finishes))} onAll={finishAll} />}
+          <Marks buoys={live.buoys} s={cur} on onMark={mark} onBuoys={setBuoys} />
+        </>
+      ) : null,
+    empty: today.length ? null : <li className="px-4 py-3 text-[0.875rem] text-mut">Bu gün yarış yok. Sıradaki: {flow.label}</li>,
+    row: (s) => (
+      <button type="button" onClick={() => setEdit(s)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
+        <span className="min-w-0 flex-1">
+          <b className={`block text-[0.9375rem] font-semibold ${s.void ? "text-mut" : ""}`}>{raceTitle(s)}</b>
+          {(cdText(s) || s.fins?.length || s.course || s.flag || s.note || Object.keys(s.marks).length > 0) && (
+            <span className="block truncate text-[0.8125rem] text-mut">{[cdText(s), finLine(s), s.course, s.flag, s.fins?.length ? "" : markLine(live.buoys, s), s.note].filter(Boolean).join(" · ")}</span>
+          )}
         </span>
-        <b className="shrink-0 font-semibold">Liste ›</b>
+        <span className="shrink-0 text-right text-[0.875rem] text-mut tabular-nums">
+          {[hm(s.at), s.kn != null && s.dir != null ? `${dirShort(s.dir)} ${s.kn} kn` : ""].filter(Boolean).join(" · ")}
+          {state(s) && <small className={`block text-[0.75rem] ${s.fin ? "" : "font-semibold text-acc"}`}>{state(s)}</small>}
+        </span>
       </button>
-      <Sheet open={list} onClose={() => setList(false)} title="Yarışlar">
-        {list && (
-          <div className="-mt-3 pb-2">
-            {!days.includes(day) && (
-              <>
-                <Label>{dayLabel(day)}</Label>
-                <p className={`${card} px-4 py-4 text-center text-[0.875rem] text-mut`}>Bu gün yarış yok. Sıradaki: {flow.label}</p>
-              </>
-            )}
-            {days.map((d) => {
-              const list = startsOn(live.starts, d);
-              return (
-                <section key={d}>
-                  <Label right={list.length}>{dayLabel(d)}</Label>
-                  <ul className={`${card} divide-y divide-line overflow-hidden`}>
-                    {[...list].reverse().map((s) => (
-                      <li key={s.id}>
-                        <button type="button" onClick={() => setEdit(s)} data-press="row" className="flex w-full items-center gap-3 px-4 py-3 text-left">
-                          <span className="min-w-0 flex-1">
-                            <b className={`block text-[0.9375rem] font-semibold ${s.void ? "text-mut" : ""}`}>{raceTitle(s)}</b>
-                            {(s.course || s.flag || s.note || Object.keys(s.marks).length > 0) && (
-                              <span className="block truncate text-[0.8125rem] text-mut">{[s.course, s.flag, markLine(live.buoys, s), s.note].filter(Boolean).join(" · ")}</span>
-                            )}
-                          </span>
-                          <span className="shrink-0 text-right text-[0.875rem] text-mut tabular-nums">
-                            {[hm(s.at), s.kn != null && s.dir != null ? `${dirShort(s.dir)} ${s.kn} kn` : ""].filter(Boolean).join(" · ")}
-                            {state(s) && <small className={`block text-[0.75rem] ${s.fin ? "" : "font-semibold text-acc"}`}>{state(s)}</small>}
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                    {d === day && (
-                      <li>
-                        <button type="button" onClick={add} data-press="row" className="w-full px-4 py-3 text-left text-[0.9375rem] font-semibold text-acc">
-                          Yarış ekle
-                        </button>
-                      </li>
-                    )}
-                  </ul>
-                </section>
-              );
-            })}
-            {!days.includes(day) && (
-              <button type="button" onClick={add} data-press className="btn btn-text btn-sm mt-2 w-full text-acc">
-                Yarış ekle
-              </button>
-            )}
-            <button type="button" onClick={() => (setList(false), onReset?.())} data-press className="btn btn-danger btn-sm mt-6 w-full">
-              Denemeleri sıfırla
-            </button>
-          </div>
-        )}
-      </Sheet>
+    ),
+    add: (
+      <button type="button" onClick={add} data-press="row" className="w-full px-4 py-3 text-left text-[0.9375rem] font-semibold text-acc">
+        Yarış ekle
+      </button>
+    ),
+    sheet: (
       <Sheet open={!!edit} onClose={() => setEdit(null)} title={edit ? raceTitle(edit) : ""}>
         {edit && (
           <StartForm
@@ -140,8 +138,8 @@ export function TimerTab({ orgId, race, day, live, onChange, rf, onReset }) {
           />
         )}
       </Sheet>
-    </>
-  );
+    ),
+  };
 }
 
 function StartForm({ s, onSave, onDrop }) {
@@ -196,7 +194,7 @@ function StartForm({ s, onSave, onDrop }) {
 
 // Parkur noktaları: dokununca startan beri geçen süre; sıradaki çerçeveli. + / − şamandıra ekler, çıkarır.
 // Yalnız açılmış yarış startı geçmişken görünür (Seyhun 2026-10-21: "Yarışta göster"; düz startta boş duruyordu).
-// Start · Şamandıra · Finish kareleri (antrenman sayfası da kullanır, training/day): kareye dokununca startan beri geçen süre yazılır
+// Start · Şamandıra · Finish kareleri: kareye dokununca startan beri geçen süre yazılır
 export function Marks({ buoys, s, on, onMark, onBuoys }) {
   const next = on ? nextBuoy(buoys, s) : "";
   const small = "grid flex-1 place-items-center rounded-[0.625rem] border border-line bg-card text-[1.0625rem] text-fg2 active:bg-bg disabled:opacity-40";
@@ -226,6 +224,13 @@ export function Marks({ buoys, s, on, onMark, onBuoys }) {
     </div>
   );
 }
+// Kaç dakikalık startla (geri sayımın başladığı an → start anı; Seyhun 2026-11-01)
+const cdText = (s) => {
+  const m = s.cd && s.at ? Math.round((Date.parse(s.at) - Date.parse(s.cd)) / 60000) : 0;
+  return m > 0 && m <= 60 ? `${m} dk start` : "";
+};
+const stamp = () => Date.now();
+const finLine = (s) => (s.fins || []).map((f, i) => `${i + 1} ${String(f.name).split(" ")[0]}`).join(" · ");
 const markLine = (buoys, s) =>
   buoys
     .filter((b) => s.marks?.[b] != null)

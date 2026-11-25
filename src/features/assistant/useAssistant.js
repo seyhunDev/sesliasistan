@@ -33,7 +33,7 @@ import { PAGES, isCloseNow, isEnd } from "@/lib/assistantLocal";
 import { useBirthday } from "@/features/birthdays/BirthdayProvider";
 import { useChat } from "@/features/chat/ChatProvider";
 import { unglue } from "@/lib/speech/normalize";
-import { GROUPS, canReceipts, isAthleteSide, waPhone } from "@/lib/kinds";
+import { GROUPS, canReceipts, isAthleteSide, isCoach, waPhone } from "@/lib/kinds";
 import { extraNote } from "@/lib/steps";
 import * as is_kayit from "./isler/kayit";
 import * as is_mesaj from "./isler/mesaj";
@@ -63,7 +63,7 @@ export const HANDS_FREE = false;
 // Yalnız bas-konuş (Seyhun 2026-10-25: "otomatik açılma falan yok, sadece bas konuş"): basılı tutarken dinler, bırakınca
 // gönderir; soru sorulunca ya da okuma bitince mikrofon kendiliğinden açılmaz. PRESS_MIN'den kısa basış dokunuştur
 export const PUSH_TALK = true;
-export const PRESS_MIN = 300;
+export const PRESS_MIN = 200; // 300 iken tek kelimelik hızlı cevap ("evet") dokunuş sayılıp atılabiliyordu
 // Eller serbest sohbette: konuşma bitince (bu kadar sessizlikte) söylenen kendiliğinden gönderilir; kısa duraksama kesmez
 export const ENDPOINT = HANDS_FREE ? 1500 : 0; // canlı yazı yolunda konuşma bitişi (devam edilirse öncekine eklenir)
 export const listenOpts = (auto) => (HANDS_FREE ? { autoStop: SILENCE_MS, auto, endpoint: ENDPOINT, handsFree: true } : {});
@@ -192,7 +192,7 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
   const live = useRef({});
 
   // Mesaj alıcıları: sohbet rehberindeki kişiler (ana hesap "ana hesap" adıyla da bulunur)
-  const { people: chatPeople = [], send: chatSend, remove: chatRemove, restore: chatRestore, purge: chatPurge, archive: chatArchive, deleteChat: chatDelete, chatRef, uid: myUid, groupIds = [], chats = [], createGroup } = useChat() || {};
+  const { people: chatPeople = [], send: chatSend, remove: chatRemove, restore: chatRestore, purge: chatPurge, archive: chatArchive, deleteChat: chatDelete, markRead: chatMarkRead, chatRef, uid: myUid, groupIds = [], chats = [], createGroup } = useChat() || {};
   const { startCall, busy: callBusy } = useCall() || {}; // "Ali'yi ara": uygulama içi sesli arama
   const contacts = chatPeople.map((p) => ({ name: p.name || "", aliases: p.role === "owner" ? ["ana hesap", "patron"] : [], p })).filter((c) => c.name);
   // Mesajlar'da kurulan gruplar (üyesi olduklarım) da alıcıdır
@@ -244,7 +244,8 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
         run(merged, true);
       } else run(text ? `${text} ${tx}` : tx, true);
     },
-    onFail: (m) => toast(m),
+    // retry: çevrilemeyen kayıt saklandı; bildirimdeki "Tekrar dene" aynı sesi yeniden gönderir (yeniden konuşmak gerekmez)
+    onFail: (m, retry) => toast(m, retry ? { action: { label: "Tekrar dene", onClick: retry }, duration: 8000 } : undefined),
     onMiss: () => {
       const f = parked.current;
       parked.current = null;
@@ -494,6 +495,7 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
   const canOpen = (page) => {
     const need = PAGES[page]?.need;
     if (need === "athletes") return canSeeAthletes(profile?.email);
+    if (need === "yonet") return canSeeAthletes(profile?.email) || isCoach(profile);
     if (need === "athleteSide") return isAthleteSide(myKind);
     if (need === "owner") return !isStaff;
     if (need === "receipts") return canReceipts(myKind);
@@ -1039,6 +1041,6 @@ export function useAssistant({ open, onClose, seed, onLive, onAct }) {
   // Tek görünüm: konuşma alttaki yeşil kubbenin (TabBar › Dome) içindeki yuvaya çizilir; ayrı pencere yok
   // Taşınan işler (isler/, beyin/) bileşenin durumuna ve yardımcılarına ctx ile ulaşır; her çizimde yenilenir
   // eslint-disable-next-line react-hooks/refs -- ref nesneleri yalnız iletilir; .current olaylarda okunur
-  Object.assign(ctx, { armSave, flushAuto, readMode, sessionsNow, showPage, AMB, actNow, fitOthers, aiLesson, allMembers, askAI, askAll, askDelete, askOk, askTasks, askTo, askedMore, athAsk, attAsk, attHere, birthdays, by, callBusy, canAssign, canOpen, cancelPending, cancelRun, cards, chain, chainGen, chainRace, chainStep, chatArchive, chatDelete, chatPurge, chatRef, chatRemove, chatRestore, chatSend, chats, clearSay, club, confirmPending, contactNames, contacts, continuePerson, convo, createAs, createGroup, ctrl, curRace, dataUid, deleteRecord, deleteSeries, done, draftMeta, draftSay, draftSrc, drafts, dropDrafts, enqueueSay, eventFlow, extra, failNow, find, finish, firstName, flowOf, focusRef, go, goRace, groupIds, handle, heard, heldQ, holdIfTalking, inflight, invAsk, invDelete, invFlow, invHere, invPage, isLocked, isStaff, leave, lessons, listenOnce, listenWhileThinking, live, logFlow, markPaid, setReceiptScope, members, memo, memoSet, msgDraft, myGroups, myKind, myUid, nameIdx, nextInChain, nextStep, notes, okFlow, onClose, openAdd, openBirthday, openChatAt, openMeeting, openNav, openPost, openRace, openReceipt, openRecord, owner, park, parked, past, pastOn, pastTurns, path, personAccount, personCancel, personCard, personFlow, personOpenAccount, personSave, personUndo, personUndoAsk, planCutN, planFails, planIdx, planKind, planLearn, planNow, planOn, planTimeAsk, plans, preferRef, prepareBatch, prepareSend, profile, queue, raceChoices, raceFailed, raceFollow, raceOrg, racer, races, ready, receipts, refineDrafts, rejectDelete, reply, resolveTo, restAfterAtt, router, run, runAttendance, runDebt, runWords, runEvent, runExtra, runFitness, runFood, runId, runInventory, runInvoice, runLocal, runLog, runMore, runNow, runPayee, runPost, runRace, runResults, runSchedule, runShopAdd, runShopMark, runShopRead, runStep, sameIn, saveAtt, saveBirthday, saveDrafts, saveDraftsNow, saveHereRace, sayQ, sayRace, sentOk, setCards, setDrafts, setError, setHeard, setPhase, setPlan, setPrefer, setSaved, setSteps, setStreamText, setText, setTurns, setVoice, setWork, skipRace, sp, speaking, speakingRef, staff, staffNames, startAuto, startCall, startDrafts, startPerson, startPlan, startPost, stepPerson, stepTo, stepsEnd, stopPlan, streamSaid, tasks, toast, toggleTask, tts, turns, updateRecord, waPeople, waitFor, withAssignees });
+  Object.assign(ctx, { armSave, flushAuto, readMode, sessionsNow, showPage, AMB, actNow, fitOthers, aiLesson, allMembers, askAI, askAll, askDelete, askOk, askTasks, askTo, askedMore, athAsk, attAsk, attHere, birthdays, by, callBusy, canAssign, canOpen, cancelPending, cancelRun, cards, chain, chainGen, chainRace, chainStep, chatMarkRead, chatArchive, chatDelete, chatPurge, chatRef, chatRemove, chatRestore, chatSend, chats, clearSay, club, confirmPending, contactNames, contacts, continuePerson, convo, createAs, createGroup, ctrl, curRace, dataUid, deleteRecord, deleteSeries, done, draftMeta, draftSay, draftSrc, drafts, dropDrafts, enqueueSay, eventFlow, extra, failNow, find, finish, firstName, flowOf, focusRef, go, goRace, groupIds, handle, heard, heldQ, holdIfTalking, inflight, invAsk, invDelete, invFlow, invHere, invPage, isLocked, isStaff, leave, lessons, listenOnce, listenWhileThinking, live, logFlow, markPaid, setReceiptScope, members, memo, memoSet, msgDraft, myGroups, myKind, myUid, nameIdx, nextInChain, nextStep, notes, okFlow, onClose, openAdd, openBirthday, openChatAt, openMeeting, openNav, openPost, openRace, openReceipt, openRecord, owner, park, parked, past, pastOn, pastTurns, path, personAccount, personCancel, personCard, personFlow, personOpenAccount, personSave, personUndo, personUndoAsk, planCutN, planFails, planIdx, planKind, planLearn, planNow, planOn, planTimeAsk, plans, preferRef, prepareBatch, prepareSend, profile, queue, raceChoices, raceFailed, raceFollow, raceOrg, racer, races, ready, receipts, refineDrafts, rejectDelete, reply, resolveTo, restAfterAtt, router, run, runAttendance, runDebt, runWords, runEvent, runExtra, runFitness, runFood, runId, runInventory, runInvoice, runLocal, runLog, runMore, runNow, runPayee, runPost, runRace, runResults, runSchedule, runShopAdd, runShopMark, runShopRead, runStep, sameIn, saveAtt, saveBirthday, saveDrafts, saveDraftsNow, saveHereRace, sayQ, sayRace, sentOk, setCards, setDrafts, setError, setHeard, setPhase, setPlan, setPrefer, setSaved, setSteps, setStreamText, setText, setTurns, setVoice, setWork, skipRace, sp, speaking, speakingRef, staff, staffNames, startAuto, startCall, startDrafts, startPerson, startPlan, startPost, stepPerson, stepTo, stepsEnd, stopPlan, streamSaid, tasks, toast, toggleTask, tts, turns, updateRecord, waPeople, waitFor, withAssignees });
   return { photoIn, auto, WA_PICK, listenOnce, abort, busy, cancelPending, cards, confirmPending, continuePerson, docked, done, draftMeta, drafts, dropDrafts, editDraftsFull, error, eventDelete, eventFlow, find, finish, go, goRace, heard, invDelete, invFlow, listening, nextStep, okFlow, openAdd, park, personAccount, personCancel, personEdit, personOpenAccount, personSave, personUndo, personUndoAsk, plan, plans, prefer, router, run, runEvent, saveDraftsNow, saved, setCards, setSendText, setTurns, setUsed, sp, streamText, toggleTask, transcribing, tts, turns, undoAtt, used, voice, wait, history };
 }

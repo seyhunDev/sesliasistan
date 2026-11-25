@@ -29,6 +29,7 @@ export const TASKS = [
   { id: "send", group: "Mesaj", name: "Uygulama içi mesaj (kişi ya da grup)", say: "Ali'ye yaz, yarın 9'da iskelede olsun", who: "herkes", by: "yz", confirm: true, doing: "Tamam, mesajı hazırlıyorum.", work: "Mesaj hazırlanıyor" },
   { id: "group", group: "Mesaj", name: "Gruba mesaj (Ekip, Sporcular, kurulan gruplar)", say: "sporculara söyle antrenman iptal", who: "herkes", by: "yz", confirm: true, doing: "Tamam, grup mesajını hazırlıyorum.", work: "Grup mesajı hazırlanıyor" },
   { id: "msgDelete", group: "Mesaj", name: "Mesaj silme / arşiv", say: "son mesajımı sil", who: "herkes", by: "yerel", confirm: true, doing: "Tamam, son mesajına bakıyorum.", work: "Mesaj arşive kaldırılıyor" },
+  { id: "chatReadAll", group: "Mesaj", name: "Tümünü okundu say", say: "tüm mesajları okundu say", who: "herkes", by: "yerel" },
   { id: "chatOp", group: "Mesaj", name: "Sohbet arşivi", say: "Ali ile konuşmayı arşivle", who: "ana", by: "yerel", confirm: true },
   { id: "whatsapp", group: "Mesaj", name: "WhatsApp mesajı", say: "Ali'ye WhatsApp'tan yaz, yarın gelsin", who: "herkes", by: "yz", confirm: true, doing: "Tamam, WhatsApp mesajını hazırlıyorum.", work: "WhatsApp mesajı hazırlanıyor" },
 
@@ -76,7 +77,9 @@ export const TASKS = [
   { id: "results", group: "Kulüp", name: "Sporcunun yarış sonuçları", say: "Ali'nin sonuçları; Foça yarışında Ali kaçıncı oldu", who: "ana", by: "yerel" },
   { id: "hotel", group: "Kulüp", name: "Açık yarışa otel ekleme", say: "otel ekle: Foça Palas, 0232 812 34 56", who: "sporcu", by: "yerel" },
   { id: "raceWind", group: "Kulüp", name: "Rüzgâr kaydı", say: "rüzgar 15 knot kuzeybatı", who: "ana", by: "yerel" },
-  { id: "raceTimer", group: "Kulüp", name: "Start sayacı", say: "5 dakikalık sayacı başlat", who: "sporcu", by: "yerel" },
+  { id: "raceCourse", group: "Kulüp", name: "Parkur derecesi (eksen, rüzgâr, pin/komite hattı, şamandıra)", say: "parkur ekseni 320; pinden komite 110; rüzgar 330 derece 12 knot", who: "ana", by: "yerel" },
+  { id: "liveScreen", group: "Kulüp", name: "Şamandıra dönüşü, ekranda video", say: "birinci şamandıra 1302 1287", who: "ana", by: "yerel" },
+  { id: "raceTimer", group: "Kulüp", name: "Sayaç, yarışı bitir", say: "2 dakika başlat; yarışı bitir, birinci Ali ikinci Ayşe", who: "sporcu", by: "yerel" },
   { id: "absent", group: "Kulüp", name: "Gelmeyenlerin velilerine haber (onayla)", say: "gelmeyenlerin velilerine haber ver", who: "ana", by: "yerel", confirm: true },
   { id: "invoiceTask", group: "Kulüp", name: "Faturayı görevliye verme, fatura silme (onayla)", say: "Turkcell faturasını Ali'ye ver; Turkcell faturasını sil", who: "ana", by: "yerel", confirm: true },
   { id: "receiptPay", group: "Kulüp", name: "Çalışanın fişini ödendi yapma", say: "F-0012 fişini ödendi yap; Ali'nin fişlerini ödedim", who: "ana", by: "yerel" },

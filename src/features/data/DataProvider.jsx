@@ -18,6 +18,12 @@ import { inboxBadge } from "@/lib/inbox";
 import { iosBadgeKind, setIosBadge } from "@/lib/nativeIos";
 import { seriesDates } from "@/lib/repeat";
 import { canSeeAthletes } from "@/features/athletes/access";
+import { readWarmData, saveWarmData, slim } from "@/lib/warmStart";
+import { pulseSync } from "@/lib/syncLine";
+import { trainingShares } from "@/lib/sporcuPaylas";
+import { isAthleteSide, kindOf } from "@/lib/kinds";
+import { isTraining } from "@/lib/trainingLog";
+import { todayStr } from "@/lib/utils/format";
 
 // Bu alanlardan biri değişince kayıttaki kişilere "değişti" bildirimi gider
 const CHANGE_KEYS = ["title", "date", "endDate", "time", "allDay", "place", "due", "body", "status"];
@@ -32,6 +38,7 @@ const NAMES = { plan: "Plan", task: "Görev", note: "Not", receipt: "Fiş", birt
 // Kişiye özel kayıtlar: çalışan da kendi eklediğini onaysız siler (Firestore kuralları da izin verir)
 const PERSONAL = ["birthday", "lesson"];
 const UNDO_MS = 5000; // silme bu süre boyunca geri alınabilir
+const SYNC_MS = 20e3; // anında açılıştan sonra bu süre içinde gelen farklar üstte ince çizgiyle gösterilir (SyncLine)
 const SEEN_MS = 5 * 60e3;
 // Okuma tasarrufu (ana hesap): 90 günden eski planlar canlı dinlenmez; günde bir kez sunucudan okunur, arada cihazdaki
 // önbellekten gösterilir (yerel değişiklikler de görünür). Uygulama her açılışta tüm planları yeniden saymaz.
@@ -93,9 +100,14 @@ export function DataProvider({ children }) {
   const uid = profile?.uid ?? null;
   const orgId = profile?.orgId ?? null;
   const staff = profile?.role === "staff";
-  const [data, setData] = useState(EMPTY);
+  const side = staff && isAthleteSide(kindOf(profile)); // sporcu tarafı hesap
+  // Anında açılış (lib/warmStart.js): önceki açılışın kopyası varsa ekran onunla hemen çizilir, dinleyiciler arkada tazeler
+  const [warm0] = useState(() => readWarmData(uid, orgId, staff));
+  const warmKey = useRef(warm0 ? `${uid}|${orgId}|${staff}` : ""); // kopyanın ait olduğu oturum
+  const full = useRef(false); // her liste en az bir kez geldi (kopyaya yarım veri yazılmaz)
+  const [data, setData] = useState(() => (warm0 ? { ...EMPTY, ...warm0 } : EMPTY));
   const [members, setMembers] = useState([]); // ana hesabın çalışanları: [{ uid, name, email }]
-  const [ready, setReady] = useState(false);
+  const [ready, setReady] = useState(!!warm0);
   const cur = useRef(data); // geri çağrılarda her zaman güncel veri
   cur.current = data;
 
@@ -113,6 +125,18 @@ export function DataProvider({ children }) {
   useEffect(() => {
     if (owner && uid && attAt === null && canSeeAthletes(email)) updateDoc(doc(db, "users", uid), { attAt: "on" }).catch(() => {});
   }, [owner, uid, attAt, email]);
+
+  // Ana hesabın antrenman planları uygulamadaki sporculara açılır (people'a eklenir; lib/sporcuPaylas.js). Yalnız eksik olana yazılır.
+  const sharedRef = useRef(new Set());
+  useEffect(() => {
+    if (!owner || !uid || !orgId) return;
+    for (const x of trainingShares(data.plans, members, uid, todayStr())) {
+      const key = `${x.id}|${x.people.join()}`;
+      if (sharedRef.current.has(key)) continue;
+      sharedRef.current.add(key);
+      updateDoc(doc(db, "orgs", orgId, "plans", x.id), { people: x.people, ...(x.cat ? { cat: x.cat } : {}) }).catch(() => {});
+    }
+  }, [owner, uid, orgId, data.plans, members]);
 
   const memRef = useRef([]);
   useEffect(() => {
@@ -192,15 +216,28 @@ export function DataProvider({ children }) {
       setReady(true);
       return;
     }
-    setReady(false);
-    setData(EMPTY);
+    // Kopyayla açıldıysa ekran boşaltılmaz; gelen liste kopyadan farklıysa üstte ince çizgi (SyncLine) görünür
+    const key = `${uid}|${orgId}|${staff}`;
+    const warm = warmKey.current === key;
+    if (!warm) warmKey.current = "";
+    full.current = false;
+    if (!warm) {
+      setReady(false);
+      setData(EMPTY);
+    }
+    const syncUntil = warm ? Date.now() + SYNC_MS : 0;
+    const changed = (k, rows, snap) => {
+      if (Date.now() < syncUntil && !snap.metadata.hasPendingWrites && slim(rows) !== slim(cur.current[k])) pulseSync();
+    };
     const loaded = new Set();
     const done = (k) => {
       loaded.add(k);
-      if (loaded.size === COLS.length) setReady(true);
+      if (loaded.size === COLS.length) (full.current = true), setReady(true);
     };
     const put = (k) => (snap) => {
-      setData((p) => ({ ...p, [k]: snap.docs.map((d) => ({ ...d.data(), id: d.id })) }));
+      const rows = snap.docs.map((d) => ({ ...d.data(), id: d.id }));
+      changed(k, rows, snap);
+      setData((p) => ({ ...p, [k]: rows }));
       done(k);
     };
     const bad = (k) => (err) => {
@@ -211,10 +248,17 @@ export function DataProvider({ children }) {
     // Ana hesabın planları üç parça: son 90 gün ve sonrası (canlı), tarihsiz (canlı), daha eskiler (günde bir kez)
     const ownerPlans = () => {
       const col = collection(db, "orgs", orgId, "plans");
-      const parts = { live: [], none: [], old: [] };
-      const show = () => setData((p) => ({ ...p, plans: [...new Map([...parts.old, ...parts.none, ...parts.live].map((x) => [x.id, x])).values()] }));
-      const rows = (snap) => snap.docs.map((d) => ({ ...d.data(), id: d.id }));
       const cutoff = ymdLocal(new Date(Date.now() - OLD_DAYS * 864e5));
+      // Kopyayla açıldıysa parçalar kopyadan başlar: önce gelen parça diğerlerini bir an silmesin
+      const wp = warm ? cur.current.plans || [] : [];
+      const parts = { live: wp.filter((x) => x.date >= cutoff), none: wp.filter((x) => !x.date), old: wp.filter((x) => x.date && x.date < cutoff) };
+      const merged = () => [...new Map([...parts.old, ...parts.none, ...parts.live].map((x) => [x.id, x])).values()];
+      const show = (snap) => {
+        const plans = merged();
+        if (snap) changed("plans", plans, snap);
+        setData((p) => ({ ...p, plans }));
+      };
+      const rows = (snap) => snap.docs.map((d) => ({ ...d.data(), id: d.id }));
       const oldQ = query(col, where("date", ">", ""), where("date", "<", cutoff));
       // Sunucudan tazele (günde bir kez ya da önbellek boşsa); sonuç önbelleğe yazılır, aşağıdaki dinleyici gösterir
       // (Cihaz önbelleği kapalıysa, ör. gizli pencere, boş önbellek sunucudan gelen listeyi silmez.)
@@ -241,8 +285,8 @@ export function DataProvider({ children }) {
         },
         () => {},
       );
-      const a = onSnapshot(query(col, where("date", ">=", cutoff)), (snap) => ((parts.live = rows(snap)), show(), done("plans")), bad("plans"));
-      const b = onSnapshot(query(col, where("date", "==", "")), (snap) => ((parts.none = rows(snap)), show()), () => {});
+      const a = onSnapshot(query(col, where("date", ">=", cutoff)), (snap) => ((parts.live = rows(snap)), show(snap), done("plans")), bad("plans"));
+      const b = onSnapshot(query(col, where("date", "==", "")), (snap) => ((parts.none = rows(snap)), show(snap)), () => {});
       return () => {
         alive = false;
         a();
@@ -250,10 +294,31 @@ export function DataProvider({ children }) {
         c();
       };
     };
+    // Sporcu tarafı hesap (sporcu, öğrenci, veli): kendi planlarına ek olarak alanın antrenman planları (tür "Antrenman") doğrudan,
+    // people'da olmasa da (Seyhun 2026-11-25 "eklediğim antrenmanı bütün sporcularım görebilmeli"; firestore.rules). Kural yayınlanmadıysa
+    // ikinci dinleyici sessizce boş kalır, people yolu çalışır.
+    const sidePlans = () => {
+      const col = collection(db, "orgs", orgId, "plans");
+      const parts = { mine: [], club: [] };
+      const show = (snap) => {
+        const plans = [...new Map([...parts.club, ...parts.mine].map((x) => [x.id, x])).values()];
+        if (snap) changed("plans", plans, snap);
+        setData((p) => ({ ...p, plans }));
+      };
+      const rows = (snap) => snap.docs.map((d) => ({ ...d.data(), id: d.id }));
+      const a = onSnapshot(query(col, where("people", "array-contains", uid)), (snap) => ((parts.mine = rows(snap)), show(snap), done("plans")), bad("plans"));
+      const b = onSnapshot(query(col, where("cat", "==", "Antrenman")), (snap) => ((parts.club = rows(snap).filter((p) => !p.fit)), show(snap)), () => {});
+      return () => {
+        a();
+        b();
+      };
+    };
     const unsubs = COLS.map((k) =>
       !staff && k === "plans"
         ? ownerPlans()
-        : onSnapshot(
+        : staff && side && k === "plans"
+          ? sidePlans()
+          : onSnapshot(
         staff
           ? query(collection(db, "orgs", orgId, k), where("people", "array-contains", uid))
           : k === "birthdays" || k === "lessons" // doğum günleri ve ders programı kişiye özel: ana hesap da yalnızca kendi eklediklerini görür
@@ -268,7 +333,7 @@ export function DataProvider({ children }) {
       clearTimeout(t);
       unsubs.forEach((u) => u());
     };
-  }, [uid, orgId, staff, toast]);
+  }, [uid, orgId, staff, side, toast]);
 
   // Ana hesap: çalışan listesi (isimleri göstermek ve atama için)
   useEffect(() => {
@@ -329,6 +394,8 @@ export function DataProvider({ children }) {
           if (base.assignees.length || me.current.staff) toNotify.push(["plan", planIds[i]]);
           const rec = {
             ...base,
+            // Adında antrenman geçen Genel plan "Antrenman" türünde kaydedilir: sporcular kuralla doğrudan görür (2026-11-25)
+            ...(!side && base.cat === "Genel" && isTraining({ title: d.title }) ? { cat: "Antrenman" } : {}),
             title: d.title.trim(),
             date: d.date,
             endDate: d.endDate && d.endDate !== d.date ? d.endDate : "", // dahil (son gün)
@@ -344,7 +411,11 @@ export function DataProvider({ children }) {
             ...(d.alarm != null ? { alarm: d.alarm } : {}), // iPhone alarmı (lib/planAlarm.js)
             ...(d.log ? { log: d.log } : {}), // antrenman günlüğüyle açılan plan
             ...(d.important ? { important: true } : {}), // Önemli (elle ya da sesle; lib/planImportant.js)
+            ...(d.raceId ? { raceId: d.raceId } : {}), // yarıştan eklenen plan: dokununca yarış sayfası (features/athletes/raceLinks.js)
+            ...(d.fromMsg ? { fromMsg: String(d.fromMsg).slice(0, 120) } : {}), // mesajdaki dosyadan eklenen plan (lib/chatPlan.js): "sohbet/mesaj"
           };
+          // Yeni antrenman: uygulamadaki sporculara da bildirim gider (sunucu seçer; lib/notifyRules trainees). Sporcunun eklediği hariç.
+          if (!side && isTraining(rec) && !toNotify.some(([, x]) => x === planIds[i])) toNotify.push(["plan", planIds[i]]);
           ids.push(["plan", planIds[i]]);
           // Haftalık tekrar: her hafta için ayrı plan (seriesId ortak); bildirim yalnız ilki için
           const dates = d.repeat === "week" && !rec.endDate ? seriesDates(d.date, d.repeatUntil) : [];
@@ -400,7 +471,7 @@ export function DataProvider({ children }) {
       if (st === "slow") checkWrites(); // üstteki şerit: "kaydedildi, bağlantı gelince gönderilecek"
       return { ...count, ids, queued: st === "slow" && offline };
     },
-    [getOrgId, fail, notifyAssign],
+    [getOrgId, fail, notifyAssign, side],
   );
 
   // Başkasının eklediği kayıt (çalışan için): değiştirilemez, silinemez
@@ -601,6 +672,19 @@ export function DataProvider({ children }) {
     if (!u) return;
     updateDoc(doc(db, "users", u), { viewing: key ? { key, at: new Date().toISOString() } : deleteField() }).catch(() => {});
   }, []);
+
+  // Anında açılış kopyası: veri değişince kısa aralıkla (ve uygulama arkaya geçerken) telefona yazılır (lib/warmStart.js)
+  useEffect(() => {
+    if (!uid || !orgId || !ready) return;
+    const save = () => full.current && saveWarmData(uid, orgId, staff, cur.current);
+    const t = setTimeout(save, 1500);
+    const onHide = () => document.visibilityState === "hidden" && save();
+    document.addEventListener("visibilitychange", onHide);
+    return () => {
+      clearTimeout(t);
+      document.removeEventListener("visibilitychange", onHide);
+    };
+  }, [data, uid, orgId, staff, ready]);
 
   // Uygulama açıkken gelen yeni kayıtlar bu kişiye "iletildi" (bildirim kapalı olsa da)
   useEffect(() => {

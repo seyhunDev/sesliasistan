@@ -27,6 +27,8 @@ export async function authFetch(url, options = {}) {
     const headers = new Headers(options.headers);
 
     try {
+        // Anında açılışta ekran oturumdan önce çizilir (lib/warmStart.js): oturum henüz gelmediyse istek onu bekler
+        if (!auth.currentUser) await auth.authStateReady();
         const user = auth.currentUser;
         if (user) {
             const token = await user.getIdToken();

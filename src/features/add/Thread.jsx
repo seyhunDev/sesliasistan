@@ -45,11 +45,11 @@ export function Thread({ turns, ask, canFix, onFix, extra, typeLast = false }) {
   const lastUser = turns.map((t) => t.role).lastIndexOf("user");
 
   return (
-    <div className="mt-4 space-y-3.5">
+    <div className="athread mt-4 space-y-3.5">
       {turns.map((t, i) =>
         t.role === "user" ? (
           // Söylenen söz alttaki kutudan sohbete geçer: kutu boşalınca balon aşağıdan yükselerek belirir (Seyhun 2026-10-25)
-          <div key={i} className="auser-in flex flex-col items-end">
+          <div key={i} data-role="user" className="auser-in flex flex-col items-end">
             <p data-user-bubble="" className="max-w-[85%] rounded-[1.25rem] rounded-br-md bg-acc/10 px-3.5 py-2 text-[0.9375rem] leading-snug">{t.text}</p>
             {canFix && i === lastUser && (
               <button onClick={onFix} data-press className="btn btn-text btn-sm mt-1 text-mut">

@@ -204,6 +204,11 @@ group("iPhone widget ve titreşim")([
     { id: "g", title: "Antrenman", date: "2026-10-07" },
     { id: "h", title: "Antrenman", date: "2026-10-08" },
   ], { today: "2026-10-05" }), ok: (r) => r.map((x) => x.id).join() === "b,a,g" && r[0].time === "16:00" && r[0].place === "Dikili" }],
+  ["widget yarış yeri", { desc: "Foça'daki yarış: yer adı ilçe, Dikili'ye 10 km'den yakınsa ya da konumsuzsa yok", fn: () => {
+    const r = { id: "r", name: "Ege Kupası", startDate: "2026-10-26", endDate: "2026-10-28" };
+    const home = { lat: 39.0717, lon: 26.8886 };
+    return [WD.widgetRace(r, { place: "Foça, İzmir", lat: 38.67, lon: 26.75 }, home), WD.widgetRace(r, { place: "Dikili", lat: 39.075, lon: 26.89 }, home), WD.widgetRace(r, null, home), WD.widgetRace(null, { lat: 1, lon: 1 }, home)];
+  }, ok: ([a, b, c, d]) => a?.place === "Foça" && a.name === "Ege Kupası" && a.end === "2026-10-28" && a.lat === 38.67 && b === null && c === null && d === null }],
   ["widget aidat", { desc: "yalnız bu ayın özeti", fn: () => [WD.widgetDues({ ym: "2026-10", paidCount: 9, count: 14 }, "2026-10"), WD.widgetDues({ ym: "2026-09", paidCount: 9, count: 14 }, "2026-10")], ok: ([a, b]) => a.paid === 9 && a.count === 14 && b === null }],
   ["titreşim türü", { desc: "8 hafif, 14 orta, 30 güçlü, [10,40,10] başarı, uzun dizi hata", fn: () => [8, 14, 30, [10, 40, 10], [30, 50, 30, 50, 30], 0].map(HP.kindOf).join(), ok: (r) => r === "light,medium,heavy,success,error," }],
 ]);
@@ -212,13 +217,13 @@ group("iPhone widget ve titreşim")([
 const WT = await import("@/lib/watchTimer");
 const N0 = 1_000_000;
 group("Saatten sayaç")([
-  ["saatten başlat", F("5 dk start dizisi, bugünkü antrenmanın sayfası", () => { const r = WT.watchTimerAct({ dur: 120, end: null, left: null, zero: 5 }, "start", { sn: 300, own: "/training/day?id=a", where: "Antrenman", now: N0 }); return r.end === N0 + 300000 && r.dur === 300 && r.mode === "start" && r.own === "/training/day?id=a" && r.zero === 5; })],
+  ["saatten başlat", F("5 dk start dizisi, sayacın sahibi Yönet", () => { const r = WT.watchTimerAct({ dur: 120, end: null, left: null, zero: 5 }, "start", { sn: 300, own: "/bilgi/yonet", where: "Antrenman", now: N0 }); return r.end === N0 + 300000 && r.dur === 300 && r.mode === "start" && r.own === "/bilgi/yonet" && r.zero === 5; })],
   ["durdur ve devam", F("kalan saniye saklanır, devamda yeniden akar", () => { const p = WT.watchTimerAct({ dur: 300, end: N0 + 252000, left: null }, "pause", { now: N0 }); const r = WT.watchTimerAct(p, "resume", { now: N0 + 5000 }); return p.end === null && p.left === 252 && r.end === N0 + 257000 && r.left === null; })],
   ["±1 dk", F("süre kayar, 1 dakikadan azken −1 yapılmaz", () => WT.watchTimerAct({ dur: 300, end: N0 + 252000 }, "add", { sn: 60, now: N0 }).end === N0 + 312000 && WT.watchTimerAct({ dur: 300, end: N0 + 30000 }, "add", { sn: -60, now: N0 }) === null)],
   ["bitir", F("start anı yarış için kalır", () => { const r = WT.watchTimerAct({ dur: 300, end: N0 - 4000, mode: "start" }, "finish", { now: N0 }); return r.end === null && r.left === null && r.zero === N0 - 4000; })],
   ["yarışa bağlı sayaç", F("saatte yalnız görünür, değiştirilmez", () => WT.watchTimerAct({ dur: 300, end: N0 + 9000, rid: "s1" }, "pause", { now: N0 }) === null && WT.watchTimerView({ dur: 300, end: N0 + 9000, rid: "s1", mode: "start" }, { now: N0 }).lock)],
   ["saatin gördüğü", F("çalışan start dizisi 5 4 1 0, adı", () => { const v = WT.watchTimerView({ dur: 300, end: N0 + 252000, mode: "start", where: "Antrenman" }, { now: N0 }); return v.state === "run" && v.steps.join() === "5,4,1,0" && v.title === "Antrenman"; })],
-  ["bugünkü antrenman", F("Başlat'ın üstünde ad ve saat", () => { const r = WT.watchTraining([{ id: "b", title: "Antrenman", date: "2026-10-06", time: "10:00" }, { id: "a", title: "Optimist", date: "2026-10-05", time: "16:00" }], "2026-10-05"); return r.label === "Optimist · bugün 16:00" && r.own === "/training/day?id=a" && WT.watchTraining([], "2026-10-05").own === "/training"; })],
+  ["bugünkü antrenman", F("Başlat'ın üstünde ad ve saat", () => { const r = WT.watchTraining([{ id: "b", title: "Antrenman", date: "2026-10-06", time: "10:00" }, { id: "a", title: "Optimist", date: "2026-10-05", time: "16:00" }], "2026-10-05"); return r.label === "Optimist · bugün 16:00" && r.own === "/bilgi/yonet" && WT.watchTraining([], "2026-10-05").own === "/training"; })],
 ]);
 
 // Takvim, görev grupları, doğum günleri (agenda.js)
@@ -363,6 +368,7 @@ const TPL = [
   { id: "5", title: "Toplantı", cat: "Toplantı", date: "2026-10-02" },
 ];
 group("Antrenman günlüğü")([
+  ["bugünün antrenmanı Yönet'te", F("bugünkü plan Bilgi Yönet (kanal adı, ant), başka gün günlük listesi; Yönet'te Antrenman penceresi, eski sayfa Yönet'e gider (Seyhun 2026-11-17, 2026-11-23)", async () => { const a = TL.antYonet({ id: "p1", title: "Optimist & ILCA", date: "2026-11-17" }, "2026-11-17"); const fs = await import("node:fs"); const r = (f) => fs.readFileSync(new URL(`../../../src/${f}`, import.meta.url), "utf8"); return a === "/bilgi/yonet?ant=p1&ad=Optimist%20%26%20ILCA" && TL.antYonet({ id: "p2", date: "2026-11-18" }, "2026-11-17") === "/training" && /setSheet\("ant"\)/.test(r("features/bilgi/BilgiAdmin.jsx")) && /AntrenmanSheets/.test(r("features/bilgi/BilgiAdmin.jsx")) && /bilgi\/yonet\?ant=/.test(r("app/(app)/training/day/page.jsx")); })],
   ["temizle", F("sayılar, yön, tekrar eden konu", () => { const l = TL.cleanLog({ wind: "14,4", dir: "Lodos", topics: ["Start", "Start", " "], min: "abc", rating: "3", note: " iyi " }); return l.wind === 14 && l.dir === "Lodos" && l.topics.length === 1 && l.min === null && l.rating === 3 && l.note === "iyi" && !!l.at; })],
   ["boş günlük", F("null (silinir)", () => TL.cleanLog({ wind: "", topics: [], note: " " }) === null)],
   ["satır", F("12 kn Poyraz · Start, Rota · 90 dk", () => TL.logLine(TPL[0].log) === "12 kn Poyraz · Start, Rota · 90 dk")],
@@ -617,6 +623,18 @@ group("Aidat tablosu")([
     const d = DU.dropGroup(DA[0], m, h.find((g) => g.key === "g1"));
     const d2 = DU.dropGroup(DA[0], m, h.find((g) => g.key === "m9"));
     return h.length === 2 && h[0].key === "m9" && h[1].amt === 3000 && h[1].months.join() === "2026-09,2026-10" && !d["2026-09"].paid.a1 && d["2026-10"].paid.a1.length === 1 && d2["2026-10"].used.length === 0;
+  })],
+  ["ödemenin ayını değiştir", F("Kasım'a yazılmış 1 Ekim ödemesi Ekim'e taşınır; tarih ve banka hareketi aynı kalır", () => {
+    const m = { "2026-10": {}, "2026-11": { paid: { a1: [{ amt: 1500, via: "eft", date: "01.10.2026", mov: "m1", at: "x3" }] } } };
+    const g = DU.historyOf(DA[0], m, ["2026-10", "2026-11"])[0];
+    const out = DU.moveGroup(DA[0], m, g, ["2026-10"], DCFG);
+    const p = out["2026-10"].paid.a1[0];
+    return !out["2026-11"].paid.a1 && p.amt === 1500 && p.mov === "m1" && p.date === "01.10.2026";
+  })],
+  ["sonraki aya kendiliğinden yazılmaz", F("ödeme ayına kadar borç yoksa ödeme ayına yazılır", () => {
+    const m = { "2026-10": { paid: { a1: [{ amt: 1500 }] } } };
+    const r = DU.allocate(1500, DA[0], DCFG, m, ["2026-10", "2026-11"].filter((x) => x <= "2026-10"), null, "2026-10");
+    return r.length === 1 && r[0].ym === "2026-10";
   })],
 ]);
 
@@ -880,11 +898,11 @@ group("Ana sayfa kartları")([
     const t = HT.trainingTile(plans, "2026-10-03");
     return t.big === "3 antrenman" && t.sub === "1 günlük yazılmadı" && t.warn;
   })],
-  ["işlemler: ana hesap", F("gruplu, Envanter ve Toplantı var, Instagram Sosyal grubunda, tek tip", () => {
+  ["işlemler: ana hesap", F("6 grup + en sonda Gizli (Toplantı, Doğum günü, Gemiler, Kameralar, Instagram; Seyhun 2026-11-25), tek Yarışlar, Rüzgâr yerine Hava, Antrenman adı Yönet, tek tip", () => {
     const g = HT.homeActions({ owner: true, athletes: true, races: true, training: true, receipts: true });
     const a = g.flatMap((x) => x.items);
     const l = a.map((x) => x.label);
-    return g.map((x) => x.title).join(",") === "Günlük,Kulüp,Yönetim,Sosyal" && l[0] === "Planlar" && l.includes("Envanter") && l.includes("Fiş / Fatura") && l.includes("Aidatlar") && a.find((x) => x.href === "/training/day")?.label === "Antrenman" && a.find((x) => x.href === "/training")?.label === "Ant. günlüğü" && a.find((x) => x.id === "meeting") && g[3].items[0].brand === "instagram" && a.every((x) => x.icon && x.label && x.label.length <= 12 && (x.href || x.id)) && new Set(a.map((x) => x.href || x.id)).size === a.length;
+    return g.map((x) => x.title).join(",") === "Günlük,Kulüp,Para,Hava ve deniz,Kişisel,Kişiler ve sosyal,Gizli" && l[0] === "Planlar" && l.includes("Görevler") && l.includes("Envanter") && l.includes("Fiş / Fatura") && l.includes("Aidatlar") && l.includes("Hava") && a.find((x) => x.href === "/bilgi/yonet")?.label === "Yönet" && !a.some((x) => ["/training", "/races", "/wind"].includes(x.href)) && l.filter((x) => x === "Yarışlar").length === 1 && a.find((x) => x.id === "meeting") && g[6].items.map((x) => x.label).join(",") === "Toplantı,Doğum günü,Gemiler,Kameralar,Instagram" && HT.homeActions({}).flatMap((x) => x.items).find((x) => x.label === "Yarışlar")?.href === "/races" && a.every((x) => x.icon && x.label && x.label.length <= 12 && (x.href || x.id)) && new Set(a.map((x) => x.href || x.id)).size === a.length;
   })],
   ["işlemler: çalışan ve veli", F("çalışana Envanter/Kişiler yok; veliye Toplantı yok, Yoklama var; boş grup yok", () => {
     const sg = HT.homeActions({ staff: true, receipts: true });
@@ -893,35 +911,21 @@ group("Ana sayfa kartları")([
     const p = pg.flatMap((x) => x.items.map((i) => i.label));
     return !s.includes("Envanter") && !s.includes("Kişiler") && s.includes("Fiş / Fatura") && !s.includes("Instagram") && !p.includes("Toplantı") && p.includes("Yoklama") && !p.includes("Fiş / Fatura") && !p.includes("Antrenman") && [...sg, ...pg].every((x) => x.items.length);
   })],
-  ["kısayollar: varsayılan", F("ana hesapta Planlar, Notlar, Sporcular, Yoklama, Toplantı, Envanter, Fiş / Fatura; en çok 7", () => {
-    const g = HT.homeActions({ owner: true, athletes: true, races: true, training: true, receipts: true });
-    const k = HT.shortcutsOf(g).map(HT.linkKey);
-    return k.join(",") === "/plans,/notes,/athletes,/athletes/attendance,meeting,/inventory,/receipts";
+  ["işlemler: sporcu", F("Yarışlarım (yalnız kayıtlı yarışlar), genel Yarışlar yok; İngilizce ve Velora Sailing var (Seyhun 2026-11-25)", () => {
+    const a = HT.homeActions({ staff: true, side: true }).flatMap((x) => x.items);
+    const has = (h) => a.some((x) => x.href === h);
+    return has("/my-races") && !has("/races") && !has("/athletes/races") && has("/english") && has("/sailing") && a.find((x) => x.href === "/my-races").label === "Yarışlarım";
   })],
-  ["kısayollar: çalışan ve seçim", F("eksik varsayılan sırayla tamamlanır; seçim uygulanır, olmayan sayfa atlanır; 7'den fazla eklenmez", () => {
-    const sg = HT.homeActions({ staff: true, receipts: true });
-    const s = HT.shortcutsOf(sg);
-    const g = HT.homeActions({ owner: true, athletes: true, races: true, training: true, receipts: true });
-    const p = HT.shortcutsOf(g, ["/dues", "/yok", "/posts"]).map(HT.linkKey);
-    const full = ["a", "b", "c", "d", "e", "f", "g"];
-    return s.length === Math.min(7, sg.flatMap((x) => x.items).length) && s[0].label === "Planlar" && s.every(Boolean) && p.join(",") === "/dues,/posts" && HT.toggleShortcut(full, "h") === null && HT.toggleShortcut(full, "a").length === 6 && HT.toggleShortcut(["a"], "b").join() === "a,b";
-  })],
-  ["kısayollar: düzenleme", F("varsayılandan Envanter çıkar, Fitness ekle → ana sayfada Fitness; seçim profilde okunur (homeLinks, inbox)", async () => {
-    const { readFileSync } = await import("node:fs");
-    const g = HT.homeActions({ owner: true, athletes: true, races: true, training: true, receipts: true });
-    const start = HT.shortcutsOf(g).map(HT.linkKey);
-    const less = HT.toggleShortcut(start, "/inventory");
-    const more = HT.toggleShortcut(less, "/fitness");
-    const shown = HT.shortcutsOf(g, more).map(HT.linkKey);
-    const auth = readFileSync(new URL("../../../src/features/auth/AuthProvider.jsx", import.meta.url), "utf8");
-    return HT.toggleShortcut(start, "/fitness") === null && less.length === 6 && shown.length === 7 && shown.includes("/fitness") && !shown.includes("/inventory") &&
-      /homeLinks:/.test(auth) && /inbox:/.test(auth) && /inboxSeen:/.test(auth);
-  })],
-  ["tüm sayfalar: düğme sayfası", F("ana sayfadakiler ayrı bölümde, diğer sayfalarda tekrar etmez", () => {
-    const g = HT.homeActions({ owner: true, athletes: true, races: true, training: true, receipts: true });
-    const keys = HT.shortcutsOf(g).map(HT.linkKey);
-    const rest = g.flatMap((x) => x.items).map(HT.linkKey).filter((k) => !keys.includes(k));
-    return keys.length === 7 && rest.length > 0 && rest.every((k) => !keys.includes(k)) && keys.length + rest.length === g.flatMap((x) => x.items).length;
+  ["sporcu yarışı: kaç gün", F("sürüyor -1, bugün 0, 3 gün sonra 3; biten yarış yaklaşanlarda yok", async () => {
+    const MR = await import("@/lib/raceDays");
+    const t = "2026-11-25";
+    const r = (s, e) => ({ startDate: s, endDate: e || s });
+    const SP = await import("@/lib/sporcuPaylas");
+    const mem = [{ uid: "a1", kind: "athlete", account: true }, { uid: "p1", kind: "parent" }, { uid: "s1", kind: "staff" }, { uid: "a2", kind: "athlete", status: "left" }];
+    const ps = [{ id: "x", cat: "Antrenman", date: t, people: ["o"] }, { id: "y", cat: "Antrenman", date: "2026-11-20" }, { id: "z", title: "Toplantı", date: t }, { id: "w", cat: "Antrenman", date: t, people: ["o", "a1", "p1"] }];
+    const sh = SP.trainingShares(ps, mem, "o", t);
+    if (!(sh.length === 1 && sh[0].id === "x" && sh[0].people.join() === "o,a1,p1")) return false;
+    return MR.daysTo(r("2026-11-24", "2026-11-26"), t) === -1 && MR.daysTo(r(t), t) === 0 && MR.daysTo(r("2026-11-28"), t) === 3 && MR.upcoming([r("2026-11-20"), r("2026-11-28")], t).length === 1;
   })],
   ["sırada listesi", F("süren plan ŞİMDİ, sonra bugün/yarın/gün adı; iptal ve geçen sayılmaz; en çok n", () => {
     const now = new Date("2026-10-07T14:20:00");
@@ -1337,6 +1341,9 @@ group("Geri düğmesi")([
   ["aynı adres", F("iki kez yazılmaz", () => walk([["push", "/"]]).length === 1)],
   ["bilinmeyen adrese dönüş", F("yeni iz başlar", () => walk([["push", "/a"], ["pop", "/b"]]).join() === "/b")],
   ["boş iz", F("ilk adres yazılır", () => NAV.stepTrail([], "push", "/plans").join() === "/plans")],
+  ["yeni sürüm varken Yarışlar'a dokunuldu (tam yükleme)", F("iz devam eder, geri ana sayfaya (Sporcular'a değil)", () => { const t = NAV.restoreTrail(["/", "/athletes/races"], "/athletes/races", "navigate"); return t.join() === "/,/athletes/races"; })],
+  ["tam yüklemeden tarayıcı geri", F("iz o sayfaya kısalır", () => NAV.restoreTrail(["/", "/athletes", "/athletes/races"], "/athletes", "back_forward").join() === "/,/athletes")],
+  ["izde olmayan sayfada açıldı", F("yeni iz", () => NAV.restoreTrail(["/", "/plans"], "/athletes/races", "navigate").join() === "/athletes/races" && NAV.restoreTrail(null, "/x").join() === "/x")],
   ["Aidatlar'da açıldı › geri › geri", F("döngü yok: üst sayfa yerine geçer, sonra ana sayfa", () => { const t = walk([["replace", "/athletes"]], ["/dues"]); return t.join() === "/athletes" && t.length === 1; })],
 ]);
 
@@ -1762,6 +1769,36 @@ const backTaps = async () => {
 group("Geri düğmesi dokunuşu")([
   ["arka arkaya basış", F("tek geri; tepki yoksa üst sayfa; geri olunca hemen yeniden basılır", backTaps)],
 ]);
+// Seyhun 2026-11-04 "geri giderken hiç açmadığım Sporcular geldi": uygulama yarışta açılınca (bildirim, yeniden açılış) geri › geri
+// Yarışlar'dan Sporcular'a gidiyordu; Yayın yarış sayfasının yerine geçtiği için Yayın'dan geri yarışı atlıyordu.
+const backSrc = async () => {
+  const { readFileSync } = await import("node:fs");
+  const src = (p) => readFileSync(new URL(`../../../src/${p}`, import.meta.url), "utf8");
+  const races = src("app/(app)/athletes/races/page.jsx").includes('<BackButton href="/" />');
+  const roll = src("features/athletes/RollPanel.jsx").includes('<BackButton href="/" />');
+  const live = src("features/raceMedia/RaceMedia.jsx").includes("goLive: () => router.push(") && src("features/athletes/RaceEditor.jsx").includes('replace={k !== "canli"}');
+  return (races && roll && live) || JSON.stringify({ races, roll, live });
+};
+// Next geri gelince aynı adresi yeniden yazar (replaceState); iz bununla değişmemeli
+const sameReplace = async () => {
+  await wait(0);
+  await backDone;
+  const loc = { pathname: "/athletes/races/r1", search: "", href: "https://x.app/athletes/races/r1" };
+  const store = { "sa-nav-trail": JSON.stringify(["/", "/athletes/races", "/athletes/races/r1/yayin"]) };
+  globalThis.window = { location: loc, history: { pushState() {}, replaceState() {} }, addEventListener() {} };
+  globalThis.sessionStorage = { getItem: (k) => store[k] ?? null, setItem: (k, v) => (store[k] = v) };
+  try {
+    const t = NAV.restoreTrail(JSON.parse(store["sa-nav-trail"]), "/athletes/races/r1/yayin");
+    return t.length === 3;
+  } finally {
+    delete globalThis.window;
+    delete globalThis.sessionStorage;
+  }
+};
+group("Geri düğmesi: yarıştan çıkış")([
+  ["yarışta açıldı › geri › geri", F("Yarışlar, sonra ana sayfa (Sporcular değil); Yoklama da ana sayfaya; Yayın yarışın üstüne açılır", backSrc)],
+  ["iz yüklenir", F("sayfa yenilenince iz aynı", sameReplace)],
+]);
 
 // Kenardan kaydırarak geri (swipeBack.js): yalnız sol kenardan, yana çekişte; yeterince çekilince geri
 const SW = await import("@/lib/swipeBack");
@@ -1932,6 +1969,26 @@ group("Yeni sürüm")([
   ["farklı sürüm", F("yeni sayılır", () => NV.isNewer({ sha: "bbb" }, "aaa") && !NV.isNewer({ sha: "aaa" }, "aaa"))],
   ["bilgi yok", F("geliştirmede ya da yanıtsızda yeni sayılmaz", () => !NV.isNewer({ sha: "bbb" }, "") && !NV.isNewer(null, "aaa") && !NV.isNewer({ sha: "" }, "aaa"))],
   ["güncelleme isteği", F("başka işler sayılmaz", () => NV.updateAsk("uygulamayı güncelle") && NV.updateAsk("güncelle") && !NV.updateAsk("antrenman planını güncelle") && !NV.updateAsk("yarın 10'da antrenman ekle"))],
+  ["kendiliğinden yenileme", F("yeni sürümde boşta yenilenir", () => NV.canAutoUpdate({}, "bbb") && !NV.canAutoUpdate({}, ""))],
+  ["iş sürerken yenilenmez", F("kayıt/sayaç, yazı, açık pencere", () => !NV.canAutoUpdate({ busy: 1 }, "bbb") && !NV.canAutoUpdate({ typing: true }, "bbb") && !NV.canAutoUpdate({ dialog: true }, "bbb"))],
+  ["döngü yok", F("aynı sürüm için bir kez", () => !NV.canAutoUpdate({ tried: "bbb" }, "bbb") && NV.canAutoUpdate({ tried: "aaa" }, "bbb"))],
+  ["kilitten dönüşte yenilenmez", F("telefon uyurken gecikmiş zamanlayıcı yenilemez", () => NV.lateWake(1000, 1000 + 60e3) && !NV.lateWake(1000, 1000 + 200))],
+]);
+
+// Kalınan sayfa (lib/place.js): arkadan dönüşte uygulama ana sayfadan baştan yüklenirse kalınan sayfaya geçilir
+const PL = await import("@/lib/place");
+const runPlace = (pathname, saved, search = "") => {
+  let went = null;
+  const location = { pathname, search, hash: "", replace: (u) => (went = u) };
+  const sessionStorage = { getItem: () => saved };
+  new Function("location", "sessionStorage", PL.PLACE_SCRIPT)(location, sessionStorage);
+  return went;
+};
+group("Kalınan sayfa")([
+  ["ana sayfadan yüklenince", F("kalınan yarış sayfası açılır", () => PL.restoreTo({ pathname: "/" }, "/athletes/races/r1/media") === "/athletes/races/r1/media" && runPlace("/", "/athletes/races/r1/media") === "/athletes/races/r1/media")],
+  ["kayıt yoksa ya da ana sayfaysa", F("ana sayfada kalınır", () => PL.restoreTo({ pathname: "/" }, null) === null && PL.restoreTo({ pathname: "/" }, "/") === null && runPlace("/", null) === null && runPlace("/", "/") === null)],
+  ["başka sayfa yüklenirken", F("dokunulmaz (bildirim, bağlantı)", () => PL.restoreTo({ pathname: "/tasks" }, "/plans") === null && PL.restoreTo({ pathname: "/", search: "?x=1" }, "/plans") === null && runPlace("/tasks", "/plans") === null && runPlace("/", "/plans", "?x=1") === null)],
+  ["giriş ve dış adres", F("geri dönülmez", () => !PL.keepable("/login") && !PL.keepable("//evil.com") && !PL.keepable("https://x") && runPlace("/", "/login") === null && runPlace("/", "//evil.com") === null && PL.keepable("/canli/abc"))],
 ]);
 
 // Fitness (lib/fitness): hareket listesi, program, takvime yazılacak günler, sonuç, takip, otomatik ilerleme, sözler
@@ -2048,10 +2105,10 @@ group("Fitness")([
   ["yerel komutlar", F("planlara ekle, kaldır, yaptım, atladım, kaç antrenman; ayrıntı yapay zekaya", () =>
     FW.fitLocal("programı planlara ekle")?.op === "plans" && FW.fitLocal("fitness programını takvimden kaldır")?.op === "unplan" && FW.fitLocal("bugünkü antrenmanı yaptım")?.op === "done" &&
     FW.fitLocal("bugün antrenmanı atladım")?.op === "skip" && FW.fitLocal("bu hafta kaç antrenman yaptım")?.op === "stats" && FW.fitLocal("squat 3 set yaptım") === null && FW.fitLocal("çarşambayı bacak günü yap") === null)],
-  ["ana sayfa düğmesi", F("ana hesapta Fitness var, çalışanda yok", async () => {
+  ["ana sayfa düğmesi", F("Fitness herkeste: ana hesap, çalışan, sporcu (Seyhun 2026-11-25)", async () => {
     const HT = await import("@/lib/homeTiles");
     const has = (o) => HT.homeActions(o).some((g) => g.items.some((a) => a.href === "/fitness"));
-    return has({ owner: true }) && !has({ staff: true });
+    return has({ owner: true }) && has({ staff: true }) && has({ staff: true, side: true });
   })],
   ["tanıtım tahmini", F("boy/kilo yoksa yok; 82 kg 175 cm: 8 haftada 78-80 kg, VKİ 26,8, yeni erkek +1-1,5 kg kas", async () => {
     const FC = await import("@/lib/fitness/forecast");
@@ -2063,7 +2120,7 @@ group("Fitness")([
   ["adım adım: sıradaki set", F("ilk yapılmamış set, sonraki harekete geçer, hepsi bitince null", () => { const s = [[{ ok: true }, { ok: false }], [{ ok: false }]]; return FM2.nextOpen(s)?.i === 0 && FM2.nextOpen(s).k === 1 && FM2.nextOpen(s, 0, 2)?.i === 1 && FM2.nextOpen([[{ ok: true }]]) === null; })],
   ["adım adım: − / +", F("tekrar 1, kilo 2,5, saniye 5; sıfırın altına inmez", () => FM2.bump("10", "reps", 1) === "11" && FM2.bump("40", "kg", -1) === "37.5" && FM2.bump("30", "sec", 1) === "35" && FM2.bump("1", "reps", -1) === "")],
   ["sporcu: bugünkü ya da sıradaki", F("yalnız kendi antrenmanı, yapılmışı atlar", () => { const u = "s1"; const ps = [FPL("2026-10-13", SQ, { st: "done" }, { id: "a", fit2: 1 }), FPL("2026-10-15", SQ, null, { id: "b" }), FPL("2026-10-14", SQ, null, { id: "c" })].map((p, n) => ({ ...p, fit: { ...p.fit, for: n === 2 ? "x" : u } })); const r = FM2.athleteNext(ps, u, "2026-10-13"); return r && !r.today && r.plan.date === "2026-10-15" && FM2.myFit(ps, u).length === 2 && FM2.athleteNext([], u, "2026-10-13") === null; })],
-  ["sporcu kısayolu", F("sporcuda yalnız antrenmanı varsa Fitness", async () => { const H = await import("@/lib/homeTiles"); const has = (o) => H.homeActions(o).some((g) => g.items.some((a) => a.href === "/fitness")); return has({ staff: false }) && !has({ staff: true }) && has({ staff: true, fit: true }); })],
+  ["sporcu kısayolu", F("sporcuda ve normal kullanıcıda antrenmanı olmasa da Fitness (Seyhun 2026-11-25)", async () => { const H = await import("@/lib/homeTiles"); const has = (o) => H.homeActions(o).some((g) => g.items.some((a) => a.href === "/fitness")); return has({ staff: false }) && has({ staff: true, side: true }) && has({ staff: true, plain: true }); })],
 ]);
 
 // Fitness: ana hesabın sporcuya hazırladığı program (fit.for)
@@ -2127,7 +2184,9 @@ group("Fitness: sporcu programı")([
     const W = await import("@/lib/fitness/words");
     const g = (x) => W.guideWord(x)?.op;
     return g("tamam") === "done" && g("sonraki") === "done" && g("seti bitirdim") === "done" && g("set tamam") === "done" && g("bu hareketi atla") === "skip" && g("15 saniye ekle") === "more" &&
-      g("nasıl yapılır") === "how" && g("antrenmanı bitir") === "finish" && W.guideWord("zor geçti")?.k === 1 && W.guideWord("kolay")?.k === 3 && !g("yarın saat 10'da Ali'ye mesaj at");
+      g("nasıl yapılır") === "how" && g("antrenmanı bitir") === "finish" && W.guideWord("zor geçti")?.k === 1 && W.guideWord("kolay")?.k === 3 && !g("yarın saat 10'da Ali'ye mesaj at") &&
+      g("durdur") === "pause" && g("bekle") === "pause" && g("devam et") === "done" && W.guideWord("otomatiğe geç")?.k === true && W.guideWord("otomatik aç")?.k === true &&
+      W.guideWord("elle devam")?.k === false && W.guideWord("otomatiği kapat")?.k === false;
   })],
   ["sporcu adı", F("cümlede geçen sporcu; adı yapay zekaya gitmez", async () => {
     const W = await import("@/lib/fitness/words");
@@ -2286,6 +2345,31 @@ group("Plan bitti ve kelime kartı")([
   ]);
 }
 
+// İngilizce sayfası (2026-10-26): ek örnekler (ex2, dlg) desteye yazılır, Sına üç soru, yanlışta yarına kalır
+{
+  const T = "2026-10-26";
+  const deck = EW.seedDeck(null).deck;
+  const R = { en: "resilient", type: "sıfat", tr: "dirençli", ex: "Kids are resilient.", exTr: "Çocuklar dirençlidir.", kind: "word" };
+  const M = { ex2: [{ e: "Our team was resilient after the loss.", t: "Takımımız kayıptan sonra çabuk toparlandı." }], dlg: [{ e: "How is he?", t: "Nasıl?" }, { e: "Fine, he is resilient.", t: "İyi, dirençli." }] };
+  const withR = () => EW.studyWord(deck, R, T);
+  let seed = 1;
+  const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  group("İngilizce sayfası: örnekler ve Sına")([
+    ["ek örnek kaydı", F("ex2 ve dlg temizlenip kalır", () => { const w = EW.findWord(EW.cleanDeck(EW.setMore(withR(), "resilient", M)), "resilient"); return w.ex2.length === 1 && w.dlg.length === 2 && EW.hasMore(w); })],
+    ["boş ek örnek yazılmaz", F("alan hiç yok", () => { const w = EW.cleanWord(R); return !("ex2" in w) && !("dlg" in w) && !EW.hasMore(w); })],
+    ["sınır", F("en çok 3 cümle, 4 satır", () => { const w = EW.cleanWord({ ...R, ex2: Array(6).fill({ e: "a", t: "b" }), dlg: Array(9).fill({ e: "a", t: "b" }) }); return w.ex2.length === 3 && w.dlg.length === 4; })],
+    ["örnek cümleler", F("kendi örneği önce, tekrar etmez", () => { const s = EW.sentencesOf({ ...R, ex2: [{ e: "kids are resilient." }, ...M.ex2] }); return s.length === 2 && s[0].e === R.ex; })],
+    ["kelime sınavı", F("anlam, boşluk, dinle; 4 farklı şık, doğru şık içinde", () => {
+      const qs = EW.quizFor(EW.setMore(withR(), "resilient", M), { ...R, ...M }, rnd);
+      return qs.map((q) => q.kind).join() === "mean,blank,listen" && qs.every((q) => q.opts.length === 4 && new Set(q.opts).size === 4 && q.ok >= 0) && qs[0].opts[qs[0].ok] === "dirençli" && qs[1].ask.includes("___") && qs[1].opts[qs[1].ok].toLowerCase() === "resilient";
+    })],
+    ["cümlede geçmezse", F("Türkçesinden İngilizcesi", () => EW.quizFor(deck, { ...R, ex: "" }, rnd)[1].kind === "en")],
+    ["cümle sınavı", F("anlam, İngilizcesi, dinle", () => { const p = EW.ofKind(deck, "phrase")[0]; const qs = EW.quizFor(deck, p, rnd); return qs.map((q) => q.kind).join() === "mean,en,listen" && qs[1].opts[qs[1].ok] === p.en; })],
+    ["yanlışsa yarın", F("çalışmaya girer, kutu 0, yarın", () => { const w = EW.findWord(EW.missWord(deck, R, T), "resilient"); return w.status === "study" && w.box === 0 && w.due === "2026-10-27"; })],
+    ["doğruysa öğrenildi", F("known", () => EW.findWord(EW.knowWord(withR(), "resilient", T), "resilient").status === "known")],
+  ]);
+}
+
 const DB = await import("@/lib/debts");
 {
   const D = (o) => DB.cleanDebt({ who: "Ali Kaya", amount: 1000, date: "2026-10-01", ...o });
@@ -2331,6 +2415,7 @@ group("Instagram sonuç (yalnız fotoğraf)")([
   ["bulunma eki", F("Yarışları’nda, Kupası’nda, Regatta’da, Cup’ta, Trofe’de", () => PM.locative("Ege Kupası") === "Ege Kupası’nda" && PM.locative("Bodrum Regatta") === "Bodrum Regatta’da" && PM.locative("Spring Cup") === "Spring Cup’ta" && PM.locative("Foça Trofe") === "Foça Trofe’de")],
   ["sırası yok", F("başarıyla temsil etti", () => PM.resultSentence({ name: "Ayşe Su", cls: "Optimist" }) === "Kulübümüz sporcusu Ayşe Su, Optimist sınıfında kulübümüzü başarıyla temsil etti. 👏")],
   ["ilk üç dışı", F("sınıfında 12. olarak yarışı tamamladı", () => PM.resultSentence({ name: "Ali Kaya", r: { cls: "Optimist", place: 12 } }) === "Kulübümüz sporcusu Ali Kaya, Optimist sınıfında 12. olarak yarışı tamamladı. 👏")],
+  ["final grubu", F("gümüş grubunda sırası da yazılır", () => PM.resultSentence({ name: "Ali Kaya", r: { cls: "Optimist", place: 45, n: 90, grp: "Gümüş", fp: 5, fn: 45 } }) === "Kulübümüz sporcusu Ali Kaya, Optimist sınıfında 45., Optimist Gümüş grubunda 5. olarak yarışı tamamladı. 👏")],
   ["çok sporcu", F("TEBRİKLER SPORCULARIMIZ, her sporcu bir paragraf", () => { const t = PM.resultCaption({ ...TEOS, athletes: [...TEOS.athletes, { name: "Ali Kaya" }, { name: "Ayşe Su" }] }); return t.startsWith("TEBRİKLER SPORCULARIMIZ! 🏆") && t.split("\n\n").length === 6; })],
   ["iki sporcu", F("TEBRİKLER METE VE ALİ", () => PM.resultCaption({ ...TEOS, athletes: [...TEOS.athletes, { name: "Ali Kaya" }] }).startsWith("TEBRİKLER METE VE ALİ! 🏆"))],
   ["yarıştan ilk hali", F("bitmiş yarış: sonuç, yalnız fotoğraf, ev sahibi talimattan", () => { const p = PM.postFromRace({ name: "Ege Kupası", startDate: "2026-09-11", endDate: "2026-09-13", notice: { organizer: "Teos Yat ve Yelken Kulübü" } }, "2026-10-12"); return p.kind === "sonuc" && p.photoOnly === true && p.race.host === "Teos Yat ve Yelken Kulübü"; })],
@@ -2341,6 +2426,7 @@ group("Instagram sonuç (yalnız fotoğraf)")([
 
 // Fitness hareket kütüphanesi (library.js): numara, aynı harekete aynı video, kulübün kendi hareketleri
 const LB = await import("@/lib/fitness/library");
+const FTP = await import("@/lib/fitness/templates");
 const FMK = await import("@/lib/fitness/model");
 const YT = { id: "dQw4w9WgXcQ" };
 group("Fitness hareket kütüphanesi")([
@@ -2380,6 +2466,22 @@ group("Fitness hareket kütüphanesi")([
     const { lib, added } = LB.libAdd(a, [{ ex: "", name: "ŞINAV" }]);
     return !added.length && Object.keys(lib.items).length === 1 && LB.libNo(lib, { ex: "", name: "Şınav" }) === 1 &&
       LB.withLib({ ex: "", name: "şınav", sets: 3 }, lib).media?.[0]?.id === "p1";
+  })],
+  ["yazım farkı ikinci kayıt açmaz", F("\"Burun nefesi + yürüyüş\" = \"Burun nefesi - yürüyüş\" = \"Yürüyüş ve burun nefesi\"; eski kopya Kopyalar'da çıkar", () => {
+    const { lib } = LB.libAdd(LB.cleanLib(), [{ ex: "", name: "Burun nefesi + yürüyüş" }, { ex: "", name: "Burun nefesi - yürüyüş" }, { ex: "", name: "Yürüyüş ve burun nefesi" }]);
+    const old = LB.cleanLib({ next: 3, items: { "c:a": { no: 1, name: "Burun nefesi + yürüyüş" }, "c:b": { no: 2, name: "Yürüyüş ve burun nefesi" } } });
+    return Object.keys(lib.items).length === 1 && LB.libDupes(old).length === 1 && LB.nameKey("Squat to reach") !== LB.nameKey("Squat");
+  })],
+  ["hazır programın fotoğrafları", F("Yelken ev kuvveti: 40 hareket fotoğraflı, her hareket bir kez", () => {
+    const ph = FTP.templatePhotos("yelken-ev-12");
+    return ph.length === 40 && new Set(ph.map((x) => x.name)).size === 40 && ph.every((x) => /^\/fitness\/hazir\/[a-z0-9-]+\.jpg$/.test(x.src));
+  })],
+  ["hazır programın anlatımı", F("her hareketin nasıl yapılır anlatımı var; fotoğrafsızlar çizilir (prova hariç)", () => {
+    const p = FTP.fromTemplate("yelken-ev-12");
+    const all = p.days.flatMap((d) => d.items);
+    const draw = FTP.templateDraw("yelken-ev-12").map((x) => x.name);
+    return all.every((x) => x.how && x.how.length > 30) && all.find((x) => x.name === "Band row").setup.includes("kapı") &&
+      draw.length === 5 && draw.includes("Kedi deve") && !draw.includes("Ana harekete prova");
   })],
   ["kopyaları birleştir", F("eski kopyalar: fotoğraflı kalır, bütün fotoğraf/videolar korunur, programdaki eski ad kalanı kullanır", () => {
     const M = (id, kind = "photo") => ({ id, kind, type: "image/jpeg", size: 1000, parts: 1 });
@@ -2592,20 +2694,20 @@ group("Fitness: program ayrıntıları ve şablon")([
     const d = FMI.planDrafts(p);
     return d.length === 4 && d[0].fit.items[0].sets === 3 && !d[0].fit.phase && d[3].fit.items[0].sets === 2 && d[3].fit.phase === "Hafif" && d[3].fit.note === "gün notu · az";
   })],
-  ["hazır şablon", F("Yelken ev kuvveti PDF'teki hafta: 7 gün (kuvvet A, B, mikrodoz, reset günleri), bütün hareketler, 12 hafta, evreler ve kurallar", () => {
+  ["hazır şablon", F("Yelken ev kuvveti PDF'teki hafta (ortak: kişiye özel gitar/saat notu yok): 7 gün (kuvvet A, B, mikrodoz, reset günleri), bütün hareketler, 12 hafta, evreler ve kurallar", () => {
     const p = FTPL.fromTemplate("yelken-ev-12", "2026-10-19");
     const at = (n) => p.days.find((d) => d.dow === n);
     const [a, b, c] = [at(2), at(4), at(5)];
     const split = a.items.find((x) => x.name === "Sırt çantalı split squat");
     return p.weeks === 12 && p.days.length === 7 && a.time === "17:45" && a.items.length === 15 && b.items.length === 15 && c.items.length === 12 &&
-      a.items.every((x) => !x.ex) && split.repsTo === 12 && split.side && split.rest === 75 && split.note.includes("çantaya 1–2 kg") && a.note.includes("gitar") &&
+      a.items.every((x) => !x.ex) && split.repsTo === 12 && split.side && split.rest === 75 && split.note.includes("çantaya 1–2 kg") && !/gitar|17\.45/.test(a.note) && !p.forAge &&
       p.phases.length === 6 && p.rules.includes("Trafik ışığı") && FMI.planDrafts(p).length === 84;
   })],
   ["hazır şablon rutin", F("Pzt 19:00 8 dk reset, Çrş 19:00 nefes ve mobilite, Cmt ve Paz 16:00 yelken sonrası 6 dk; Cuma 2 tur, hareketler arası 20 sn; hazırlıkta uzun dinlenme yok", () => {
     const p = FTPL.fromTemplate("yelken-ev-12", "2026-10-19");
     const at = (n) => p.days.find((d) => d.dow === n);
     const fri = at(5).items;
-    return at(1).time === "19:00" && at(1).items.length === 8 && at(1).note.includes("atletizm") && at(3).items.length === 5 && at(6).time === "16:00" && at(7).items.length === 6 &&
+    return at(1).time === "19:00" && at(1).items.length === 8 && /atletizm/i.test(at(1).note) && at(3).items.length === 5 && at(6).time === "16:00" && at(7).items.length === 6 &&
       fri[0].name === fri[6].name && fri[0].note.startsWith("1. tur") && fri[6].note.startsWith("2. tur") && fri.every((x) => x.sets === 1 && FMI.restAfter(x, true) === 20) &&
       !at(5).time && at(2).items.filter((x) => x.part === "isinma").every((x) => FMI.restAfter(x, true) === 10) && p.rules.includes("Her gün 8 dk reset:");
   })],
@@ -2782,6 +2884,17 @@ group("Sayfa çökmesi")([
 
 // Gerçekleşen rüzgâr (windObs.js): Dikili istasyonunun SYNOP raporu okunur, yalnız 10 km içindeki yere gösterilir
 const WO = await import("@/lib/windObs");
+const RR = await import("@/lib/rainRadar");
+const { deflateSync } = await import("node:zlib");
+// Deneme PNG'si: 4×2 RGBA, 2. satır "Sub" süzgeçli (radar döşemesi gibi)
+const testPng = () => {
+  const crc = (b) => { let c = ~0; for (const x of b) { c ^= x; for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1)); } return ~c >>> 0; };
+  const chunk = (t, d) => { const l = Buffer.alloc(4); l.writeUInt32BE(d.length); const td = Buffer.concat([Buffer.from(t), d]); const c = Buffer.alloc(4); c.writeUInt32BE(crc(td)); return Buffer.concat([l, td, c]); };
+  const ih = Buffer.alloc(13); ih.writeUInt32BE(4, 0); ih.writeUInt32BE(2, 4); ih[8] = 8; ih[9] = 6;
+  const r0 = [0, 0, 0, 0, 0, 160, 220, 255, 200, 0, 0, 0, 0, 230, 40, 40, 255];
+  const r1 = [1, 30, 60, 120, 255, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+  return Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk("IHDR", ih), chunk("IDAT", deflateSync(Buffer.from([...r0, ...r1]))), chunk("IEND", Buffer.alloc(0))]);
+};
 const SYN = {
   kn: "17180,2026,10,18,12,00,AAXX 18124 17180 42970 33006 10216 20104 30102 40124 58008 333 91108=",
   ms: "17180,2026,10,18,15,00,AAXX 18151 17180 42970 32510 10216 333 91015=",
@@ -2789,10 +2902,32 @@ const SYN = {
   big: "17180,2026,10,18,09,00,AAXX 18094 17180 42970 33099 00105 10216=",
 };
 group("Ölçülen rüzgâr")([
+  ["sık oklar", F("uzakta ızgara noktaları, yakında aralar doldurulur; 355° ile 5° arası kuzeye yakın kalır; harita düğmeyle açılır, zoom 12", async () => {
+    const R = await import("@/lib/regionMap");
+    const { pts } = R.regionUrl({ lat: 39.07, lon: 26.89 });
+    const g = { spots: pts.map((p, k) => ({ lat: p.lat, lon: p.lon, w: [10 + (k % 7)], d: [k % 7 < 3 ? 355 : 5] })) };
+    const far = R.denseArrows(g, 0, [26.6, 38.8, 27.2, 39.3], 10);
+    const near = R.denseArrows(g, 0, [26.85, 39.03, 26.93, 39.1], 13);
+    const { readFileSync } = await import("node:fs");
+    const rm = readFileSync(new URL("../../../src/features/weather/RegionMap.jsx", import.meta.url), "utf8");
+    return far.length === 49 && near.length > 49 && near.every((a) => a.d <= 10 || a.d >= 350) && near.every((a) => a.w >= 10 && a.w <= 16) && R.denseArrows(g, -1, [0, 0, 1, 1], 12).length === 0 && /zoom: full \? 12/.test(rm) && /inline/.test(rm) && /Harita\n/.test(rm) && /mini = false/.test(rm) && /interactive: full \|\| inline/.test(rm) && /cooperativeGestures: inline/.test(rm) && /if \(full \|\| \(inline && pick\.current\)\) m\.on\("click"/.test(rm) && /!full && !inline && mini/.test(rm) && !/dragPan\.disable/.test(rm);
+  })],
+  ["radar döşemesi", F("Dikili z7: döşeme 73/48, piksel içeride", () => { const t = RR.tileOf(39.07, 26.89); return t.z === 7 && t.x === 73 && t.y === 48 && t.px >= 0 && t.px < 256 && t.py >= 0 && t.py < 256; })],
+  ["radar rengi", F("saydam yok, açık mavi hafif, koyu mavi orta, kırmızı kuvvetli", () => RR.levelOf(0, 0, 0, 0) === 0 && RR.levelOf(160, 220, 255, 200) === 1 && RR.levelOf(30, 60, 120, 255) === 2 && RR.levelOf(230, 40, 40, 255) === 3)],
+  ["radar PNG", F("RGBA + Sub süzgeci çözülür, 3×3 en şiddetlisi", () => { const img = RR.decodePng(testPng()); return img.w === 4 && img.h === 2 && img.px(2, 0)[3] === 0 && img.px(3, 0)[0] === 230 && img.px(0, 1).join() === "30,60,120,255" && img.px(1, 1).join() === "30,60,120,255" && RR.levelAt(img, 2, 0) === 3 && RR.levelAt(img, 0, 0) === 2; })],
+  ["radar burada / çevrede", F("son radar karesinde 30 km içindeki en yakın yağış: uzaklık ve yön; Hava sayfasında 'Burada yağmıyor · 8 km kuzeyinde hafif yağış'", async () => { const L = await import("@/features/weather/rainLine"); const k = RR.kmPerPx(39); const gy = Math.round(8 / k); const n = RR.nearestRain((x, y) => (x === 1000 && y === 1000 - gy ? 1 : x === 1000 + 40 && y === 1000 ? 3 : 0), 1000, 1000, 39); const none = RR.nearestRain(() => 0, 0, 0, 39); const f = [{ at: "2026-11-04T10:40:00Z", level: 0 }]; const hm = () => "13:40"; return n?.km === 8 && n.dir === "kuzey" && n.level === 1 && none === null && L.hereLine({ frames: f, near: n }, false, hm) === "Burada yağmıyor · 8 km kuzeyinde hafif · 13:40" && L.hereLine({ frames: f, near: null }, true, hm) === "Burada ve 30 km içinde yağış yok · 13:40" && L.hereLine({ frames: f, near: null }, false, hm) === "" && L.hereLine({ frames: [{ ...f[0], level: 3 }], near: n }, false, hm).startsWith("Burada kuvvetli yağış var") && L.hereLine({ frames: f }, true, hm) === ""; })],
+  ["radar kuru derken yağmur gösterilmez", F("radar noktada ve 5 km içinde yağış görmüyorsa şu anki yağmurlu kod nötr olur (arka plan, simge), radarın baktığı saatlerin mm'si silinir; yağış varsa dokunulmaz", async () => { const L = await import("@/features/weather/rainLine"); const at = (h) => `2026-11-04T${String(h - 3).padStart(2, "0")}:30:00Z`; const dry = { frames: [{ at: at(13), level: 0 }, { at: at(14), level: 0 }], near: null }; const wet = { frames: [{ at: at(13), level: 2 }, { at: at(14), level: 0 }], near: { km: 2, dir: "kuzey", level: 1 } }; const n = { t: 18, code: 61, day: true }; const rows = [13, 14, 15].map((h) => ({ hh: String(h), code: 63, day: true, mm: 3 })); const r1 = L.radarRows(rows, dry); const r2 = L.radarRows(rows, wet); return L.radarNow(n, dry).code === 2 && L.radarNow(n, dry).radarDry && L.radarNow(n, wet).code === 61 && L.radarNow(n, { frames: dry.frames }).code === 61 && r1[0].mm === 0 && r1[1].code === 2 && r1[2].mm === 3 && r2[0].mm === 3 && r2[1].mm === 3 && L.radarRows(rows, null) === rows; })],
+  ["düşük ihtimalde yağmur simgesi yok", F("tahminde yağmur kodu ihtimal %50 altındaysa Kapalı (3) olur, mm kalır; günün hiçbir saati %50'ye varmıyorsa gün simgesi de; yarış havası da aynı (rowsFrom)", async () => { const W = await import("@/features/weather/weather"); const RW = await import("@/features/athletes/raceWeather"); const w = { hourly: [["2026-11-05T10:00", 15, 61, 1, 8, 12, 200, 30, 0.4, 14], ["2026-11-05T11:00", 15, 63, 1, 8, 12, 200, 70, 2, 14]] }; const h = W.dayHours(w, "2026-11-05"); const r = RW.rowsFrom({ hourly: { time: ["2026-11-05T10:00"], weather_code: [61], precipitation_probability: [20], precipitation: [0.3], wind_speed_10m: [5], wind_gusts_10m: [8], wind_direction_10m: [180] } }, "2026-11-05"); return h[0].code === 3 && h[0].mm === 0.4 && h[1].code === 63 && W.dayCode(61, [{ rain: 20 }, { rain: 40 }]) === 3 && W.dayCode(61, [{ rain: 60 }]) === 61 && W.dayCode(61, []) === 61 && W.dayCode(2, [{ rain: 10 }]) === 2 && r[0].code === 3; })],
   ["knot raporu", F("300°, 6 kn, sağanak 8", () => { const o = WO.parseSynop(SYN.kn, "17180"); return o.dir === 300 && o.kn === 6 && o.gust === 8 && o.at === "2026-10-18T12:00:00.000Z"; })],
   ["m/s raporu", F("250°, 10 m/s = 19 kn, sağanak 29", () => { const o = WO.parseSynop(SYN.ms, "17180"); return o.dir === 250 && o.kn === 19 && o.gust === 29; })],
   ["sakin", F("yön yok, 0 kn, sağanak yok", () => { const o = WO.parseSynop(SYN.calm, "17180"); return o.dir === null && o.kn === 0 && o.gust === null; })],
   ["99 üstü", F("00fff grubu", () => WO.parseSynop(SYN.big, "17180").kn === 105)],
+  ["ölçülen yağış", F("6RRRt: 12 mm / 6 saat; 991 = 0,1 mm / 3 saat; iz 0; grup yoksa null; 333 bölümünden de", () => {
+    const r = (x) => WO.parseSynop(`17180,2026,10,18,12,00,AAXX 18121 17180 12970 33006 10216 ${x}=`, "17180")?.rain;
+    const a = r("60121 333 91108"), b = r("69917"), c = r("69901"), d = r("70212 333 60057 91108");
+    return a.mm === 12 && a.h === 6 && b.mm === 0.1 && b.h === 3 && c.mm === 0 && d.mm === 5 && d.h === 3 && WO.parseSynop(SYN.kn, "17180").rain === null
+      && WO.obsRows([WO.parseSynop("17180,2026,10,18,12,00,AAXX 18121 17180 12970 33006 10216 60121=", "17180")], "2026-10-18")[0].rain.mm === 12;
+  })],
   ["boş rapor", F("NIL, başka istasyon, bozuk satır okunmaz", () => WO.parseSynop("17180,2026,10,18,18,00,AAXX 18184 17180 NIL=", "17180") === null && WO.parseSynop(SYN.kn.replace(/^17180/, "17220"), "17180") === null && WO.parseSynop("x", "17180") === null)],
   ["yerel saat", F("12 ve 15 UTC → 15 ve 18; başka gün çıkar", () => {
     const r = WO.obsRows([WO.parseSynop(SYN.kn), WO.parseSynop(SYN.ms), { at: "2026-10-17T12:00:00.000Z", kn: 3, gust: null, dir: 0 }], "2026-10-18");
@@ -2812,9 +2947,9 @@ group("Ölçülen rüzgâr")([
   const J = {
     current: { time: "2026-10-18T10:15", temperature_2m: 19.6, weather_code: 1, is_day: 1, wind_speed_10m: 11.4, wind_gusts_10m: 16.5, wind_direction_10m: 315 },
     hourly: { time: T, temperature_2m: T.map(() => 18.4), weather_code: T.map(() => 2), is_day: T.map((t) => (+t.slice(11, 13) >= 7 && +t.slice(11, 13) <= 18 ? 1 : 0)),
-      wind_speed_10m: T.map((t) => (+t.slice(11, 13) >= 12 && +t.slice(11, 13) <= 15 ? 12 : 4)), wind_gusts_10m: T.map(() => 15), wind_direction_10m: T.map(() => 315), precipitation_probability: T.map(() => 20) },
+      wind_speed_10m: T.map((t) => (+t.slice(11, 13) >= 12 && +t.slice(11, 13) <= 15 ? 12 : 4)), wind_gusts_10m: T.map(() => 15), wind_direction_10m: T.map(() => 315), precipitation_probability: T.map(() => 20), precipitation: T.map((t) => (t.startsWith("2026-10-19T1") ? [0, 0.4, 2, 5.2, 9, 3, 0, 0, 0, 0][+t[12]] : 0)), apparent_temperature: T.map((t, i) => (i === 5 ? null : 17.6)) },
     daily: { time: ["2026-10-18", "2026-10-19", "2026-10-20"], weather_code: [1, 3, 61], temperature_2m_max: [23.4, 21, 18], temperature_2m_min: [14.6, 13, 12],
-      wind_speed_10m_max: [12, 18, 25], wind_gusts_10m_max: [16, 24, 33], wind_direction_10m_dominant: [315, 45, 225] },
+      wind_speed_10m_max: [12, 18, 25], wind_gusts_10m_max: [16, 24, 33], wind_direction_10m_dominant: [315, 45, 225], precipitation_sum: [0, 19.6, 4.2] },
   };
   const W = WXN.shape(J, new Date(2026, 9, 18, 10, 15));
   group("Hava hesapları")([
@@ -2825,6 +2960,19 @@ group("Ölçülen rüzgâr")([
     ["günün saatleri", F("yarının 24 saati, yağmur olasılığıyla; eski önbellekte null", () => {
       const d = WXN.dayHours(W, "2026-10-19");
       return d.length === 24 && d[13].wind === 12 && d[13].rain === 20 && d[3].day === false && WXN.dayHours({}, "2026-10-19") === null;
+    })],
+    ["yağış mm", F("saatlik yağış dayHours'a mm olarak gelir; eski önbellekte null", () => {
+      const d = WXN.dayHours(W, "2026-10-19");
+      return d[13].mm === 5.2 && d[14].mm === 9 && d[3].mm === 0 && WXN.dayHours({ hourly: [["2026-10-19T03:00", 1, 2, 1, 4, 5, 6, 20]] }, "2026-10-19")[0].mm === null;
+    })],
+    ["hissedilen ve günlük yağış", F("saatlik hissedilen (yuvarlak, yoksa null) dayHours'a feel; günlük yağış toplamı days/today mm; eski önbellekte null", () => {
+      const d = WXN.dayHours(W, "2026-10-18");
+      return d[0].feel === 18 && d[5].feel === null && W.days[0].mm === 19.6 && W.today.mm === 0 && WXN.dayHours({ hourly: [["2026-10-19T03:00", 1, 2, 1, 4, 5, 6, 20, 0]] }, "2026-10-19")[0].feel === null;
+    })],
+    ["yağış rengi", F("0,1 altı boş; <1 açık, 1–4 orta, 4–8 koyu, 8+ mor", () => WXN.mmTone(0) === null && WXN.mmTone(null) === null && WXN.mmTone(0.5) === "#8fb0d0" && WXN.mmTone(2) === "#4f86c0" && WXN.mmTone(5) === "#2b5f9e" && WXN.mmTone(12) === "#7b5cc4")],
+    ["kuvvetli yağış uyarısı", F("saatte 4 mm ve üstü: ilk ve son saat aralığı, günün toplamı; yoksa null", () => {
+      const h = WXN.heavyRain(WXN.dayHours(W, "2026-10-19"));
+      return h && h.from === "13:00" && h.to === "15:00" && h.total === 20 && WXN.heavyRain(WXN.dayHours(W, "2026-10-18")) === null && WXN.heavyRain([]) === null;
     })],
     ["yelkene uygun saatler", F("gündüz 7–16 kn, sağanak 22 altı: 12–16; tek saat sayılmaz; gece sayılmaz", () => {
       const rows = WXN.dayHours(W, "2026-10-18");
@@ -2851,7 +2999,7 @@ group("Ölçülen rüzgâr")([
     })],
     ["yapay zeka özeti", F("şimdi, bugün, 48 saatlik ve günlük satırlar; boş veride boş", () => {
       const d = WXN.weatherDigest(W);
-      return /^## HAVA DURUMU \(Dikili · İzmir/.test(d) && /ŞİMDİ: 20°C, Az bulutlu, Karayel \(KB\) 11 kn/.test(d) && /SAATLİK/.test(d) && /GÜNLÜK:/.test(d) && WXN.weatherDigest(null) === "";
+      return /^## HAVA DURUMU \(Dikili · İzmir/.test(d) && /ŞİMDİ: 20°C, Az bulutlu, Karayel \(KB, \d+°\) 11 kn/.test(d) && /SAATLİK/.test(d) && /GÜNLÜK:/.test(d) && WXN.weatherDigest(null) === "";
     })],
   ]);
 }
@@ -3076,7 +3224,7 @@ group("Ortak düğmeler")([
   const { readFileSync } = await import("node:fs");
   const s = readFileSync(new URL("../../../src/features/home/OwnerHome.jsx", import.meta.url), "utf8");
   group("Ana sayfa: deniz ve kamera düğmeleri")([
-    ["iki düğme", F("/sea ve /cams bağlantısı", () => /\["\/sea", "anchor", "Deniz trafiği"\], \["\/cams", "video", "Kameralar"\]/.test(s))],
+    ["ana sayfada yok", F("Seyhun 2026-11-03 'A · İyice sade': Deniz trafiği · Kameralar düğmeleri ana sayfada yok (Tümü › Hava ve deniz)", () => !/"\/sea"/.test(s) && !/"\/cams"/.test(s))],
     ["veri çekmez", F("SeaCard ana sayfada yok", () => !/SeaCard/.test(s))],
   ]);
 }
@@ -3100,8 +3248,6 @@ group("Ortak düğmeler")([
   const src = (p) => readFileSync(new URL(`../../../src/${p}`, import.meta.url), "utf8");
   group("Rüzgâr–sağanak tek yerde")([
     ["biçim", F("2–4, sağanak yoksa 2", () => WX.kn(2, 4) === "2–4" && WX.kn(5, 5) === "5" && WX.kn(3, null) === "3")],
-    ["ölçülen de aynı", F("grafik altı yazısı ölçülen saatte ölçüleni yazar", () => /kn\(o \? o\.wind : h\.wind, o \? o\.gust : h\.gust\)/.test(src("features/home/CockpitWind.jsx")))],
-    ["ayrı sağanak yazısı yok", F("en sert sağanak etiketi kalktı", () => !/pkRight/.test(src("features/home/CockpitWind.jsx")))],
   ]);
 }
 
@@ -3111,7 +3257,7 @@ group("Ortak düğmeler")([
   const src = (p) => readFileSync(new URL(`../../../src/${p}`, import.meta.url), "utf8");
   const home = src("features/home/OwnerHome.jsx");
   group("Ana sayfa: Kulüp kutuları")([
-    ["yemek kartından önce", F("HomeSummary tiles, ShopCards'tan önce", () => home.indexOf("<HomeSummary\n              tiles") > 0 && home.indexOf("<HomeSummary\n              tiles") < home.indexOf("<ShopCards />"))],
+    ["ana sayfada kalır", F("Seyhun 2026-11-03: Kulüp ana sayfada kalır (HomeSummary; 2026-11-06 ikili kutu değil tek liste, renkli simgeli satırlar), Yemek · Market · Giyim yok", () => /<HomeSummary\b/.test(home) && !/<ShopCards/.test(home))],
     ["kutu görünümü", F("Row, RowTiles içinde kutu çizer", () => /const tile = useContext\(TileCtx\);\n  if \(tile\) return <Tile/.test(src("components/ui/Row.jsx")))],
   ]);
 }
@@ -3121,17 +3267,70 @@ group("Ortak düğmeler")([
 {
   const { readFileSync, existsSync } = await import("node:fs");
   const src = (p) => readFileSync(new URL(`../../../src/${p}`, import.meta.url), "utf8");
-  const shop = src("features/home/ShopCards.jsx");
   const C = await import("@/market/catalog");
   group("Ana sayfa: Yemek · Market · Giyim")([
-    ["üç kart yan yana", F("grid-cols-3, Yemek Market Giyim", () => /grid-cols-3/.test(shop) && ["Yemek", "Market", "Giyim"].every((t) => shop.includes(`title="${t}"`)))],
-    ["Market Velora Sanal", F("Market kartı gömülü /sanal sayfasına gider", () => /title="Market"[^\n]*href="\/sanal"/.test(shop))],
     ["gömülü Sanal sayfası", F("/sanal çerçeveyi anahtarı beklemeden kökten açar, anahtarı Sanal isteyince verir", () => { const pg = src("app/(app)/sanal/page.jsx"); return /<iframe/.test(pg) && /\$\{SANAL_URL\}\/#st=/.test(pg) && /sanalToken\(\)/.test(pg) && /need-token/.test(pg) && /type: "velora-token"/.test(pg) && /e\.origin !== ORIGIN/.test(pg) && !/>Açılıyor/.test(pg); })],
     ["Sanal tam ekran", F("/sanal'da sekme çubuğu ve başlık yok, yalnız küçük Geri", () => { const pg = src("app/(app)/sanal/page.jsx"); const tb = src("features/home/TabBar.jsx"); return /fixed inset-0/.test(pg) && !/<h1/.test(pg) && /aria-label="Geri"/.test(pg) && /path === "\/sanal"/.test(tb); })],
     ["Sanal çentik payı", F("çerçeve bütün ekran, üst/alt pay st/sb ile Sanal'a gider", () => { const pg = src("app/(app)/sanal/page.jsx"); return /absolute inset-0 size-full/.test(pg) && /safe-area-inset-top/.test(pg) && /#st=\$\{st\}&sb=\$\{sb\}/.test(pg); })],
+    ["süren yarış", F("liveRace: ilk günden son güne kadar yarış, bitmiş/gelecek değil", () => { const o = [{ id: "a", name: "Kış Kupası", startDate: "2026-10-25", endDate: "2026-10-27" }, { id: "b", name: "Gelecek", startDate: "2026-11-02" }, { id: "c", name: "Bitti", startDate: "2026-10-20", endDate: "2026-10-22" }]; return HT.liveRace(o, "2026-10-26")?.id === "a" && HT.liveRace(o, "2026-10-27")?.title === "Kış Kupası" && HT.liveRace(o, "2026-10-28") === null && HT.liveRace(o, "2026-11-02")?.id === "b" && HT.liveRace([], "2026-10-26") === null; })],
+    ["yarış günü havası", F("awayRace (lib) çalışır; ana sayfada hava alanı yarış gününde değişmez (yarış yeri tablosu yok)", () => { const o = [{ id: "a", startDate: "2026-10-27", endDate: "2026-10-29", place: "Foça" }, { id: "b", startDate: "2026-11-02" }]; const rh = src("features/athletes/raceHome.js"); return HT.awayRace(o, "2026-10-28")?.id === "a" && HT.awayRace(o, "2026-10-30") === null && HT.awayRace(o, "2026-11-02")?.id === "b" && HT.awayRace([], "2026-10-28") === null && /spot: r\.spot/.test(rh) && !/awayRace\(/.test(src("features/home/OwnerHome.jsx")); /* 2026-11-04 Seyhun: yarış günü hava alanı değişmez, yarış yeri havası ana sayfada yok */ })],
+    ["yarış satırı sayacı yazar", F("ana sayfa satırı sayaç göstermez ama bu yarışın sayacı 0 olunca start saatini yine yazar; Kayıt çekimi Medya sayfasına geçer", async () => { const rl = src("features/home/RaceLive.jsx"); const H = await import("@/features/raceMedia/handoff"); const f = { name: "v.mov" }; H.handShot("r1", f); const wrong = H.takeShot("r2"); const got = H.takeShot("r1"); return wrong === null && got === f && /useTimerRun\(\{ onZero \}\)/.test(rl) && /zeroRace\(l\.starts, t\.rid, end, l\.wind, rdays\)/.test(rl) && /saveStarts\(orgId, id, next\)/.test(rl) && /ownedBy\(t\.own, own\)/.test(rl) && /useState\(\(\) => takeShot\(id\)\)/.test(src("features/raceMedia/RaceMedia.jsx")); })],
+    ["yarış satırı hemen", F("yarış özeti cihazda saklanır, ana sayfa açılınca satır beklemeden çizilir (grafik zıplamaz)", () => { const rh = src("features/athletes/raceHome.js"); return /useState\(\(\) => \(on \? readSaved\(profile\.orgId\) : null\)\)/.test(rh) && /if \(c\) save\(profile\.orgId, c\)/.test(rh); })],
+    ["ana sayfa özellik kartları", F("Özet (Mesajlar) yok; İngilizce, Görevler, Medya kartları; medya kartı en yeni bölümün son 4 karesi, 30 dk önbellek", async () => { const { latestMedia, mediaFresh, MEDIA_KEEP } = await import("@/lib/homeMedia"); const it = (n, at) => ({ id: "m" + n, kind: "photo", url: "https://x/" + n, at }); const secs = { ant: [{ title: "Antrenman", sub: "Dün · 5 kayıt", href: "/training/day?id=a&tab=media", items: [1, 2, 3, 4, 5].map((n) => it(n, "2026-10-27T10:0" + n)), last: "2026-10-27T10:05" }], race: [{ title: "Kupa", sub: "Foça", href: "/athletes/races/r/media?tab=media", items: [it(9, "2026-10-20T09:00")], last: "2026-10-20T09:00" }] }; const c = latestMedia(secs); const h = src("features/home/OwnerHome.jsx"); return c.title === "Antrenman" && c.items.length === 4 && c.items[0].id === "m5" && latestMedia({ ant: [], race: [] }) === null && mediaFresh({ at: 1000 }, 1000 + MEDIA_KEEP - 1) && !mediaFresh({ at: 1000 }, 1000 + MEDIA_KEEP) && !/<EnglishCard|<TasksCard|<MediaCard|<AthletesWidget|<FitWidget|<BirthdayStrip/.test(h) && /<NotesWidget notes=\{notes\} \/>/.test(h) && (h.match(/<HomeSummary/g) || []).length === 1; /* 2026-11-03 "A · İyice sade": kartlar kalktı, yalnız notlar; Kulüp kutuları kalır */ })],
+    ["yağmur özeti", F("grafiğin altındaki tek satır: \"8 mm yağdı · 16–20 arası kuvvetli, 12 mm bekleniyor\", başka gün bütün gün tahmin, yağmur yoksa \"sonra beklenmiyor\"", async () => { const { rainLine } = await import("@/features/weather/rainLine"); const rows = [...Array(24)].map((_, i) => ({ hh: String(i).padStart(2, "0") })); const fc = rows.map((_, i) => [0.6, 2, 5.5, 3.5][i - 16] ?? 0); const a = rainLine(rows, fc, 10.5, 8, {}); const b = rainLine(rows, fc, -1, 0, {}); const c = rainLine(rows, rows.map(() => 0), 10.5, 0, { 10: 2 }); return a.text === "8 mm yağdı · 16–20 arası kuvvetli, 12 mm bekleniyor" && a.hot && b.text === "16–20 arası kuvvetli, 12 mm bekleniyor" && c.text === "Şimdi yağıyor · sonra beklenmiyor" && !c.hot; })],
+    ["ana sayfa hava önemli kart", F("insight.js: radar burada yağış → yağmur kartı; tahmin yağış (≥%50) → saatli kart; rüzgâr 9→22 kn → rüzgâr kartı; 19→25° → ısınıyor; sakin gün kart yok, sıcaklık grafiği; yedek cümle dolu", async () => { const { weatherInsight: wi } = await import("@/features/weather/insight"); const mk = (f) => [...Array(24)].map((_, i) => ({ hh: String(i).padStart(2, "0"), t: 19, wind: 8, gust: 10, rain: 0, mm: 0, ...f(i) })); const calm = wi({ rows: mk(() => ({})), nowH: 9 }); const wet = wi({ rows: mk((i) => (i === 14 ? { rain: 80, mm: 2 } : {})), nowH: 9 }); const wind = wi({ rows: mk((i) => ({ wind: i < 10 ? 9 : i < 15 ? 22 : 12 })), nowH: 9 }); const warm = wi({ rows: mk((i) => ({ t: i < 10 ? 19 : 26 })), nowH: 9 }); const here = wi({ rows: mk(() => ({})), nowH: 9, radar: { frames: [{ at: "2026-11-06T07:00:00Z", level: 2 }], near: null }, hm: () => "10:00" }); const near = wi({ rows: mk(() => ({})), nowH: 9, radar: { frames: [{ at: "2026-11-06T07:00:00Z", level: 0 }], near: { km: 9, dir: "batı", level: 2 } }, hm: () => "10:00" }); return calm.kind === "calm" && !calm.title && calm.line && wet.kind === "rain" && wet.title === "Yağmur bekleniyor · 14:00" && wind.kind === "wind" && wind.title === "Rüzgâr artışı · 9 → 22 kn" && warm.kind === "temp" && warm.title.startsWith("Isınıyor") && here.kind === "rain" && here.title === "Burada orta yağış var" && near.kind === "rain" && near.title === "Yağış yakında · 9 km" && wi({ rows: [], nowH: 9 }) === null && wi({ rows: mk(() => ({})), nowH: 22 })?.kind === "calm"; })],
+    ["saat saat hava tablosu", F("ana sayfa hava üst alanı WindRibbon rüzgâr şeridi (2026-11-06; saat tablosu Hava sayfasında) ve ortak HourTable: 3 saatte bir sütun + ertesi gün, yağmur 3 saatin toplamı mm, sağanak colorOf, şimdi çerçevesi, CSS değişkenli renk", () => { const ht = src("features/weather/HourTable.jsx"); return /<HourTable/.test(src("features/weather/WeatherTop.jsx")) && /export const STEP = 1/.test(src("features/weather/hourCols.js")) && /reduce\(\(a, b\) => a \+ b, 0\)/.test(src("features/weather/hourCols.js")) && /colorOf\(c\.gust \?\? c\.wind\)/.test(ht) && /border-\[color:var\(--ht-now\)\]/.test(ht) && /"--ht-rain"/.test(ht) && /mmTone\(c\.mm\)/.test(ht); })],
+  ["ortak hava tablosu", F("hava sayfası DayStrip + HourTable, yarış havası HourTable, ikisinde de eski grafik yok; ölçülen geçmiş sütun, plan çizgisi, günlük yağış; harita her yerde Harita düğmesi", async () => {
+    const H = await import("@/features/weather/hourCols");
+    const wt = src("features/weather/WeatherTop.jsx"), rw = src("features/athletes/RaceWx.jsx"), ht = src("features/weather/HourTable.jsx");
+    const rows = Array.from({ length: 13 }, (_, hh) => hh).map((hh) => ({ hh: String(hh).padStart(2, "0"), time: `2026-11-03T${String(hh).padStart(2, "0")}:00`, t: 15, code: 2, day: true, wind: 4, gust: 9, dir: 90, mm: 1, feel: 14 }));
+    const obs = [{ hh: "07", wind: 6, gust: 11, dir: 120, temp: 13, code: 3, rain: { mm: 0.4, h: 1 } }, { hh: "08", wind: 7, gust: 12, dir: 130, temp: 14, code: 3, rain: { mm: 0.6, h: 1 } }];
+    const c = H.hourCols(rows, null, obs, { date: "2026-11-03", today: "2026-11-03", nowH: 10 });
+    const fut = H.hourCols(rows, null, obs, { date: "2026-11-04", today: "2026-11-03", nowH: 10 });
+    const mk = H.markAt(c, "10:30");
+    const c3 = H.hourCols(rows, null, [{ hh: "12", wind: 5, rain: { mm: 6, h: 3 } }], { date: "2026-11-03", today: "2026-11-03", nowH: 12 });
+    return c.length === 13 && c[8].obs === true && c[8].ob.wind === 7 && c[8].ob.gust === 12 && c[8].ob.dir === 130 && c[8].wind === 4 && c[8].t === 15 && c[8].mm === 1 && c[7].mm === 0.6 && c[6].mm === 0.4 && c[7].obs === true && c[7].ob.wind === 6 && !c[9].ob && c[9].obs === false && c[11].obs === false && fut.every((x) => !x.obs)
+      && c3[9].mm === 2 && c3[10].mm === 2 && c3[11].mm === 2 && c3[8].mm === 1 && c3[12].mm === 1 && mk === 10.5 && H.markAt(c, "") === null && H.nextDay("2026-11-30") === "2026-12-01" && H.mmText(0) === "" && H.mmText(2.34) === "2,3" && H.mmText(12.4) === "12"
+      && /<DayNav sel=\{sel\} days=\{navDays\}/.test(wt) && /<HourTable key=\{sel\}[^>]*\/>/.test(wt) && !/CockpitWind/.test(wt)
+      && /<HourTable key=\{day\}[^>]*far/.test(rw) && /<HourTable[^>]*nowMs=\{now\}/.test(src("features/liveScreen/LiveScreen.jsx")) && !/lv-wchart/.test(src("features/liveScreen/LiveScreen.jsx")) && !/CockpitWind/.test(rw)
+      && /useWindObs\(obs \? null : place \|\| getPlace\(\), date, today, far\)/.test(ht) && /--ht-obs/.test(ht) && /data-mark/.test(ht);
+  })],
+  ["yağış ihtimali haritası", F("Seyhun 2026-11-03: noktalar yağış ihtimaline (%) göre renklenir, İhtimal | Miktar düğmesi, çevrenin yüzde kaçında yağış var; harita tablonun altında sayfada (inline), tablodaki saate dokunmak harita açmaz (kaydırırken yanlış dokunma)", async () => {
+    const R = await import("@/lib/regionMap");
+    const { url, pts } = R.regionUrl({ lat: 39.07, lon: 26.88 });
+    const h = { time: ["2026-11-03T10:00"], precipitation: [1], precipitation_probability: [80], wind_speed_10m: [3], wind_gusts_10m: [4], wind_direction_10m: [90] };
+    const g = R.shapeRegion(pts.map(() => ({ hourly: h, utc_offset_seconds: 10800 })), pts);
+    const half = g.spots.map((s, k) => ({ ...s, mm: [k % 2 ? 0 : 1] }));
+    const rm = src("features/weather/RegionMap.jsx"), ht = src("features/weather/HourTable.jsx");
+    return /precipitation_probability/.test(url) && g.spots[0].p[0] === 80 && R.pTone(85).o > R.pTone(55).o && R.pTone(55).o > R.pTone(35).o && R.pTone(20).o === 0 && R.rainShare(half, 0) === 51
+      && /\["p", "İhtimal"\], \["mm", "Miktar"\]/.test(rm) && /aria-label=\{play \? "Durdur" : "Oynat"\}/.test(rm) && /type="range"/.test(rm)
+      && !/onCol/.test(ht) && !/onCol|openAt/.test(src("features/weather/WeatherTop.jsx")) && !/onCol|openAt/.test(src("features/athletes/RaceWx.jsx"))
+      && /<RegionMap[^>]*inline/.test(src("features/weather/WeatherTop.jsx")) && /<RegionMap inline/.test(src("features/athletes/RaceWx.jsx"));
+  })],
+  ["önceki 5 gün", F("Seyhun 2026-11-03: hava sayfasında 'Önceki 5 gün' düğmesi (kapalı başlar) geçmiş 5 günü şeritte açar, saatlik tabloda ölçülen sütunlar; yarış havasında yarıştan 5 gün önce", async () => {
+    const W = await import("@/features/weather/weather");
+    const d = ["2026-10-29", "2026-10-30", "2026-10-31", "2026-11-01", "2026-11-02", "2026-11-03", "2026-11-04"];
+    const j = { current: { time: "2026-11-03T10:00", temperature_2m: 15, weather_code: 1, is_day: 1, wind_speed_10m: 5, wind_gusts_10m: 8, wind_direction_10m: 90 },
+      hourly: { time: d.map((x) => `${x}T10:00`), temperature_2m: d.map(() => 14), weather_code: d.map(() => 1), is_day: d.map(() => 1), wind_speed_10m: d.map(() => 5), wind_gusts_10m: d.map(() => 8), wind_direction_10m: d.map(() => 90) },
+      daily: { time: d, weather_code: d.map(() => 1), temperature_2m_max: d.map(() => 18), temperature_2m_min: d.map(() => 10), wind_speed_10m_max: d.map(() => 9), wind_gusts_10m_max: d.map(() => 14), wind_direction_10m_dominant: d.map(() => 90), precipitation_sum: d.map(() => 0) } };
+    const w = W.shape(j, new Date("2026-11-03T10:00:00"));
+    return w.past.length === 5 && w.past[0].date === "2026-10-29" && w.days[0].date === "2026-11-04" && W.dayHours(w, "2026-11-01").length === 1
+      && /past_days: "5"/.test(src("features/weather/weather.js")) && /navDays = \[\.\.\.past, \.\.\.all\]/.test(src("features/weather/WeatherTop.jsx")) && /WX_BEFORE = 5/.test(src("features/athletes/raceWeather.js"));
+  })],
+  ["rüzgâr yönü derece", F("tüm hava gösterimlerinde yön adı yanında derece (ana sayfa, hava sayfası, yarış havası, rüzgâr haritası, bölge haritası, multimedya Hava, asistan metni)", async () => { const W = await import("@/features/weather/weather"); const RW = await import("@/features/athletes/raceWeather"); return W.dirDeg(45) === "45°" && W.dirDeg(-10) === "350°" && W.dirDeg(null) === "" && /windName\(v\.dir\)\[0\]\} \{dirDeg\(v\.dir\)\}/.test(src("features/weather/WeatherTop.jsx")) && /\{dirDeg\(v\.dir\)\}/.test(src("features/athletes/RaceWx.jsx")) && /dirDeg\(here\.d\[step\.i\]\)/.test(src("features/weather/RegionMap.jsx")) && /315°/.test(RW.windLine({ dir: 315, lo: 5, hi: 12, gust: 18 })); })],
+  ["radar ve bölge haritası", F("grafikte son 2 saat radar kutuları (yalnız bugün); hava sayfasında bölge haritası: rüzgâr saatlik, yağışta geçmiş radar + sonrası tahmin, dokunulan yer seçilen yer olur, profile yazılır, Geri al", async () => { const wt = src("features/weather/WeatherTop.jsx"); const rm = src("features/weather/RegionMap.jsx"); const R = await import("@/lib/regionMap"); const t0 = Date.parse("2026-10-28T09:00:00Z"); const grid = { times: [0, 1, 2, 3, 4].map((k) => `2026-10-28T${12 + k}:00`), at: [0, 1, 2, 3, 4].map((k) => t0 + k * 3600e3), spots: [] }; const now = t0 + 2.5 * 3600e3; const w = R.regionSteps(grid, [], "wind", now); const radar = [0, 1, 2].map((k) => ({ at: now - (2 - k) * 600e3, url: "" })); const r = R.regionSteps(grid, radar, "rain", now); const u = R.regionUrl({ lat: 38.67, lon: 26.75 }); return w.length === 5 && w.findIndex((x) => x.now) === 2 && w[3].kind === "fc" && r.length === 5 && r[2].now && r[2].kind === "radar" && r[3].kind === "fc" && r[3].i === 3 && u.pts.length === 49 && /past_hours=2/.test(u.url) && /precipitation/.test(u.url) && R.mmColor(5) === "#f43f5e" && /<RegionMap place=\{place\}/.test(wt) && /<RegionMap place=\{d\.at\}/.test(src("features/athletes/RaceWx.jsx")) && /weatherPlace: saved/.test(wt) && /label: "Geri al", onClick: \(\) => save\(prev\)/.test(wt) && /m\.on\("click"/.test(rm) && /raster-opacity/.test(rm) && /type="range"/.test(rm); })],
+  ["bölge haritası seçilen güne uyar", F("hava sayfasında / yarış havasında gün değişince harita o günün 24 saatini çizer (start_date), Şimdi/radar yok, etikette gün adı", async () => { const R = await import("@/lib/regionMap"); const u = R.regionUrl({ lat: 39.07, lon: 26.89 }, "Europe/Istanbul", "2026-11-05"); const times = [...Array(24)].map((_, k) => `2026-11-05T${String(k).padStart(2, "0")}:00`); const g = { times, at: times.map((t) => Date.parse(`${t}:00Z`)), spots: [] }; const st = R.regionSteps(g, [{ at: 0, url: "" }], "rain", Date.now(), true); const rm = src("features/weather/RegionMap.jsx"); return /start_date=2026-11-05/.test(u.url) && !/past_hours/.test(u.url) && st.length === 24 && st.every((x) => x.kind === "fc" && !x.now) && /day=\{sel\}/.test(src("features/weather/WeatherTop.jsx")) && /day=\{sel\}/.test(src("features/athletes/RaceWx.jsx")) && /dayName\(other, today\)/.test(rm); })],
+  ["şu an satırı ve ölçülen satırı", F("Hava sayfasında tablonun altında 'Şu an' satırı (NowRain, bugün; ana sayfada yağmur bilgisi hava cümlesi ve grafikte); ölçülen rüzgâr ayrı 'Ölçülen kn' satırında ve grafikte nokta, tahmin sütunları karışmaz", () => { const ht = src("features/weather/HourTable.jsx"); return /<NowRain place=\{place\}/.test(src("features/weather/WeatherTop.jsx")) && /hereLine\(radar/.test(src("features/weather/NowRain.jsx")) && /\["Ölçülen", "kn", true\]/.test(ht) && /c\.ob &&/.test(ht) && !/OBS_BG/.test(ht); })],
+    ["yarış tek satır", F("Seyhun 2026-10-30: ana sayfada sayaç ve düğme yok, tek satır dokununca yarış sayfası; alt yazı raceLine", () => { const rl = src("features/home/RaceLive.jsx"); return /<Link href=\{`\/athletes\/races\/\$\{id\}`\}/.test(rl) && /raceLine\(\{ r: race/.test(rl) && !/<button/.test(rl) && !/RecPick|raceStart|<Sheet/.test(rl); })],
+    ["parkur anlık", F("asistanın yazdığı parkur ölçümü Parkur sekmesinde sayfa yenilenmeden görünür (bekleyen yazım atlanmaz); çoklu ölçüm tek yazımda", () => { const ct = src("features/raceMedia/CourseTab.jsx"); const ym = src("features/assistant/isler/yarisMedya.js"); return !/hasPendingWrites\) return/.test(ct) && /onSnapshot\(\s*courseRef/.test(ct) && /addCourseMany\(raceOrg/.test(ym); })],
+    ["yarış satırı akşam kalkar", F("Seyhun 2026-10-31: günün yarışları bitince (18:00 ya da son yarıştan 90 dk) ana sayfa satırı kalkar, bu yarışın sayacı çalışıyorsa kalır", async () => { const RDx = await import("@/lib/raceDay"); const rl = src("features/home/RaceLive.jsx"); const r = { startDate: "2026-10-31", endDate: "2026-11-01" }; return RDx.racePhase({ r, today: "2026-10-31", now: new Date("2026-10-31T20:30:00") }) === "done" && RDx.racePhase({ r, today: "2026-10-31", now: new Date("2026-10-31T11:00:00") }) === "race" && /racePhase\(\{ r: race \|\| \{ startDate: today \}/.test(rl) && /=== "done" && !\(ours && \(running \|\| up\)\)/.test(rl) && /if \(over\) return null/.test(rl); })],
+    ["yarış kısayolu", F("Ayarlar'da kapatılır (users.raceLive off); açıkken Kulüp listesindeki yarış satırı tekrar yazılmaz", () => { const rl = src("features/home/RaceLive.jsx"); const hw = src("features/home/HomeWidgets.jsx"); const st = src("app/(app)/settings/page.jsx"); return /profile\?\.raceLive === "off"/.test(rl) && /profile\?\.raceLive !== "off" && liveRace\(open, today\) \? null : clubRaceRow/.test(hw) && /<RaceLiveRow \/>/.test(st) && /<RaceLive open=/.test(src("features/home/OwnerHome.jsx")); })],
+    ["yarışın tek ⋯ menüsü", F("Seyhun 2026-10-30: yarış ve multimedya sayfasında aynı liste (lib/raceMenu.js), Denemeleri sıfırla ve Gün ekle yalnız ⋯ içinde, yarıştan önce yarışın alt çubuğu yok", () => { const rm = src("features/raceMedia/RaceMedia.jsx"); const re = src("features/athletes/RaceEditor.jsx"); const pg = src("app/(app)/athletes/races/[id]/page.jsx"); return /RACE_SECS\.map/.test(rm) && /MEDIA_MENU\.map/.test(rm) && /MEDIA_MENU\.map/.test(re) && /\?sec=/.test(rm) && /q\.get\("sec"\)/.test(pg) && /sec=\{sec\}/.test(pg) && !/Denemeleri sıfırla/.test(src("features/raceMedia/TimerTab.jsx")) && /onPick=\{\(d\) => \(setDay\(d\), setPickDay\(false\)\)\}\s*\/>/.test(rm) && !/TabDock/.test(pg) && /"sa-plain"/.test(pg) && /"sa-plain"/.test(src("features/home/TabBar.jsx")); })],
+    ["yayın sayfası", F("Seyhun 2026-11-01: herkese açık ekran ayrı Yayın sayfasından yönetilir (/athletes/races/<id>/yayin, yalnız ana hesap): sayaç, Ekranda (canlı yayın / telefondan video, dikey-yatay), Parkur ve rüzgâr, Dönüşler; Yarışı yönet ve ⋯ › Yayın oraya gider, Canlı sekmesi yok", () => { const bp = src("features/broadcast/BroadcastPage.jsx"); const pg = src("app/(app)/athletes/races/[id]/yayin/page.jsx"); const re = src("features/athletes/RaceEditor.jsx"); const bs = src("features/broadcast/broadcastStore.js"); const ls = src("features/liveScreen/LiveScreen.jsx"); return /className="masa-mon pv"/.test(bp) && /Son ölçümler/.test(bp) && /title="Dönüşler"/.test(bp) && /\+ Video/.test(bp) && /const startRow = /.test(bp) && /useLiveSync\(/.test(bp) && /isOwner/.test(pg) && /\/yayin`\} replace/.test(re) && /k === "canli" \? `\/athletes\/races\/\$\{rid\}\/yayin`/.test(re) && /videoSize/.test(bs) && /lv-bg \$\{st\}\$\{tall \? " tall" : ""\}/.test(ls) && /\["canli", "Yayın"\]/.test(src("lib/raceMenu.js")); })],
+    ["yarış günü Saha · Start · Sonuç", F("Seyhun 2026-10-30: yarış günlerinde alt çubukta Yarış yok, yarış sayfası multimedyaya geçer (⋯ bölümü hariç), sayfa evreye göre açılır, Sonuç'ta Özeti paylaş ve Yarın / Dönüş, bizimkilerde dünden fark", () => { const rm = src("features/raceMedia/RaceMedia.jsx"); const pg = src("app/(app)/athletes/races/[id]/page.jsx"); const rt = src("features/raceMedia/ResultsTab.jsx"); return /\["course", "Saha"\], \["sure", "Start"\], \["res", "Sonuç"\]/.test(rm) && /\.\.\.\(racing\(r\) \? \[\] : \[\["race", "Yarış"\]\]\)/.test(rm) && !/LIVE_TAB/.test(rm) && /goLive\(\)/.test(rm) && /p === "results" \|\| p === "done" \? "res" : "sure"/.test(rm) && /Özeti paylaş/.test(rm) && /<NextCard r=\{race\} \/>/.test(rm) && !/\/media`\)/.test(pg) && /move=\{placeMove\(res, a\.id\)\}/.test(rt) && !/"Gün özeti"/.test(src("lib/raceMenu.js")); })],
     ["Giyim bir yere gitmez", F("Giyim kartı off, bağlantı yok", () => /title="Giyim"[^\n]*off \/>/.test(shop) && !/title="Giyim"[^\n]*(href|onClick)/.test(shop))],
     ["açık market siparişi", F("teslim / iptal açık sayılmaz", () => C.isOpenOrder({ status: "preparing" }) && !C.isOpenOrder({ status: "delivered" }) && !C.isOpenOrder({ status: "cancelled" }) && /find\(isOpenOrder\)/.test(shop))],
-    ["eski Market düğmesi yok", F("MarketButton silindi, ana sayfa ShopCards kullanır", () => !existsSync(new URL("../../../src/features/home/MarketButton.jsx", import.meta.url)) && src("features/home/OwnerHome.jsx").includes("<ShopCards />"))],
+    ["eski Market düğmesi yok", F("MarketButton silindi, ana sayfa ShopCards kullanır", () => !existsSync(new URL("../../../src/features/home/MarketButton.jsx", import.meta.url)) && !src("features/home/OwnerHome.jsx").includes("<ShopCards />"))],
   ]);
 }
 
@@ -3143,7 +3342,7 @@ group("Ortak düğmeler")([
   group("Asistan: bas-konuş küre")([
     ["sağ uçta büyük", F("dört sekme solda, küre sağda 4.75rem", () => /grid min-w-0 flex-1 grid-cols-4/.test(s) && /onPress=\{press\} onRelease=\{release\} size="size-\[4\.75rem\]"/.test(s))],
     ["bırakınca gönderir", F("release gönderir; kısa basışı motor yutar, uzağa kaydırma iptal", () => /if \(short\) return \(act\.current\.release \|\| act\.current\.cancel\)\?\.\(\);/.test(s) && /if \(away\) return act\.current\.cancel\?\.\(\);\n    \(act\.current\.release \|\| act\.current\.stop\)\?\.\(\);/.test(s))],
-    ["kısa dokunuş sınırı", F("SHORT_MS 300, AWAY_PX 90", () => /const SHORT_MS = 300;/.test(s) && /const AWAY_PX = 90;/.test(s))],
+    ["kısa dokunuş sınırı", F("SHORT_MS 200 (tek kelimelik cevap atılmasın, 2026-11-04), AWAY_PX 90", () => /const SHORT_MS = 200;/.test(s) && /const AWAY_PX = 90;/.test(s))],
     ["kapalıyken basınca açılır", F("press: kapalıysa openAssistant listen", () => /if \(!active\) return openAssistant\(\{ listen: true/.test(s))],
   ]);
 }
@@ -3161,5 +3360,121 @@ group("Ortak düğmeler")([
     ["iş sürerken kutu boş", F("gönderilen söz kutuda kalmaz", () => /: mode === "busy" \? "" \/\//.test(tb))],
     ["balon yükselir", F("kullanıcı balonu auser-in", () => /className="auser-in flex flex-col items-end"/.test(th) && /\.auser-in \{ animation: auserin/.test(src("app/globals.css")))],
     ["harf harf", F("son yanıt Typed, akıştan sonra değil", () => /<Typed turn=\{t\} on=\{typeLast\} \/>/.test(th) && /typeLast=\{!streamed\}/.test(sh))],
+  ]);
+}
+
+// İngilizce kalıplar (kalıp bloklama, Seyhun 2026-11-02): veri, aralıklı tekrar, Kur blokları, destede saklama
+{
+  const KC = await import("@/lib/englishChunks");
+  const KS = await import("@/lib/englishChunkStudy");
+  const EWk = await import("@/lib/englishWords");
+  const T = "2026-11-04";
+  const add = (d, n) => { const x = new Date(`${d}T12:00:00`); x.setDate(x.getDate() + n); return x.toISOString().slice(0, 10); };
+  const seq = (vals) => { let i = 0; return () => vals[i++ % vals.length]; };
+  const empty = { words: [], gaps: [1, 2, 4, 7, 14] };
+  group("İngilizce kalıplar")([
+    ["kalıp listesi", F("en az 30 kalıp, kimlik tekrarı yok, her kalıpta 4+ dolu parça, konu listede", () => {
+      const ids = KC.CHUNKS.map((c) => c.id);
+      return KC.CHUNKS.length >= 30 && new Set(ids).size === ids.length && KC.CHUNKS.every((c) => c.head && c.tr && c.rule && KC.CHUNK_TOPICS.includes(c.topic) && c.fills.length >= 4 && c.fills.every((f) => f.length === 3 && f.every((v) => typeof v === "string" && v.trim())));
+    })],
+    ["her konuda kalıp", F("beş konunun hepsi dolu", () => KC.CHUNK_TOPICS.every((t) => KC.CHUNKS.some((c) => c.topic === t)))],
+    ["cümle kurulur", F("baş + parça + son, noktalama yapışık", () => {
+      const a = KS.fillText(KS.chunkById("look-forward"), ["the weekend"]);
+      const b = KS.fillText(KS.chunkById("can-i-have"), ["the bill"]);
+      const c = KS.fillText(KS.chunkById("is-there"), ["a pharmacy"]);
+      return a === "I'm looking forward to the weekend." && b === "Can I have the bill, please?" && c === "Is there a pharmacy near here?";
+    })],
+    ["ilk kalıp", F("hiç başlanmamışsa listenin ilki", () => KS.nextChunk(empty, { today: T }).id === KC.CHUNKS[0].id)],
+    ["geç", F("geçilen atlanır", () => KS.nextChunk(empty, { today: T, skip: [KC.CHUNKS[0].id] }).id === KC.CHUNKS[1].id)],
+    ["konu süzgeci", F("yalnız o konunun kalıbı", () => KS.nextChunk(empty, { today: T, topic: "Spor ve kulüp" }).topic === "Spor ve kulüp")],
+    ["doğru bitti", F("çalışmaya girer, yarın tekrar, gün seriye yazılır", () => {
+      const d = KS.finishChunk(empty, "look-forward", T, true);
+      const s = d.chunks["look-forward"];
+      return s.st === "study" && s.box === 1 && s.due === add(T, 1) && d.cdays.includes(T);
+    })],
+    ["hatalı bitti", F("kutu sıfır, yarın tekrar", () => { const s = KS.finishChunk(empty, "look-forward", T, false).chunks["look-forward"]; return s.box === 0 && s.due === add(T, 1); })],
+    ["tekrar sırası", F("tekrarı gelen yeni kalıptan önce gelir", () => {
+      const d = KS.finishChunk(empty, "used-to", add(T, -1), true);
+      return KS.nextChunk(d, { today: T }).id === "used-to" && KS.dueChunks(d, T).length === 1;
+    })],
+    ["aralıklar", F("1, 2, 4, 7, 14 gün sonra öğrenildi", () => {
+      let d = empty, day = T;
+      for (const g of [1, 2, 4, 7, 14]) { d = KS.finishChunk(d, "i-wish", day, true); if (d.chunks["i-wish"].due !== add(day, g)) return false; day = d.chunks["i-wish"].due; }
+      d = KS.finishChunk(d, "i-wish", day, true);
+      return d.chunks["i-wish"].st === "known" && d.chunks["i-wish"].kd === day;
+    })],
+    ["erken tekrar", F("tekrarı gelmeden çalışılınca aralık değişmez", () => {
+      const d = KS.finishChunk(empty, "its-worth", T, true);
+      return KS.finishChunk(d, "its-worth", T, true).chunks["its-worth"].due === d.chunks["its-worth"].due;
+    })],
+    ["üst üste gün", F("bugün, dün, önceki gün → 3; boşluk seriyi keser", () => KS.streak([add(T, -2), add(T, -1), T], T) === 3 && KS.streak([add(T, -3), add(T, -1)], T) === 1 && KS.streak([], T) === 0)],
+    ["sayılar", F("kalıp ve içindeki ifade sayısı", () => {
+      const d = KS.finishChunk(KS.knowChunk(empty, "it-depends", T), "id-like", T, true);
+      const s = KS.chunkStats(d, T);
+      return s.known === 1 && s.study === 1 && s.words === KS.chunkById("it-depends").fills.length + KS.chunkById("id-like").fills.length && s.days === 1;
+    })],
+    ["Kur görevleri", F("3 görev, doğru bloklar havuzda, çeldirici var", () => {
+      const ts = KS.buildTasks(KS.chunkById("look-forward"), seq([0.1, 0.7, 0.3, 0.9, 0.5]));
+      return ts.length === 3 && ts.every((t) => t.answer.every((a) => t.pool.some((p) => p.t === a.t)) && t.pool.length > t.answer.length && t.pool.some((p) => p.t === "I'm used to") && new Set(t.pool.map((p) => p.k)).size === t.pool.length);
+    })],
+    ["Kur denetimi", F("doğru sıra doğru, yer değişince yanlış", () => {
+      const [t] = KS.buildTasks(KS.chunkById("is-there"), seq([0.2, 0.6, 0.4]));
+      return t.answer.length === 3 && t.answer[2].t === "near here" && KS.taskRight(t, t.answer) && !KS.taskRight(t, [t.answer[1], t.answer[0], t.answer[2]]);
+    })],
+    ["Türkçe işaret", F("parçanın Türkçesi cümlede bulunur", () => { const m = KS.markTr("Hafta sonunu dört gözle bekliyorum.", "hafta sonunu"); return m && m[1] === "Hafta sonunu"; })],
+    ["destede saklanır", F("cleanDeck kalıp ilerlemesini korur, bilinmeyen kimliği atar", () => {
+      const d = EWk.cleanDeck({ ...KS.finishChunk(empty, "look-forward", T, true), chunks: { ...KS.finishChunk(empty, "look-forward", T, true).chunks, yok: { st: "known" } } });
+      return d.chunks["look-forward"]?.box === 1 && !d.chunks.yok && d.cdays[0] === T;
+    })],
+    ["yeniden çalış", F("kalıp ilerlemesi silinir", () => !KS.resetChunk(KS.knowChunk(empty, "its-up-to", T), "its-up-to").chunks["its-up-to"])],
+  ]);
+}
+
+// İngilizce kalıp resimleri (resimle ezber, Seyhun 2026-11-15): her kalıbın sahnesi, tarif, Hatırla adımı, resim listesi
+{
+  const KC = await import("@/lib/englishChunks");
+  const KP = await import("@/lib/englishPics");
+  const { readFileSync } = await import("node:fs");
+  const src = (p) => readFileSync(new URL(`../../../src/${p}`, import.meta.url), "utf8");
+  const cs = src("features/words/ChunkStudy.jsx");
+  const wr = src("app/api/word/route.js");
+  const pg = src("app/(app)/english/page.jsx");
+  group("İngilizce kalıp resimleri")([
+    ["her kalıbın sahnesi", F("37 kalıbın hepsinde sahne var, fazlası yok", () => KC.CHUNKS.every((c) => KP.picScene(c.id).length > 40) && Object.keys(KP.PICS).every((id) => KC.CHUNKS.some((c) => c.id === id)))],
+    ["tarif", F("tarifte örnek cümle, sahne ve yazısız tarz", () => { const p = KP.picPrompt(KC.CHUNKS[0]); return p.includes("I'm looking forward to seeing you") && p.includes(KP.PICS["look-forward"]) && /no text/i.test(p); })],
+    ["bilinmeyen kalıp", F("sahnesi olmayan kalıba tarif yok", () => KP.picPrompt({ id: "yok", head: "x", fills: [] }) === "")],
+    ["Hatırla adımı", F("Kur → Hatırla → Konuş; Göster kalıbı yarına atar", () => /"Kur", "Hatırla", "Konuş"/.test(cs) && /last \? "Hatırla"/.test(cs) && /const show = \(\) => \{[\s\S]*?setMiss\(true\)/.test(cs) && /hearSay\(say0, blob\)/.test(cs))],
+    ["dinleme", F("/api/word hear: önce bağlamsız yazıya döker (scribe), sonra beklenen cümleyle karşılaştırır", () => /if \(body\?\.hear\) return hear\(au, body, audio\)/.test(wr) && /const heard = await scribe\(audio\);[\s\S]*?same\(heard, en\)/.test(wr) && /HEAR_OK/.test(wr))],
+    ["Konuş sesli cevap", F("Konuş: sesli cevap konuşmadan ayrı yazıya dökülür, 3 örnek cevap gelir", () => /heard = await scribe\(audio\);[\s\S]*?turns\.push\(\{ me: true, e: heard \}\)/.test(wr) && /hints: \{ type: "array"/.test(wr) && !/TALK_AUDIO/.test(wr))],
+    ["Resimler listesi", F("⋯ içinde yalnız ana hesapta Resimler", () => /\{orgId && \(\s*<Button variant="secondary" onClick=\{\(\) => \(setMenu\(false\), setPics\(true\)\)\}>/.test(pg) && /<ChunkPics orgId=\{orgId\}/.test(pg))],
+  ]);
+}
+
+// Mesajdaki dosyadan plan (lib/chatPlan.js): hangi ek okunur, yapay zeka cevabının temizlenmesi, sohbette "plana ekle"
+{
+  const CP = await import("@/lib/chatPlan");
+  const raw = {
+    kind: "Antrenman programı",
+    items: [
+      { title: "Optimist antrenman", date: "2026-11-15", time: "10:00", place: "Kulüp", category: "Antrenman" },
+      { title: "Optimist antrenman", date: "2026-11-15", time: "10:00" },
+      { title: "Eski toplantı", date: "2026-11-01" },
+      { title: "Foça Kupası", date: "2026-11-29", endDate: "2026-11-30", time: "09:00", category: "Yarış" },
+      { title: "Tarihsiz", date: "" },
+      { title: "Veli toplantısı", date: "2026-11-13", time: "25:00", category: "Bilinmeyen" },
+    ],
+  };
+  const out = CP.cleanPlanItems(raw, "2026-11-12");
+  group("Mesajdaki dosyadan plan")([
+    ["PDF", F("okunur", () => CP.planFile({ kind: "file", type: "application/pdf", url: "u", size: 1e6 }))],
+    ["fotoğraf", F("okunur", () => CP.planFile({ kind: "photo", type: "image/jpeg", url: "u" }))],
+    ["sesli mesaj, Word, büyük PDF", F("okunmaz", () => !CP.planFile({ kind: "voice", url: "u" }) && !CP.planFile({ kind: "file", type: "application/msword", name: "a.docx", url: "u" }) && !CP.planFile({ kind: "file", type: "application/pdf", url: "u", size: 20e6 }))],
+    ["temizleme", F("geçmiş, tarihsiz ve tekrar atlanır; tarihe göre", () => out.items.map((x) => x.title).join("|") === "Veli toplantısı|Optimist antrenman|Foça Kupası")],
+    ["çok günlü", F("saat yok, bitiş var", () => { const f = out.items[2]; return f.endDate === "2026-11-30" && f.time === "" && f.cat === "Yarış"; })],
+    ["bozuk saat ve tür", F("saat boş, Genel", () => out.items[0].time === "" && out.items[0].cat === "Genel")],
+    ["taslak", F("plan, mesaj bağı", () => { const d = CP.planDrafts(out.items, "c1/m1")[1]; return d.type === "plan" && d.fromMsg === "c1/m1" && d.time === "10:00" && d.place === "Kulüp"; })],
+    ["sohbette komut", F("plana ekle, bunu planlara ekle, takvime ekle", () => ["plana ekle", "Bunu planlara ekle.", "takvime ekle", "planlara ekler misin?"].every(CP.chatPlanCommand))],
+    ["sohbette mesaj", F("uzun cümle ve başka iş komut değil", () => !["yarın plana ekle bunu da konuşuruz", "plan yapalım", "toplantıyı ekle", "eklerim"].some(CP.chatPlanCommand))],
+    ["özet", F("3 plan ve fazlası", () => CP.planSummary([...out.items, ...out.items], 2).endsWith("ve 4 plan daha"))],
   ]);
 }

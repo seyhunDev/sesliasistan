@@ -12,9 +12,11 @@ import { racePostOf } from "@/features/athletes/raceLinks";
 import { record } from "@/lib/brain/store";
 import { loadPosts, postHandler } from "@/features/posts/posts";
 import { raceHereCommand, hotelAddCommand } from "@/lib/assistMore";
-import { deleteRace, addRacePlan, matchStep, stepsOf, doneSteps, cleanDone, cleanHotels, raceHotels } from "@/features/athletes/races";
+import { addRacePlan, matchStep, stepsOf, doneSteps, cleanDone, cleanHotels, raceHotels } from "@/features/athletes/races";
 import { cleanResults } from "@/lib/raceResults";
+import { stampResults } from "@/lib/raceDay";
 import { emptyBudget } from "@/features/athletes/budget";
+import { wipeRace } from "@/features/athletes/raceWipe";
 
 // Söylenen yarışı bul: kesin eşleşme → puanlama → yapay zeka → en yakın seçenekler (yoksa tarihi en yakın 3 yarış)
 export async function openRace(ctx, s, viaVoice) {
@@ -245,7 +247,7 @@ export async function raceHereCmd(ctx, s, viaVoice) {
     if (rh.op === "delete") {
       askOk(`“${r.name}” yarışı silinsin mi? Bütçesi, evrak bilgisi ve notları da silinir, geri alınamaz.`, "Sil", async (v) => {
         try {
-          await deleteRace(raceOrg, r.id);
+          await wipeRace(raceOrg, r.id);
           races.current = races.current.filter((x) => x.id !== r.id);
           park();
           router.push("/athletes/races");
@@ -273,7 +275,7 @@ export async function raceHereCmd(ctx, s, viaVoice) {
       return true;
     }
     if (rh.op === "fleet") {
-      await saveHereRace(r, { ...r, results: cleanResults({ ...(r.results || {}), fleet: rh.n }) });
+      await saveHereRace(r, { ...r, results: cleanResults(stampResults(r.results, { ...(r.results || {}), fleet: rh.n }, todayStr())) });
       done(`Tekne sayısı ${rh.n} olarak yazıldı.`, { engine: "local" }, viaVoice);
       return true;
     }
@@ -290,8 +292,9 @@ export async function raceHereCmd(ctx, s, viaVoice) {
         reply("Bu yarışa önce sporcu ekle.", { engine: "local" }, viaVoice);
         return true;
       }
-      window.dispatchEvent(new CustomEvent("sa-race-sheet", { detail: { id: r.id, ids: one ? [one.id] : [] } }));
-      done(one ? `${one.studentName} için bilgi notunu hazırlıyorum.` : `${mine.length} sporcunun bilgi notunu hazırlıyorum, her sporcuya bir sayfa.`, { engine: "local" }, viaVoice);
+      window.dispatchEvent(new CustomEvent("sa-race-sheet", { detail: { id: r.id, ids: one ? [one.id] : [], only: rh.only || "" } }));
+      const what = rh.only === "budget" ? "bütçesini" : "bilgi notunu";
+      done(one ? `${one.studentName} için ${rh.only === "budget" ? "bütçeyi" : "bilgi notunu"} hazırlıyorum.` : `${mine.length} sporcunun ${what} hazırlıyorum, her sporcuya bir sayfa.`, { engine: "local" }, viaVoice);
       return true;
     }
     const hit = rh.name ? matchPerson(rh.name, mine.map((a) => a.studentName)) : "";
@@ -306,7 +309,7 @@ export async function raceHereCmd(ctx, s, viaVoice) {
         done(`${a.studentName} yarıştan çıkarıldı.`, { engine: "local" }, viaVoice);
       } else if (rh.op === "result") {
         const rows = { ...(r.results?.rows || {}), [a.id]: { ...(r.results?.rows?.[a.id] || {}), place: rh.place } };
-        await saveHereRace(r, { ...r, results: cleanResults({ ...(r.results || {}), rows }) });
+        await saveHereRace(r, { ...r, results: cleanResults(stampResults(r.results, { ...(r.results || {}), rows }, todayStr())) });
         done(`Yazdım: ${a.studentName} ${rh.place}.${r.results?.fleet ? ` / ${r.results.fleet}` : ""}.`, { engine: "local" }, viaVoice);
       } else {
         const b = r.budget || emptyBudget(r);

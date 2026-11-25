@@ -47,7 +47,7 @@ function Library({ orgId }) {
     loadAllMedia(orgId).then(setDocs, (e) => (setDocs([]), setError(e?.message || "Medya alınamadı.")));
     loadRaces(orgId).then(setRaces, () => {});
     listKept()
-      .then((l) => setKept(Object.fromEntries(l.map((k) => [k.id, URL.createObjectURL(k.blob)]))))
+      .then((l) => setKept(Object.fromEntries(l.filter((k) => k.blob).map((k) => [k.id, URL.createObjectURL(k.blob)]))))
       .catch(() => {});
   }, [orgId]);
   const secs = useMemo(() => librarySections(docs || [], { plans, races }), [docs, plans, races]);
@@ -89,7 +89,7 @@ function Library({ orgId }) {
   };
 
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--dome-h,var(--stage-h,6rem))+2rem)]">
+    <main className="split mx-auto max-w-[30rem] px-5 pb-[calc(var(--dome-h,var(--stage-h,6rem))+2rem)]">
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Medya">
         <header className="flex items-center gap-2.5">
           <BackButton href="/" />
@@ -99,7 +99,7 @@ function Library({ orgId }) {
           </div>
         </header>
       </section>
-      <div className="relative -mx-5 -mt-6 min-h-[50vh] rounded-t-[1.75rem] bg-bg px-5 pt-4">
+      <div className="split-cols relative -mx-5 -mt-6 min-h-[50vh] rounded-t-[1.75rem] bg-bg px-5 pt-4">
         <Seg value={tab} onChange={setTab} options={[["ant", "Antrenman", n("ant")], ["race", "Yarış", n("race")]]} />
         {error && <p className="mt-4 text-center text-[0.875rem] text-rec">{error}</p>}
         {!docs && <Loading label="Medya yükleniyor" />}
@@ -128,7 +128,7 @@ function Library({ orgId }) {
               <div className="grid grid-cols-4 gap-1">
                 {shown.map((m, i) => (
                   <button key={m.id} type="button" onClick={() => setOpen({ sec: s.key, id: m.id })} className="relative aspect-square overflow-hidden rounded-lg bg-line active:opacity-80">
-                    <Thumb kind={m.kind} url={m.url} thumb={m.thumb} dur={m.dur} local={kept[m.id] || ""} />
+                    <Thumb kind={m.kind} url={m.url} thumb={m.thumb} dur={m.dur} local={kept[m.id] || ""} ph={!!m.ph} />
                     {i === 3 && more > 0 && <span className="absolute inset-0 grid place-items-center bg-black/45 text-[1.25rem] font-semibold text-white">+{more}</span>}
                   </button>
                 ))}

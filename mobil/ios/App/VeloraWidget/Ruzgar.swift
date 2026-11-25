@@ -1,17 +1,17 @@
 import SwiftUI
 import WidgetKit
 
-// Widget'ların rüzgâr grafiği: ana sayfadaki grafiğin aynısı (src/features/home/CockpitWind.jsx). Dolu camgöbeği alan rüzgâr, açık alan ve
+// Widget'ların rüzgâr grafiği: ana sayfadaki grafiğin aynısı (src/features/home/CockpitWind.jsx). Dolu açık mavi alan rüzgâr, açık alan ve
 // kesik çizgi sağanak; üstte 2 saatte bir yön oku (rüzgârın estiği yöne bakar, 17 kn ve üstü turuncu), altında 3 saatte bir saat, sıcaklık,
 // "rüzgâr–sağanak" kn (tek renk, ana sayfadaki gibi). Kırmızı çizgi ve nokta şimdi ("şimdi" yazısıyla). Saatler 06–23; saat 23'ten sonra yarının günü gösterilir.
 // Veri open-meteo'dan (uygulamanın hava sayfasıyla aynı kaynak, knot); 25 dakika uygulama grubunda saklanır, her widget yeniden çekmez.
 
 // Okyanus renkleri (Seyhun 2026-10-22: uygulama Okyanus'a geçiyor; örnek /mnt/project-files/iphone/widget-okyanus-ornek.png)
-let wZemin = Color(red: 0.067, green: 0.125, blue: 0.227) // gece mavisi #11203a
-let wUst = Color(red: 0.078, green: 0.22, blue: 0.353) // zeminin üstü #14385a (yukarıdan aşağı geçiş)
-let wAcik = Color(red: 0.404, green: 0.91, blue: 0.976) // koyu zeminde okunan camgöbeği #67e8f9
-private let alanRenk = Color(red: 0.133, green: 0.827, blue: 0.933) // #22d3ee
-private let saganakRenk = Color(red: 0.647, green: 0.953, blue: 0.988) // #a5f3fc
+let wZemin = Color(red: 0.043, green: 0.102, blue: 0.2) // lacivert #0b1a33
+let wUst = Color(red: 0.075, green: 0.141, blue: 0.247) // zeminin üstü #13243f (yukarıdan aşağı geçiş)
+let wAcik = Color(red: 0.561, green: 0.702, blue: 1) // koyu zeminde okunan açık mavi #8fb3ff
+private let alanRenk = Color(red: 0.357, green: 0.549, blue: 1) // #5b8cff
+private let saganakRenk = Color(red: 0.78, green: 0.847, blue: 1) // #c7d8ff
 private let turuncu = Color(red: 0.957, green: 0.651, blue: 0.29) // #f4a64a
 private let kirmizi = Color(red: 1.0, green: 0.42, blue: 0.42) // #ff6b6b
 
@@ -57,6 +57,12 @@ struct GunRuzgar: Codable, Hashable {
         return k >= 0 && k <= Double(hours.count - 1) ? k : nil
     }
 
+    // Şimdiki (bugün değilse ilk saatin) sıcaklığı
+    func sicaklik(_ now: Date = Date()) -> Int {
+        guard let k = konum(now) else { return hours.first?.t ?? 0 }
+        return hours[min(hours.count - 1, Int(k.rounded()))].t
+    }
+
     static func gun(_ d: Date) -> String {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
@@ -81,9 +87,13 @@ func knYazi(_ wind: Int, _ gust: Int) -> String {
 }
 
 enum RuzgarKaynak {
-    private static let anahtar = "ruzgarOnbellek"
+    // Yer başına ayrı saklanır (yarış günü hem yarış yeri hem ev çekilir)
+    private static func anahtar(_ lat: Double, _ lon: Double) -> String {
+        "ruzgarOnbellek-\(Int((lat * 100).rounded()))-\(Int((lon * 100).rounded()))"
+    }
 
     static func al(lat: Double, lon: Double) async -> GunRuzgar? {
+        let anahtar = anahtar(lat, lon)
         let now = Date()
         let saat = Calendar.current.component(.hour, from: now)
         let gun = GunRuzgar.gun(saat >= 23 ? now.addingTimeInterval(86400) : now)
@@ -187,24 +197,25 @@ struct RuzgarGrafik: View {
     }
 }
 
-// 3 saatte bir: saat, sıcaklık, rüzgâr–sağanak (grafikteki saatin tam altında)
+// 3 saatte bir: saat, sıcaklık, rüzgâr–sağanak (grafikteki saatin tam altında). kisa: büyük widget'ta sıcaklıksız iki satır (sığsın diye)
 struct RuzgarEtiket: View {
     let g: GunRuzgar
+    var kisa = false
     var body: some View {
         GeometryReader { geo in
             let c = Cizim(n: g.hours.count, ust: 1, w: geo.size.width, h: 1, top: 0, sag: 14)
             ForEach(Array(g.hours.enumerated()).filter { $0.element.hh % 3 == 0 }, id: \.offset) { i, s in
                 VStack(spacing: 1) {
                     Text(String(format: "%02d", s.hh)).foregroundStyle(.white.opacity(0.55))
-                    Text("\(s.t)°")
+                    if !kisa { Text("\(s.t)°") }
                     Text(knYazi(s.wind, s.gust)).fontWeight(.bold)
                 }
                 .font(.system(size: 9, weight: .semibold).monospacedDigit())
                 .fixedSize()
-                .position(x: min(max(c.x(Double(i)), 12), c.w - 12), y: 17)
+                .position(x: min(max(c.x(Double(i)), 12), c.w - 12), y: kisa ? 12 : 17)
             }
         }
-        .frame(height: 34)
+        .frame(height: kisa ? 24 : 34)
     }
 }
 

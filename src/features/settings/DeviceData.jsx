@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useState } from "react";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -130,6 +131,7 @@ const PARTS = [
 ];
 
 export function DeviceDataRow() {
+  const confirmAsk = useConfirm();
   const toast = useToast();
   const { profile } = useAuth();
   const { plans } = useData();
@@ -179,7 +181,7 @@ export function DeviceDataRow() {
     } catch {}
   };
   const run = async (key, ask, fn) => {
-    if (!confirm(ask)) return;
+    if (!(await confirmAsk({ title: "Silinsin mi?", text: ask }))) return;
     setBusy(key);
     const before = d;
     try {

@@ -1,56 +1,104 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { PageHeader } from "@/components/ui/PageHeader";
+import { useRouter, useSearchParams } from "next/navigation";
+import { BackButton } from "@/components/ui/BackButton";
 import { Loading } from "@/components/ui/Loader";
+import { LoadFail } from "@/components/ui/LoadFail";
 import { Icon } from "@/components/ui/Icon";
 import { useToast } from "@/components/ui/ToastProvider";
 import { loadAthletes, isActive } from "@/features/athletes/data";
 import { loadRace } from "@/features/athletes/races";
 import { raceDays } from "@/features/athletes/raceWeather";
-import { loadLive, resetLive, saveDays, saveStarts } from "@/features/athletes/raceLiveStore";
+import { loadLive, resetLive, saveDays, saveStarts, saveWind } from "@/features/athletes/raceLiveStore";
+import { canShare, loadSharedWind, shareWind } from "@/features/athletes/sharedRaces";
 import { cleanLive, dayNames, dayOf, liveDays, ownedBy, pickTimer, resetPatch, upSec, withToday, zeroRace } from "@/lib/raceLive";
 import { mmss } from "@/lib/raceScore";
 import { mineHere, ownHere, readTimer, useTimerRun, writeTimer } from "@/features/training/Countdown";
 import { todayStr } from "@/lib/utils/format";
-import { WeatherTab } from "./WeatherTab";
 import { VoidSheet, useRaceFlow } from "./useRaceFlow";
-import { TimerTab } from "./TimerTab";
+import { TimerHead, useStartList } from "./TimerTab";
 import { ResultsTab } from "./ResultsTab";
-import { MediaSettingsButton, MediaTab } from "./MediaTab";
+import { MediaTab, openMediaSettings } from "./MediaTab";
+import { Sheet } from "@/components/ui/Sheet";
+import { card } from "@/components/ui/Page";
+import { buttonClass } from "@/components/ui/buttonClass";
 import { RecPick } from "./RecPick";
 import { DaySummarySheet } from "./DaySummarySheet";
-import { DaySheet } from "./DaySheet";
+import { NextCard } from "@/features/athletes/RaceDayTop";
+import { racePhase } from "@/lib/raceDay";
+import { DayPick, DaySheet } from "./DaySheet";
 import { ResetSheet } from "./ResetSheet";
 import { useLiveSync } from "./useLiveSync";
+import { takeShot } from "./handoff";
 import { useTabInUrl } from "@/hooks/useTabInUrl";
+import { CourseTab } from "./CourseTab";
+import { MEDIA_MENU, RACE_SECS } from "@/lib/raceMenu";
+import { VoiceLight } from "@/features/home/TabBar";
+import { useAssistant } from "@/features/assistant/AssistantProvider";
+import { useAuth } from "@/features/auth/AuthProvider";
 
 // Yarış günü sayfası (Seyhun 2026-10-18; onaylı örnek /mnt/project-files/yaris-tasarim/multimedya/sayfa.png):
-// Hava: yarış yerinin saatlik tahmini (hava sayfasındaki grafik) + elle yazılan rüzgâr noktaları; Süre: start sayacı (5 dk dizisi)
+// Süre: start sayacı (5 dk dizisi)
 // ve günün yarışları; Sonuçlar: sonuç PDF'inden Genel ve Bizimkiler; Medya: fotoğraf/video, yarışa göre gruplu.
 // Kayıt raceLive belgesinde (raceLiveStore.js); çok günlü yarışta üstte gün seçilir. ?tab=sure (asistan sayacı başlatınca).
 // Start sayacı başka sekmede ve sayfada da öter (Countdown.jsx TimerSound); sayfanın diğer sekmelerinde küçük süre satırı görünür (dokununca Süre).
 // Sağ üstte "Özet": seçili günün kartı (rüzgâr, yarışlar, bizimkiler) veliye/Instagram'a paylaşılır (DaySummarySheet).
-// Sıra yarış gününün işine göre (Seyhun 2026-10-18 onayı): Süre · Medya · Hava · Sonuçlar; yarış günü Süre'yle, başka gün Hava'yla açılır
-const TABS = [["sure", "Süre"], ["media", "Medya"], ["wx", "Hava"], ["res", "Sonuçlar"]];
+// Sıra yarış gününün işine göre (Seyhun 2026-10-18 onayı): Süre · Medya · Sonuçlar; yarış günü Süre'yle, başka gün Medya'yla açılır.
+// Hava sekmesi kalktı (Seyhun 2026-10-26: "multimedyada artık gerek yok, hava durumuna zaten birçok yerde bakıyoruz"); yarışın havası
+// yarış sayfasının üstünde (RaceWx.jsx).
+const TABS = [["sure", "Süre"], ["media", "Medya"], ["res", "Sonuçlar"]];
+// Parkur yalnız yarışta (Seyhun 2026-10-28 "Parkur analizi"); antrenman günü sayfası TABS'ı kullanır
+// Saha = Parkur + yarışın havası + sesle yazılan rüzgâr (Seyhun 2026-10-30, yaris-yapi); Yarış'ın hemen yanında
+// Start = Süre + Medya (Seyhun 2026-10-30): sayaç, günün yarışları ve her yarışın çekimleri satırında; Kayıt Başlat'ın yanında
+// Sonuç (Seyhun 2026-10-30): bizimkilerin sırası ve dünden farkı, tüm liste, üstte Özeti paylaş ve gün bitince Yarın / Dönüş
+const RACE_TABS = [["course", "Saha"], ["sure", "Start"], ["res", "Sonuç"]];
+// Yarış sayfası ve multimedya tek sayfa gibi (Seyhun 2026-10-29 "detay, multimedya aynı sayfa farklı sekmeler olsun"): alt çubukta
+// ilk sekme Yarış (yarış sayfası /athletes/races/<id>), diğerleri multimedya (/media?tab=…); geçiş replace ile, geri tuşu listeye (Yayın ayrı sayfa: push, geri yarışa döner)
+// Yarış günlerinde Yarış sekmesi yok (Seyhun 2026-10-30, yaris-yapi: altta Saha · Start · Sonuç); hazırlık ⋯ içinde. Yarıştan sonra yine var.
+export const racing = (r) => !!r?.startDate && todayStr() >= r.startDate && todayStr() <= (r.endDate || r.startDate);
+// Herkese açık ekranın yönetimi ayrı Yayın sayfasında (/yayin; Seyhun 2026-11-01 "ayrı bir sayfada yöneteceğiz"); ⋯ › Yayın oraya gider
+export const raceDock = (r) => [...(racing(r) ? [] : [["race", "Yarış"]]), ...RACE_TABS];
+// Sayfa günün evresiyle açılır: sonuç geldiyse, gün bittiyse ya da yarış bittiyse Sonuç; yoksa Start
+export const firstTab = (r, starts, now = new Date()) => {
+  const today = todayStr();
+  if (r?.startDate && today > (r.endDate || r.startDate)) return "res";
+  const p = racePhase({ r, today, now, starts });
+  return p === "results" || p === "done" ? "res" : "sure";
+};
 const dayLabel = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
+
+// ⋯ menüsünün multimedya işleri (lib/raceMenu.js MEDIA_MENU): menüden ya da yarış sayfasının ⋯ menüsünden (?do=)
+function menuAct(k, { setSum, setTab, setAddDay, setReset, goLive }) {
+  if (k === "sum") setSum(true);
+  else if (k === "canli") goLive();
+  else if (k === "shot") (setTab("sure"), setTimeout(openMediaSettings, 150));
+  else if (k === "day") setAddDay(true);
+  else if (k === "reset") setReset(true);
+}
 
 export function RaceMedia({ orgId, id }) {
   const toast = useToast();
   const q = useSearchParams();
-  const [tabPick, setTab] = useState(TABS.some(([k]) => k === q.get("tab")) ? q.get("tab") : "");
+  const router = useRouter();
+  const [tabPick, setTab] = useState(RACE_TABS.some(([k]) => k === q.get("tab")) ? q.get("tab") : "");
   useTabInUrl(tabPick);
-  const [shot, setShot] = useState(null); // alttaki Kayıt ile iPhone kamerasında çekilen dosya (Medya işler)
+  const [opened] = useState(() => new Date()); // açılış anı: ilk sekme ve Yarın kartı için evre
+  const [shot, setShot] = useState(() => takeShot(id)); // alttaki Kayıt (ya da ana sayfadaki yarış şeridi) ile iPhone kamerasında çekilen dosya (Medya işler)
   const [race, setRace] = useState(null);
   const [missing, setMissing] = useState(false);
+  const [fail, setFail] = useState(false); // sunucuya ulaşılamadı ve telefonda kopya yok
+  const [retry, setRetry] = useState(0);
   const [live, setLive] = useState(() => cleanLive({}));
   const [athletes, setAthletes] = useState([]);
   const today = todayStr();
   const [day, setDay] = useState("");
   const [sum, setSum] = useState(false);
+  const [menu, setMenu] = useState(false); // sağ üstteki tek ⋯ (yarış sayfasındakiyle aynı liste, lib/raceMenu.js)
   const [addDay, setAddDay] = useState(false);
+  const [pickDay, setPickDay] = useState(false);
   const [reset, setReset] = useState(false);
+  const { isOwner } = useAuth();
   const rdays = useMemo(() => (race ? raceDays(race) : null), [race]);
   // Açılışta bugün seçili (Seyhun 2026-10-19: "açtığım zaman bugün gösterilmesi lazım"). Telefon uygulamayı arkada açık tutar:
   // ana ekrandan ya da başka uygulamadan geri dönünce (30 sn.den uzun ara ya da gün değişti) elle seçilen gün bırakılır, yeniden bugün görünür.
@@ -70,25 +118,16 @@ export function RaceMedia({ orgId, id }) {
       window.removeEventListener("pageshow", on);
     };
   }, []);
-  // Seçili gün şeritte görünsün (gün çoksa bugün sağda kalıp gözden kaçmasın)
-  const strip = useRef(null);
-  const shown = useRef("");
-  useEffect(() => {
-    const el = strip.current?.querySelector('[aria-pressed="true"]');
-    if (!el || shown.current === el.dataset.day) return;
-    shown.current = el.dataset.day;
-    const box = strip.current;
-    box.scrollLeft = Math.max(0, el.offsetLeft - box.offsetLeft - (box.clientWidth - el.offsetWidth) / 2);
-  });
-
   useEffect(() => {
     let on = true;
-    loadRace(orgId, id).then(
+    // Önce telefondaki kopya (hemen çizilir), sonra sunucu; sunucuya ulaşılamazsa kopya kalır, kopya da yoksa "Tekrar dene"
+    let got = false;
+    loadRace(orgId, id, (r) => on && r && ((got = true), setRace((p) => p || r))).then(
       (r) => on && (r ? setRace(r) : setMissing(true)),
-      () => on && setMissing(true),
+      () => on && !got && setFail(true),
     );
     loadLive(orgId, id).then(
-      (l) => on && setLive(l),
+      (l) => on && ((liveIn.current = true), setLive(l)),
       () => {},
     );
     loadAthletes()
@@ -97,7 +136,26 @@ export function RaceMedia({ orgId, id }) {
     return () => {
       on = false;
     };
-  }, [orgId, id]);
+  }, [orgId, id, retry]);
+
+  // Ortak yarış (race.shared, Seyhun 2026-10-28): ekleyen kulüp ölçülen rüzgârı ortağa da yazar (sharedRaces/{id}/live/wind);
+  // başka kulüpte kendi rüzgâr kaydı boşsa ortaktaki gösterilir
+  const liveIn = useRef(false);
+  const windSent = useRef(null);
+  const sid = race?.shared || "";
+  useEffect(() => {
+    if (!sid || !liveIn.current) return;
+    const k = JSON.stringify(live.wind);
+    if (windSent.current === k) return;
+    const first = windSent.current === null;
+    windSent.current = k;
+    if (first && !live.wind.length) {
+      loadSharedWind(sid).then((w) => w.length && setLive((l) => (l.wind.length ? l : ((windSent.current = JSON.stringify(cleanLive({ ...l, wind: w }).wind)), cleanLive({ ...l, wind: w })))));
+      return;
+    }
+    const list = live.wind;
+    canShare(sid).then((ok) => ok && shareWind(sid, list), () => {});
+  }, [sid, live.wind]);
 
   // Asistanla yazılan rüzgâr (isler/yarisMedya.js) açık sayfada hemen görünür
   useEffect(() => {
@@ -119,6 +177,7 @@ export function RaceMedia({ orgId, id }) {
   const onZero = useCallback(
     (end, t) => {
       if (Date.now() - end > 20 * 60e3) return; // çok önce bitmiş sayaç (ör. antrenmanda kalmış) yarış startı sayılmaz
+      if (!liveIn.current) return; // yarışlar henüz yüklenmedi: boş listeye yazılırsa günün diğer yarışları silinirdi (sayfa start sonrası açılınca; 2026-11-01)
       if (t?.mode !== "start" || !t.rid || !ownedBy(t.own, ownHere())) return; // düz start yarış açmaz ("+ Yarış yap" ile); başka sayfanın sayacı bu yarışa yazılmaz
       change((l) => {
         const next = zeroRace(l.starts, t.rid, end, l.wind, rdays);
@@ -132,75 +191,106 @@ export function RaceMedia({ orgId, id }) {
   const timer = useTimerRun({ onZero });
   useLiveSync({ orgId, raceId: id, setLive });
   const rf = useRaceFlow({ orgId, raceId: id, live, onChange: change, rdays, today });
+  // Yarış sayfasının ⋯ menüsünden gelen iş (?do=sum|shot|day|reset) yarış yüklenince bir kez açılır
+  const todo = useRef(q.get("do") || "");
+  const ready = !!race;
+  const sets = { setSum, setTab, setAddDay, setReset, goLive: () => router.push(`/athletes/races/${id}/yayin`) };
+  const run = (k) => menuAct(k, sets);
+  useEffect(() => {
+    const k = todo.current;
+    if (!ready || !k) return;
+    const t = setTimeout(() => ((todo.current = ""), menuAct(k, sets)), 0);
+    return () => clearTimeout(t);
+  }, [ready]);
 
   if (missing) return <Shell title="Yarış"><p className="mt-6 text-center text-[0.875rem] text-mut">Yarış bulunamadı.</p></Shell>;
+  if (!race && fail) return <Shell title="Yarış"><LoadFail onRetry={() => (setFail(false), setRetry((n) => n + 1))} /></Shell>;
   if (!race) return <Shell title="Yarış"><Loading label="Yarış yükleniyor" /></Shell>;
 
   const days = withToday(liveDays(rdays, live), rdays, today);
   const names = dayNames(rdays, days);
   const cur = day || (days.includes(today) ? today : !days.length || today < days[0] ? days[0] || today : days[days.length - 1]);
-  const sub = [race.district || race.city, names[cur] && names[cur] !== "Yarış" ? names[cur] : "", dayLabel(cur)].filter(Boolean).join(" · ");
+  const sub = [race.district || race.city, names[cur] && names[cur] !== "Yarış" && !/^\d+\. gün$/.test(names[cur]) ? names[cur] : ""].filter(Boolean).join(" · "); // tarih gün düğmesinde; "4. gün" yazılmaz (2026-10-29)
   const ours = athletes.filter((a) => race.athleteIds.includes(a.id));
-  const tab = tabPick || (days.includes(today) ? "sure" : "wx");
+  const tab = tabPick || firstTab(race, live.starts, opened);
 
   return (
     <Shell
+      full={tab === "course"}
       title={race.name || "Yarış"}
       sub={sub}
-      back={`/athletes/races/${id}`}
+      back="/athletes/races"
       action={
         <>
-          {tab === "media" && <MediaSettingsButton />}
-          <button type="button" onClick={() => setSum(true)} data-press className="btn btn-secondary btn-sm">
-            Özet
+          <button type="button" data-cur={cur} onClick={() => setPickDay(true)} aria-label={`Gün: ${names[cur]} · ${dayLabel(cur)}`} data-press className="btn btn-secondary btn-sm h-10 shrink-0 gap-1 rounded-full px-3.5 tabular-nums">
+            {cur === today ? "Bugün" : dayLabel(cur)}
+            <span aria-hidden="true" className="text-[0.75rem] opacity-70">▾</span>
           </button>
+          {/* Tek ⋯ (Seyhun 2026-10-30): yarışın bölümleri, multimedya işleri, düzenle, sil; yarış sayfasındakiyle aynı */}
+          <button type="button" onClick={() => setMenu(true)} aria-label="Yarış ayarları" data-press className={buttonClass({ variant: "back" })}>
+            <Icon name="more" className="size-5" />
+          </button>
+        </>
+      }
+      top={
+        tab === "res" ? (
+          <>
+            {cur === today && racing(race) && racePhase({ r: race, today, now: opened, starts: live.starts }) === "done" && <NextCard r={race} />}
+            <button type="button" onClick={() => setSum(true)} data-press className="btn btn-secondary mt-3 w-full">
+              Özeti paylaş
+            </button>
+          </>
+        ) :
+        <>
+          {tab === "sure" && (
+            <TimerHead
+              race={race}
+              live={live}
+              rf={rf}
+              rec={
+                <RecPick onFile={setShot} aria-label="Kayıt" className="grid size-[3.25rem] shrink-0 touch-manipulation place-items-center rounded-full border-[3px] border-rec bg-card transition active:scale-90">
+                  <span className="size-[2.125rem] rounded-full bg-rec" />
+                </RecPick>
+              }
+            />
+          )}
         </>
       }
     >
       {timer.running && tab !== "sure" && (
-        <div className="sticky top-[calc(4.25rem+env(safe-area-inset-top))] z-[5] mt-2">
+        <div className="sticky top-[calc(0.5rem+env(safe-area-inset-top))] z-[5] mt-4">
           <button type="button" onClick={() => setTab("sure")} className={`flex h-11 w-full items-center justify-between rounded-xl px-4 text-white active:translate-y-px ${!timer.up && timer.rem <= 10 ? "bg-rec" : "bg-deep"}`}>
             <span className="text-[0.875rem]">{timer.up ? "Startan beri" : "Start sayacı"}</span>
             <b className="text-[1.25rem] font-semibold tabular-nums">{mmss(timer.up ? upSec(timer.t.end, timer.now) : Math.max(0, timer.rem))}</b>
           </button>
         </div>
       )}
-      {/* Günler küçük kare: üstte gün, altta "Ant" ya da "1. gün" (Seyhun 2026-10-19: "daha az yazıyla") */}
-      <div ref={strip} className="-mx-5 mt-3 flex gap-1.5 overflow-x-auto px-5 [scrollbar-width:none]">
-        {days.map((d) => (
-          <button
-            key={d}
-            data-day={d}
-            type="button"
-            onClick={() => setDay(d)}
-            aria-pressed={d === cur}
-            aria-label={`${names[d]} · ${dayLabel(d)}`}
-            className={`flex h-[3.25rem] min-w-[3rem] shrink-0 flex-col items-center justify-center rounded-[0.875rem] px-1.5 active:scale-95 ${d === cur ? "bg-deep text-white" : "bg-card ring-1 ring-line"}`}
-          >
-            <b className="text-[1.0625rem] font-semibold leading-none tabular-nums">{+d.slice(8)}</b>
-            <small className={`mt-1 text-[0.6875rem] leading-none ${d === cur ? "text-white/75" : "text-mut"}`}>{names[d].replace("Antrenman ", "Ant ")}</small>
-          </button>
-        ))}
-        <button type="button" onClick={() => setAddDay(true)} aria-label="Gün ekle" className="grid h-[3.25rem] w-12 shrink-0 place-items-center rounded-[0.875rem] border border-dashed border-line text-[1.375rem] text-acc active:scale-95">
-          +
-        </button>
-      </div>
-      {tab === "wx" && <WeatherTab orgId={orgId} race={race} day={cur} live={live} onChange={change} onRace={setRace} />}
-      {tab === "sure" && <TimerTab orgId={orgId} race={race} day={cur} live={live} onChange={change} rf={rf} onReset={() => setReset(true)} />}
-      {tab === "res" && <ResultsTab orgId={orgId} race={race} ours={ours} club={athletes.filter(isActive)} onRace={setRace} />}
-      {tab === "media" && (
-        <MediaTab
+      {tab === "sure" && <StartTab orgId={orgId} race={race} day={cur} live={live} ours={ours} onChange={change} rf={rf} shot={shot} onShotDone={() => setShot(null)} />}
+      {tab === "course" && (
+        <CourseTab
           orgId={orgId}
           race={race}
           day={cur}
-          live={live}
-          ours={ours}
-          onChange={change}
-          file0={shot}
-          onFileDone={() => setShot(null)}
+          wind={live.wind}
+          onDay={(k) => days[days.indexOf(cur) + k] && setDay(days[days.indexOf(cur) + k])}
+          onDropWind={(at) => {
+            const next = live.wind.filter((w) => w.at !== at);
+            change({ wind: next }, () => saveWind(orgId, id, next));
+          }}
         />
       )}
+      {tab === "res" && <ResultsTab orgId={orgId} race={race} ours={ours} club={athletes.filter(isActive)} onRace={setRace} />}
       <VoidSheet ask={rf.ask} onChoose={rf.choose} />
+      <DayPick
+        open={pickDay}
+        onClose={() => setPickDay(false)}
+        days={days}
+        names={names}
+        cur={cur}
+        today={today}
+        label={dayLabel}
+        onPick={(d) => (setDay(d), setPickDay(false))}
+      />
       <DaySheet
         open={addDay}
         onClose={() => setAddDay(false)}
@@ -219,7 +309,7 @@ export function RaceMedia({ orgId, id }) {
           change({ days: next }, () => saveDays(orgId, id, next));
         }}
       />
-      <TabDock value={tab} onChange={setTab} onRec={(f) => (setShot(f), setTab("media"))} />
+      <TabDock tabs={raceDock(race)} value={tab} onChange={(k) => (k === "race" ? router.replace(`/athletes/races/${id}`) : setTab(k))} extra={<AskButton examples={tab === "course" ? COURSE_EX : RACE_EX} />} />
       <ResetSheet
         open={reset}
         onClose={() => setReset(false)}
@@ -240,53 +330,111 @@ export function RaceMedia({ orgId, id }) {
           toast("Denemeler sıfırlandı");
         }}
       />
+      <Sheet open={menu} onClose={() => setMenu(false)} title={race.name || "Yarış"}>
+        {[
+          RACE_SECS.map(([k, l]) => [k, l, () => router.replace(`/athletes/races/${id}?sec=${k}`)]),
+          MEDIA_MENU.map(([k, l]) => [k, l, () => run(k)]).filter(([k]) => k !== "canli" || isOwner),
+          [["edit", "Bilgileri düzenle", () => router.replace(`/athletes/races/${id}?sec=edit`)]],
+          [["del", "Yarışı sil", () => router.replace(`/athletes/races/${id}?sec=del`), true]],
+        ].map((group, i) => (
+          <ul key={i} className={`${card} mb-3 divide-y divide-line overflow-hidden`}>
+            {group.map(([k, l, fn, red]) => (
+              <li key={k}>
+                <button type="button" data-press="row" data-menu={k} onClick={() => (setMenu(false), fn())} className="flex w-full items-center gap-3 px-4 py-3.5 text-left">
+                  <b className={`min-w-0 flex-1 text-[1rem] font-medium ${red ? "text-rec" : ""}`}>{l}</b>
+                  {!red && <Icon name="chev" className="size-4 shrink-0 text-mut/60" />}
+                </button>
+              </li>
+            ))}
+          </ul>
+        ))}
+      </Sheet>
       <DaySummarySheet open={sum} onClose={() => setSum(false)} race={race} day={cur} live={live} ours={ours} />
     </Shell>
   );
 }
 
+// Start sekmesi: start kareleri, günün yarışları ve her yarışın çekimleri (MediaTab list); çekim yüklemeleri MediaTab'da
+function StartTab({ orgId, race, day, live, ours, onChange, rf, shot, onShotDone }) {
+  const list = useStartList({ orgId, race, day, live, onChange, rf, ours });
+  return (
+    <>
+      {list.marks}
+      <MediaTab orgId={orgId} race={race} day={day} live={live} ours={ours} onChange={onChange} file0={shot} onFileDone={onShotDone} list={list} />
+    </>
+  );
+}
+
 // Sekmeler en altta (Seyhun 2026-10-19: "alttan yönetelim"); sekmenin düğme şeridi (Countdown Bar) bunun üstünde durur (--bar-b).
 // Yanında tek Kayıt düğmesi (Seyhun 2026-10-22: ayrı Fotoğraf/Video düğmeleri kalktı): her sekmeden iPhone kamerasını açar (RecPick), çekilen Medya'da
-const TAB_ICON = { sure: "clock", media: "image", wx: "wind", res: "flag" };
+const TAB_ICON = { race: "cal", sure: "clock", media: "image", res: "flag", course: "wind" };
 // extra: sağa eklenen düğme (antrenman sayfasında asistan, Seyhun 2026-10-23)
-export function TabDock({ value, onChange, onRec, extra = null }) {
+export function TabDock({ tabs = TABS, value, onChange, onRec, extra = null }) {
   useEffect(() => {
     const r = document.documentElement.style;
-    r.setProperty("--bar-b", "calc(env(safe-area-inset-bottom) + 4.75rem)");
+    r.setProperty("--bar-b", "calc(env(safe-area-inset-bottom) + 5rem)");
     return () => r.removeProperty("--bar-b");
   }, []);
+  // Uygulamanın alt sekme çubuğuyla aynı (Seyhun 2026-10-29 "uygulamayla uyumlu"): kenardan kenara bulanık çubuk, seçili sekme camgöbeği,
+  // Kayıt sağ uçta asistan küresinin yerinde yukarı taşan yuvarlak düğme
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 mx-auto w-full max-w-[30rem] px-4 pb-[calc(env(safe-area-inset-bottom)+0.5rem)]">
-      <div className="flex gap-2">
-        <div className="grid flex-1 grid-cols-4 rounded-[1.25rem] border border-line bg-card p-1.5 shadow-[0_2px_12px_rgba(38,40,44,.06)]">
-          {TABS.map(([k, l]) => (
-            <button key={k} type="button" onClick={() => onChange(k)} aria-pressed={value === k} className={`flex flex-col items-center gap-0.5 rounded-[0.875rem] py-1.5 text-[0.71875rem] ${value === k ? "bg-accbg font-semibold text-deep" : "text-mut"}`}>
-              <Icon name={TAB_ICON[k]} className="size-[1.375rem]" />
-              {l}
+    <nav aria-label="Multimedya sekmeleri" className="atabbar fixed inset-x-0 bottom-0 z-[31] pb-[max(0.25rem,calc(env(safe-area-inset-bottom)-0.5rem))]">
+      <div className="mx-auto flex h-14 max-w-[34rem] items-stretch">
+        <div className="grid min-w-0 flex-1" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
+          {tabs.map(([k, l]) => (
+            <button key={k} type="button" onClick={() => onChange(k)} aria-pressed={value === k} className={`flex h-full min-w-0 touch-manipulation flex-col items-center justify-center gap-1 transition active:scale-95 ${value === k ? "text-acc" : "text-mut"}`}>
+              <Icon name={TAB_ICON[k]} className="size-6" />
+              <span className={`text-[0.6875rem] ${value === k ? "font-bold" : "font-medium"}`}>{l}</span>
             </button>
           ))}
         </div>
         {onRec && (
-          <RecPick onFile={onRec} aria-label="Kayıt" className="flex w-[4.25rem] shrink-0 flex-col items-center justify-center gap-1 rounded-[1.25rem] border border-line bg-card text-[0.71875rem] font-semibold shadow-[0_2px_12px_rgba(38,40,44,.06)]">
-            <span className="grid size-[1.375rem] place-items-center rounded-full border-2 border-rec">
-              <span className="size-2.5 rounded-full bg-rec" />
+          <div className="relative w-[3.75rem] shrink-0">
+            <span className="acenter absolute -top-4 left-1/2 -translate-x-1/2 rounded-full p-[3px]">
+              <RecPick onFile={onRec} onTaken={() => onChange("media")} aria-label="Kayıt" className="grid size-[3.25rem] touch-manipulation place-items-center rounded-full border-[3px] border-rec transition active:scale-90">
+                <span className="size-[2.125rem] rounded-full bg-rec" />
+              </RecPick>
             </span>
-            Kayıt
-          </RecPick>
+          </div>
         )}
-        {extra}
+        {extra && <div className="relative w-[4rem] shrink-0">{extra}</div>}
       </div>
     </nav>
   );
 }
 
-function Shell({ title, sub, back = "/athletes/races", action, children }) {
+// Asistan (Seyhun 2026-10-29 "ses asistanı butonunu da koyalım parkura"): basılı tut konuş, bırak gönder; örnekler sekmeye göre
+const RACE_EX = ["Rüzgar 12 knot kuzeybatı", "5 dakikalık sayacı başlat"];
+const COURSE_EX = ["Parkur ekseni 320", "Pinden komite 110", "Rüzgar 330 derece 12 knot"];
+export function AskButton({ examples = RACE_EX }) {
+  const { openAssistant, act } = useAssistant();
+  const release = ({ short, away }) => (short ? (act.current.release || act.current.cancel)?.() : away ? act.current.cancel?.() : (act.current.release || act.current.stop)?.());
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(env(safe-area-inset-bottom)+11rem)]">
-      <PageHeader title={title} sub={sub} back={back}>
-        {action}
-      </PageHeader>
-      {children}
+    <span className="acenter absolute -top-4 left-1/2 -translate-x-1/2 rounded-full p-[3px]">
+      <VoiceLight state="idle" size="size-[3.25rem]" compact onPress={() => openAssistant({ listen: true, dock: true, examples })} onRelease={release} />
+    </span>
+  );
+}
+
+// Lacivert üst (yeni tasarım, Seyhun 2026-10-28 "1" önerisi): geri, yarış adı, Çekim · Özet, gün çipleri ve Süre'de büyük sayaç lacivertte;
+// altındaki açık alan yuvarlak köşeyle başlar (antrenman günü sayfası gibi)
+function Shell({ title, sub, back = "/athletes/races", action, top = null, full = false, children }) {
+  // full: bütün sayfa lacivert (Parkur, Seyhun 2026-10-29 "arka planı uygulamayla uyumlu"); alt açık bölüm yok
+  return (
+    <main className={`mx-auto max-w-[30rem] px-5 ${full ? "" : "pb-[calc(env(safe-area-inset-bottom)+11rem)]"}`}>
+      <section className={`ck -mx-5 px-5 pt-[calc(0.75rem+env(safe-area-inset-top))] ${full ? "min-h-dvh pb-[calc(env(safe-area-inset-bottom)+11rem)]" : "pb-9"}`} aria-label={title}>
+        <header className="flex items-center gap-2.5">
+          <BackButton href={back} />
+          <div className="min-w-0 flex-1 leading-tight">
+            <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">{title}</h1>
+            {sub && <p className="truncate text-[0.8125rem] text-white/65">{sub}</p>}
+          </div>
+          {action}
+        </header>
+        {top}
+        {full && children}
+      </section>
+      {!full && <div className="relative -mx-5 -mt-6 rounded-t-[1.75rem] bg-bg px-5 pb-1 pt-1">{children}</div>}
     </main>
   );
 }

@@ -1,3 +1,4 @@
+import { Icon } from "@/components/ui/Icon";
 // Ana sayfanın ortak görünümü: her kart aynı köşe, zemin, çizgi ve gölgeyle; her bölüm başlığı aynı biçimde.
 // Yeni ana sayfa bölümü bunları kullanır (kart sınıfı elle yazılmaz), böylece sayfa tek dilde kalır.
 export const CARD = "rounded-[1.25rem] bg-card ring-1 ring-line/70 shadow-[0_1px_2px_rgba(38,40,44,.05),0_8px_24px_-16px_rgba(38,40,44,.25)]";
@@ -20,5 +21,14 @@ export function SectionHead({ id, title, count, children }) {
       </h2>
       {children && <span className="flex shrink-0 items-center gap-3 text-[0.8125rem] font-semibold">{children}</span>}
     </div>
+  );
+}
+
+// Kulüp satırlarının solundaki renkli yuvarlak simge (Seyhun 2026-11-06 "Kulüp kısmını daha iyi yap"): renk yalnız işi ayırır, yarı saydam zemin
+export function ClubIcon({ name, color = "#64748b" }) {
+  return (
+    <span aria-hidden="true" style={{ "--c": color }} className="hq-ic shrink-0">
+      <Icon name={name} className="size-[1.125rem]" />
+    </span>
   );
 }

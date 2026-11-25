@@ -1,5 +1,6 @@
 "use client";
 
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/ui/Icon";
 import { Hero, HeroLabel, Label, Seg, Stat, card } from "@/components/ui/Page";
@@ -34,6 +35,7 @@ function Del({ onClick, label }) {
 // Tek etkinlik: Özet (değerlendirme, öneriler, bilgiler, not) · İhtiyaçlar · Bütçe · Yapılacaklar.
 // Her değişiklik kısa bir beklemeden sonra kendiliğinden kaydedilir.
 export function EventEditor({ start, onSave, onDelete, onPlan, onAiFill }) {
+  const confirmAsk = useConfirm();
   const toast = useToast();
   const [ev, setEv] = useState(start);
   const [tab, setTab] = useState("sum");
@@ -103,7 +105,7 @@ export function EventEditor({ start, onSave, onDelete, onPlan, onAiFill }) {
     }
   };
   const remove = async () => {
-    if (!window.confirm(`“${ev.title || "Etkinlik"}” silinsin mi? İhtiyaç listesi, bütçe ve yapılacaklar da silinir.`)) return;
+    if (!(await confirmAsk({ title: "Etkinlik silinsin mi?", text: `${ev.title || "Etkinlik"} · ihtiyaç listesi, bütçe ve yapılacaklar da silinir.` }))) return;
     clearTimeout(timer.current);
     timer.current = null;
     setBusy("del");

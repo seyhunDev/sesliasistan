@@ -1,8 +1,93 @@
 import Capacitor
+import UIKit
+import WebKit
 
 // Uygulamaya özel eklenti (VeloraPlugin) burada kaydedilir; web tarafı window.Capacitor.Plugins.Velora
+//
+// İnternet kopma ekranı ve beyaz ekran (Seyhun 2026-11-04: "sürekli internet kopma hatası alıyoruz, sayfayı yenilemek ya da
+// uygulamayı kapatıp açmak zorunda kalıyorum"):
+// - Capacitor her yükleme hatasında "İnternete bağlanılamadı" sayfasını (www/index.html) açıyordu; yarıda kesilen yüklemede de
+//   (sayfa kendini yenilerken başka sayfaya geçilmesi, iptal -999, "frame load interrupted" 102). Bunlar artık yok sayılır.
+// - Uygulama öne gelince: hata sayfasındaysa ya da sayfa boşsa (iPhone arkadaki web sürecini kapattıysa beyaz ekran kalıyordu)
+//   site yeniden açılır. Hata sayfası da internet gelince kendiliğinden yeniden dener.
 class VeloraViewController: CAPBridgeViewController {
+    private var gezinme: GezinmeKalkani?
+
     override open func capacitorDidLoad() {
         bridge?.registerPluginInstance(VeloraPlugin())
+        // Uygulamalar arası geçişte beyaz ekran (Seyhun 2026-11-06, iPhone, iPad ve Mac): sistem arkadaki uygulamanın görüntüsünü
+        // bellekten atınca, dönüşte sayfa yeniden çizilene kadar web görünümünün kendi zemini görünüyordu (beyaz). Zemin Velora
+        // laciverti: o kısa anda beyaz yerine lacivert görünür (ana sayfa ve açılış ekranıyla aynı renk).
+        // 2026-11-23: açık tema (ana sayfa Apple beyazı #f5f5f7); ad aynı kaldı.
+        let lacivert = UIColor(red: 245 / 255, green: 245 / 255, blue: 247 / 255, alpha: 1)
+        view.backgroundColor = lacivert
+        if let w = webView {
+            w.isOpaque = false
+            w.backgroundColor = lacivert
+            w.scrollView.backgroundColor = lacivert
+            // Kenardan kaydırarak geri (Seyhun 2026-11-06 "yana kaydırınca sayfa boş görünüyor; Instagram'da önceki sayfa altta hazır"):
+            // iPhone'un kendi hareketi önceki sayfanın görüntüsünü altta gösterir. Web tarafındaki elle yazılmış kaydırma
+            // (SwipeBack.jsx) bu uygulamada kapanır; tarayıcı kimliğindeki "VeloraKaydir" (capacitor.config.json) bunu söyler.
+            w.allowsBackForwardNavigationGestures = true
+        }
+        if let w = webView {
+            let k = GezinmeKalkani(w.navigationDelegate)
+            gezinme = k
+            w.navigationDelegate = k
+        }
+        NotificationCenter.default.addObserver(self, selector: #selector(oneGeldi), name: UIApplication.didBecomeActiveNotification, object: nil)
+    }
+
+    private var site: URL? { bridge?.config.serverURL }
+
+    @objc private func oneGeldi() {
+        guard let w = webView, let site = site else { return }
+        // Hiç sayfa yok ya da hata sayfası açık: siteyi yeniden aç
+        guard let url = w.url, url.host == site.host else {
+            w.load(URLRequest(url: site))
+            return
+        }
+        if w.isLoading { return }
+        // Sayfa var görünüyor ama web süreci ölmüş olabilir (beyaz ekran): küçük soru hata verirse ya da sayfa boşsa yeniden yüklenir.
+        // Cevap yalnız gecikirse yenilenmez (Seyhun 2026-11-08 "kilidi açınca uygulama yükleniyor gibi yenileniyor"): kilitten
+        // dönüşte web süreci uyanırken cevap 3 sn'yi geçebiliyordu, canlı sayfa boşuna baştan yükleniyordu. Ölmüş süreç hata
+        // olarak döner; hiç cevap gelmezse ancak 15 sn sonra yenilenir.
+        var cevap = false
+        w.evaluateJavaScript("document.body ? document.body.childElementCount : 0") { sonuc, hata in
+            cevap = true
+            if hata != nil || (sonuc as? Int) == 0 { w.reload() }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 15) {
+            if !cevap && !w.isLoading { w.reload() }
+        }
+    }
+}
+
+// Capacitor'ın gezinme yöneticisinin önünde durur: yarıda kesilen yüklemeyi hata saymaz, gerisini olduğu gibi ona iletir.
+final class GezinmeKalkani: NSObject, WKNavigationDelegate {
+    private weak var asil: WKNavigationDelegate?
+    init(_ asil: WKNavigationDelegate?) { self.asil = asil }
+
+    override func responds(to sel: Selector!) -> Bool {
+        super.responds(to: sel) || (asil?.responds(to: sel) ?? false)
+    }
+
+    override func forwardingTarget(for sel: Selector!) -> Any? {
+        asil?.responds(to: sel) == true ? asil : nil
+    }
+
+    static func onemsiz(_ e: Error) -> Bool {
+        let n = e as NSError
+        return (n.domain == NSURLErrorDomain && n.code == NSURLErrorCancelled) || (n.domain == "WebKitErrorDomain" && n.code == 102)
+    }
+
+    func webView(_ w: WKWebView, didFail n: WKNavigation!, withError e: Error) {
+        if Self.onemsiz(e) { return }
+        asil?.webView?(w, didFail: n, withError: e)
+    }
+
+    func webView(_ w: WKWebView, didFailProvisionalNavigation n: WKNavigation!, withError e: Error) {
+        if Self.onemsiz(e) { return }
+        asil?.webView?(w, didFailProvisionalNavigation: n, withError: e)
     }
 }

@@ -8,7 +8,8 @@ import { Loader } from "@/components/ui/Loader";
 // Süre kayıttan (dur), yoksa videonun kendisinden okunur. thumb: kayıtla yüklenen 480 px JPEG (Seyhun 2026-10-21: "sürekli video
 // yüklemesi olmasın"); varsa liste videoyu hiç indirmez. local: bu telefonda çekilen dosya (yüklenirken ve sonra, internetten inmez).
 // up: yükleniyor (0..1, halka dolar); done: yeni yüklendi (kısa ✓); err: yüklenemedi.
-export function Thumb({ kind, url, thumb = "", local = "", dur = 0, up = null, done = false, err = false }) {
+// ph: yalnız telefonda duran video (buluta yüklenmedi): sol altta "Telefonda"
+export function Thumb({ kind, url, thumb = "", local = "", dur = 0, up = null, done = false, err = false, ph = false }) {
   const [meta, setMeta] = useState(0);
   // İnene kadar uygulamanın üç noktası (Seyhun 2026-10-22: "modern bir loading, uygulamadakilerle uyumlu"); görüntü inince yumuşakça belirir
   const [ready, setReady] = useState("");
@@ -44,6 +45,7 @@ export function Thumb({ kind, url, thumb = "", local = "", dur = 0, up = null, d
           <Loader size="xs" />
         </span>
       )}
+      {ph && <span className="absolute bottom-1 left-1 rounded bg-black/55 px-1 py-px text-[0.625rem] font-semibold text-white">Telefonda</span>}
       {kind === "video" && <span className="absolute bottom-1 right-1.5 text-[0.6875rem] font-semibold tabular-nums text-white [text-shadow:0_1px_2px_rgba(0,0,0,.6)]">{sec ? mmss(sec) : "video"}</span>}
       {/* Buluta gönderilirken görüntü kapanmaz (telefondaki dosya hemen kullanılır; Seyhun 2026-10-22: "telefondaki veriyi kullanmıyor muyuz?"):
           köşede küçük dolan halka */}

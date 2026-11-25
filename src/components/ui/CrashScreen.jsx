@@ -26,7 +26,10 @@ export function CrashScreen({ error, retry, reset, where }) {
             <button onClick={again} data-press className="btn btn-primary">Tekrar dene</button>
             <button onClick={() => location.reload()} data-press className="btn btn-secondary">Yenile</button>
           </div>
-          <button onClick={() => (location.href = "/")} data-press className="btn btn-text btn-sm text-mut">Ana sayfaya dön</button>
+          {/* herkese açık canlı sayfalarında (/canli) uygulamaya değil, açık yarışlar sayfasına dönülür (Seyhun 2026-11-01) */}
+          <button onClick={() => (location.href = location.pathname.startsWith("/canli") ? "/canli" : "/")} data-press className="btn btn-text btn-sm text-mut">
+            {typeof location !== "undefined" && location.pathname.startsWith("/canli") ? "Canlı yarışlara dön" : "Ana sayfaya dön"}
+          </button>
           {msg && (
             <button onClick={() => setOpen((v) => !v)} className="text-left text-sm text-mut">
               Ayrıntı

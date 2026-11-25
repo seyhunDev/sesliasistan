@@ -41,6 +41,47 @@ export function useFitLib() {
     },
     [orgId],
   );
+  // Birden çok hareketin fotoğrafı tek kayıtla (hazır program): [{ it, meta }]; fotoğrafı/videosu olan harekete dokunulmaz
+  const addMany = useCallback(
+    async (list) => {
+      if (!orgId || !list?.length) return null;
+      let cur = await loadLib(orgId, { force: true });
+      for (const { it, meta } of list) {
+        const e = libEntry(cur, it);
+        if (e?.media?.length || e?.yt) continue;
+        cur = libSetMedia(cur, it, { media: [meta] });
+      }
+      const saved = await saveLib(orgId, cur);
+      spreadLib(orgId, all.current).catch((e) => console.warn("[fitness] fotoğraflar sporculara aktarılamadı", e));
+      return saved;
+    },
+    [orgId],
+  );
+  // Erkek modeli seçer (Hareketler › Modeller)
+  const setModel = useCallback(
+    async (meta) => {
+      if (!orgId) return null;
+      const cur = await loadLib(orgId, { force: true });
+      return saveLib(orgId, { ...cur, models: { ...(cur.models || {}), m: meta } });
+    },
+    [orgId],
+  );
+  // Erkek fotoğrafları (hazır program, g:"m"): [{ it, meta }]; hareketin erkek fotoğrafı zaten varsa dokunulmaz
+  const addMale = useCallback(
+    async (list) => {
+      if (!orgId || !list?.length) return null;
+      let cur = await loadLib(orgId, { force: true });
+      for (const { it, meta } of list) {
+        const e = libEntry(cur, it) || {};
+        if ((e.media || []).some((m) => m.g === "m")) continue;
+        cur = libSetMedia(cur, it, { yt: e.yt, media: [...(e.media || []).slice(0, 2), { ...meta, g: "m" }] });
+      }
+      const saved = await saveLib(orgId, cur);
+      spreadLib(orgId, all.current).catch((e) => console.warn("[fitness] erkek fotoğrafları sporculara aktarılamadı", e));
+      return saved;
+    },
+    [orgId],
+  );
   // Aynı adlı kopyaları birleştirir; programlar ve antrenmanlar kalanın fotoğraf/videosunu alır
   const merge = useCallback(
     async (keep, keys) => {
@@ -84,5 +125,5 @@ export function useFitLib() {
     },
     [orgId],
   );
-  return { lib, setMedia, merge, attach, rename, drop };
+  return { lib, setMedia, addMany, addMale, setModel, merge, attach, rename, drop };
 }

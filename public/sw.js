@@ -1,11 +1,11 @@
 // Sesli Asistan service worker: çevrimdışı açılış + plan hatırlatma bildirimleri.
 // Önbellek yalnızca yayında açık (?dev=1 ile kaydedilirse kapalı; geliştirmede eski dosya sorunu olmasın).
-const VERSION = "sa-v16";
+const VERSION = "sa-v17";
 const PAGES_CACHE = `${VERSION}-pages`;
 const STATIC_CACHE = `${VERSION}-static`;
 const PAGES = ["/", "/plans", "/tasks", "/notes", "/receipts", "/calendar", "/schedule", "/staff", "/login"];
 const CACHE_ON = !new URL(self.location).searchParams.has("dev");
-const NAV_TIMEOUT = 4000; // ağ bu sürede cevap vermezse kayıtlı sayfa açılır
+const NAV_TIMEOUT = 4000; // kayıtlı kopyası olmayan sayfada ağ bu sürede cevap vermezse çevrimdışı yazısı
 
 // Sayfayı ve içindeki /_next/static dosyalarını önbelleğe alır (diğer sayfalar da internetsiz açılabilsin)
 async function cachePage(path) {
@@ -61,21 +61,32 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // Sayfalar: önce ağ (güncel sürüm), ağ yoksa ya da yavaşsa kayıtlı sayfa
+  // Sayfalar (Seyhun 2026-11-04 "Mac'te uygulama açılırken beyaz ekran"): kayıtlı kopya varsa HEMEN o açılır, ağdan gelen yeni
+  // sayfa arkada kaydedilir (bir sonraki açılışta o). Eskiden önce ağ bekleniyordu (en çok 4 sn): sunucu yavaş ya da uykudaysa
+  // o süre boyunca ekran bomboş (beyaz) kalıyordu. Yeni sürüm yayınlandıysa uygulama yine kendini yeniler (lib/newVersion.js),
+  // eski kod parçası bulunamazsa sayfa kopyası silinip sunucudan yeniden açılır (lib/crash.js reloadOnce).
   if (req.mode === "navigate") {
     const path = url.pathname;
     e.respondWith(
       (async () => {
         const pages = await caches.open(PAGES_CACHE);
-        try {
-          const res = await Promise.race([fetch(req), timeout(NAV_TIMEOUT)]);
+        const net = fetch(req).then((res) => {
           if (res.ok && !res.redirected) pages.put(path, res.clone());
           return res;
+        });
+        const hit = await pages.match(path);
+        if (hit) {
+          e.waitUntil(net.catch(() => {}));
+          return hit;
+        }
+        try {
+          return await Promise.race([net.then((r) => r.clone()), timeout(NAV_TIMEOUT)]);
         } catch {
-          const hit = await pages.match(path);
-          if (hit) return hit;
+          // Kayıtlı kopya yok: ağ yavaşsa beklemeye devam edilir (eskiden 4 sn'de "İnternet bağlantısı yok" çıkıyordu)
+          const late = await net.catch(() => null);
+          if (late) return late.clone();
           return new Response(
-            '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Çevrimdışı</title><body style="font-family:system-ui;background:#f4f3ef;color:#26282c;display:grid;place-items:center;min-height:100vh;margin:0;text-align:center;padding:24px"><div><h1 style="font-size:20px">İnternet bağlantısı yok</h1><p style="color:#74777d">Bu sayfa henüz telefona kaydedilmedi. Bağlantı gelince tekrar dene.</p></div>',
+            '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Çevrimdışı</title><body style="font-family:system-ui;background:#f4f3ef;color:#26282c;display:grid;place-items:center;min-height:100vh;margin:0;text-align:center;padding:24px"><div><h1 style="font-size:20px">İnternet bağlantısı yok</h1><p style="color:#74777d">Bu sayfa henüz telefona kaydedilmedi. Bağlantı gelince kendiliğinden açılır.</p></div><script>addEventListener("online",()=>location.reload())</script>',
             { headers: { "content-type": "text/html; charset=utf-8" } },
           );
         }
@@ -145,19 +156,23 @@ self.addEventListener("push", (e) => {
   e.waitUntil(onPush(e).catch(() => self.registration.showNotification(FALLBACK.body).catch(() => {})));
 });
 
-// Bildirime dokununca: açık uygulama varsa ona geç, yoksa aç
+// Bildirime dokununca: açık uygulama varsa ona geç ve sayfayı aç, yoksa uygulamayı o sayfayla aç.
+// Önceden navigate() hatası (sayfa bu service worker'a bağlı değilken) yutuluyordu: uygulama öne geliyor ama sayfa değişmiyordu.
+// Artık o durumda sayfaya "şu adresi aç" denir (src/lib/openOutside.js listenWorkerOpen).
 self.addEventListener("notificationclick", (e) => {
   e.notification.close();
   const url = e.notification.data?.url || "/";
   e.waitUntil(
-    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
-      for (const c of list) {
-        if ("focus" in c) {
-          c.navigate?.(url);
-          return c.focus();
-        }
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (list) => {
+      const c = list.find((x) => "focus" in x);
+      if (!c) return self.clients.openWindow(url);
+      await c.focus().catch(() => {});
+      try {
+        if (!c.navigate) throw new Error("navigate yok");
+        await c.navigate(url);
+      } catch {
+        c.postMessage({ sa: "open", url });
       }
-      return self.clients.openWindow(url);
     }),
   );
 });

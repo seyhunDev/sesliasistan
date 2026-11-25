@@ -31,6 +31,13 @@ service cloud.firestore {
       return signedIn() && p.role == "staff" && p.orgId == orgId;
     }
     function inOrg(orgId) { return isOwner(orgId) || isStaff(orgId); }
+    // Antrenörün kendi Yönet alanı (Seyhun 2026-11-24): "k-" + kendi uid'si; ana hesabın "Antrenör" işaretlediği çalışan (users.coach, sunucu yazar).
+    // Bilgi ekranı belgeleri bu alanda orgs/k-{uid} altında, açık link ve tekne belgelerinde org = "k-{uid}".
+    function isCoachSpace(o) {
+      return signedIn() && o == "k-" + request.auth.uid
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get("coach", false) == true;
+    }
+    function bilgiAdmin(o) { return isOwner(o) || isCoachSpace(o); }
     // Velora Yemek kuryesi (profili yalnız sunucu açar: role "courier", courierOf = işletme). Yalnız okur; yazmalar /api/kurye
     function isCourier(orgId) {
       let p = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
@@ -79,10 +86,131 @@ service cloud.firestore {
           && ownKey("doneBy") && ownKey("replies") && ownKey("ack");
     }
 
+    // Ortak yarışlar (src/lib/sharedRace.js, src/features/athletes/sharedRaces.js; Seyhun 2026-10-28): yarışın herkese açık kısmı
+    // (ad, tarih, yer, talimat, sonuç listeleri, rüzgâr, parkur). Velora'yı kullanan herkes okur (kurye ve restoran hariç);
+    // kulüp (ana) hesapları ekler; yalnız ekleyen ve Velora ana hesabı değiştirir ya da siler. Sporcu, evrak, bütçe kulüpte kalır.
+    function veloraUser() {
+      let ref = /databases/$(database)/documents/users/$(request.auth.uid);
+      return signedIn() && (!exists(ref) || get(ref).data.get("role", "owner") in ["owner", "staff"]);
+    }
+    function clubAccount() {
+      let ref = /databases/$(database)/documents/users/$(request.auth.uid);
+      return signedIn() && (!exists(ref) || get(ref).data.get("role", "owner") == "owner");
+    }
+    function veloraAdmin() { return signedIn() && request.auth.token.get("email", "") == "seyhunyildiz@gmail.com"; }
+    match /sharedRaces/{rid} {
+      function editor(d) { return d.get("by", "") == request.auth.uid || veloraAdmin(); }
+      allow read: if veloraUser();
+      allow create: if clubAccount() && request.resource.data.get("by", "") == request.auth.uid;
+      allow update: if editor(resource.data) && request.resource.data.get("by", "") == resource.data.get("by", "");
+      allow delete: if editor(resource.data);
+      // sheets: tam sonuç listesi; live: ölçülen rüzgâr; course: parkur (gün gün)
+      match /{sub}/{item} {
+        allow read: if veloraUser();
+        allow write: if sub in ["sheets", "live", "course"]
+                     && editor(get(/databases/$(database)/documents/sharedRaces/$(rid)).data);
+      }
+    }
+
+    // Tekne takibi (lib/boatTrack.js, Seyhun 2026-11-02): ana hesap yarışın takibini açar (anahtar k); teknedeki telefon giriş yapmadan,
+    // linkteki anahtarla yalnız kendi konumunu yazar, okuyamaz. Herkese açık yayın konumları sunucudan (/api/canli) okur.
+    match /takip/{rid} {
+      allow read, delete: if isOwner(resource.data.org);
+      allow create: if isOwner(request.resource.data.org);
+      allow update: if isOwner(resource.data.org) && request.resource.data.org == resource.data.org;
+      match /tekne/{sail} {
+        function head() { return get(/databases/$(database)/documents/takip/$(rid)).data; }
+        allow read, delete: if isOwner(head().org);
+        allow create, update: if sail.matches('^[0-9]{1,6}$')
+                              && request.resource.data.keys().hasOnly(['k', 'lat', 'lon', 'acc', 'spd', 'hdg', 't'])
+                              && request.resource.data.k is string
+                              && head().on == true
+                              && request.resource.data.k == head().k
+                              && request.resource.data.lat is number
+                              && request.resource.data.lon is number
+                              && request.resource.data.t is number;
+      }
+    }
+
+    // Sporcu bilgi ekranı, herkese açık link (/ekran/{key}, Seyhun 2026-11-15): ekranın kopyası. Linki bilen giriş yapmadan tek belge
+    // okur (liste yok, anahtar tahmin edilemez); yalnız ana hesap yazar ve siler.
+    match /bilgiAcik/{key} {
+      allow get: if true;
+      allow create: if key.size() >= 12 && bilgiAdmin(request.resource.data.org);
+      allow update: if bilgiAdmin(resource.data.org) && request.resource.data.org == resource.data.org;
+      allow delete: if bilgiAdmin(resource.data.org);
+      match /ses/{id} {
+        allow get: if true;
+        allow write: if bilgiAdmin(get(/databases/$(database)/documents/bilgiAcik/$(key)).data.org);
+      }
+    }
+
+    // Bilgi ekranı tekne konumu (Seyhun 2026-11-15): ekranı açan telefon (yelken no + isim) 5 sn'de bir kendi belgesine yazar.
+    // ch: katıldığı kanal; seen: gösterdiği son mesaj/ses (Yönet'te "Görüldü"); konum izni yoksa lat/lon boş.
+    // Yazabilen: işletmedeki hesaplar ya da açık link anahtarını (k) bilen girişsiz ekran. Okuyan yalnız ana hesap (Yönet › Tekneler).
+    match /bilgiTekne/{dev} {
+      function okPos(d) {
+        return d.keys().hasOnly(['org', 'k', 'ch', 'sail', 'name', 'lat', 'lon', 'spd', 'hdg', 'acc', 't', 'uid', 'seen'])
+            && d.org is string && (d.lat == null || d.lat is number) && (d.lon == null || d.lon is number) && d.t is number
+            && d.get('seen', '') is string && d.get('seen', '').size() <= 40
+            && d.get('sail', '') is string && d.get('sail', '').size() <= 12
+            && d.get('name', '') is string && d.get('name', '').size() <= 30;
+      }
+      function mayPos(d) {
+        return (signedIn() && inOrg(d.org))
+            || (d.get('k', '') is string && d.get('k', '').size() >= 12
+                && get(/databases/$(database)/documents/bilgiAcik/$(d.k)).data.org == d.org);
+      }
+      allow read, delete: if bilgiAdmin(resource.data.org);
+      allow create: if dev.matches('^[a-z0-9]{12,24}$') && okPos(request.resource.data) && mayPos(request.resource.data);
+      allow update: if okPos(request.resource.data) && request.resource.data.org == resource.data.org && mayPos(request.resource.data);
+    }
+
+    // Sporcudan Yönet'e bas-konuş (Seyhun 2026-11-16): ekran son ses kaydını kendi cihaz belgesine yazar (üstüne, birikmez).
+    // Yazabilen bilgiTekne ile aynı (işletme hesabı ya da açık link anahtarı k); okuyan ve silen yalnız ana hesap.
+    match /bilgiGelen/{dev} {
+      function okSes(d) {
+        return d.keys().hasOnly(['org', 'k', 'ch', 'sail', 'name', 'uid', 'id', 'at', 'type', 'dur', 'data'])
+            && d.org is string && d.at is number && d.dur is number && d.dur <= 30
+            && d.data is string && d.data.size() <= 700000
+            && d.type is string && d.type.size() <= 40 && d.id is string && d.id.size() <= 40
+            && d.get('sail', '') is string && d.get('sail', '').size() <= 12
+            && d.get('name', '') is string && d.get('name', '').size() <= 30;
+      }
+      function maySes(d) {
+        return (signedIn() && inOrg(d.org))
+            || (d.get('k', '') is string && d.get('k', '').size() >= 12
+                && get(/databases/$(database)/documents/bilgiAcik/$(d.k)).data.org == d.org);
+      }
+      allow read, delete: if bilgiAdmin(resource.data.org);
+      allow create: if dev.matches('^[a-z0-9]{12,24}$') && okSes(request.resource.data) && maySes(request.resource.data);
+      allow update: if okSes(request.resource.data) && request.resource.data.org == resource.data.org && maySes(request.resource.data);
+    }
+
+    // Sporcu izi (Seyhun 2026-11-17 "sonradan izlemek istiyorum"): ekran 5 sn'de bir konum noktası toplar, dakikada bir belge ekler.
+    // Yazabilen bilgiTekne ile aynı (işletme hesabı ya da açık link anahtarı k), yalnız ekler; okuyan ve silen yalnız ana hesap.
+    match /bilgiIz/{id} {
+      function okIz(d) {
+        return d.keys().hasOnly(['org', 'k', 'ch', 'dev', 'sail', 'name', 'uid', 't0', 'pts'])
+            && d.org is string && d.ch is string && d.t0 is number && d.pts is list && d.pts.size() <= 400
+            && d.get('sail', '') is string && d.get('sail', '').size() <= 12
+            && d.get('name', '') is string && d.get('name', '').size() <= 30;
+      }
+      function mayIz(d) {
+        return (signedIn() && inOrg(d.org))
+            || (d.get('k', '') is string && d.get('k', '').size() >= 12
+                && get(/databases/$(database)/documents/bilgiAcik/$(d.k)).data.org == d.org);
+      }
+      allow read, delete: if bilgiAdmin(resource.data.org);
+      allow create: if okIz(request.resource.data) && mayIz(request.resource.data);
+    }
+
     match /orgs/{orgId} {
       // Ana hesap: kendi işletmesindeki her şey (doğum günleri hariç: kişiye özel, aşağıda)
       match /{col}/{document=**} {
         allow read, write: if isOwner(orgId) && !(col in ["birthdays", "chats", "calls"]);
+        // Antrenörün kendi Yönet alanı (orgs/k-{uid}): yalnız bilgi ekranı belgeleri (ekran, ses, kanallar, kayıtlar, pusula)
+        allow read, write: if col in ["bilgi", "bilgiKanal", "bilgiLog", "bilgiPusula"] && isCoachSpace(orgId);
       }
       // Kurye: bugünün siparişleri ve yemek ayarı (kurye listesi), yalnız okuma
       match /yemekSiparisler/{id} {
@@ -103,6 +231,15 @@ service cloud.firestore {
       match /marketFoto/{id} {
         allow read: if isStaff(orgId) && myKind() in ["staff", "family"];
       }
+      // Sporcu bilgi ekranı (/bilgi, src/features/bilgi): kulüpteki herkes okur (sayaç, parkur, mesaj, bas-konuş ses); yalnız ana hesap yazar
+      match /bilgi/{id} {
+        allow read: if isStaff(orgId);
+      }
+      // Bilgi ekranının pusula kaydı (yön, yatış): ekranı açan sporcu yalnız kendi adına ekler, okuyamaz/değiştiremez (ana hesap okur)
+      match /bilgiPusula/{id} {
+        allow create: if isStaff(orgId) && request.resource.data.get("uid", "") == request.auth.uid
+                      && request.resource.data.get("pts", []).size() <= 400;
+      }
       // Doğum günleri kişiye özel: ana hesap yalnızca kendi eklediklerini okur/yazar
       match /birthdays/{id} {
         allow read, update, delete: if isOwner(orgId) && resource.data.get("createdByUid", null) == request.auth.uid;
@@ -112,8 +249,11 @@ service cloud.firestore {
       // Çalışan: yalnızca "people" listesinde kendisi olan kayıtlar
       match /{col}/{id} {
         allow read: if col in ["plans", "tasks", "notes", "receipts", "receiptImages", "birthdays", "lessons"] && isStaff(orgId) && mine();
+        // Sporcu tarafı (sporcu, öğrenci, veli): alanın antrenman planlarını (tür "Antrenman") people'da olmasa da okur (Seyhun 2026-11-25)
+        allow read: if col == "plans" && isStaff(orgId) && myKind() in ["athlete", "student", "parent"] && resource.data.cat == "Antrenman";
         allow create: if col in ["plans", "tasks", "notes", "receipts", "receiptImages", "birthdays", "lessons"] && isStaff(orgId)
                       && (!(col in ["receipts", "receiptImages"]) || myKind() in ["staff", "family"])
+                      && !(col == "plans" && request.resource.data.get("cat", "") == "Antrenman" && myKind() in ["athlete", "student", "parent"])
                       && request.resource.data.get("people", []) == [request.auth.uid]
                       && request.resource.data.get("assignees", [request.auth.uid]) == [request.auth.uid]
                       && request.resource.data.get("createdByUid", null) == request.auth.uid

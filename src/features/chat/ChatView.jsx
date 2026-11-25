@@ -13,7 +13,7 @@ import { useNow } from "@/hooks/useNow";
 import { ConvoComposer } from "@/features/assistant/ConvoComposer";
 import { sendErrorText, setOpenChat, toMs, useChat } from "./ChatProvider";
 import { Avatar, Ticks, dayText, hm, isOnline, sameDay, seenText } from "./bits";
-import { ChatInfoSheet } from "./ChatInfoSheet";
+import { ChatInfoPanel, ChatInfoSheet } from "./ChatInfoSheet";
 import { GROUPS, kindOf } from "@/lib/kinds";
 import { inArchive, liveMsgs, shownMsg } from "@/lib/chatArchive";
 import { canCall } from "@/lib/call";
@@ -24,6 +24,8 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { seeInbox } from "@/features/home/InboxSeen";
 import { uploadChatFile } from "./chatUpload";
 import { VOICE_MAX_SEC, fileLabel, secText, sizeText, voiceType } from "@/lib/chatFile";
+import { chatPlanCommand, planFile } from "@/lib/chatPlan";
+import { ChatPlanHint, PlanPickSheet, addPlans, readPlans, undoPlans } from "./ChatPlan";
 
 const PAGE = 50;
 const EDIT_MS = 15 * 60e3; // kendi mesajını düzenleme süresi (kural da aynı)
@@ -59,6 +61,8 @@ const keep = (cid, list) => {
   MSGS.set(cid, list);
   if (MSGS.size > MAX_CACHED) MSGS.delete(MSGS.keys().next().value);
 };
+// İki bölme mi (Mac ve yatay iPad, sol menü açık): globals.css MESAJLAR ile aynı koşul
+const splitView = () => typeof window !== "undefined" && document.body.hasAttribute("data-side") && window.matchMedia("(min-width: 64rem)").matches;
 const lastQ = (cref, n = PAGE) => query(collection(cref, "messages"), orderBy("at", "desc"), limit(n));
 const busy = new Set();
 // Silinmiş sohbetin mesajları sunucudan okunamaz (kurallar sohbet belgesine bakar); yalnız var olan sohbet için çağrılır.
@@ -85,7 +89,10 @@ export function ChatView({ cid }) {
   const router = useRouter();
   const toast = useToast();
   const { chats, allPeople, people, personName, uid, orgId, chatRef, send, markRead, setTyping, react, remove, restore, purge, edit, pin, ready, myKind } = useChat();
-  const { setViewing } = useData();
+  const { setViewing, plans, saveDrafts, deleteRecord } = useData();
+  // Mesajdaki dosyadan plan (ChatPlan.jsx): ana hesap ve çalışanlar
+  const canPlan = myKind === "owner" || myKind === "staff";
+  const [planPick, setPlanPick] = useState(null); // { m, items }
   const { startCall, busy } = useCall() || {};
   const now = useNow(2000);
 
@@ -109,6 +116,8 @@ export function ChatView({ cid }) {
   const owner = myKind === "owner";
   // Arşivlenen mesajlar sohbette görünmez: ana hesabın arşivi herkes için, diğerlerinin yalnız kendileri için
   const msgs = all.filter((m) => shownMsg(m, uid));
+  // Bilgide "Fotoğraf ve dosyalar": yüklü mesajlardaki ekler, en yeni önce (ayrı okuma yok)
+  const files = msgs.filter((m) => m.file?.url).reverse();
   const archived = all.filter((m) => inArchive(m, uid, owner));
   const [archOpen, setArchOpen] = useState(false);
   const [purgeAsk, setPurgeAsk] = useState("");
@@ -126,6 +135,9 @@ export function ChatView({ cid }) {
   const pickFile = useRef(null);
   const [act, setAct] = useState(null); // dokunulan mesaj (işlem menüsü)
   const [info, setInfo] = useState(false);
+  // Mac ve yatay iPad (sol menü açık, iki bölme): bilgi alttan pencere yerine sohbetin sağında panel (globals.css MESAJLAR)
+  const [panel, setPanel] = useState(false);
+  const openInfo = () => (splitView() ? setPanel((v) => !v) : setInfo(true));
   const [newBelow, setNewBelow] = useState(0);
   const box = useRef(null);
   const input = useRef(null);
@@ -422,6 +434,13 @@ export function ChatView({ cid }) {
       }
       return;
     }
+    // "Plana ekle" (kendi gönderdiğin ya da yanıtladığın dosya): sormadan eklenir, mesaj olarak gitmez
+    const target = canPlan && chatPlanCommand(t) ? (planFile(replyTo?.file) ? replyTo : [...msgs].slice(-10).reverse().find((m) => planFile(m.file) && !m.deleted)) : null;
+    if (target) {
+      setText("");
+      setReplyTo(null);
+      return planDirect(target);
+    }
     setText("");
     const r = replyTo;
     setReplyTo(null);
@@ -434,6 +453,36 @@ export function ChatView({ cid }) {
       toast(sendErrorText());
     }
     input.current?.focus();
+  }
+
+  // Mesajdaki dosyanın planları: okunur (önceden okunduysa hemen), hepsi eklenir; altta Geri al
+  async function planDirect(m) {
+    toast("Dosya okunuyor…");
+    const s = await readPlans(m);
+    if (!s) return toast("Dosya okunamadı, tekrar dene.");
+    if (!s.items?.length) return toast("Bu dosyada tarihli bir şey bulamadım.");
+    const n = await addPlans({ saveDrafts, items: s.items, ref: `${cid}/${m.id}`, mid: m.id, by: uid });
+    if (n < 0) return toast("Planlar eklenemedi, tekrar dene.");
+    toast(`${n} plan eklendi`, { action: { label: "Geri al", onClick: () => undoMsgPlans(m) } });
+  }
+  // Mesaj menüsü › Plana ekle: bulunanlar pencerede seçilir
+  async function planFromMenu(m) {
+    const s = await readPlans(m);
+    if (!s) return toast("Dosya okunamadı, tekrar dene.");
+    if (!s.items?.length) return toast("Bu dosyada tarihli bir şey bulamadım.");
+    setPlanPick({ m, items: s.items });
+  }
+  function undoMsgPlans(m) {
+    undoPlans(m.id, deleteRecord);
+    toast("Geri alındı");
+  }
+  async function addPicked(items) {
+    const m = planPick?.m;
+    if (!m) return;
+    const n = await addPlans({ saveDrafts, items, ref: `${cid}/${m.id}`, mid: m.id, by: uid });
+    if (n < 0) return toast("Planlar eklenemedi, tekrar dene.");
+    setPlanPick(null);
+    toast(`${n} plan eklendi`, { action: { label: "Geri al", onClick: () => undoMsgPlans(m) } });
   }
 
   const createOf = () => (chat.type === "dm" ? { type: "dm", members: [...chat.members].sort() } : { type: "team" });
@@ -558,12 +607,12 @@ export function ChatView({ cid }) {
 
   return (
     // Sabit kutu: başlık üstte, mesajlar ortada kendi içinde kayar, yazma alanı altta (yükseklik: yukarıdaki fit)
-    <main ref={shell} className="fixed inset-x-0 top-0 z-30 flex h-dvh flex-col overscroll-none bg-bg">
+    <main ref={shell} className={`chat-view fixed inset-x-0 top-0 z-30 flex h-dvh flex-col overscroll-none bg-bg ${panel ? "chat-view-info" : ""}`}>
       <div className="relative mx-auto flex min-h-0 w-full max-w-[30rem] flex-1 flex-col">
         {/* Üst: geri, fotoğraf + ad (yalnızca yazarken altında "yazıyor…"), ayarlar */}
         <header className="z-10 flex shrink-0 items-center gap-1.5 border-b border-line bg-bg px-1.5 pb-1.5 pt-[calc(0.375rem+env(safe-area-inset-top))]">
-          <BackButton onClick={() => goBack(router, "/messages")} className="mx-1" />
-          <button type="button" onClick={() => (owner && chat.type === "dm" && otherP && otherP.role !== "owner" ? router.push(`/people/p/${chat.other}`) : setInfo(true))} className="flex min-w-0 flex-1 items-center gap-2.5 text-left">
+          <BackButton onClick={() => goBack(router, "/messages")} className="chat-back mx-1" />
+          <button type="button" onClick={() => (owner && chat.type === "dm" && otherP && otherP.role !== "owner" && !splitView() ? router.push(`/people/p/${chat.other}`) : openInfo())} className="chat-who flex min-w-0 flex-1 items-center gap-2.5 text-left">
             <Avatar name={chat.title} photo={otherP?.photo} icon={GROUPS[cid]?.icon || (chat.type === "group" ? "chat" : null)} online={isOnline(otherP)} size="size-9" text="text-[0.8125rem]" tone={GROUPS[cid] ? "bg-deep text-white" : undefined} />
             <span className="min-w-0">
               <b className="flex items-center gap-1.5 truncate text-[1rem] font-semibold leading-tight">
@@ -578,8 +627,11 @@ export function ChatView({ cid }) {
               <Icon name="phone" className="size-5" />
             </button>
           )}
-          <button type="button" onClick={() => setInfo(true)} aria-label="Sohbet ayarları" data-press className="btn btn-icon size-10 shrink-0 text-mut">
+          <button type="button" onClick={openInfo} aria-label="Sohbet ayarları" data-press className="chat-info-btn btn btn-icon size-10 shrink-0 text-mut">
             <Icon name="sliders" className="size-5" />
+          </button>
+          <button type="button" onClick={openInfo} aria-pressed={panel} data-press className={`chat-info-txt btn btn-sm mr-1 shrink-0 ${panel ? "btn-primary" : "btn-secondary"}`}>
+            Bilgi
           </button>
         </header>
 
@@ -718,6 +770,7 @@ export function ChatView({ cid }) {
                         ))}
                       </span>
                     )}
+                    {canPlan && m.file && <ChatPlanHint m={m} cid={cid} mine={mine} plans={plans} toMs={toMs} now={now.getTime()} onPick={(x, items) => setPlanPick({ m: x, items })} onUndo={undoMsgPlans} />}
                     {/* Son mesajımın altında durum (iMessage gibi): Gönderildi · İletildi · Okundu */}
                     {m.id === lastMine?.id && i >= msgs.length - 3 && statusLine(m) && (
                       <span className="mr-1 mt-0.5 text-[0.6875rem] font-medium text-mut">{statusLine(m)}</span>
@@ -854,6 +907,13 @@ export function ChatView({ cid }) {
                   <Icon name="chat" className="size-5" /> Yanıtla
                 </button>
               </li>
+              {canPlan && planFile(act.file) && !act.pending && (
+                <li>
+                  <button type="button" onClick={() => (planFromMenu(act), setAct(null))} className={ACT}>
+                    <Icon name="cal" className="size-5" /> Plana ekle
+                  </button>
+                </li>
+              )}
               {act.text && <li>
                 <button
                   type="button"
@@ -980,7 +1040,9 @@ export function ChatView({ cid }) {
         </div>
       </Sheet>
 
-      <ChatInfoSheet open={info} onClose={() => setInfo(false)} chat={chat} members={members} people={people} exists={exists} />
+      <PlanPickSheet pick={planPick} onClose={() => setPlanPick(null)} onAdd={addPicked} />
+      <ChatInfoSheet open={info} onClose={() => setInfo(false)} chat={chat} members={members} people={people} exists={exists} files={files} />
+      {panel && <ChatInfoPanel onClose={() => setPanel(false)} chat={chat} members={members} people={people} exists={exists} files={files} />}
     </main>
   );
 }

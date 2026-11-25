@@ -1,32 +1,25 @@
 "use client";
 
 import { Icon } from "@/components/ui/Icon";
-import { Empty, card } from "@/components/ui/Page";
+import { Empty } from "@/components/ui/Page";
 import { kindOf } from "./postModel";
 
 const when = (ms) => (ms ? new Date(ms).toLocaleDateString("tr-TR", { day: "numeric", month: "short" }) : "");
 
-// Kaydedilen gönderiler: küçük görsel, başlık, tür · tarih. Köşedeki düğme: listede arşive kaldır, arşivde geri al
+// Kaydedilen gönderiler (yeni tasarım, 2026-11-03: düz kart, ince çizgi): küçük görsel, başlık, tür · tarih. Köşedeki düğme: listede arşive kaldır, arşivde geri al
 export function PostList({ posts, onOpen, onArchive, archive = false }) {
-  if (!posts.length && archive) return <Empty icon="archive" title="Arşiv boş" sub="Kullandığın gönderileri listede köşedeki düğmeyle arşive kaldırabilirsin; burada durur, istersen geri alırsın." />;
-  if (!posts.length)
-    return (
-      <Empty
-        icon="camera"
-        title="Henüz gönderi yok"
-        sub="Yarış, sonuç ya da antrenman için Instagram gönderisi hazırla: fotoğrafını seç, ne olduğunu anlat; görsel yazıları ve açıklama yapay zekayla gelsin."
-      />
-    );
+  if (!posts.length && archive) return <Empty icon="archive" title="Arşiv boş" />;
+  if (!posts.length) return <Empty icon="camera" title="Henüz gönderi yok" />;
   return (
-    <ul className="mt-4 grid grid-cols-2 gap-3">
+    <ul className="grid grid-cols-2 gap-3">
       {posts.map((p) => (
         <li key={p.id} className="relative">
-          <button type="button" onClick={() => onOpen(p)} className={`${card} block w-full overflow-hidden text-left transition active:scale-[.98]`}>
+          <button type="button" onClick={() => onOpen(p)} data-press className="block w-full overflow-hidden rounded-[1.25rem] border border-line bg-card text-left">
             {p.thumb ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={p.thumb} alt="" className={`block w-full object-cover ${p.format === "portrait" ? "aspect-[4/5]" : p.format === "story" || p.format === "reels" ? "aspect-[9/16]" : "aspect-square"}`} />
             ) : (
-              <span className="grid aspect-square w-full place-items-center bg-acc/10 text-acc">
+              <span className="grid aspect-square w-full place-items-center bg-accbg text-acc">
                 <Icon name="image" className="size-8" />
               </span>
             )}

@@ -54,10 +54,53 @@ export function parseSynop(line, id) {
   const at = new Date(Date.UTC(+Y, +M - 1, +D, +h, +m));
   if (Number.isNaN(at.getTime())) return null;
   const kn = Math.round(ff * k);
-  return { at: at.toISOString(), dir: dd >= 1 && dd <= 36 ? dd * 10 : null, kn, gust: gust == null ? null : Math.max(kn, Math.round(gust * k)) };
+  // Gerçekleşen hava (Seyhun 2026-11-02 "hava durumu da beklenen ve gerçekleşen"): N toplam bulut (8'de), 1sTTT sıcaklık, 7wwW1W2 o anki hava
+  const N = /^\d$/.test(w[0]) && w[0] !== "9" ? +w[0] : null;
+  let temp = null, ww = null;
+  for (let j = i; j < (s3 >= 0 ? s3 : g.length); j++) {
+    if (/^(222|555)/.test(g[j])) break;
+    if (temp == null && /^1[01]\d{3}$/.test(g[j])) temp = Math.round(((g[j][1] === "1" ? -1 : 1) * +g[j].slice(2)) / 10);
+    if (ww == null && /^7\d{4}$/.test(g[j])) ww = +g[j].slice(1, 3);
+  }
+  return { at: at.toISOString(), dir: dd >= 1 && dd <= 36 ? dd * 10 : null, kn, gust: gust == null ? null : Math.max(kn, Math.round(gust * k)), rain: synopRain(g, i, s3), cloud: N, temp, ww };
+}
+// Ölçülen havayı Open-Meteo hava koduna çevirir (aynı simgeler): ww önce (fırtına, sağanak, yağmur, çisenti, sis), yoksa bulut miktarı
+export function synopCode(o) {
+  const ww = o?.ww;
+  if (ww != null) {
+    if (ww >= 91 && ww <= 99) return 95;
+    if (ww >= 80 && ww <= 90) return 80;
+    if (ww >= 60 && ww <= 69) return 61;
+    if (ww >= 50 && ww <= 59) return 51;
+    if (ww >= 40 && ww <= 49) return 45;
+    if (ww >= 20 && ww <= 29 && ww !== 28) return null;
+  }
+  const n = o?.cloud;
+  if (n == null) return null;
+  return n <= 1 ? 0 : n <= 3 ? 1 : n <= 6 ? 2 : 3;
 }
 
-// Yerel güne göre saatlik satırlar { hh, wind, gust, dir, at }; aynı saatte birden çok rapor varsa sonuncusu
+// Ölçülen yağış (Seyhun 2026-10-26: "gerçekleşen yağmuru da"): 6RRRt grubu (önce bölüm 1, yoksa 333 bölümü).
+// RRR mm (990 iz = 0, 991–999 = 0,1–0,9), t süre: 1=6, 2=12, 3=18, 4=24, 5=1, 6=2, 7=3, 8=9, 9=15 saat. Dönen { mm, h } ya da null
+const RAIN_H = { 1: 6, 2: 12, 3: 18, 4: 24, 5: 1, 6: 2, 7: 3, 8: 9, 9: 15 };
+function rainOf(grp) {
+  const RRR = +grp.slice(1, 4);
+  const h = RAIN_H[grp[4]];
+  if (!h) return null;
+  return { mm: RRR >= 991 ? (RRR - 990) / 10 : RRR === 990 ? 0 : RRR, h };
+}
+function synopRain(g, from, s3) {
+  const end = s3 >= 0 ? s3 : g.length;
+  for (let j = from; j < end; j++) {
+    if (/^(222|555)/.test(g[j])) break;
+    if (/^6\d{4}$/.test(g[j])) return rainOf(g[j]);
+  }
+  if (s3 >= 0) for (let j = s3 + 1; j < g.length && !/^(444|555)$/.test(g[j]); j++) if (/^6\d{4}$/.test(g[j])) return rainOf(g[j]);
+  return null;
+}
+
+// Yerel güne göre saatlik satırlar { hh, wind, gust, dir, at, rain }; aynı saatte birden çok rapor varsa sonuncusu.
+// rain: { mm, h } raporun saatinde biten h saatlik ölçülen yağış ya da null
 export function obsRows(list, date, tz = "Europe/Istanbul") {
   const ymd = new Intl.DateTimeFormat("en-CA", { timeZone: tz });
   const hr = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", hourCycle: "h23", timeZone: tz });
@@ -66,7 +109,7 @@ export function obsRows(list, date, tz = "Europe/Istanbul") {
     if (!o) continue;
     const d = new Date(o.at);
     if (ymd.format(d) !== date) continue;
-    by.set(hr.format(d), { hh: hr.format(d), wind: o.kn, gust: o.gust, dir: o.dir, at: o.at });
+    by.set(hr.format(d), { hh: hr.format(d), wind: o.kn, gust: o.gust, dir: o.dir, at: o.at, rain: o.rain ?? null, temp: o.temp ?? null, code: synopCode(o) });
   }
   return [...by.values()].sort((a, b) => a.hh.localeCompare(b.hh));
 }

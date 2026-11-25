@@ -1,0 +1,272 @@
+// Rota kartı (Seyhun 2026-10-28, kendi kartının benzeri; seçtiği "A · Rüzgâr yukarıda", örnek yaris-tasarim/parkur/rota-karti-a.png):
+// Start (komite sağda, pin solda), 4s/4p kapısı, 1 + 1A, 2, 3s/3p kapısı, Finiş. Kağıt kart gibi ölçeksiz şema; açılar girilen
+// ölçümlerden (raceCourse.js axisOf / lineOf / son rüzgâr / orsadan apaza).
+// Sabit = komitenin parkur ekseni (Seyhun 2026-10-28: "komite 1'i 140'a göre atar, pin'i komiteden 50°'de görmem gerekir").
+// Kart eksen yukarıda çizilir: 1 eksende, olması gereken hat soluk (eksen − 90°), atılan hat gerçek açısında, rüzgâr oku değişen yönde.
+import { ORSA_M, axisOf, bearing, cardType, diff, dist, lineOf, selCard } from "@/lib/raceCourse";
+
+const rad = (d) => (d * Math.PI) / 180;
+const nrm = (d) => ((Math.round(d) % 360) + 360) % 360;
+const dir = (b, m) => [m * Math.sin(rad(b)), m * Math.cos(rad(b))];
+const add = (p, b, m) => { const [x, y] = dir(b, m); return [p[0] + x, p[1] + y]; };
+const brgOf = (a, b) => nrm((Math.atan2(b[0] - a[0], b[1] - a[1]) * 180) / Math.PI);
+export const geom = (c, o) => withReal(geom0(c, o), c);
+function geom0(c, { lineK = 0.5 } = {}) {
+  const A = c.axis, L = c.orsa;
+  // komite sabit; pin komiteden ölçülen açıda (yoksa olması gereken eksen − 90°), soluk çizgi olması gereken hat
+  const lineM = c.real?.lineM || Math.max(c.lineM || 120, L * lineK); // kartta hat okunur boyda (kağıt kart gibi ölçeksiz); sahnede kağıt karttaki oranla (0.38)
+  const ideal = nrm(A - 90); // komiteden pin
+  const toPin = c.line == null ? ideal : nrm(c.line + 180);
+  const komite = add([0, 0], A + 90, lineM / 2);
+  // olması gereken: şimdiki rüzgâra dik (Seyhun 2026-10-29: "olması gereken gerçek değeri yazalım"); rüzgâr yoksa eksene dik
+  const should = c.wind == null ? ideal : nrm(c.wind - 90);
+  const pin = add(komite, toPin, lineM), pinIdeal = add(komite, should, lineM);
+  const mid = [(komite[0] + pin[0]) / 2, (komite[1] + pin[1]) / 2];
+  const lineDeg = nrm(toPin + 180); // pin → komite
+  const m1 = add(mid, A, L);
+  const m1a = add(m1, A - 90, L * 0.15);
+  const reach = c.reach ?? nrm(A - 120);
+  const m2 = add(m1a, reach, L * 0.6);
+  const g3 = add(m2, A + 180, L * 0.95);
+  const gw = Math.max(40, L * 0.075);
+  const s3 = add(g3, A - 90, gw), p3 = add(g3, A + 90, gw); // pupada sancak solda (rüzgâr yukarıda bakınca)
+  const g4 = add(mid, A, L * 0.24);
+  const s4 = add(g4, A - 90, gw), p4 = add(g4, A + 90, gw);
+  // trapez: finiş pupadaki kapının rüzgâr üstünde (kapıdan dönüp orsayla çıkılır), ayakların yolunu kesmesin diye biraz içeride; hat rüzgâra dik
+  const up = c.type === "trapez";
+  const fin = add(g3, A + 150, L * 0.45);
+  const fA = add(fin, A + 60, L * 0.1), fB = add(fin, A + 240, L * 0.1);
+  const base = { up, A, L, mid, komite, pin, pinIdeal, ideal, should, toPin, m1, m1a, reach, m2, g3, s3, p3, g4, s4, p4, fin, fA, fB, lineDeg };
+  if (!up) return base;
+  // Trapez (Seyhun 2026-11-02 kartı, yayin-tasarim/rota/trapez-kart-orijinal.png; START-1-2-3S/3P-FINISH): 1 startın tam rüzgâr üstünde
+  // (1A yok), 2 solda ve 1'den aşağıda, 3S/3P kapısı 2'nin tam altında startın da altında, finiş 2'nin hemen sağında; 4 kapısı yok
+  const left = (p, up_, side) => add(add(p, A, L * up_), A - 90, L * side);
+  const t2 = left(mid, 0.45, 1.05), t3 = left(mid, -0.57, 0.98), tf = left(mid, 0.39, 0.86);
+  const tgw = L * 0.11;
+  return { ...base, m1a: m1, m2: t2, reach: brgOf(m1, t2), g3: t3, s3: add(t3, A - 90, tgw), p3: add(t3, A + 90, tgw), fin: tf, fA: add(tf, A - 90, L * 0.09), fB: add(tf, A + 90, L * 0.09) };
+}
+
+// Konumla girilen noktalar (Seyhun 2026-11-03 "hakem botunun yanına gidip koordinatını eklerim; girilen varsa o geçerli; girilenin yeri
+// olması gerekenden farklıysa olması gereken bulanık görünsün, mesafe aynı, yalnız rüzgâra göre açı farklı"):
+// c.real = { at: "komite" | "pin" (dayanak), p: { komite, pin, m1, m2, m3, m4, fin: [doğu m, kuzey m] dayanağa göre } }.
+// Girilen nokta çizimde gerçek yerine taşınır (kapı ve finiş ikilisi de birlikte); olması gereken = start ortasından, kartın şekline göre
+// rüzgâr yönünde (rüzgâr yoksa eksende) aynı mesafede. Açı farkı GHOST_DEG ve üstündeyse g.ghost[ad] olur (çizimde bulanık).
+export const GHOST_DEG = 5;
+const MOVE = { m1: ["m1"], m2: ["m2"], m3: ["g3", "s3", "p3"], m4: ["g4", "s4", "p4"], fin: ["fin", "fA", "fB"] };
+function withReal(g, c) {
+  const r = c.real;
+  if (!r?.p?.[r.at]) return { ...g, ghost: {}, off: {} };
+  const out = { ...g, ghost: {}, off: {} };
+  const base = g[r.at];
+  const at = (k) => [base[0] + r.p[k][0] - r.p[r.at][0], base[1] + r.p[k][1] - r.p[r.at][1]];
+  const turn = c.wind == null ? 0 : diff(g.A, c.wind);
+  if (r.at === "pin" && r.p.komite) out.komite = at("komite");
+  if (r.at === "komite" && r.p.pin) out.pin = at("pin");
+  if (r.p.pin || r.p.komite) {
+    // pin'in olması gereken yeri: komiteden rüzgâra dik, aynı mesafede
+    const want = c.wind == null ? g.ideal : nrm(c.wind - 90);
+    const real = brgOf(out.komite, out.pin);
+    const m = Math.hypot(out.pin[0] - out.komite[0], out.pin[1] - out.komite[1]);
+    if (r.p.pin && r.p.komite && Math.abs(diff(want, real)) >= GHOST_DEG) {
+      out.ghost.pin = add(out.komite, want, m);
+      out.off.pin = diff(want, real);
+    }
+    out.mid = [(out.komite[0] + out.pin[0]) / 2, (out.komite[1] + out.pin[1]) / 2];
+  }
+  for (const [k, keys] of Object.entries(MOVE)) {
+    if (!r.p[k]) continue;
+    const head = keys[0];
+    const p = at(k);
+    const want = nrm(brgOf(g.mid, g[head]) + turn);
+    const m = Math.hypot(p[0] - out.mid[0], p[1] - out.mid[1]);
+    const real = brgOf(out.mid, p);
+    const dx = p[0] - g[head][0], dy = p[1] - g[head][1];
+    for (const x of keys) out[x] = [g[x][0] + dx, g[x][1] + dy];
+    if (k === "m1" && !g.up) out.m1a = [g.m1a[0] + dx, g.m1a[1] + dy];
+    if (Math.abs(diff(want, real)) >= GHOST_DEG) {
+      out.ghost[k] = add(out.mid, want, m);
+      out.off[k] = diff(want, real);
+    }
+  }
+  return out;
+}
+// enlem/boylamdan dayanağa göre metre (kısa mesafede düz kabul)
+const M_LAT = 110540;
+const toXY = (o, p) => [(p.lon - o.lon) * Math.cos(rad(o.lat)) * 111320, (p.lat - o.lat) * M_LAT];
+const toGeo = (o, [x, y]) => ({ lat: Math.round((o.lat + y / M_LAT) * 1e6) / 1e6, lon: Math.round((o.lon + x / (Math.cos(rad(o.lat)) * 111320)) * 1e6) / 1e6 });
+export const REAL_PTS = ["komite", "pin", "m1", "m2", "m3", "m4", "fin"];
+function realOf(c) {
+  const at = c.pts.komite ? "komite" : c.pts.pin ? "pin" : "";
+  if (!at) return null;
+  const o = c.pts[at];
+  const p = {};
+  for (const k of REAL_PTS) if (c.pts[k]) p[k] = toXY(o, c.pts[k]);
+  if (Object.keys(p).length < 2) return null;
+  return { at, p, ...(c.pts.komite && c.pts.pin ? { lineM: Math.max(20, dist(c.pts.komite, c.pts.pin)) } : {}) };
+}
+function svgOf(c, { w = 350, h = 470, navy = false } = {}) {
+  const g = geom(c);
+  const rot = g.A; // eksen yukarıda (komitenin sabiti)
+  const R = ([x, y]) => [x * Math.cos(rad(rot)) - y * Math.sin(rad(rot)), x * Math.sin(rad(rot)) + y * Math.cos(rad(rot))];
+  const names = ["komite", "pin", "pinIdeal", "m1", "m1a", "m2", "s3", "p3", ...(g.up ? [] : ["s4", "p4"]), "fA", "fB"];
+  const P = Object.fromEntries(names.map((k) => [k, R(g[k])]));
+  const xs = Object.values(P).map((p) => p[0]), ys = Object.values(P).map((p) => p[1]);
+  const pad = { l: 44, r: 80, t: 84, b: 82 }; // altta iki satır hat özeti
+  const sx = (w - pad.l - pad.r) / (Math.max(...xs) - Math.min(...xs) || 1), sy = (h - pad.t - pad.b) / (Math.max(...ys) - Math.min(...ys) || 1);
+  const s = Math.min(sx, sy);
+  const cx = (Math.max(...xs) + Math.min(...xs)) / 2, cy = (Math.max(...ys) + Math.min(...ys)) / 2;
+  // yükseklik çizime göre: altta boş kalmasın (Seyhun 2026-10-29 "kart alttan yukarı gelsin")
+  const H = Math.ceil(pad.t + pad.b + (Math.max(...ys) - Math.min(...ys)) * s);
+  const S = (p) => { const [x, y] = R(p); return [w / 2 + (x - cx) * s, pad.t + (H - pad.t - pad.b) / 2 - (y - cy) * s]; };
+  const pt = (k) => S(g[k]);
+  const f = (n) => n.toFixed(1);
+  // renkler temadan (koyu temada da okunsun, Seyhun 2026-10-29 "soluk, okunmuyor"); org: hat yazıları belirgin turuncu
+  // navy: Parkur sekmesi lacivert zeminde (Seyhun 2026-10-29 "arka plan uygulamayla uyumlu, yazılar ince, hizalı"): sabit açık renkler, ince yazı
+  const ink = navy ? "#eef2f8" : "var(--fg, #26282c)", mut = navy ? "rgba(230,238,247,.62)" : "var(--fg2, #4a4d52)", acc = navy ? "#8fb3ff" : "var(--acc, #2563eb)", amb = "#f59e0b", org = navy ? "#fb923c" : "#e0700b", paper = navy ? "#0b1a33" : "var(--bg, #fff)";
+  const B = navy ? 500 : 700, M = navy ? 500 : 600, SW = navy ? 1.6 : 2;
+  let o = "";
+  const line = (a, b, st = "", sw = 2) => (o += `<line x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(b[0])}" y2="${f(b[1])}" stroke="${ink}" stroke-width="${sw}" ${st}/>`);
+  const path = (pts, st = "") => (o += `<polyline points="${pts.map((p) => `${f(p[0])},${f(p[1])}`).join(" ")}" fill="none" stroke="${ink}" stroke-width="${SW}" stroke-linejoin="round" ${st}/>`);
+  const arrowOn = (a, b, t = 0.55) => {
+    const x = a[0] + (b[0] - a[0]) * t, y = a[1] + (b[1] - a[1]) * t;
+    const ang = (Math.atan2(b[1] - a[1], b[0] - a[0]) * 180) / Math.PI;
+    o += `<path d="M5 0 L-5 -4.5 L-5 4.5 Z" fill="${ink}" transform="translate(${f(x)} ${f(y)}) rotate(${f(ang)})"/>`;
+  };
+  const legLabel = (a, b, txt, side = 1) => {
+    const x = (a[0] + b[0]) / 2, y = (a[1] + b[1]) / 2;
+    const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1;
+    const nx = (-dy / L) * 16 * side, ny = (dx / L) * 16 * side;
+    o += `<text x="${f(x + nx)}" y="${f(y + ny + 4)}" text-anchor="middle" font-size="12" font-weight="${M}" fill="${acc}">${txt}</text>`;
+  };
+  const buoy = (p, t, est) => (o += `<circle cx="${f(p[0])}" cy="${f(p[1])}" r="13" fill="${paper}" stroke="${ink}" stroke-width="${SW}" ${est ? 'stroke-dasharray="3 3"' : ""}/><text x="${f(p[0])}" y="${f(p[1] + 4)}" text-anchor="middle" font-size="${t.length > 1 ? 10 : 12}" font-weight="${B}" fill="${ink}">${t}</text>`);
+  const boat = (p, est) => (o += `<path d="M-7 8 L-7 -2 L0 -9 L7 -2 L7 8 Z" fill="${paper}" stroke="${ink}" stroke-width="${SW}" ${est ? 'stroke-dasharray="3 2"' : ""} transform="translate(${f(p[0])} ${f(p[1])})"/>`);
+  const mid = S(g.mid), m1 = pt("m1"), m1a = pt("m1a"), m2 = pt("m2"), s3 = pt("s3"), p3 = pt("p3"), s4 = pt("s4"), p4 = pt("p4"), fin = S(g.fin), g3 = S(g.g3), g4 = S(g.g4);
+  // iç rota (kesik): start → 4 kapısı → 1 → 1A → 4 → 1 …
+  if (!g.up) path([mid, g4, m1], 'stroke-dasharray="2 4" opacity=".7"');
+  // dış rota: start → 1 → 1A → 2 → 3 kapısı → Finiş
+  path([mid, m1, m1a, m2, g3, fin]);
+  arrowOn(mid, m1, 0.6); arrowOn(m1a, m2); arrowOn(m2, g3); arrowOn(g3, fin, 0.6);
+  // start hattı: olması gereken (soluk ince), atılan (sarı kesik)
+  const ko = pt("komite"), pi = pt("pin"), pid = pt("pinIdeal");
+  const off = c.line == null ? 0 : diff(g.should, g.toPin);
+  if (c.range) {
+    // aralıklı rüzgârda olması gereken hat da rüzgârla birlikte döner (oktaki animasyonla aynı anda): bir uçta 5 sn durur, 2 sn'de yavaşça öbürüne döner
+    const lineM = Math.max(c.lineM || 120, g.L * 0.5);
+    const [ea, eb] = c.range.map((x) => S(add(g.komite, nrm(x - 90), lineM)));
+    const anim = (at, a, b) => `<animate attributeName="${at}" values="${f(a)};${f(a)};${f(b)};${f(b)};${f(a)}" keyTimes="0;.357;.5;.857;1" calcMode="spline" keySplines="0 0 1 1;.45 0 .55 1;0 0 1 1;.45 0 .55 1" dur="14s" repeatCount="indefinite"/>`;
+    o += `<line x1="${f(ko[0])}" y1="${f(ko[1])}" x2="${f(ea[0])}" y2="${f(ea[1])}" stroke="${acc}" stroke-opacity=".8" stroke-width="1.5" stroke-dasharray="2 4">${anim("x2", ea[0], eb[0])}${anim("y2", ea[1], eb[1])}</line>`;
+  } else if (Math.abs(off) >= 1) o += `<line x1="${f(ko[0])}" y1="${f(ko[1])}" x2="${f(pid[0])}" y2="${f(pid[1])}" stroke="${mut}" stroke-width="1.5" stroke-dasharray="2 4"/>`;
+  o += `<line x1="${f(pi[0])}" y1="${f(pi[1])}" x2="${f(ko[0])}" y2="${f(ko[1])}" stroke="${amb}" stroke-width="3" stroke-dasharray="7 5"/>`;
+  boat(ko, c.est?.komite); boat(pi, c.est?.pin);
+  o += `<text x="${f(ko[0] + 14)}" y="${f(ko[1] + 4)}" text-anchor="start" font-size="12" font-weight="${B}" fill="${org}">Komite</text>`;
+  // eksen komitenin yanında: parkuru komite bu açıya göre atar (Seyhun 2026-10-29)
+  o += `<text x="${f(ko[0] + 14)}" y="${f(ko[1] + 20)}" text-anchor="start" font-size="12" font-weight="${B}" fill="${ink}">Eksen ${nrm(g.A)}°</text>`;
+  const lx = w / 2;
+  // finiş
+  line(pt("fA"), pt("fB"), `stroke-width="2"`, 2);
+  boat(pt("fA"), true);
+  const fb = pt("fB"); o += `<circle cx="${f(fb[0])}" cy="${f(fb[1])}" r="6" fill="${ink}"/>`;
+  o += `<text x="${f(fin[0] + 14)}" y="${f(fin[1] + 18)}" font-size="11" font-weight="${M}" fill="${mut}">Finiş</text>`;
+  // şamandıralar
+  buoy(m1, "1", c.est?.m1); if (!g.up) buoy(m1a, "1A", c.est?.m1); buoy(m2, "2", c.est?.m2);
+  buoy(s3, "3s", c.est?.m3); buoy(p3, "3p", c.est?.m3);
+  if (!g.up) { buoy(s4, "4s", c.est?.m4); buoy(p4, "4p", c.est?.m4); }
+  // ayak açıları
+  legLabel(g.up ? mid : g4, m1, `${nrm(g.A)}°`, -1);
+  legLabel(m1a, m2, `${nrm(g.reach)}°`, -1);
+  legLabel(m2, g3, `${nrm(g.A + 180)}°`, -1);
+  // üstte rüzgâr oku (eksene göre dönmüş hali)
+  if (c.wind != null && navy) {
+    // sağ üstte hizalı blok: ok, altında büyük değer ve küçük açıklama (sola yaslı değil, sağa hizalı)
+    const sh = diff(g.A, c.wind);
+    const arrow = `<line x1="0" y1="-14" x2="0" y2="8" stroke="${acc}" stroke-width="2.4" stroke-linecap="round"/><path d="M0 15 L-6 5 L6 5 Z" fill="${acc}"/>`;
+    if (c.range) {
+      // aralık (Seyhun 2026-10-30 "20 ile 30 arasında oynuyor, animasyonlu"; 2026-11-01 "bir derecede 5 sn kalsın, yavaşça öbürüne dönsün"): ok bir uçta 5 sn durur, 2 sn'de döner,
+      // iki uç soluk çizgiyle görünür
+      const [a, b] = c.range.map((x) => f(diff(g.A, x)));
+      for (const r of [a, b]) o += `<line transform="translate(${w - 22} 30) rotate(${r})" x1="0" y1="-16" x2="0" y2="16" stroke="${acc}" stroke-opacity=".35" stroke-width="1.5" stroke-dasharray="2 3"/>`;
+      o += `<g transform="translate(${w - 22} 30) scale(1.4)"><g transform="rotate(${a})"><animateTransform attributeName="transform" type="rotate" values="${a};${a};${b};${b};${a}" keyTimes="0;.357;.5;.857;1" calcMode="spline" keySplines="0 0 1 1;.45 0 .55 1;0 0 1 1;.45 0 .55 1" dur="14s" repeatCount="indefinite"/>${arrow}</g></g>`;
+      // büyük sayı okla birlikte değişir (20° ↔ 30°), altında aralık
+      const fadeW = (on) => `<animate attributeName="opacity" values="${on ? "1;1;0;0;1" : "0;0;1;1;0"}" keyTimes="0;.357;.5;.857;1" calcMode="spline" keySplines="0 0 1 1;.45 0 .55 1;0 0 1 1;.45 0 .55 1" dur="14s" repeatCount="indefinite"/>`;
+      c.range.forEach((x, i) => (o += `<text x="${w - 44}" y="29" text-anchor="end" font-size="16" font-weight="500" fill="${ink}" opacity="${i ? 0 : 1}">${fadeW(!i)}${nrm(x)}°${c.kn != null ? ` · ${c.kn} kn` : ""}</text>`));
+      o += `<text x="${w - 44}" y="46" text-anchor="end" font-size="11.5" font-weight="400" fill="${mut}">Rüzgâr ${c.range[0]}–${c.range[1]}° arası oynuyor</text>`;
+    } else {
+      o += `<g transform="translate(${w - 22} 30) rotate(${f(sh)})">${arrow}</g>`;
+      o += `<text x="${w - 44}" y="29" text-anchor="end" font-size="16" font-weight="500" fill="${ink}">${nrm(c.wind)}°${c.kn != null ? ` · ${c.kn} kn` : ""}</text>`;
+      o += `<text x="${w - 44}" y="46" text-anchor="end" font-size="11.5" font-weight="400" fill="${mut}">Rüzgâr · ${Math.abs(sh) < 1 ? "eksende" : `eksenden ${Math.abs(sh)}° ${sh > 0 ? "sağa" : "sola"}`}</text>`;
+    }
+  } else if (c.wind != null) {
+    const sh = diff(g.A, c.wind);
+    o += `<g transform="translate(${w / 2} 34) rotate(${f(sh)})"><line x1="0" y1="-16" x2="0" y2="10" stroke="${acc}" stroke-width="3"/><path d="M0 18 L-7 6 L7 6 Z" fill="${acc}"/></g>`;
+    o += `<text x="${w / 2 + 18}" y="32" font-size="12" font-weight="${M}" fill="${acc}">Rüzgâr ${nrm(c.wind)}°${c.kn != null ? ` · ${c.kn} kn` : ""}</text>`;
+    o += `<text x="${w / 2 + 18}" y="48" font-size="12" font-weight="${M}" fill="${acc}">${Math.abs(sh) < 1 ? "eksende" : `${Math.abs(sh)}° ${sh > 0 ? "sağa" : "sola"}`}</text>`;
+  }
+  // kuzey
+  o += `<g transform="translate(26 30) rotate(${f(-rot)})"><circle r="15" fill="${paper}" stroke="${navy ? "rgba(255,255,255,.22)" : "var(--line, #e7e5df)"}"/><path d="M0 -11 L5 4 L0 1 L-5 4 Z" fill="${ink}"/></g><text x="26" y="58" text-anchor="middle" font-size="10" fill="${mut}">K</text>`;
+  // Hat özeti kartın en altında ayrı şeritte (Seyhun 2026-11-01 "yazılar birbirine giriyor"): 1. satır pin açısı ve olması gereken,
+  // 2. satır hangi uç önde. Rüzgâr aralığında iki ucun yazısı okla aynı anda değişir (aynı 14 sn döngü: 5 sn dur, 2 sn geçiş):
+  // "Olmalı 290° · Pin 8° önde" ↔ "Olmalı 300° · Komite 2° önde" (Seyhun 2026-11-01 "ok değişiyor ama alttaki yazılar değişmiyor").
+  const sideTxt = (v) => (Math.abs(v) < 1 ? "İki uç eşit" : `${v > 0 ? "Pin" : "Komite"} ${Math.abs(v)}° önde`);
+  const y1 = H - 40, y2 = H - 18;
+  const row = (y, t, col, extra = "") => `<text x="${f(lx)}" y="${f(y)}" text-anchor="middle" font-size="13" font-weight="${B}" fill="${col}"${extra ? ` ${extra}` : ""}>${t}</text>`;
+  if (c.line != null && c.range) {
+    const ends = c.range.map((x) => ({ should: nrm(x - 90), adv: diff(nrm(x - 90), g.toPin) }));
+    const fade = (on) => `<animate attributeName="opacity" values="${on ? "1;1;0;0;1" : "0;0;1;1;0"}" keyTimes="0;.357;.5;.857;1" calcMode="spline" keySplines="0 0 1 1;.45 0 .55 1;0 0 1 1;.45 0 .55 1" dur="14s" repeatCount="indefinite"/>`;
+    o += row(y1, `Pin ${g.toPin}° · rüzgâr ${c.range[0]}–${c.range[1]}°`, org);
+    ends.forEach((e, i) => (o += `<g opacity="${i ? 0 : 1}">${fade(!i)}${row(y2, `Olmalı ${e.should}° · ${sideTxt(e.adv)}`, ink)}</g>`));
+  } else if (c.line != null) {
+    o += row(y1, `Pin ${g.toPin}° · olmalı ${g.should}°${c.wind == null ? " (eksene dik)" : ""}`, org);
+    o += row(y2, Math.abs(off) < 1 ? "Hat dik, iki uç eşit" : `${off > 0 ? "Pin" : "Komite"} tarafı ${Math.abs(off)}° önde`, ink);
+  }
+  return `<svg viewBox="0 0 ${w} ${H}" width="100%" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Inter,sans-serif">${o}</svg>`;
+}
+
+// Parkurun kart bilgisi; eksen ve rüzgâr yoksa null (kart çizilmez)
+export function cardOf(c) {
+  // sabit: girilen eksen ya da 1 yönü; yoksa ilk rüzgâr ölçümü (son rüzgâr değişir, eksen değişmez)
+  const ax0 = axisOf(c);
+  const first = c.obs.find((x) => x.kind === "wind");
+  // konumla girilen 1 (Seyhun 2026-11-03): eksen ölçülmemişse eksen startın ortasından girilen 1'e (parkur gerçekte o yöne kurulmuş)
+  const base = c.pts.komite && c.pts.pin ? { lat: (c.pts.pin.lat + c.pts.komite.lat) / 2, lon: (c.pts.pin.lon + c.pts.komite.lon) / 2 } : c.pts.komite || c.pts.pin;
+  const ptsAx = c.pts.m1 && base ? { deg: bearing(base, c.pts.m1) } : null;
+  const ax = ax0 && ax0.src !== "wind" && ax0.src !== "pts" ? ax0 : ptsAx || (first ? { deg: first.deg } : ax0);
+  const w = [...c.obs].reverse().find((x) => x.kind === "wind" && (!x.spot || x.spot === "komite" || x.spot === "pin")) || [...c.obs].reverse().find((x) => x.kind === "wind");
+  const ln = lineOf(c);
+  if (!ax && !w && !ln) return null;
+  const axis = ax ? ax.deg : nrm(ln.deg - 90);
+  const leg = [...c.obs].reverse().find((x) => x.kind === "leg");
+  return {
+    axis,
+    wind: w ? w.deg : null,
+    range: w?.range || null,
+    kn: w ? w.kn : null,
+    line: ln ? ln.deg : null,
+    reach: leg ? (leg.ref === "m1m2" ? leg.deg : nrm(leg.deg + 180)) : null,
+    orsa: c.len?.orsa || (ptsAx ? Math.max(100, dist(base, c.pts.m1)) : ORSA_M),
+    type: cardType(selCard(c)),
+    real: realOf(c),
+    est: { komite: !c.pts.komite, pin: !c.pts.pin, m1: !c.pts.m1, m2: !c.pts.m2, m3: !c.pts.m3, m4: !c.pts.m4, fin: !c.pts.fin },
+  };
+}
+export const cardSvg = (k, o) => (k ? svgOf(k, o) : "");
+
+// Parkurun noktaları gerçek konumda (Seyhun 2026-11-03; tekne takibi ve canlı tekne ekranı da bunu çağırır): girilenler aynen, girilmeyenler
+// rüzgâr ve rota kartına göre. Dayanak (komite ya da pin) girilmemişse null. Dönüş:
+// { pts: { komite, pin, m1, m2, m3s, m3p, fin1, fin2 (+ m1a, m4s, m4p) → { lat, lon, manual } }, ghost: { ad → { lat, lon } }, off: { ad → derece } }
+export function coursePoints(c) {
+  const k = cardOf(c);
+  if (!k?.real) return null;
+  const g = geom(k, { lineK: 0 });
+  const o = c.pts[k.real.at];
+  const z = g[k.real.at];
+  const G = (p) => toGeo(o, [p[0] - z[0], p[1] - z[1]]);
+  const own = { komite: "komite", pin: "pin", m1: "m1", m1a: "m1", m2: "m2", m3s: "m3", m3p: "m3", m4s: "m4", m4p: "m4", fin1: "fin", fin2: "fin" };
+  const from = { komite: "komite", pin: "pin", m1: "m1", m1a: "m1a", m2: "m2", m3s: "s3", m3p: "p3", m4s: "s4", m4p: "p4", fin1: "fA", fin2: "fB" };
+  const pts = {};
+  for (const [n, key] of Object.entries(from)) {
+    if (g.up && (n === "m1a" || n === "m4s" || n === "m4p")) continue;
+    pts[n] = { ...G(g[key]), manual: !!c.pts[own[n]] };
+  }
+  const ghost = Object.fromEntries(Object.entries(g.ghost).map(([n, p]) => [n, G(p)]));
+  return { pts, ghost, off: g.off };
+}

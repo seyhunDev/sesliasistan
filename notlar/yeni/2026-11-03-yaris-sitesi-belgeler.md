@@ -1,0 +1,12 @@
+## Nerede kaldım
+- Yarış sitesinden belgeler (Seyhun: "siteye yüklendiğinde hemen alıp kullanmamız gerekiyor", "önce yarış listesi, ben seçeyim, bulunduğumuz sezon varsayılan", "hangi yarışın hangi dosyaları var görmeliyim"; telefonda denenmedi):
+  - Yarışlar › "Siteden" (`/athletes/races/site`): TYF Yelken Ligi sitesindeki sezonlar (şimdiki varsayılan), ayaklar, sınıflar; sınıfa dokununca sitedeki belgeler (açılır). "Yarışı al" yarış ilanını okur (elle talimat yüklemedeki gibi), yarışı açar ya da aynı yarış varsa ona bağlar (`race.site`), belgeleri hemen alır.
+  - Site okuma `src/lib/siteBoard.js` (İlan Tahtası + Sonuçlar sayfası; eski sezonlar `/Home/GetNoticeBoardLeg`, `/Home/GetResultsLeg`), tür addan `src/lib/siteDocs.js` (renk listesi, final grupları, sporcu listesi, sonuç geçici/kesin, ek talimat Vn, talimat, program, diğer). Anahtar = yüklenme zamanı + ad.
+  - Zamanlayıcı `netlify/functions/race-site.mjs` (10 dk): izlenen yarışlar `raceSite/{org}_{yarış}` (yalnız sunucu yazar/okur); yarıştan bir gün önce – bir gün sonra her çalışmada, diğer günler günde bir bakar. Yeni belge Storage `orgs/{org}/noticeFiles/site-…` + kayıt `orgs/{org}/raceLive/{yarış}/site/{anahtar}` (state new), bildirim "1. Ayak Optimist · Renk listesi (4 Kas) geldi" → yarış sayfası. Ortak kod `src/lib/server/raceSiteSync.js`, istek `/api/race-site` (liste, belge, izle/bırak/şimdi bak; yalnız ana hesap).
+  - Yarış sayfasında "Siteden belgeler" (`SiteDocs.jsx`, `raceSite.js`): açılınca yeni gelenler işlenir: renk/final grup listesi → o günün grupları + kayıt listesi, sporcu listesi → kayıt listesi, sonuçlar → yarışın sonuçları (elle sonuç yüklemedeki akış). Her işlenen belgede "Geri al" (önceki liste/gruplar döner, sonuç çıkar) ve "Yeniden işle". Geçerli ek talimat en üstte. "Şimdi bak", "İzlemeyi bırak".
+  - Testler `scripts/asistan-test/yerel/yaris.mjs` "Yarış sitesi belgeleri", "Yarış sitesi sayfası".
+
+## Sıradaki işler
+0. Telefonda: Yarışlar › Siteden › 2026-2027 › bir sınıf › belgeler açılıyor mu, "Yarışı al" yarışı doğru ad/tarihle açıyor mu; yarış sayfasında "Siteden belgeler"; renk listesi gelince günün grupları doğru mu, Geri al çalışıyor mu; bildirim geliyor mu.
+1. Belgeler telefonda işlenir (PDF okuyucular tarayıcıda): uygulama açılmadan renk listesi yayına geçmez. Gerekirse sunucuda okuma.
+2. Bulut oturumundan www.tyf.org.tr (PDF'ler) açılamıyor; PDF biçimleri denenmedi. Okunamayan liste "Liste okunamadı" yazar, belge yine açılır.

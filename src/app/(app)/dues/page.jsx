@@ -9,6 +9,9 @@ import { ListHead } from "@/components/ui/Row";
 import { buttonClass } from "@/components/ui/buttonClass";
 import { Loading } from "@/components/ui/Loader";
 import { Sheet } from "@/components/ui/Sheet";
+import { PickSheet } from "@/components/ui/PickSheet";
+import { AddButton } from "@/components/ui/AddButton";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
@@ -17,7 +20,7 @@ import { isActive, loadAthletes, useDikili } from "@/features/athletes/data";
 import { monthLabel } from "@/features/athletes/attendanceReport";
 import { EXCEL_UPLOAD } from "@/features/bank/LedgerCard";
 import { deleteStatement, loadDuesRange, loadMovementsRange, loadStatements, saveCfg, saveMonth, saveRoster, uploadStatement } from "@/features/dues/duesData";
-import { allocate, athleteDues, dropGroup, gridOf, historyOf, incomeOf, lastMonths, movKey, payerOf, paymentsOf, pendingOf, splitAmount, words } from "@/lib/dues";
+import { allocate, athleteDues, dropGroup, moveGroup, gridOf, historyOf, incomeOf, lastMonths, movKey, payerOf, paymentsOf, pendingOf, splitAmount, words } from "@/lib/dues";
 import { money } from "@/lib/bankSheet";
 import { todayStr } from "@/lib/utils/format";
 import { saveSum } from "@/lib/homeTiles";
@@ -59,6 +62,8 @@ function dayShort(v) {
 }
 const VIA = (v) => (v === "cash" ? "Nakit" : "Banka");
 const monthsText = (list) => list.map(shortMonth).join(", ");
+// "Eylül, Ekim" (ödemenin yazıldığı aylar, uzun ad)
+const monthsLong = (list) => list.map((ym) => new Date(`${ym}-15T12:00:00`).toLocaleDateString("tr-TR", { month: "long" })).join(", ");
 
 function Dues({ uid, duesAt }) {
   const toast = useToast();
@@ -83,6 +88,7 @@ function Dues({ uid, duesAt }) {
   const [setOpen, setSetOpen] = useState(false);
   const [q, setQ] = useState("");
   const [pickOpen, setPickOpen] = useState(false); // Ödeme ekle: sporcu seç
+  const addRef = useRef(null); // iPad'de sporcu listesi "+ Ödeme"nin altında açılır
 
   // Mail gelince sunucu aidatı kendiliğinden yazabilir: uygulamaya dönünce yeniden okunur (eski kayıtla üstüne yazılmasın)
   const [fresh, setFresh] = useState(0);
@@ -213,7 +219,8 @@ function Dues({ uid, duesAt }) {
       const at = new Date().toISOString();
       let landed = false;
       for (const [a, amt] of splitAmount(m.amount, picks, cfg)) {
-        for (const part of allocate(amt, a, cfg, cur, yms, null, ym)) {
+        // Ödeme geldiği aydan sonraki aylara kendiliğinden yazılmaz (sunucu da böyle; duesAuto.js)
+        for (const part of allocate(amt, a, cfg, cur, yms.filter((x) => x <= ym), null, ym)) {
           const mo = cur[part.ym] || {};
           put(part.ym, { ...mo, paid: { ...(mo.paid || {}), [a.id]: [...(mo.paid?.[a.id] || []), { amt: part.amt, via: "eft", date: m.date, mov: k, desc: String(m.desc).slice(0, 120), at }] } });
           if (part.ym === ym) landed = true;
@@ -260,7 +267,7 @@ function Dues({ uid, duesAt }) {
         <button type="button" onClick={() => setOpenId(on ? "" : r.a.id)} aria-expanded={on} data-press="row" className="flex min-h-[3.5rem] w-full items-center gap-3 py-2.5 text-left">
           <span className="min-w-0 flex-1">
             <b className="block truncate text-[0.9375rem] font-semibold">{r.a.studentName}</b>
-            <small className="block truncate text-[0.8125rem] text-mut">{last ? `Son ödeme ${dayShort(last.date)} · ${VIA(last.via)} · ${TL(last.amt)}` : "Ödeme yok"}</small>
+            <small className="block truncate text-[0.8125rem] text-mut">{last ? `Son ödeme ${dayShort(last.date)} · ${monthsLong(last.months)} aidatı` : "Ödeme yok"}</small>
           </span>
           <span className="shrink-0">{right(r.info, isBurs(r))}</span>
           <Icon name="chev" className={`size-4 shrink-0 text-mut transition-transform ${on ? "rotate-90" : ""}`} />
@@ -275,6 +282,7 @@ function Dues({ uid, duesAt }) {
             yms={yms}
             onPay={() => setPayFor(r.a)}
             onDrop={(g) => writeMonths(dropGroup(r.a, months, g), "Ödeme silindi")}
+            onMove={(g, picked) => writeMonths(moveGroup(r.a, months, g, picked, cfg), `${monthsLong(picked)} aidatına yazıldı`)}
             onStart={(ym) => (writeCfg({ ...cfg, start: { ...(cfg.start || {}), [r.a.id]: ym } }), toast(`${r.a.studentName}: aidat ${monthLabel(ym)} ayından başlıyor`))}
             onFree={(ym, yes) => {
               const free = { ...(months[ym]?.free || {}) };
@@ -293,7 +301,7 @@ function Dues({ uid, duesAt }) {
     list.length > 0 && (
       <section>
         <ListHead title={title} count={list.length} />
-        <ul className={`overflow-hidden px-3.5 ${card}`}>{list.map(row)}</ul>
+        <ul className={`card-grid overflow-hidden px-3.5 ${card}`}>{list.map(row)}</ul>
       </section>
     );
   const top = (
@@ -305,7 +313,7 @@ function Dues({ uid, duesAt }) {
             <span className="text-[1rem] text-white/60">/ {TL(inc.now.expected)}</span>
           </p>
           <span aria-hidden="true" className="mt-3 block h-1.5 overflow-hidden rounded-full bg-white/15">
-            <span className="block h-full rounded-full bg-[#67e8f9]" style={{ width: `${Math.round(pct * 100)}%` }} />
+            <span className="block h-full rounded-full bg-[#8fb3ff]" style={{ width: `${Math.round(pct * 100)}%` }} />
           </span>
           <p className="mt-1.5 flex justify-between gap-3 text-[0.8125rem] text-white/65">
             <span className="truncate capitalize">
@@ -315,11 +323,8 @@ function Dues({ uid, duesAt }) {
           </p>
         </div>
       )}
-      <div className="mt-4 grid grid-cols-2 gap-2">
-        <button type="button" onClick={() => setPickOpen(true)} data-press className="raised flex h-10 items-center justify-center rounded-xl border text-[0.9375rem] font-semibold">
-          Ödeme ekle
-        </button>
-        <button type="button" onClick={() => setMatchOpen(true)} data-press className="raised flex h-10 items-center justify-center gap-1.5 rounded-xl border text-[0.9375rem] font-semibold">
+      <div className="mt-4">
+        <button type="button" onClick={() => setMatchOpen(true)} data-press className="btn btn-secondary h-10 w-full gap-1.5 text-[0.9375rem]">
           Banka
           {pending.length > 0 && <span className="rounded-full bg-warnbg px-1.5 text-[0.75rem] font-bold tabular-nums text-warn">{pending.length}</span>}
         </button>
@@ -337,7 +342,7 @@ function Dues({ uid, duesAt }) {
   );
 
   return (
-    <Shell sub={sub} top={top} onMore={() => setSetOpen(true)}>
+    <Shell sub={sub} top={top} onMore={() => setSetOpen(true)} add={<AddButton ref={addRef} onClick={() => setPickOpen(true)}>Ödeme</AddButton>}>
       <div className="space-y-6">
         {mv?.error && <p className="px-1 text-[0.8125rem] text-rec">Banka mailleri okunamadı. Gmail bağlantısı kurulu mu?</p>}
         {group("Borcu var", oweRows)}
@@ -349,20 +354,14 @@ function Dues({ uid, duesAt }) {
       </div>
 
       {/* Ödeme ekle: önce sporcu seçilir */}
-      <Sheet open={pickOpen} onClose={() => setPickOpen(false)} title="Ödeme ekle">
-        <div className="overflow-y-auto px-5 pb-2">
-          <ul className={`overflow-hidden px-3.5 ${card}`}>
-            {[...oweRows, ...okRows, ...offRows, ...bursRows].map((r) => (
-              <li key={r.a.id} className="border-t border-line first:border-t-0">
-                <button type="button" onClick={() => (setPickOpen(false), setPayFor(r.a))} data-press="row" className="flex min-h-12 w-full items-center gap-3 py-2 text-left">
-                  <b className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">{r.a.studentName}</b>
-                  {r.info.debt > 0 && <span className="shrink-0 text-[0.8125rem] font-semibold tabular-nums text-rec">{TL(r.info.debt)}</span>}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </Sheet>
+      <PickSheet
+        open={pickOpen}
+        onClose={() => setPickOpen(false)}
+        title="Sporcu seç"
+        anchor={addRef}
+        items={[...oweRows, ...okRows, ...offRows, ...bursRows].map((r) => ({ id: r.a.id, title: r.a.studentName, right: r.info.debt > 0 ? TL(r.info.debt) : null, rightTone: "rec" }))}
+        onPick={(id) => setPayFor([...oweRows, ...okRows, ...offRows, ...bursRows].find((r) => r.a.id === id)?.a || null)}
+      />
 
       {/* Ödeme ekle */}
       <Sheet open={!!payFor} onClose={() => setPayFor(null)} title={payFor ? `${payFor.studentName} · ödeme ekle` : ""}>
@@ -478,13 +477,17 @@ const CELL = { paid: "bg-ok text-white", part: "bg-amber-500 text-white", due: "
 const MARK = { paid: "✓", part: "½", due: "", free: "–", burs: "–", none: "–" };
 
 // Açılan satır: 12 aylık şerit, ödemeler, Ödeme ekle, sporcuya özel ayar
-function AthleteView({ a, info, hist, cfg, yms, onPay, onDrop, onStart, onFree, onFee, onBurs }) {
+function AthleteView({ a, info, hist, cfg, yms, onPay, onDrop, onMove, onStart, onFree, onFee, onBurs }) {
   const now = yms.at(-1);
+  const ask = useConfirm();
   const [sel, setSel] = useState(now);
   const [more, setMore] = useState(false);
   const [own, setOwn] = useState(cfg.fees?.[a.id] ? String(cfg.fees[a.id]) : "");
   const c = info.cells.find((x) => x.ym === sel) || info.now;
-  const status = { paid: "Ödendi", part: `${TL(c.paid)} ödendi · ${TL(c.rest)} eksik`, due: info.fee ? `Ödenmedi · ${TL(c.rest)}` : "Ödenmedi", free: "Bu ay sayılmıyor", burs: "Burslu, aidat ödemiyor", none: "Aidat henüz başlamadı" }[c.state];
+  const [edit, setEdit] = useState(""); // ayı değiştirilen ödeme
+  const [pick, setPick] = useState([]);
+  const paidBy = hist.find((g) => g.months.includes(sel));
+  const status = { paid: paidBy ? `Ödendi · ${dayShort(paidBy.date)} ${VIA(paidBy.via).toLocaleLowerCase("tr-TR")}` : "Ödendi", part: `${TL(c.paid)} ödendi · ${TL(c.rest)} eksik`, due: info.fee ? `Ödenmedi · ${TL(c.rest)}` : "Ödenmedi", free: "Bu ay sayılmıyor", burs: "Burslu, aidat ödemiyor", none: "Aidat henüz başlamadı" }[c.state];
   const btn = "min-h-10 rounded-xl border border-line px-3 py-2 text-[0.8125rem] font-semibold disabled:opacity-50";
   return (
     <div className="border-t border-line px-4 pb-3 pt-3 text-[0.875rem]">
@@ -503,18 +506,50 @@ function AthleteView({ a, info, hist, cfg, yms, onPay, onDrop, onStart, onFree, 
       {hist.length > 0 ? (
         <ul className="mt-2 divide-y divide-line">
           {hist.map((g) => (
-            <li key={g.key} className="flex items-start gap-2 py-1.5">
-              <span className="min-w-0 flex-1">
-                <span className="text-fg2">
-                  {dayShort(g.date)} · {VIA(g.via)}
-                  {g.by === "auto" ? " · otomatik" : ""} · <span className="capitalize">{monthsText(g.months)}</span>
-                </span>
-                {g.desc && <small className="mt-0.5 block break-words text-[0.75rem] leading-snug text-mut">{g.desc}</small>}
-              </span>
-              <span className="font-semibold tabular-nums">{TL(g.amt)}</span>
-              <button type="button" onClick={() => window.confirm(`${TL(g.amt)} ödeme silinsin mi?`) && onDrop(g)} aria-label="Sil" data-press className="btn btn-icon btn-sm size-7 shrink-0 text-mut">
-                <Icon name="trash" className="size-4" />
-              </button>
+            <li key={g.key} className="py-1.5">
+              <div className="flex items-start gap-2">
+                <button type="button" onClick={() => (setEdit(edit === g.key ? "" : g.key), setPick(g.months))} aria-expanded={edit === g.key} className="min-w-0 flex-1 text-left">
+                  <b className="block font-semibold">
+                    {monthsLong(g.months)} aidatı
+                  </b>
+                  <small className="block text-[0.8125rem] text-mut">
+                    {dayShort(g.date)} ödendi · {VIA(g.via)}
+                    {g.by === "auto" ? " · otomatik" : ""}
+                  </small>
+                  {g.desc && <small className="mt-0.5 block break-words text-[0.75rem] leading-snug text-mut">{g.desc}</small>}
+                </button>
+                <span className="font-semibold tabular-nums">{TL(g.amt)}</span>
+                <button type="button" onClick={() => ask({ title: "Ödeme silinsin mi?", text: `${monthsLong(g.months)} aidatı · ${TL(g.amt)} · ${dayShort(g.date)}`, run: () => onDrop(g) })} aria-label="Sil" data-press className="btn btn-icon btn-sm size-7 shrink-0 text-mut">
+                  <Icon name="trash" className="size-4" />
+                </button>
+              </div>
+              {edit === g.key && (
+                <div className="mt-2">
+                  <p className="mb-1.5 text-[0.8125rem] font-semibold text-mut">Hangi ayın aidatı</p>
+                  <div className="grid grid-cols-6 gap-1.5">
+                    {yms.map((ym) => (
+                      <button
+                        key={ym}
+                        type="button"
+                        onClick={() => setPick((p) => (p.includes(ym) ? p.filter((x) => x !== ym) : [...p, ym].sort()))}
+                        aria-pressed={pick.includes(ym)}
+                        className={`h-9 rounded-lg text-[0.8125rem] font-semibold capitalize ${pick.includes(ym) ? "bg-acc text-white" : "border border-line"}`}
+                      >
+                        {shortMonth(ym).slice(0, 3)}
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    disabled={!pick.length || pick.join() === g.months.join()}
+                    onClick={() => (onMove(g, pick), setEdit(""))}
+                    data-press
+                    className={`${buttonClass({ size: "sm" })} mt-2`}
+                  >
+                    Kaydet
+                  </button>
+                </div>
+              )}
             </li>
           ))}
         </ul>
@@ -568,7 +603,9 @@ function PayForm({ a, cfg, months, yms, onSave }) {
   const [picked, setPicked] = useState(null);
   const n = Number(String(amt).replace(",", ".")) || 0;
   const dateYm = day(date).slice(0, 7);
-  const parts = n > 0 ? allocate(n, a, cfg, months, yms, picked, yms.includes(dateYm) ? dateYm : yms.at(-1)) : [];
+  // Ay seçilmezse ödeme tarihine kadarki en eski borçlu aya; borç yoksa ödeme ayına (sonraki aylar elle seçilir)
+  const upto = yms.filter((ym) => ym <= dateYm);
+  const parts = n > 0 ? allocate(n, a, cfg, months, upto.length ? upto : yms, picked, yms.includes(dateYm) ? dateYm : yms.at(-1)) : [];
   const on = new Set(picked ?? parts.map((p) => p.ym));
   const toggle = (ym) => {
     const next = new Set(on);
@@ -623,9 +660,9 @@ function PayForm({ a, cfg, months, yms, onSave }) {
 }
 
 // Yeni tasarım (velora-tasarim): lacivert üst (geri, ad, ⋯ ayarlar; top: bu ayın geliri, düğmeler, arama), altında açık alan
-function Shell({ children, sub, top, onMore }) {
+function Shell({ children, sub, top, onMore, add }) {
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
+    <main className="split mx-auto max-w-[30rem] px-5 pb-[calc(var(--stage-h,6rem)+2rem)]">
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Aidatlar">
         <header className="flex items-center gap-2.5">
           <BackButton href="/" />
@@ -633,6 +670,7 @@ function Shell({ children, sub, top, onMore }) {
             <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Aidatlar</h1>
             {sub && <p className="truncate text-[0.8125rem] text-white/65">{sub}</p>}
           </div>
+          {add}
           {onMore && (
             <button type="button" onClick={onMore} aria-label="Aidat ayarları" data-press className={`${buttonClass({ variant: "round" })} size-10`}>
               <Icon name="more" className="size-5" />
@@ -807,6 +845,7 @@ function MatchList({ pending, athletes, onConfirm, onIgnore }) {
 // Banka Excel'i yükle: bankadan indirilen hesap hareketleri (ör. son 3 ay). Gelen paralar saklanır, geçmiş aylarda da görünür.
 function BankFiles({ uid, onChange }) {
   const toast = useToast();
+  const ask = useConfirm();
   const input = useRef(null);
   const [open, setOpen] = useState(false);
   const [list, setList] = useState(null);
@@ -827,11 +866,16 @@ function BankFiles({ uid, onChange }) {
     }
     setBusy(false);
   }
-  async function del(f) {
-    if (!confirm(`${f.name} silinsin mi? Onayladığın ödemeler kalır.`)) return;
-    await deleteStatement(uid, f).catch(() => toast("Silinemedi"));
-    refresh();
-    onChange();
+  function del(f) {
+    ask({
+      title: "Banka dosyası silinsin mi?",
+      text: `${f.name} · onayladığın ödemeler kalır`,
+      run: async () => {
+        await deleteStatement(uid, f).catch(() => toast("Silinemedi"));
+        refresh();
+        onChange();
+      },
+    });
   }
   const day = (s) => String(s || "").split("-").reverse().join(".");
   return (

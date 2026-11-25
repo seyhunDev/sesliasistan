@@ -1,13 +1,17 @@
-import { Inter } from "next/font/google";
+import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/features/auth/AuthProvider";
 import { ServiceWorkerSetup } from "@/features/pwa/Pwa";
 import { BootSplash } from "@/components/ui/BootSplash";
 import { PressFeedback } from "@/components/ui/PressFeedback";
 import { THEME_BG, THEME_SCRIPT } from "@/lib/theme";
+import { PLACE_SCRIPT } from "@/lib/place";
+import { KeepPlace } from "@/components/ui/KeepPlace";
 
 // Her cihazda aynı görünen, Türkçe karakterleri tam destekleyen yazı tipi (derlemede indirilir, uygulamayla birlikte sunulur)
 const inter = Inter({ subsets: ["latin", "latin-ext"], display: "swap", variable: "--font-inter" });
+// Rakamlar için teknik yazı (iPad ana sayfa saat, rüzgâr; .num sınıfı)
+const num = Space_Grotesk({ subsets: ["latin", "latin-ext"], weight: ["400", "500", "600"], display: "swap", variable: "--font-num" });
 
 export const metadata = {
     title: "Velora",
@@ -28,14 +32,21 @@ export const viewport = {
 
 const SIZE_SCRIPT = `document.documentElement.dataset.boot="on";try{var s=localStorage.getItem("sa-size");if(s==="l"||s==="xl")document.documentElement.dataset.size=s}catch(e){}`;
 
+// Anında açılış: önceki açılışın kopyası (lib/warmStart.js, anahtar sa-warm-me) varsa açılış ekranı ilk karede hiç çizilmez (html[data-warm])
+const WARM_SCRIPT = `try{if(localStorage.getItem("sa-warm-me"))document.documentElement.dataset.warm=""}catch(e){}`;
+
 export default function RootLayout({ children }) {
     return (
-        <html lang="tr" className={inter.variable} suppressHydrationWarning>
+        <html lang="tr" className={`${inter.variable} ${num.variable}`} suppressHydrationWarning>
             <head>
+                {/* Arkadan dönüşte sayfa baştan yüklendiyse kalınan sayfaya geç (lib/place.js); en önde, başka bir şey çizilmeden */}
+                <script dangerouslySetInnerHTML={{ __html: PLACE_SCRIPT }} />
                 {/* Yazı boyutu seçimi sayfa çizilmeden uygulansın (sonradan büyüyüp zıplamasın) */}
                 <script dangerouslySetInnerHTML={{ __html: SIZE_SCRIPT }} />
                 {/* Açık / koyu görünüm de ilk çizimden önce (beyaz parlayıp kararmasın) */}
                 <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+                {/* Telefonda önceki açılışın kopyası varsa açılış ekranı hiç çizilmez (lib/warmStart.js) */}
+                <script dangerouslySetInnerHTML={{ __html: WARM_SCRIPT }} />
             </head>
             <body>
                 {/* Tek açılış ekranı: yükleme aşamaları boyunca sabit kalır, sonra sayfaya yumuşak geçer (lib/boot.js) */}
@@ -43,6 +54,7 @@ export default function RootLayout({ children }) {
                 <AuthProvider>{children}</AuthProvider>
                 <ServiceWorkerSetup />
                 <PressFeedback />
+                <KeepPlace />
             </body>
         </html>
     );

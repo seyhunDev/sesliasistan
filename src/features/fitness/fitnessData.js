@@ -55,7 +55,7 @@ export async function saveProgram(orgId, uid, prog) {
   const ref = prog.id ? doc(col(orgId), prog.id) : doc(col(orgId));
   const now = new Date().toISOString();
   const clean = cleanProgram(prog);
-  const rec = { ...clean, uid, for: prog.for || "", forName: prog.for ? String(prog.forName || "").slice(0, 80) : "", forAge: prog.for ? Math.min(Math.max(+prog.forAge || 0, 0), 99) : 0, sport: prog.for ? String(prog.sport || "").slice(0, 20) : "", active: prog.active !== false, plansAt: prog.plansAt || "", createdAt: prog.createdAt || now, updatedAt: now };
+  const rec = { ...clean, uid, for: prog.for || "", forName: prog.for ? String(prog.forName || "").slice(0, 80) : "", forAge: prog.for ? Math.min(Math.max(+prog.forAge || 0, 0), 99) : 0, sport: prog.for ? String(prog.sport || "").slice(0, 20) : "", forSex: prog.for && (prog.forSex === "e" || prog.forSex === "k") ? prog.forSex : "", active: prog.active !== false, plansAt: prog.plansAt || "", createdAt: prog.createdAt || now, updatedAt: now };
   // Yeni etkin program: aynı kişinin önceki programları etkin olmaktan çıkar (planları silinmez)
   const others = (cache.org === orgId && cache.list ? cache.list : []).filter((p) => p.id !== ref.id && p.active && (p.for || "") === rec.for);
   // merge: sunucunun yazdığı notifiedAt (sporcuya bildirim gitti) silinmesin
@@ -82,6 +82,34 @@ const mediaOf = (prog) => (prog?.days || []).flatMap((d) => (d.items || []).flat
 
 // Programı tamamen siler: bütün antrenmanları (geçmiş, yapılan, atlanan dahil; tek sorgu), programın fotoğraf ve videoları
 // (başka programda da kullanılmıyorsa) ve programın kendisi. Dönüş: silinen antrenman sayısı
+// Hesabı yeniden açılan sporcu (ör. Ayarlar › Hesapları temizle sonrası yeni hesap = yeni uid): eski hesaba bağlı kalan program ve
+// antrenmanları (yapılanlar dahil) adı aynı olan tek sporcuya taşınır; yoksa sporcu antrenmanlarını göremez (Seyhun 2026-11-25).
+// Yeni hesabın zaten programı varsa ya da aynı adda birden çok sporcu varsa dokunulmaz. Dönüş: taşınan sporcu sayısı.
+const low = (s) => String(s || "").trim().toLocaleLowerCase("tr-TR");
+export async function relinkPrograms(orgId, progs = [], athletes = []) {
+  const live = new Set(athletes.map((a) => a.uid));
+  const has = new Set(progs.map((p) => p.for).filter(Boolean));
+  const moves = new Map();
+  for (const p of progs) {
+    if (!p.for || live.has(p.for) || moves.has(p.for) || !low(p.forName)) continue;
+    const hit = athletes.filter((a) => low(a.name) === low(p.forName));
+    if (hit.length === 1 && !has.has(hit[0].uid)) moves.set(p.for, hit[0]);
+  }
+  if (!moves.size) return 0;
+  const ops = progs.filter((p) => moves.has(p.for)).map((p) => [doc(col(orgId), p.id), { for: moves.get(p.for).uid, forName: moves.get(p.for).name }]);
+  for (const [old, a] of moves) {
+    const snap = await getDocs(query(collection(db, "orgs", orgId, "plans"), where("fit.for", "==", old)));
+    snap.docs.forEach((d) => ops.push([d.ref, { people: [a.uid], "fit.for": a.uid }]));
+  }
+  for (let i = 0; i < ops.length; i += 400) {
+    const b = writeBatch(db);
+    ops.slice(i, i + 400).forEach(([ref, v]) => b.update(ref, v));
+    await b.commit();
+  }
+  if (cache.org === orgId) cache.at = 0;
+  return moves.size;
+}
+
 export async function deleteProgram(orgId, id) {
   const snap = await getDocs(query(collection(db, "orgs", orgId, "plans"), where("fit.prog", "==", id)));
   await dropPlans(orgId, snap.docs.map((d) => d.id));
@@ -153,7 +181,7 @@ export async function syncPlans(orgId, uid, prog, plans, by = {}) {
         b.set(ref, {
           ownerId: orgId, cat: FIT_CAT, src: "fitness", createdBy: by, createdAt: now, createdByUid: uid, assignees: [], people: [who],
           title: v.title, date: v.date, endDate: "", time: timed ? v.time : "", allDay: !timed, durationMin: v.min || 45, tz,
-          timeSource: timed ? "user" : "none", place: "", status: "planned", fit: prog.for ? { ...v.fit, for: prog.for } : v.fit,
+          timeSource: timed ? "user" : "none", place: "", status: "planned", fit: prog.for ? { ...v.fit, for: prog.for, ...(prog.forSex ? { sex: prog.forSex } : {}) } : v.fit,
         });
       }
     }
@@ -204,6 +232,19 @@ export async function notifyProgram(id) {
   try {
     await afterSent(() => authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ event: "fitProgram", id }) }));
   } catch {}
+}
+
+// Sporcular sekmesindeki "Hatırlat": bugünkü antrenmanını yapmayan sporcuya tek bildirim (sunucu antrenman başına bir kez gönderir).
+// Gönderilen cihaz sayısı (0: telefonuna gitmedi), hata olursa false
+export async function nudgeFit(orgId, planId) {
+  try {
+    const r = await authFetch("/api/notify", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ event: "fitNudge", id: planId }) });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return false;
+    return Number(j.sent) || 0;
+  } catch {
+    return false;
+  }
 }
 
 // Tek seferlik antrenman (programsız gün: "bugün 30 dakika koştum")

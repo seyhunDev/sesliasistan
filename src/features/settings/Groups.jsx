@@ -24,6 +24,7 @@ import { getPlace, placeLabel, searchPlaces, setPlace } from "@/features/weather
 import { Badge, Btn, Chips, Row, Switch } from "./ui";
 import { useRaceHome } from "@/features/athletes/raceHome";
 import { canSeeAthletes } from "@/features/athletes/access";
+import { saveTekneKim, useTekneKim } from "@/features/bilgi/bilgiStore";
 import { WA_GROUP_MAX, WA_GROUP_NAMES, cleanWaGroups, cleanWaLink } from "@/lib/waGroups";
 
 // Ayarlar sayfasının satırları. Sayfa bunları Genel, Bildirimler, Asistan, Hesap olarak dizer; seyrek kullanılanlar
@@ -118,7 +119,7 @@ export function VoiceRow() {
                     aria-checked={on}
                     onClick={() => {
                       tts.setGVoice(i === 0 ? "" : id);
-                      tts.speak(SAMPLE);
+                      tts.speak(SAMPLE, undefined, { cache: true });
                     }}
                     className={`rounded-full px-3 py-1.5 text-[0.875rem] font-medium transition active:scale-95 ${on ? "bg-acc text-white" : "border border-line bg-card text-fg"}`}
                   >
@@ -139,7 +140,7 @@ export function VoiceRow() {
                 {label}
               </button>
             ))}
-            <Btn kind="line" small className="ml-auto" onClick={() => tts.speak(SAMPLE)}>
+            <Btn kind="line" small className="ml-auto" onClick={() => tts.speak(SAMPLE, undefined, { cache: true })}>
               Dinle
             </Btn>
           </div>
@@ -687,6 +688,45 @@ export function PasswordRow() {
   );
 }
 
+// Tekne ekranı kimliği (Seyhun 2026-11-25): bilgi ekranında sorulmaz; isim hesabın adı, yelken no sporcu kaydından. Buradan değiştirilir
+// (users.bilgiKim; boş bırakılan alan hesaptaki/kayıttaki değere döner).
+export function TekneKimRow() {
+  const toast = useToast();
+  const { profile } = useAuth();
+  const kim = useTekneKim(profile);
+  const [sail, setSail] = useState(null);
+  const [name, setName] = useState(null);
+  const [busy, setBusy] = useState(false);
+  if (!kim) return null;
+  const s = sail ?? kim.sail;
+  const n = name ?? kim.name;
+  async function save(e) {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await saveTekneKim(profile.uid, { sail: s, name: n });
+      setSail(null);
+      setName(null);
+      toast("Kaydedildi");
+    } catch {
+      toast("Kaydedilemedi, tekrar dene");
+    }
+    setBusy(false);
+  }
+  const box = "h-11 w-full rounded-xl bg-bg px-3 text-base outline-none ring-1 ring-line focus:ring-acc";
+  return (
+    <Fold title="Tekne ekranı" sub={[kim.sail, kim.name].filter(Boolean).join(" · ") || "…"}>
+      <form onSubmit={save} onClick={(e) => e.stopPropagation()} className="space-y-2.5 px-4 pb-3.5">
+        <input aria-label="Yelken no" placeholder="Yelken no" value={s} maxLength={12} autoCapitalize="characters" onChange={(e) => setSail(e.target.value)} className={`num ${box}`} />
+        <input aria-label="İsim" placeholder="İsim" value={n} maxLength={30} autoCapitalize="words" onChange={(e) => setName(e.target.value)} className={box} />
+        <Btn type="submit" disabled={busy || (sail === null && name === null)}>
+          {busy ? "Bekleyin…" : "Kaydet"}
+        </Btn>
+      </form>
+    </Fold>
+  );
+}
+
 // Testler › Tanıtım ve karşılama: tanıtım slaytlarını şimdi göster ya da karşılamayı baştan başlat.
 // Ana hesap herkes için sıfırlar (kişiler uygulamayı açınca görür), diğer hesaplar yalnız kendisi için.
 export function IntroRow({ bare }) {
@@ -760,6 +800,24 @@ export function RacesRow() {
       right={<Switch on={cur} onChange={flip} label="Ana sayfada yarışlar" />}
     />
   );
+}
+
+// Süren yarışın ana sayfa Multimedya kısayolu (RaceLive; users.raceLive "off" = gizli). Ana sayfadaki ⋯ › "Hiç gösterme" kapatır, burada açılır
+export function RaceLiveRow() {
+  const race = useRaceHome();
+  const { profile } = useAuth();
+  const toast = useToast();
+  const [on, setOn] = useState(null);
+  if (!race.allowed) return null;
+  const cur = on ?? profile?.raceLive !== "off";
+  const flip = (v) => {
+    setOn(v);
+    saveUser(profile.uid, { raceLive: v ? "on" : "off" }).catch(() => {
+      setOn(!v);
+      toast("Kaydedilemedi, tekrar dene");
+    });
+  };
+  return <Row title="Ana sayfada yarış kısayolu" right={<Switch on={cur} onChange={flip} label="Ana sayfada yarış kısayolu" />} />;
 }
 
 // Hesaplar sayfasında "Banka defteri" kartı (yalnız ana hesap): kapalıyken gizli (users.ledgerCard; Seyhun, 2026-10-05)
