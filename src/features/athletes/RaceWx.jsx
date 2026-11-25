@@ -3,16 +3,16 @@
 import { useEffect, useRef, useState } from "react";
 import { DayNav } from "@/features/weather/DayNav";
 import { HourTable } from "@/features/weather/HourTable";
-import { WindRibbon } from "@/features/weather/WindRibbon";
 import { useWindObs } from "@/features/weather/useWindObs";
 import { RegionMap } from "@/features/weather/RegionMap";
 import { NowRain } from "@/features/weather/NowRain";
 import { useRainRadar } from "@/features/weather/useRainRadar";
 import { radarRows } from "@/features/weather/rainLine";
 import { dirDeg, kn, sky, windName } from "@/features/weather/weather";
+import { SkyIcon, WindArrow, WindChart, rainText } from "@/features/weather/WxPanel";
 import { todayStr } from "@/lib/utils/format";
+import "@/features/home/sporcu.css";
 import { forecastFrom, lastForecastDay, loadRaceDay, raceDays, wxDays } from "./raceWeather";
-import { Fold, RaceGo, RaceStats } from "./raceUi";
 
 // Yarışın havası, hava sayfasıyla aynı tasarım (Seyhun 2026-10-26: "bizim hava durumu sayfamızda kullandığımız tasarımın aynısı"):
 // üstte sıcaklık, gök, rüzgâr; altında aynı saat saat tablo (HourTable; yarış yerinin ölçümüyle; Seyhun 2026-11-03 "her yerde ortak tasarım"). Veri loadRaceDay (antrenman günü › Hava ile ortak).
@@ -159,99 +159,128 @@ export function RaceWx({ r, day = "", mini = false, pinned = "", onDay = null, m
   );
 }
 
-// Yeni yarış görünümü (Seyhun 2026-11-06 "hava durumu özet olsun, isterse tıklayıp detayı görsün; harita da başta kapalı olsun"):
-// "Hava" tek satır (sıcaklık · rüzgâr adı · kn), dokununca gün satırı ve saat saat tablo (açık renk) yerinde açılır; "Harita" satırı
-// dokununca bölge haritası açılır. day: açılışta seçili gün (yarış günü akşamı yarın). Tahmin henüz çıkmadıysa Hava satırı yazıyla kalır.
-// lead: Hava'nın üstünde aynı kartta duran satır (yarış günü "Şimdi", RaceDayTop)
-// stats (yarış günü, Seyhun 2026-11-09 Takip yeni tasarım "profesyonel, modern, minimal"): Hava ayrı satır değil, bilgi şeridinin son hücresi
-// (dokununca altında saat saat hava açılır); altında Canlı ekran · Yayın · Harita (go: ana hesap; değilse yalnız Harita), Harita dokununca açılır.
-export function RaceWxRows({ r, day = "", lead = null, stats = null, go = false }) {
+// Yarış detayının havası "Sahne" (Seyhun 2026-11-25 "Yap"; örnek project-files/yaris-detay-sahne/ornek.html): ana sayfadaki hava paneliyle
+// aynı (.sh-wxp, ortak WindChart). Üstte ölçülen (bugün, 2 saatten yeni) ya da tahmin rüzgâr dev rakamla, ok, adı, derece, sağanak; sağda sıcaklık.
+// Birden çok yarış günü varsa altında gün kutuları (sh-day), dokununca o gün. Grafiğe dokununca saat saat tablo yerinde açılır.
+// Altında Harita kutusu (Seyhun 2026-11-09 "harita hava altında"): dokununca bölge haritası açılır. day: açılışta seçili gün (yarış günü akşamı yarın).
+export function RaceSahneWx({ r, day = "" }) {
   const today = todayStr();
   const race = raceDays(r);
-  const days = wxDays(r, today);
+  const lastFc = lastForecastDay(today);
   const first = race.find((x) => x >= today) || race[race.length - 1] || "";
-  const [sel, setSel] = useState(race.includes(day) ? day : first);
-  const [open, setOpen] = useState({ wx: false, map: false }); // ikisi ayrı açılır
-  const late = !sel || sel > lastForecastDay(today);
+  const [sel, setSel] = useState(day || first);
+  const [open, setOpen] = useState({ wx: false, map: false });
+  const late = !sel || sel > lastFc;
   const d = useDay(r, late ? "" : sel);
-  const ob = useWindObs(open.map || (stats && open.wx) ? d.at : null, late ? "" : sel, today, true);
   const isToday = sel === today;
-  const radar = useRainRadar(isToday && open.wx ? d.at : null);
-  if (!first) return stats ? <Strip stats={stats} go={go} id={r.id} /> : lead;
-  const rows = d.rows?.length ? (isToday && open.wx ? radarRows(d.rows, radar) : d.rows) : null;
+  const ob = useWindObs(isToday || open.map ? d.at : null, late ? "" : sel, today, true);
+  const radar = useRainRadar(isToday ? d.at : null);
+  if (!first) return null;
+  const nowH = new Date().getHours();
+  const rows = d.rows?.length ? (isToday ? radarRows(d.rows, radar) : d.rows) : null;
+  const obs = isToday ? (ob?.rows || []).filter((o) => o.wind != null && +o.hh <= nowH) : [];
+  const near = ob?.station?.km <= 30;
+  const last = near ? obs.at(-1) : null;
+  const real = last && nowH - +last.hh <= 2 ? last : null;
   const top = rows ? rows.reduce((a, h) => (h.wind > a.wind ? h : a), rows[0]) : null;
-  const v = rows ? (isToday && rows.find((h) => h.hh === nowHH())) || top : null;
-  const value = late ? (
-    `${new Date(`${forecastFrom(sel)}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })} sonra çıkar`
-  ) : v ? (
-    <>
-      {v.t != null && <b>{Math.round(v.t)}°</b>}
-      {v.t != null && " · "}
-      {windName(v.dir)[0]} {kn(Math.round(v.wind), Math.round(v.gust))} kn
-    </>
-  ) : d.err ? (
-    "Alınamadı"
-  ) : (
-    <span className="rz-shim" aria-label="Hava yükleniyor" />
-  );
-  const step = (k) => {
-    const i = days.indexOf(sel) + k;
-    if (i >= 0 && i < days.length) setSel(days[i]);
-  };
+  const fc = rows ? (isToday && rows.find((h) => h.hh === nowHH())) || top : null;
+  const cur = fc && (real ? { ...fc, wind: real.wind, gust: real.gust ?? fc.gust, dir: real.dir ?? fc.dir } : fc);
+  const ts = rows ? rows.map((h) => h.t).filter((t) => t != null) : [];
+  const rain = rows ? rainText(rows, isToday ? nowH : -1, isToday ? radar : null) : "";
+  const dname = (x) => new Date(`${x}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "short", day: "numeric" }).replace(".", "");
+  const label = real ? `Ölçülen ${real.hh}:00` : isToday ? "Tahmin" : fc && fc === top ? `Tahmin · ${dname(sel)} · en sert ${top.hh}:00` : `Tahmin · ${dname(sel)}`;
   const flip = (k) => setOpen((o) => ({ ...o, [k]: !o[k] }));
-  const wxBody = (
-    <>
-      {days.length > 1 && <DayNav light sel={sel} days={days} today={today} onStep={step} />}
-      {rows && <WindRibbon rows={rows} nowH={isToday ? +nowHH() : -1} radar={isToday ? radar : null} tone="light" win={d.win || null} h={92} className="mt-3" />}
-      {rows && <HourTable key={sel} rows={rows} date={sel} place={d.at} far tone="light" className="mt-3" />}
-      {isToday && d.at && <NowRain place={d.at} rows={d.rows} radar={radar} />}
-    </>
-  );
-  const mapBody = <RegionMap place={d.at} day={sel} station={ob?.station?.km <= 30 ? ob.station : null} obs={isToday && ob?.station?.km <= 30 ? ob?.rows : null} inline />;
-  if (stats) {
-    // kısa hava: 16° 6–13 kn (yön açılınca tabloda)
-    const short = late ? "–" : v ? (v.t != null ? `${Math.round(v.t)}°` : `${Math.round(v.wind)}`) : d.err ? "–" : <span className="rz-shim" aria-label="Hava yükleniyor" />;
-    const sub = !late && v ? (v.t != null ? `${kn(Math.round(v.wind), Math.round(v.gust))} kn` : "kn") : "";
-    const canWx = !late && !!rows;
-    // Harita düğmesi kalktı (Seyhun 2026-11-09 "hava durumuna tıklanınca altta harita gösterilebilir"): Hava açılınca altında harita da
-    const canMap = !d.err && !!d.at;
-    return (
-      <section aria-label="Yarış havası">
-        <RaceStats items={[...stats, ["Hava", short, sub, canWx ? () => flip("wx") : null, open.wx]]} />
-        {go && <RaceGo id={r.id} className="mt-3" />}
-        {open.wx && canWx && (
-          <div className="rz-list rz-wx-open mt-3">
-            <div className="rz-open">
-              {wxBody}
-              {canMap && <div className="mt-3">{mapBody}</div>}
-            </div>
+  const chips = race.filter((x) => x <= lastFc);
+  return (
+    <section className="rsh-wx" aria-label="Yarış havası">
+      <div className="sh-wxp">
+        {late ? (
+          <p className="sh-wx-wait">Tahmin {new Date(`${forecastFrom(sel)}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })} sonra çıkar</p>
+        ) : cur ? (
+          <button type="button" onClick={() => flip("wx")} aria-expanded={open.wx} className="sh-wx-now" aria-label="Saat saat hava">
+            <span className="sh-wx-live">
+              {real ? <i /> : null}
+              {label}
+              {d.place ? ` · ${d.place}` : ""}
+            </span>
+            <span className="sh-wx-row">
+              <WindArrow dir={cur.dir} size={34} color="var(--sh-lime)" className="sh-wx-ar" />
+              <b className="sh-c sh-wx-big">
+                {Math.round(cur.wind ?? 0)}
+                <small>KN</small>
+              </b>
+              <span className="sh-wx-info">
+                <b>
+                  {windName(cur.dir)?.[0] || ""} {dirDeg(cur.dir)}
+                </b>
+                <span>sağanak {Math.round(cur.gust ?? cur.wind ?? 0)}</span>
+              </span>
+              {cur.t != null && (
+                <span className="sh-wx-t">
+                  <b className="num">{Math.round(cur.t)}°</b>
+                  <small className="num">
+                    <SkyIcon code={cur.code} day={cur.day} size="size-4" />
+                    {ts.length ? `${Math.round(Math.min(...ts))}° / ${Math.round(Math.max(...ts))}°` : ""}
+                  </small>
+                </span>
+              )}
+            </span>
+          </button>
+        ) : (
+          <p className="sh-wx-wait">{d.err ? "Hava tahmini alınamadı" : "Hava yükleniyor…"}</p>
+        )}
+        {rows && <WindChart rows={rows} nowH={isToday ? nowH : null} onOpen={() => flip("wx")} obs={near ? obs : []} radar={isToday ? radar : null} />}
+        {rain && <p className="sh-wx-rain">Yağış · {rain}</p>}
+        {open.wx && rows && (
+          <div className="rsh-wx-open">
+            <HourTable key={sel} rows={rows} date={sel} place={d.at} far className="mt-1" />
+            {isToday && d.at && <NowRain place={d.at} rows={d.rows} radar={radar} />}
           </div>
         )}
-      </section>
-    );
-  }
-  return (
-    <section aria-label="Yarış havası">
-      {lead}
-      <Fold label="Hava" value={value} open={open.wx && !late && !!rows} onToggle={() => !late && rows && flip("wx")}>
-        {wxBody}
-      </Fold>
-      {!late && !d.err && (
-        <Fold label="Harita" open={open.map && !!d.at} onToggle={() => d.at && flip("map")}>
-          {mapBody}
-        </Fold>
+      </div>
+      {chips.length > 1 && (
+        <div className="sh-days rsh-days" role="tablist" aria-label="Yarış günleri">
+          {chips.map((x) => (
+            <DayChip key={x} r={r} day={x} on={x === sel} today={today} onSel={() => setSel(x)} />
+          ))}
+        </div>
+      )}
+      {!late && d.at && (
+        <div className={`rsh-map ${open.map ? "rsh-map-on" : ""}`}>
+          <button type="button" onClick={() => flip("map")} aria-expanded={open.map} data-press="row" className="rsh-map-b">
+            <span className="min-w-0 flex-1">
+              <b>Harita</b>
+              {d.place && <small>{d.place}</small>}
+            </span>
+            <span className="rsh-pill">{open.map ? "Kapat" : "Aç"}</span>
+          </button>
+          {open.map && <RegionMap place={d.at} day={sel} station={near ? ob.station : null} obs={isToday && near ? ob?.rows : null} inline />}
+        </div>
       )}
     </section>
   );
 }
 
-// Hava günü yoksa (yarış günleri yazılmamış) yalnız bilgi şeridi ve düğmeler
-function Strip({ stats, go, id }) {
+// Yarış günü kutusu: gün adı, tarih, gündüzün rüzgârı dört çubukta, en düşük–en yüksek kn (ana sayfadaki gün kutusu)
+function DayChip({ r, day, on, today, onSel }) {
+  const d = useDay(r, day);
+  const rows = (d.rows || []).filter((x) => x.hh >= "06" && x.hh <= "21");
+  const ws = rows.map((x) => x.wind ?? 0);
+  const bars = [6, 10, 14, 18].map((h) => Math.max(0, ...rows.filter((x) => +x.hh >= h && +x.hh < h + 4).map((x) => x.wind ?? 0)));
+  const top = Math.max(15, ...bars);
+  const x = new Date(`${day}T12:00:00`);
   return (
-    <section>
-      <RaceStats items={stats} />
-      {go && <RaceGo id={id} className="mt-3" />}
-    </section>
+    <button type="button" role="tab" aria-selected={on} data-press onClick={onSel} className={`sh-day ${on ? "sh-day-on" : ""}`}>
+      {day === today ? "BUGÜN" : x.toLocaleDateString("tr-TR", { weekday: "short" }).replace(".", "").toLocaleUpperCase("tr-TR")}
+      <b>{x.getDate()}</b>
+      {rows.length > 0 && (
+        <span className="sh-day-w" aria-hidden="true">
+          {bars.map((v, i) => (
+            <i key={i} style={{ height: `${Math.max(12, (v / top) * 100)}%` }} />
+          ))}
+        </span>
+      )}
+      <span className="num">{ws.length ? `${Math.round(Math.min(...ws))}–${Math.round(Math.max(...ws))} kn` : "—"}</span>
+    </button>
   );
 }
-

@@ -13,7 +13,6 @@ import { canSeeAthletes } from "@/features/athletes/access";
 import { isActive, loadAthletes, message, updateAthlete, useDikili } from "@/features/athletes/data";
 import { DikiliLogin, useDikiliUser } from "@/features/athletes/Connect";
 import { RaceEditor } from "@/features/athletes/RaceEditor";
-import { placeText } from "@/features/athletes/RaceList";
 import { Icon } from "@/components/ui/Icon";
 import { coachStart } from "@/features/athletes/raceDocs";
 import { addRacePlan, changedFields, freshRace, loadRace, loadRaces, racesNow, remoteResults, saveRace, saveRaceResults, watchRace } from "@/features/athletes/races";
@@ -31,7 +30,10 @@ import { goBack } from "@/lib/navTrail";
 import { siteDocBlob } from "@/features/athletes/raceSite";
 import { SiteDocs } from "@/features/athletes/SiteDocs";
 import { addResults, importResults, importToast } from "@/features/athletes/resultsImport";
-import { BilgiBtns, LiveBtn } from "@/features/athletes/raceUi";
+import { BilgiBtns, LiveBtn, kickText, racing } from "@/features/athletes/raceUi";
+import { liveHead } from "@/features/liveScreen/fonts";
+import "@/features/fitness/fitSahne.css";
+import "@/features/athletes/raceSahne.css";
 
 // Tek yarış (yeni yarış için /athletes/races/new)
 export default function RacePage() {
@@ -273,36 +275,34 @@ function Race({ orgId, uid, email, by, mail, coach }) {
     return () => window.dispatchEvent(new CustomEvent("sa-plain", { detail: false }));
   }, [plain]);
 
-  // Başlık (yarış kart, Seyhun 2026-11-07 "diğer sayfalardaki gibi, başlık geri butonun yanında"): Planlar gibi yuvarlak geri, yanında yarışın
-  // adı, sağda yuvarlak ⋯ (Yayın, düzenle, siteden bağla, sil); altında tek satır: tarih · yer · kalan gün (yarış sürerken kırmızı nokta)
-  const on = !!race && racing({ ...race, ...head0 });
-  // Yarış detayı yeni başlık (Seyhun 2026-11-09 "tek canlı butonu"; örnek c-telefon/ipad.png "Yap"): üst satırda geri, sağda Canlı (ana hesap,
-  // yarış günleri) ve ⋯ (Yayın, düzenle, siteden bağla, sil); altında durum (yarışta kırmızı), büyük ad, tarih · yer
+  // Üst çubuk (Sahne, Seyhun 2026-11-25 "Yap"; örnek project-files/yaris-detay-sahne/ornek.html): yuvarlak geri, ortada küçük büyük harfle
+  // "Yarışlar" ya da yarış günü kırmızı noktalı "Yarışta · 2. gün", sağda (ana hesap, yarış günleri) Ekran · Yönet · Canlı ve ⋯ (Yayın, düzenle,
+  // siteden bağla, sil). Yarışın adı, tarih ve yer altındaki yarış kartında (RaceHero, RaceEditor).
   const rr = race ? { ...race, ...head0 } : null;
+  const on = !!rr && racing(rr);
   const head = (
-    <header className="rz-hd">
-      <div className="flex items-center gap-2.5">
-        <BackButton href="/athletes/races" />
-        <span className="flex-1" />
-        {on && isOwner && race?.id && <BilgiBtns />}
-        {on && isOwner && race?.id && <LiveBtn id={race.id} />}
-        {(race?.id || head0) && (
-          <button type="button" onClick={() => setMenu(true)} aria-label="Yarış ayarları" data-press className="rz-more btn btn-round">
-            <Icon name="more" className="size-6" />
-          </button>
-        )}
-      </div>
-      {rr && <p className={`rz-kick ${on ? "rz-kick-on" : ""}`}>{kickText(rr)}</p>}
-      <h1>{(head0 || race)?.name || (id === "new" ? "Yeni yarış" : "Yarış")}</h1>
-      {rr && id !== "new" && <p className="rz-sub">{whereText(rr)}</p>}
+    <header className="rsh-bar">
+      <BackButton href="/athletes/races" />
+      <span className={`rsh-mid ${on ? "rsh-mid-on" : ""}`}>{on ? kickText(rr) : "Yarışlar"}</span>
+      {on && isOwner && race?.id && <BilgiBtns />}
+      {on && isOwner && race?.id && <LiveBtn id={race.id} />}
+      {(race?.id || head0) && (
+        <button type="button" onClick={() => setMenu(true)} aria-label="Yarış ayarları" data-press className="rz-more btn btn-round">
+          <Icon name="more" className="size-6" />
+        </button>
+      )}
     </header>
   );
+  const title = (head0 || race)?.name || (id === "new" ? "Yeni yarış" : "Yarış");
 
   return (
-    <main className="rz rzc rzd acik split split-even mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
+    <main className={`rz rzc rzd fs rsh ${liveHead.variable} split split-even mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]`}>
       {!race || missingRace ? (
         <>
-          <section className="rzt split-top pb-4 pt-[calc(0.75rem+env(safe-area-inset-top))]">{head}</section>
+          <section className="rzt split-top pb-4 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+            {head}
+            <h1 className="rsh-c rsh-title">{title}</h1>
+          </section>
           <div className="rzc-body bg-bg pb-4">
             {err?.code === "permission-denied" && <DikiliLogin denied={!!user} onDone={reload} />}
             {missingRace ? <p className="mt-6 text-center text-[0.875rem] text-mut">Yarış bulunamadı.</p> : fail && !race ? <LoadFail onRetry={() => (setFail(false), setRetry((n) => n + 1))} /> : <Loading label="Yarış yükleniyor" />}
@@ -315,6 +315,7 @@ function Race({ orgId, uid, email, by, mail, coach }) {
             sec={sec}
             uid={uid}
             head={head}
+            title={title}
             sharedList={id === "new" ? sharedList : []}
             alert={err?.code === "permission-denied" && <DikiliLogin denied={!!user} onDone={reload} />}
             orgId={orgId}
@@ -346,30 +347,4 @@ function Race({ orgId, uid, email, by, mail, coach }) {
       )}
     </main>
   );
-}
-
-// "12 Kas"
-const shortDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
-const gap = (a, b) => Math.round((new Date(`${b}T12:00:00`) - new Date(`${a}T12:00:00`)) / 864e5);
-// Yarış bugün sürüyor mu (başlangıçtan bitişe)
-function racing(r) {
-  if (!r.startDate) return false;
-  const t = todayStr();
-  return t >= r.startDate && t <= (r.endDate || r.startDate);
-}
-
-// Başlığın üst satırı: "Yarışta · 3. gün" / "12 gün kaldı" / "Yarın" / "Bitti"
-function kickText(r) {
-  if (!r.startDate) return "";
-  const t = todayStr();
-  if (racing(r)) return `Yarışta · ${gap(r.startDate, t) + 1}. gün`;
-  const n = gap(t, r.startDate);
-  return n > 1 ? `${n} gün kaldı` : n === 1 ? "Yarın" : "Bitti";
-}
-// Adın altı: "8–11 Kas · Foça, İzmir"
-function whereText(r) {
-  const a = r.startDate;
-  const b = r.endDate && r.endDate !== a ? r.endDate : "";
-  const when = !a ? "" : !b ? shortDay(a) : a.slice(0, 7) === b.slice(0, 7) ? `${+a.slice(8)}–${shortDay(b)}` : `${shortDay(a)}–${shortDay(b)}`;
-  return [when, placeText(r)].filter(Boolean).join(" · ");
 }

@@ -1,0 +1,70 @@
+/* Yarış detayı "Sahne" (Seyhun 2026-11-25 "Yap"; örnek project-files/yaris-detay-sahne/ornek.html). Ana sayfa ve Fitness ile aynı koyu dil:
+   renk değişkenleri fitSahne.css (main.fs), hava paneli sporcu.css (.sh-wxp, .sh-day). Burada yalnız yarışa özel parçalar:
+   üst çubuk (.rsh-bar), yarış kartı (.rsh-hero), sekme kutuları (.rsh-tabs), harita kutusu (.rsh-map). Sayfa: main.rz.rzc.rzd.fs.rsh */
+main.rsh { --rsh-lime: #d4ff3a; --rsh-mut: #a1a1aa; --rsh-tile: #17171a; --rsh-line: #26262b; }
+.rsh-c { font-family: var(--lv-font-c), var(--font-num), system-ui, sans-serif; font-weight: 800; text-transform: uppercase; line-height: .9; letter-spacing: .01em; }
+main.rsh .rzc-body { margin-top: 0; border-radius: 0; padding-top: .5rem; }
+
+/* Üst çubuk */
+.rsh-bar { display: flex; align-items: center; gap: .45rem; }
+.rsh-mid { flex: 1; min-width: 0; text-align: center; font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--rsh-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rsh-mid-on { color: #fff; }
+.rsh-mid-on::before { content: ""; display: inline-block; width: .45rem; height: .45rem; border-radius: 50%; background: #ff4d3d; margin-right: .4rem; vertical-align: .08rem; }
+main.rsh .rz-live { background: var(--rsh-lime); color: #111; box-shadow: none; height: 2.5rem; padding: 0 1rem; font-weight: 800; }
+main.rsh .rz-live i { display: none; }
+main.rsh .rz-pill { background: #1f1f22; border-color: #2e2e33; }
+.rsh-title { margin: 1rem 0 0; font-size: 2.4rem; overflow-wrap: anywhere; }
+
+/* Yarış kartı */
+.rsh-hero { position: relative; margin-top: .9rem; border-radius: 1.5rem; overflow: hidden; padding: 1rem 1rem 1.05rem; border: 1px solid #16404d; color: #fff;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0) 20%, rgba(0, 0, 0, .8)), radial-gradient(120% 90% at 85% 0%, #155e75, #0b0b0c 72%); }
+.rsh-k { display: block; font-size: .6875rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #a5f3fc; }
+.rsh-tt { margin: .35rem 0 .35rem; font-size: clamp(2.2rem, 10vw, 2.9rem); overflow-wrap: anywhere; }
+.rsh-pr { padding-right: 5.5rem; }
+.rsh-sub { display: block; font-size: .8125rem; color: #d4d4d8; }
+.rsh-cnt { position: absolute; right: 1rem; top: .9rem; text-align: center; }
+.rsh-cnt b { display: block; font-size: 3.6rem; color: var(--rsh-lime); }
+.rsh-cnt small { font-size: .5625rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #d4d4d8; }
+.rsh-cnt small.rsh-done { font-size: 1.6rem; letter-spacing: .01em; color: #d4d4d8; }
+.rsh-now { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; margin-top: .8rem; }
+.rsh-now > div { min-width: 0; background: rgba(255, 255, 255, .07); border-radius: 1rem; padding: .55rem .7rem; }
+.rsh-now span { display: block; font-size: .6875rem; font-weight: 700; color: #cbd5e1; }
+.rsh-now b { display: block; margin-top: .2rem; font-size: 2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rsh-now small { font-size: .75rem; color: #cbd5e1; }
+
+/* Hava ve harita */
+.rsh-wx { display: flex; flex-direction: column; gap: .75rem; margin-top: .75rem; }
+.rsh-wx-open { padding: 0 .6rem .7rem; border-top: 1px solid #1e2a36; }
+.rsh-map { border-radius: 1.2rem; overflow: hidden; border: 1px solid var(--rsh-line); background: var(--rsh-tile); }
+.rsh-map-b { display: flex; align-items: center; gap: .75rem; width: 100%; min-height: 3.5rem; padding: .6rem .9rem; text-align: left; color: #fff; }
+.rsh-map-b b { display: block; font-size: .9375rem; font-weight: 700; }
+.rsh-map-b small { display: block; font-size: .75rem; color: var(--rsh-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rsh-pill { flex-shrink: 0; border-radius: 999px; padding: .35rem .8rem; font-size: .75rem; font-weight: 700; background: rgba(255, 255, 255, .12); }
+.rsh-map-on .rsh-map-b { border-bottom: 1px solid var(--rsh-line); }
+
+/* Sekme kutuları */
+.rsh-tabs { display: grid; gap: .4rem; }
+.rsh-tb { min-width: 0; text-align: left; background: var(--rsh-tile); border: 1px solid var(--rsh-line); border-radius: 1rem; padding: .5rem .6rem .6rem; color: #fff; }
+.rsh-tb span { display: block; min-height: 1rem; font-size: .6875rem; font-weight: 700; color: var(--rsh-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rsh-tb b { display: block; margin-top: .25rem; font-size: 1.35rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rsh-tb[aria-pressed="true"] { border: 1.5px solid var(--rsh-lime); background: #141a08; }
+.rsh-tb[aria-pressed="true"] span { color: var(--rsh-lime); }
+.rsh-tb .rsh-warn { color: #fbbf5c; }
+.rsh-tb .rsh-new { color: var(--rsh-lime); }
+
+/* Limon vurguda beyaz yazı okunmaz: koyu yazı */
+main.rsh :is(.bg-acc, .bg-ok).text-white, body:has(main.rsh) :is(.bg-acc, .bg-ok).text-white { color: #111; }
+
+/* Alt çubuk ve sol menü ana sayfadaki gibi koyu */
+body:has(main.rsh) .atabbar { --card: #0b0b0c; --line: #1f1f22; background: rgba(11, 11, 12, .94); box-shadow: 0 -1px 0 #1f1f22; }
+body:has(main.rsh) .atabbar a { color: #71717a; }
+body:has(main.rsh) .atabbar a[aria-current="page"] { color: #d4ff3a; }
+body:has(main.rsh) .acenter { background: #0b0b0c; box-shadow: 0 -1px 0 #1f1f22; }
+body:has(main.rsh) .sidenav.navy { background: #0f0f11; --sn-line: #1f1f22; --sn-on-bg: rgba(212, 255, 58, .12); --sn-bar: #d4ff3a; --sn-logo: #d4ff3a; --sn-logo-v: transparent; }
+
+/* iPad / geniş ekran: solda yarış kartı, hava ve harita sabit; sağda sekmeler ve içi */
+@media (min-width: 48rem) {
+  body[data-side] main.rsh.split > .rzt { border-right: 1px solid #1f1f22; }
+  body[data-side] main.rsh .rsh-days { margin: 0; padding: 0; }
+  main.rsh .rsh-tt { font-size: 3rem; }
+}

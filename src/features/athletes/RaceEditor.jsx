@@ -32,15 +32,15 @@ import { BudgetView } from "./BudgetView";
 import { tl, totals } from "./budget";
 import { BUDGET_ONLY, buildAthleteSheet, sheetParts } from "./athleteSheet";
 import { AroundView } from "./AroundView";
-import { RaceWxRows } from "./RaceWx";
-import { Fold, RaceSeg, RaceStats } from "./raceUi";
+import { RaceSahneWx } from "./RaceWx";
+import { Fold, RaceHero, RaceTiles } from "./raceUi";
 import { ResultsAdd } from "./ResultCards";
 import { RaceTrack } from "./RaceTrack";
 import { RaceAdd } from "./RaceAddSheet";
 import { ContactLinks } from "./ContactLinks";
 import { FORM_DOCS, FORM_NAMES, TaskLinks, isFinal } from "./TaskLinks";
 import { takeRaceDraft } from "./raceDraft";
-import { RaceDayTop, useRacePhase } from "./RaceDayTop";
+import { RaceDayTop, dayStats, useRacePhase } from "./RaceDayTop";
 import { RACE_KEY } from "@/features/posts/postModel";
 import { loadPosts } from "@/features/posts/posts";
 import { racePlanSync, racePlansOf, racePostOf } from "./raceLinks";
@@ -175,7 +175,7 @@ const tripDay = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { w
 const PREP = ["sum", "docs", "trip", "budget"]; // Hazırlık sekmesinin bölümleri
 const SECS = [...RACE_SECS.map(([k]) => k), "site", "belge"]; // site: Takip (?sec=site); belge: siteden gelen belgelerin tamamı
 
-export function RaceEditor({ sec = "", uid = "", head = null, alert = null, sharedList = [], orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, plans = [], onOpenPlan, menu = false, onMenu, onPlan, onNoticePlan, onSyncPlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach, siteDocs = null, siteNew = 0, onResultsFile = null }) {
+export function RaceEditor({ sec = "", uid = "", head = null, title = "", alert = null, sharedList = [], orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, plans = [], onOpenPlan, menu = false, onMenu, onPlan, onNoticePlan, onSyncPlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach, siteDocs = null, siteNew = 0, onResultsFile = null }) {
   const { isOwner } = useAuth(); // Canlı ekran yalnız ana hesapta
   const router = useRouter();
   const toast = useToast();
@@ -983,7 +983,7 @@ export function RaceEditor({ sec = "", uid = "", head = null, alert = null, shar
     // Dört sekme (Seyhun 2026-11-09 sade öneri): Hazırlık'ın içinde Yapılacaklar, Yolculuk (Bütçe) ve Evrak; eski "docs"/"trip"/"budget"
     // bağlantıları Hazırlık'ı açıp o bölüme kayar
     ["sum", over ? "Özet" : "Hazırlık", over ? "Bitti" : todoList.length ? `${todoList.length} iş` : "Tamam", !over && (!stat[1][4] || !stat[2][4] || !stat[3][4])],
-    ["people", "Sporcular", !chosen.length ? "Seçilmedi" : incomplete.length ? `${incomplete.length} eksik` : `${chosen.length} kişi`, !stat[0][4]],
+    ["people", "Sporcu", !chosen.length ? "Seçilmedi" : incomplete.length ? `${incomplete.length} eksik` : `${chosen.length} kişi`, !stat[0][4]],
     ...(siteDocs ? [["belge", "Belgeler", "", false]] : []),
   ];
   const prep = PREP.includes(tab);
@@ -992,37 +992,26 @@ export function RaceEditor({ sec = "", uid = "", head = null, alert = null, shar
   // Sekmeler: telefonda lacivertin altında, geniş ekranda sağdaki açık gövdenin başında
   // Sekmeler tek parça seçici (yeni görünüm 2026-11-06); telefonda üstte, geniş ekranda sağ bölümün başında
   // Yarış kart (2026-11-07): sekmeler her ekranda açık gövdenin başında, lacivertin altında
-  const nav = <RaceSeg tabs={tabs} value={prep ? "sum" : tab} onChange={setTab} className="mb-1" />;
-  // Üst (yeni görünüm 2026-11-06): yarış günü RaceDayTop (büyük tek satır, Hava/Harita satırı, Yayına git), öncesinde yalnız Hava ve Harita satırları
-  const top = (
-    <>
-      {raceDay && rid ? (
-        <RaceDayTop r={r} rid={rid} chosen={chosen} phase={phase} races={dayRaces} dayAll={dayAll} track={!!siteDocs} onResultsFile={onResultsFile} />
-      ) : rid ? (
-        <>
-          {/* Canlı ekran · Yayın düğmeleri kalktı (Seyhun 2026-11-09 "yayın butonuna şimdilik gerek yok"): Canlı başlıkta (yarış günleri), Yayın ⋯ içinde */}
-          {/* Yarıştan önce üst kart (Seyhun 2026-11-09 sade öneri): Hazırlık · Sporcu · Evrak */}
-          {!over && (
-            <div className="mt-4">
-              <RaceStats
-                className="mb-2.5"
-                items={[
-                  ["Hazırlık", todoList.length || "Tamam", todoList.length ? "iş" : ""],
-                  ["Sporcu", chosen.length, "kişi"],
-                  ["Evrak", docsReady ? "Hazır" : "Yok", ""],
-                ]}
-              />
-              <RaceWxRows r={{ ...r, id: rid }} />
-            </div>
-          )}
-        </>
-      ) : null}
-    </>
+  // Sahne (Seyhun 2026-11-25 "Yap"): sekmeler kısa durumlu kutular (RaceTiles); eski Hazırlık · Sporcu · Evrak bilgi şeridi kalktı
+  const nav = <RaceTiles tabs={tabs} value={prep ? "sum" : tab} onChange={setTab} className="mb-1" />;
+  // Üst (Sahne, Seyhun 2026-11-25 "Yap"; örnek project-files/yaris-detay-sahne/ornek.html): yarış kartı (tarih · yer, büyük ad; önce kalan gün,
+  // yarış günü Bugün · Sıradaki), altında ana sayfadaki hava paneli ve Harita. Geniş ekranda solda sabit sütun (split-top), sekmeler sağda.
+  const hero = (
+    <RaceHero
+      r={r}
+      sub={raceDay ? "" : [autoClasses.slice(0, 2).join(", "), chosen.length ? `${chosen.length} sporcu` : ""].filter(Boolean).join(" · ")}
+      now={raceDay && rid ? dayStats({ r, phase, races: dayRaces, dayAll }) : null}
+    />
   );
-  // Üst (açık tema 2026-11-23; önce lacivertti): başlık ve bilgi şeridi; geniş ekranda solda sabit sütun (split-top)
-  const navy = (body) => (
+  const top = raceDay && rid ? (
+    <RaceDayTop r={r} rid={rid} chosen={chosen} phase={phase} track={!!siteDocs} onResultsFile={onResultsFile} />
+  ) : rid && !over ? (
+    <RaceSahneWx r={{ ...r, id: rid }} />
+  ) : null;
+  const navy = (body, card = true) => (
     <section className="rzt split-top pb-4 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label={r.name || "Yarış"}>
       {head}
+      {card ? hero : <h1 className="rsh-c rsh-title">{title || r.name || "Yarış"}</h1>}
       {body}
     </section>
   );
@@ -1038,7 +1027,7 @@ export function RaceEditor({ sec = "", uid = "", head = null, alert = null, shar
     const form = !!r.notice;
     return (
       <>
-        {navy(null)}
+        {navy(null, false)}
         <div className={light}>
         {!form ? (
           <>
