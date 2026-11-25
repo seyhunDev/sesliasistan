@@ -9,6 +9,8 @@ body.sh-body { background: #0b0b0c; }
 }
 .sh-c { font-family: var(--lv-font-c), var(--font-num), system-ui, sans-serif; font-weight: 800; text-transform: uppercase; line-height: .9; letter-spacing: .01em; }
 .sh-top { display: flex; align-items: center; gap: .5rem; }
+/* iPad yatayda sol menü açıkken ☰ gerekmez (aynı liste solda) */
+@media (min-width: 64rem) { body[data-side] .sh-burg { display: none; } }
 .sh-date { flex: 1; min-width: 0; text-align: center; font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--sh-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sh-rb { position: relative; width: 2.5rem; height: 2.5rem; border-radius: 50%; background: #1f1f22; border: 1px solid #2e2e33; color: #fff; display: grid; place-items: center; flex-shrink: 0; }
 .sh-badge { position: absolute; top: -.2rem; right: -.2rem; min-width: 1.1rem; height: 1.1rem; padding: 0 .25rem; border-radius: .55rem; background: var(--sh-lime); color: #111; font: 800 .625rem/1.1rem var(--font-num, system-ui); font-style: normal; text-align: center; }
@@ -120,11 +122,6 @@ body.sh-body { background: #0b0b0c; }
 .sh-opt-on { background: var(--sh-lime, #d4ff3a); border-color: var(--sh-lime, #d4ff3a); color: #111; }
 
 /* ─── Ana hesap ve normal kullanıcı Sahne (SahneHome.jsx; Seyhun 2026-11-25, örnek velora-tarama/ana-normal-sahne.html) ─── */
-body:has(main.sh) .atabbar { --card: #0b0b0c; --line: #1f1f22; background: rgba(11, 11, 12, .94); box-shadow: 0 -1px 0 #1f1f22; }
-body:has(main.sh) .atabbar a { color: #71717a; }
-body:has(main.sh) .atabbar a[aria-current="page"] { color: var(--sh-lime, #d4ff3a); }
-body:has(main.sh) .acenter { background: #0b0b0c; box-shadow: 0 -1px 0 #1f1f22; }
-body:has(main.sh) .sidenav.navy { background: #0f0f11; --sn-line: #1f1f22; --sn-on-bg: rgba(212, 255, 58, .12); --sn-bar: #d4ff3a; --sn-logo: #d4ff3a; --sn-logo-v: transparent; }
 .shm-blue { background: linear-gradient(160deg, #1e3a8a, #0b1020); border-color: #1e40af; }
 .sh-g3 { display: grid; gap: .8rem; margin-top: .9rem; grid-template-areas: "a" "d" "b" "c"; }
 .sh-a { grid-area: a; min-width: 0; }
