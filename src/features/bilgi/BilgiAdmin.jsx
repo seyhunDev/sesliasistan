@@ -187,7 +187,7 @@ function Tekneler({ boats: all, ch, now }) {
                 <b>{b.name || "—"}</b>
               </div>
               <span className="num shrink-0 text-[0.8125rem] text-mut">
-                {old ? ago(b.t, now) : `${ago(b.t, now)}${b.spd != null ? ` · ${String(b.spd).replace(".", ",")} kn` : ""}${b.lat == null ? " · konum yok" : ""}`}
+                {old ? "Offline" : `${ago(b.t, now)}${b.spd != null ? ` · ${String(b.spd).replace(".", ",")} kn` : ""}${b.lat == null ? " · konum yok" : ""}`}
               </span>
             </div>
           );
@@ -870,6 +870,9 @@ export function BilgiAdmin() {
 
   const course = buildCourse(b?.parkur);
   const chBoats = (boats || []).filter((x) => !ch || x.ch === ch);
+  // Haritada yalnız açık (son 90 sn'de haber veren) tekneler (Seyhun 2026-11-25): çıkan, uygulamayı kapatan ya da arka plana atanın eski
+  // konumu donup kalmaz; listede "Offline" yazar
+  const liveBoats = chBoats.filter((x) => now - (x.t || 0) < LIVE_MS);
 
   if (!org) return <main className="p-6 text-mut">Bu sayfa ana hesapta ve antrenörde açılır.</main>;
 
@@ -913,9 +916,9 @@ export function BilgiAdmin() {
   const antDoc = antBase?.id ? { ...antBase, ...(kanallar?.find((x) => x.id === antBase.id) || {}) } : null;
   return (
     <main className="bzy-app" aria-label="Bilgi ekranı yönetimi" data-open={open ? "1" : undefined}>
-      <TekneMap boats={izK ? iz.boats : chBoats} tracks={izK ? iz.tracks : null} course={course.has ? course : null} talk={izK ? "" : talk?.dev || ""} full api={mapApi} />
+      <TekneMap boats={izK ? iz.boats : liveBoats} tracks={izK ? iz.tracks : null} course={course.has ? course : null} talk={izK ? "" : talk?.dev || ""} full api={mapApi} />
       {izK && <IzPanel k={izK} iz={iz} onClose={() => setIzK(null)} />}
-      {!izK && talk && !chBoats.some((x) => x.id === talk.dev && Number.isFinite(x.lat)) && (
+      {!izK && talk && !liveBoats.some((x) => x.id === talk.dev && Number.isFinite(x.lat)) && (
         <div className="bzy-talk" role="status">
           {talk.who}
           <Wave />

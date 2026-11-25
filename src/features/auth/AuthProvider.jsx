@@ -94,6 +94,7 @@ export function AuthProvider({ children }) {
             photo: doc_?.photo || "", // profil fotoğrafı adresi (Storage; /api/photo yazar)
             photoPath: doc_?.photoPath || "",
             icsToken: doc_?.icsToken || "", // takvim aboneliği gizli bağlantısı (Ayarlar › iPhone takvimi; sunucu yazar)
+            bilgiKim: doc_?.bilgiKim && typeof doc_.bilgiKim === "object" ? doc_.bilgiKim : null, // tekne ekranı: yelken no + isim (Ayarlar › Tekne ekranı; bilgiStore useTekneKim)
             weatherPlace: doc_?.weatherPlace || null, // hava durumu konumu (Ayarlar; cihazlar arası)
             homeTools: Array.isArray(doc_?.homeTools) ? doc_.homeTools : null, // ana sayfada seçili ekstralar (null: seçim yapılmadı)
             athleteIndex: doc_?.athleteIndex || null, // sporcu "ses adları" dizini (yoklamada yapay zekaya gider)
