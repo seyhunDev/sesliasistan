@@ -5,8 +5,6 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useAdd } from "@/features/add/AddProvider";
-import { canSeeAthletes } from "@/features/athletes/access";
-import { isCoach } from "@/lib/kinds";
 import { usePlanOpen } from "@/features/athletes/usePlanOpen";
 import { useData } from "@/features/data/DataProvider";
 import { dayHours } from "@/features/weather/weather";
@@ -31,7 +29,7 @@ import { ScrollBar } from "@/components/ui/ScrollBar";
 const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const hOf = (t) => (t && /^\d{1,2}:\d{2}/.test(t) ? +t.slice(0, t.indexOf(":")) + +t.slice(t.indexOf(":") + 1, t.indexOf(":") + 3) / 60 : null);
 
-export function IpadHome({ weather, inbox, onInbox, side }) {
+export function IpadHome({ weather, inbox, onInbox, side, can = {} }) {
   const { profile } = useAuth();
   const { plans } = useData();
   const { openAdd } = useAdd();
@@ -85,7 +83,7 @@ export function IpadHome({ weather, inbox, onInbox, side }) {
       <HavaPanel w={w} err={err} refresh={refresh} date={date} today={today} rows={rows} nowH={nowH} onOpen={goWeather} />
 
       <section className="iph-pn iph-cal" aria-label="Takvim">
-        <DayLane date={date} today={today} nowH={isToday ? nowH : null} dname={dname} />
+        <DayLane date={date} today={today} nowH={isToday ? nowH : null} dname={dname} can={can} />
         <div className="iph-wk">
           {days.map((d) => (
             <DayCell key={d} date={d} today={today} w={w} plans={plans} on={d === date} nowH={d === today ? nowH : null} onSel={() => setSel(d)} />
@@ -101,9 +99,8 @@ export function IpadHome({ weather, inbox, onInbox, side }) {
 // Seçili günün planları (Seyhun 2026-11-12 "kart biraz daha geniş… planın başlığını en azından görmek istiyorum"; örnek ana-sayfa/sade-2026-11/takvim.html):
 // üstte ince saat şeridi (plan = gri çizgi, süren plan koyu, kırmızı çizgi şimdi), altında planlar tek satır (Seyhun 2026-11-22 "rüzgârı göstermeyelim,
 // yazı ikinci satıra geçmesin"): saat · renkli nokta · başlık · yer. Saatsiz plan "Gün boyu". Satıra dokununca plan açılır.
-function DayLane({ date, today, nowH, dname }) {
+function DayLane({ date, today, nowH, dname, can }) {
   const { plans } = useData();
-  const { profile } = useAuth();
   const { open } = usePlanOpen();
   const list = dayPlans(plans, date);
   const timed = list.filter((p) => hOf(p.time) != null);
@@ -111,7 +108,7 @@ function DayLane({ date, today, nowH, dname }) {
   const pct = (h) => `${((Math.min(Math.max(h, H0), H1) - H0) / (H1 - H0)) * 100}%`;
   const end = (p) => Math.max(hOf(p.endTime) ?? hOf(p.time) + (p.durationMin ? p.durationMin / 60 : isTraining(p) ? 2 : 1), hOf(p.time) + 0.5);
   const sail = list.find(isTraining);
-  const att = sail && canSeeAthletes(profile?.email);
+  const att = sail && can.yoklama; // can: hesap görünümü (OwnerHome HomeFrame; "… gibi gör"de o hesabınki)
   // Şu an süren plan (bugün, başlangıç ile bitiş arası): satır açık gri zeminli, şeritte koyu
   const live = (p) => nowH != null && hOf(p.time) != null && nowH >= hOf(p.time) && nowH < end(p);
   const n = sorted.length;
@@ -126,7 +123,7 @@ function DayLane({ date, today, nowH, dname }) {
           </Link>
         )}
         {/* Yönet: ana hesap ve antrenör (Seyhun 2026-11-24); diğer hesaplarda yok */}
-        {sail && (profile?.role === "owner" || isCoach(profile)) && (
+        {sail && can.yonet && (
           <Link href={antYonet(sail)} data-press className="btn btn-primary btn-sm">
             Yönet
           </Link>
