@@ -150,6 +150,20 @@ export async function POST(request) {
     return NextResponse.json({ ok: true, sent });
   }
 
+  // ---- Fitness "Hatırlat" (Sporcular sekmesi): ana hesap, bugünkü antrenmanını yapmayan sporcuya. Antrenman başına bir kez (fitNudgeAt) ----
+  if (body?.event === "fitNudge") {
+    if (me.role !== "owner") return NextResponse.json({ error: "Yetki yok" }, { status: 403 });
+    const ref = org.collection("plans").doc(String(body.id || "").slice(0, 128) || "-");
+    const p = (await ref.get()).data();
+    const to = p?.fit?.for;
+    if (!to) return NextResponse.json({ error: "Antrenman yok" }, { status: 404 });
+    if (p.fitNudgeAt) return NextResponse.json({ ok: true, sent: 1, skipped: "gönderildi" });
+    const name = String(p.fit?.name || p.title || "Antrenman").slice(0, 80);
+    const sent = await sendTo(to, { title: `Bugünkü antrenmanın bekliyor: ${name}`, body: "", tag: `fitn-${ref.id}`, url: "/fitness" });
+    if (sent) await ref.update({ fitNudgeAt: new Date().toISOString() });
+    return NextResponse.json({ ok: true, sent });
+  }
+
   // ---- Silme bildirim göndermez (Seyhun'un kuralı): silinen kayıt ve çalışanın silme isteği için bildirim yok.
   //      Silme isteği ana hesapta "Senin için" listesinde karar olarak görünür. Eski sürüm uygulamalar çağırırsa yok sayılır. ----
   if (body?.event === "deleted" || body?.event === "deleteReq") return NextResponse.json({ ok: true, skipped: "silme bildirimi yok" });
