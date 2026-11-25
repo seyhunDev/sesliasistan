@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { sunsetHM } from "@/lib/attRemind";
-import { FRESH_MS, SHOW_DEF, beepOf, buildCourse, dirName, normDeg, pFlag, screenMode, seqMarks, startView, declination, quatHeading, tiltHeading, windRel } from "@/lib/bilgi";
+import { FRESH_MS, SHOW_DEF, isFor, beepOf, buildCourse, dirName, normDeg, pFlag, screenMode, seqMarks, startView, declination, quatHeading, tiltHeading, windRel } from "@/lib/bilgi";
 import { CourseMap } from "./CourseMap";
 import { deviceId, offPos, readWho, savePusula, saveTekneKim, saveWho, sendGelen, sendIz, sendPos, useBilgi, useBilgiDoc, usePublic, useTekneKim } from "./bilgiStore";
 import { usePtt } from "./usePtt";
@@ -706,7 +706,7 @@ export function BilgiScreen({ pub = "" }) {
   const [joined, setJoined] = useState("");
   const active = on && !!kanal?.open && joined === kanal.id;
   const dev = useSyncExternalStore(noSub, deviceId, () => "");
-  const forMe = (x) => x && (!x.to || x.to === dev);
+  const forMe = (x) => x && isFor(x.to, dev);
   const myMsg = forMe(b?.msg) ? b.msg : null;
   const mySes = forMe(ses) ? ses : null;
   const fresh = [myMsg, mySes].filter((x) => x?.id && now - x.at < FRESH_MS).sort((x, y) => y.at - x.at)[0];

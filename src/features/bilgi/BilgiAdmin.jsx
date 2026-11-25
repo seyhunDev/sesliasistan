@@ -11,7 +11,7 @@ import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { chooseDur, raceStart, useTimerRun, writeTimer } from "@/features/training/Countdown";
 import { mmss } from "@/lib/raceScore";
 import { Sheet } from "@/components/ui/Sheet";
-import { LIVE_MS, PK_NAMES, PK_TYPES, SEEN_WAIT, SES_MAX_SEC, SHOW, SHOW_DEF, buildCourse, deliveryOf, fmtPt, markKeys, membersOf, parsePt } from "@/lib/bilgi";
+import { LIVE_MS, PK_NAMES, PK_TYPES, SEEN_WAIT, SES_MAX_SEC, SHOW, SHOW_DEF, buildCourse, deliveryOf, isFor, fmtPt, markKeys, membersOf, parsePt } from "@/lib/bilgi";
 import { Switch } from "@/features/settings/ui";
 import { MsgList } from "./BilgiMesaj";
 import {
@@ -71,7 +71,7 @@ function Seg({ value, items, onPick }) {
 
 // Son gönderinin bu satırdaki durumu: … gidiyor, ✓ iletildi, ✓✓ gördü, görmedi / ulaşmadı
 function rowSt(last, m, now) {
-  if (!last || (last.to && last.to.dev !== m.id)) return null;
+  if (!last || (last.to && !isFor(last.to.dev, m.id))) return null;
   if (last.ok === false) return { k: "bad", t: "Ulaşmadı" };
   if (last.ok == null) return { k: "wait", t: "Gidiyor…" };
   if (m.seen === last.id) return { k: "seen", t: `✓✓ ${hhmm(last.at)}` };
@@ -206,39 +206,21 @@ function PanelClock({ org }) {
   const [pick, setPick] = useState(false);
   const time = up ? `+${mmss(Math.max(0, Math.floor((now - t.end) / 1000)))}` : mmss(Math.max(0, running ? rem : (t.left ?? t.dur)));
   const stop = () => writeTimer({ dur: t.dur, end: null, left: null, zero: up ? t.end : t.zero, own: "", where: "" });
-  if (!running)
-    return (
-      <>
-        <div className="bzy-clk">
-          <b className="num">{time}</b>
+  const go = () => raceStart({ onStart: (end) => noteStart(org, end) }, "start", "Bilgi ekranı", "/bilgi/yonet");
+  const flag = rem > 240 ? "5" : rem > 60 ? "4" : "1";
+  const left = up || !running ? 0 : Math.max(0, Math.min(100, (rem / (t.dur || 1)) * 100));
+  // Süre kutusu (Seyhun 2026-11-25 "süre ile konuşma aynı yükseklikte, uyumlu; başlatma büyük"): kutunun tamamı Başlat / Bitir
+  return (
+    <div className="bzy-sure" data-run={running ? "1" : undefined} data-up={up ? "1" : undefined} style={{ "--p": `${left}%` }}>
+      <div className="bzy-sh">
+        <span>Süre</span>
+        {!running ? (
           <button type="button" className="bzy-dur" aria-expanded={pick} onClick={() => setPick((x) => !x)} data-press>
             {Math.round(t.dur / 60)} dk
             <Ic n={pick ? "chev" : "up"} />
           </button>
-        </div>
-        {pick && (
-          <div className="bzy-durs" role="group" aria-label="Süre">
-            {DURS.map((d) => (
-              <button key={d} type="button" aria-pressed={t.dur === d} onClick={() => (chooseDur(d), setPick(false))} data-press>
-                {d / 60}
-              </button>
-            ))}
-            <em>dk</em>
-          </div>
-        )}
-        <Button full className="bzy-goB" onClick={() => (setPick(false), raceStart({ onStart: (end) => noteStart(org, end) }, "start", "Bilgi ekranı", "/bilgi/yonet"))}>
-          Başlat
-        </Button>
-      </>
-    );
-  const flag = rem > 240 ? "5" : rem > 60 ? "4" : "1";
-  const left = up ? 0 : Math.max(0, Math.min(100, (rem / (t.dur || 1)) * 100));
-  return (
-    <>
-      <div className="bzy-clk" data-run="1" data-up={up ? "1" : undefined}>
-        <b className="num">{up ? time : `−${time}`}</b>
-        {up ? (
-          <span className="bzy-sat num">Start {hhmm(t.end)}</span>
+        ) : up ? (
+          <span className="num">Start {hhmm(t.end)}</span>
         ) : t.dur === 300 ? (
           <span className="bzy-lad" aria-hidden="true">
             {["5", "4", "1", "0"].map((x) => (
@@ -249,10 +231,21 @@ function PanelClock({ org }) {
           </span>
         ) : null}
       </div>
-      <Button variant="secondary" full className="bzy-goB bzy-stopB" style={{ "--p": `${left}%` }} onClick={stop}>
-        <span>Bitir</span>
-      </Button>
-    </>
+      {pick ? (
+        <div className="bzy-durs" role="group" aria-label="Süre">
+          {DURS.map((d) => (
+            <button key={d} type="button" aria-pressed={t.dur === d} onClick={() => (chooseDur(d), setPick(false))} data-press>
+              {d / 60}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <button type="button" className="bzy-sgo" onClick={running ? stop : go} data-press>
+          <b className="num">{running && !up ? `−${time}` : time}</b>
+          <span>{running ? "Bitir" : "Başlat"}</span>
+        </button>
+      )}
+    </div>
   );
 }
 // Video (Seyhun 2026-11-21 "yönetim ekranında video butonu olmalı, geri sayımı gösteren"): ortak kamera (RecPick), üstünde bu sayaç akar.
@@ -515,50 +508,37 @@ function KanalInfo({ kanal, link, count, onList }) {
   );
 }
 
-// Konuşma (Seyhun 2026-11-22 örnek "Yönet alt kısım 2"): süreden ayrı, sağda haritanın üstünde. Büyük mikrofon en sağda (basılı tut, konuş;
-// uzağa kaydırınca iptal), solunda kime ("Hepsi"ye dokununca isimler açılır) ve klavye (yazarak mesaj). Kayıtta mikrofon yeşil olur, solunda
-// kime konuştuğun, süre ve ses seviyesi görünür. Mikrofon yerinden oynamaz (parmak onun üstünde kalır).
-function TalkBar({ to, ptt, now, who, onWho, onType }) {
+// Bas konuş kutusu (Seyhun 2026-11-25 örnek "Yönet bas-konuş köşesi"): süre kutusuyla aynı boyda, sağ altta. Basılı tut, konuş, bırak: gider;
+// uzağa kaydırınca iptal. Üstünde kime gideceği büyük yazar; kayıtta beyaz olur, süre ve ses seviyesi görünür.
+function PttTile({ to, ptt, now }) {
   const rec = ptt.rec;
   const st = rec ? (rec.cancel ? "cancel" : "rec") : ptt.arm ? "arm" : "";
   const sec = rec ? Math.max(0, Math.floor((now - rec.t0) / 1000)) : 0;
   const name = to?.name || "Hepsi";
   return (
-    <div className="bzy-tk" data-st={st || undefined}>
+    <button
+      type="button"
+      className="bzy-pt bzy-ptt"
+      data-st={st || undefined}
+      aria-label={`Bas konuş · ${name}`}
+      onPointerDown={(e) => ptt.begin(e, "big", to)}
+      onPointerMove={ptt.move}
+      onPointerUp={ptt.end}
+      onPointerCancel={ptt.end}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      <small aria-live="polite">{rec ? (rec.cancel ? "Bırak: iptal" : `Konuşuyor · 0:${pad(sec)}`) : st === "arm" ? "Mikrofon açılıyor" : "Bas konuş"}</small>
+      <b>{name}</b>
       {rec ? (
-        <div className="bzy-bub" aria-live="polite">
-          <b>{rec.cancel ? "Bırak: iptal" : name}</b>
-          <small className="num">{rec.cancel ? "Ses gönderilmez" : `Konuşuyorsun · 0:${pad(sec)}`}</small>
-          <span className="bzy-tkl" aria-hidden="true">
-            {[0.5, 0.85, 1, 0.75, 0.55].map((f, i) => (
-              <i key={i} style={{ height: `${0.375 + Math.min(1, ptt.lvl * f * 1.6) * 1.25}rem` }} />
-            ))}
-          </span>
-        </div>
+        <span className="bzy-tkl" aria-hidden="true">
+          {[0.5, 0.85, 1, 0.75, 0.55].map((f, i) => (
+            <i key={i} style={{ height: `${0.375 + Math.min(1, ptt.lvl * f * 1.6) * 1.25}rem` }} />
+          ))}
+        </span>
       ) : (
-        <>
-          <button type="button" className="bzy-whob" onClick={onWho} aria-expanded={who} aria-label={`Kime: ${name}`} data-press>
-            <span>{name}</span>
-            <Ic n="chev" />
-          </button>
-          <button type="button" className="btn btn-round bzy-fab bzy-kb" onClick={onType} aria-label="Yazarak mesaj" data-press>
-            <Ic n="kb" />
-          </button>
-        </>
-      )}
-      <button
-        type="button"
-        className="bzy-mic bzy-ptt"
-        aria-label={`Bas konuş · ${name}`}
-        onPointerDown={(e) => ptt.begin(e, "big", to)}
-        onPointerMove={ptt.move}
-        onPointerUp={ptt.end}
-        onPointerCancel={ptt.end}
-        onContextMenu={(e) => e.preventDefault()}
-      >
         <Ic n="mic" />
-      </button>
-    </div>
+      )}
+    </button>
   );
 }
 // Kanal satırının sağındaki durum: konuşurken ne olduğu, sonra son gidenin durumu (birkaç saniye)
@@ -734,11 +714,10 @@ export function BilgiAdmin() {
   const [pus, setPus] = useState(null);
   const boats = useTekneler(org);
   const [now, setNow] = useState(() => Date.now());
-  const [toDev, setToDev] = useState("");
+  const [toSel, setToSel] = useState([]);
   const [last, setLast] = useState(null);
   const marked = useRef("");
   const [sheet, setSheet] = useState("");
-  const [who, setWho] = useState(false);
   const [typing, setTyping] = useState(false);
   const mapApi = useRef(null);
   const ask = useConfirm();
@@ -825,8 +804,11 @@ export function BilgiAdmin() {
     }, 6500);
   };
   const members = membersOf(boats, ch, now);
-  const target = members.find((m) => m.id === toDev);
-  const to = target ? { dev: target.id, name: [target.sail, target.name].filter(Boolean).join(" ") } : null;
+  // Kime: seçili sporcular (kanalda açık olanlar); hiçbiri seçili değilse Hepsi
+  const sel = members.filter((m) => toSel.includes(m.id));
+  const nm = (m) => m.name || m.sail || "Sporcu";
+  const to = sel.length ? { dev: sel.map((m) => m.id).join(","), name: sel.length > 2 ? `${sel.length} kişi` : sel.map(nm).join(", ") } : null;
+  const pickTo = (id) => setToSel((x) => (!id ? [] : x.includes(id) ? x.filter((y) => y !== id) : [...x.filter((y) => members.some((m) => m.id === y)), id]));
   const talk = useGelenPlay(org, ctx, () => reload());
   const ptt = usePtt({ send: (blob, dur, to) => sendSes(org, blob, dur, ctx, to), onSent: (x) => got(x) });
   const got = (x) => {
@@ -971,57 +953,8 @@ export function BilgiAdmin() {
             <VideoBtn />
           </div>
           <div className="bzy-bot">
-            {who && (
-              <div className="bzy-who" aria-label="Kime">
-                {[{ id: "", label: "Hepsi", st: !last?.to ? allSt(dl0, last) : null }, ...members.map((m) => ({ id: m.id, no: m.sail || "", label: m.name || m.sail || "Sporcu", st: rowSt(last, m, now) }))].map((m) => (
-                  <button
-                    key={m.id || "hepsi"}
-                    type="button"
-                    aria-pressed={(to?.dev || "") === m.id}
-                    onClick={() => (setToDev(m.id), setWho(false))}
-                    data-press
-                  >
-                    {m.no ? <u className="num">{m.no}</u> : null}
-                    {m.label}
-                    {m.st && <i data-k={m.st.k} aria-label={m.st.t} />}
-                  </button>
-                ))}
-              </div>
-            )}
-            {typing ? (
-              <form
-                className="bzy-typ"
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  if (!text.trim()) return;
-                  setTyping(false);
-                  await send();
-                }}
-              >
-                <button type="button" className="bzy-whob" onClick={() => setWho((x) => !x)} aria-expanded={who} aria-label={`Kime: ${to?.name || "Hepsi"}`} data-press>
-                  <span>{to?.name || "Hepsi"}</span>
-                  <Ic n="chev" />
-                </button>
-                <input
-                  className="bzy-in"
-                  autoFocus
-                  value={text}
-                  maxLength={200}
-                  onChange={(e) => setText(e.target.value)}
-                  onBlur={() => !text.trim() && setTimeout(() => setTyping(false), 150)}
-                  placeholder="Mesaj yaz"
-                  aria-label="Mesaj"
-                  enterKeyHint="send"
-                />
-                <button type="submit" className="btn btn-primary btn-round bzy-snd" disabled={!text.trim()} aria-label="Gönder" data-press>
-                  <Ic n="send" />
-                </button>
-              </form>
-            ) : (
-              <TalkBar to={to} ptt={ptt} now={now} who={who} onWho={() => setWho((x) => !x)} onType={() => (setWho(false), setTyping(true))} />
-            )}
             {(dl0?.state === "fail" || dl0?.state === "part") && <LastSent last={last} boats={boats} ch={ch} now={now} onAgain={again} />}
-            <section className="bzy-pnl" aria-label="Süre">
+            <section className="bzy-pnl" aria-label="Konuşma ve süre">
               <div className="bzy-kl">
                 <button type="button" className="bzy-kn2" onClick={() => setSheet("kanal")} data-press>
                   <i className="bzy-dot" aria-hidden="true" />
@@ -1034,8 +967,49 @@ export function BilgiAdmin() {
                     {tst[1]}
                   </span>
                 )}
+                <button type="button" className="bzy-kbb" onClick={() => setTyping((x) => !x)} aria-pressed={typing} aria-label="Yazarak mesaj" data-press>
+                  <Ic n="kb" />
+                </button>
               </div>
-              <PanelClock org={org} />
+              <div className="bzy-who" aria-label="Kime">
+                {[{ id: "", label: "Hepsi", st: !last?.to ? allSt(dl0, last) : null }, ...members.map((m) => ({ id: m.id, no: m.sail || "", label: m.name || m.sail || "Sporcu", st: rowSt(last, m, now) }))].map((m) => (
+                  <button key={m.id || "hepsi"} type="button" aria-pressed={m.id ? toSel.includes(m.id) : !sel.length} onClick={() => pickTo(m.id)} data-press>
+                    {m.no && m.label !== m.no ? <u className="num">{m.no}</u> : null}
+                    {m.label}
+                    {m.st && <i data-k={m.st.k} aria-label={m.st.t} />}
+                  </button>
+                ))}
+              </div>
+              {typing && (
+                <form
+                  className="bzy-typ"
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    if (!text.trim()) return;
+                    setTyping(false);
+                    await send();
+                  }}
+                >
+                  <input
+                    className="bzy-in"
+                    autoFocus
+                    value={text}
+                    maxLength={200}
+                    onChange={(e) => setText(e.target.value)}
+                    onBlur={() => !text.trim() && setTimeout(() => setTyping(false), 150)}
+                    placeholder={`Mesaj · ${to?.name || "Hepsi"}`}
+                    aria-label="Mesaj"
+                    enterKeyHint="send"
+                  />
+                  <button type="submit" className="btn btn-primary btn-round bzy-snd" disabled={!text.trim()} aria-label="Gönder" data-press>
+                    <Ic n="send" />
+                  </button>
+                </form>
+              )}
+              <div className="bzy-two">
+                <PanelClock org={org} />
+                <PttTile to={to} ptt={ptt} now={now} />
+              </div>
             </section>
           </div>
         </>

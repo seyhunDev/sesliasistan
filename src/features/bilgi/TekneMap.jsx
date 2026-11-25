@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useImperativeHandle, useRef, useState } from "react";
-import { MAP_STYLE, loadMapLibre } from "@/lib/maplibre";
+import { loadMapLibre } from "@/lib/maplibre";
+
+// Yönet Sahne (Seyhun 2026-11-25): koyu harita, parkur çizgisi limon
+const DARK_STYLE = "https://tiles.openfreemap.org/styles/dark";
 
 // Yönet › Tekneler haritası (Seyhun 2026-11-15): bilgi ekranını açan her telefon kendi GPS noktasında, üstünde yelken no ve isim.
 // 1 dk'dır konum gelmeyen soluk (gri). İlk tekneler gelince hepsi görünecek şekilde yaklaşır; sonra kullanıcı kaydırır.
@@ -57,7 +60,7 @@ export function TekneMap({ boats, course = null, full = false, talk = "", tracks
         const touch = window.matchMedia?.("(pointer: coarse)").matches;
         const m = new lib.Map({
           container: box.current,
-          style: MAP_STYLE,
+          style: DARK_STYLE,
           center: [26.889, 39.071],
           zoom: 12,
           attributionControl: false,
@@ -177,7 +180,7 @@ export function TekneMap({ boats, course = null, full = false, talk = "", tracks
     if (m.getSource("pk-line")) m.getSource("pk-line").setData(data);
     else {
       m.addSource("pk-line", { type: "geojson", data });
-      m.addLayer({ id: "pk-line", type: "line", source: "pk-line", paint: { "line-color": "#1d4ed8", "line-width": 2, "line-dasharray": [2, 1.5] } });
+      m.addLayer({ id: "pk-line", type: "line", source: "pk-line", paint: { "line-color": "#d4ff3a", "line-width": 2, "line-dasharray": [2, 1.5] } });
     }
   }, [ck, ready]);
 
