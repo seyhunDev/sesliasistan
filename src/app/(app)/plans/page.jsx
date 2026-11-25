@@ -24,10 +24,6 @@ const spanDays = (p) => Math.round((new Date(`${p.endDate}T00:00`) - new Date(`$
 const multiOf = (p) => !!(p.endDate && p.endDate !== p.date);
 const inDay = (p, d) => p.date <= d && (p.endDate || p.date) >= d;
 const mins = (t) => (t ? +t.slice(0, 2) * 60 + +t.slice(3, 5) : null);
-const endTime = (p) => {
-  const e = mins(p.time) + (p.durationMin || 60);
-  return `${String(Math.floor(e / 60) % 24).padStart(2, "0")}:${String(e % 60).padStart(2, "0")}`;
-};
 // Aynı gün saatleri çakışan planlar (süre yoksa 60 dk sayılır)
 function conflicts(items) {
   const timed = items.filter((p) => p.time && p.status !== "cancelled" && !multiOf(p)).map((p) => [p.id, mins(p.time), mins(p.time) + (p.durationMin || 60)]);
@@ -149,7 +145,7 @@ export default function PlansPage() {
               const off = p.status === "cancelled";
               const lead = multi ? `${spanDays(p)} gün` : p.time || "Gün";
               if (big) {
-                const sub = [multi ? remainLabel(p, today) : p.time && `${p.time} – ${endTime(p)}`, p.place].filter(Boolean).join(" · ");
+                const sub = [multi ? remainLabel(p, today) : p.time && (p.endTime ? `${p.time} – ${p.endTime}` : p.time), p.place].filter(Boolean).join(" · ");
                 return (
                   <button key={p.id} type="button" onClick={() => open(p)} className="flex w-full gap-3 border-b border-white/15 py-3.5 text-left last:border-b-0 active:opacity-80">
                     <b className="w-12 shrink-0 pt-6 text-[0.9375rem] font-bold tabular-nums">{lead}</b>
