@@ -23,37 +23,56 @@ const FIRST = 6;
 const STEP = 10;
 const dayOf = (d) => new Date(`${d}T12:00:00`);
 
-// Bir sporcunun yoklaması (Sahne): üstte bu ay (devam %, geldi / gelmedi / izinli, ayın günleri kare kare), altında son antrenmanlar.
-// Devam oranında izinli sayılmaz (ana sayfadaki Yoklamam kutusuyla aynı: monthOf).
+// Bu ayın halkası: geldi / gelmedi / izinli dilimleri, ortada geldiği gün sayısı (Seyhun 2026-11-25: büyük yüzde yok, motivasyon düşürmesin).
+// Kayıt yoksa boş gri halka; hepsi geldi ise tek parça limon halka. Dilimler pathLength=100 ile yüzde olarak çizilir.
+function Ring({ m }) {
+  const total = m.present + m.absent + m.excused;
+  let at = 0;
+  const parts = total ? ["present", "absent", "excused"].filter((s) => m[s]).map((s) => {
+    const len = (m[s] / total) * 100;
+    const p = { s, len, at };
+    at += len;
+    return p;
+  }) : [];
+  const gap = parts.length > 1 ? 1.5 : 0;
+  return (
+    <div className="ya-ring">
+      <svg viewBox="0 0 120 120" aria-hidden="true">
+        <circle cx="60" cy="60" r="50" pathLength="100" className="ya-ring-bg" />
+        {parts.map((p) => (
+          <circle key={p.s} cx="60" cy="60" r="50" pathLength="100" data-s={p.s}
+            strokeDasharray={`${Math.max(p.len - gap, 0.5)} ${100 - Math.max(p.len - gap, 0.5)}`} strokeDashoffset={-p.at} />
+        ))}
+      </svg>
+      <span className="ya-ring-in">
+        <b className="sh-c num">{m.present}</b>
+        <small>geldi</small>
+      </span>
+    </div>
+  );
+}
+
+// Bir sporcunun yoklaması (Sahne): üstte bu ayın halkası ve geldi / gelmedi / izinli, altında son antrenmanlar.
 function Card({ rec }) {
   const [n, setN] = useState(FIRST);
   const days = Object.entries(rec.att || {}).sort((a, b) => b[0].localeCompare(a[0]));
   const ym = todayStr().slice(0, 7);
   const m = monthOf(rec, ym);
-  const month = days.filter(([d]) => d.startsWith(ym)).reverse();
   return (
     <div className="ya-two">
       <div className="ya-col">
         <section className="ya-hero">
-          <span className="ya-k">{MONTH.format(dayOf(`${ym}-15`))} · devam</span>
-          <div className="ya-row">
-            <b className="sh-c num ya-big" data-none={m.rate == null ? "" : undefined}>{m.rate == null ? "—" : `%${m.rate}`}</b>
-            <div className="ya-st">
-              {["present", "absent", "excused"].map((s) => (
-                <span key={s} data-s={s}>
-                  <b className="ya-c num">{m[s]}</b>
-                  <small>{LABEL[s]}</small>
-                </span>
-              ))}
-            </div>
+          <Ring m={m} />
+          <div className="ya-leg">
+            <span className="ya-k">{MONTH.format(dayOf(`${ym}-15`))}</span>
+            {["present", "absent", "excused"].map((s) => (
+              <span key={s} className="ya-lr" data-s={s}>
+                <i />
+                <small>{LABEL[s]}</small>
+                <b className="num">{m[s]}</b>
+              </span>
+            ))}
           </div>
-          {month.length > 0 && (
-            <div className="ya-strip">
-              {month.map(([d, v]) => (
-                <i key={d} data-s={v} title={`${dayOf(d).getDate()} ${MON.format(dayOf(d))}: ${LABEL[v] || v}`} />
-              ))}
-            </div>
-          )}
         </section>
       </div>
       <div className="ya-col">
