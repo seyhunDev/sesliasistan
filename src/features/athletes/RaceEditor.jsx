@@ -1238,8 +1238,9 @@ export function RaceEditor({ sec = "", uid = "", head = null, title = "", alert 
       {navy(top)}
       {secWrap(<>
         {alert}
+      {/* iPad (Sahne, Seyhun 2026-11-25 "Yap"): Hazırlık iki sütun, solda Yapılacaklar ve Yarış (rsh-colA), sağda Yolculuk ve Evrak (rsh-colB) */}
       {prep && (
-        <>
+        <div className="rsh-colA">
           {over && <RaceDone r={r} chosen={chosen} money={money} steps={steps} doneCount={doneList.length} onTab={setTab} onMark={(st) => markStep(st, true)} resHref={rid ? `/athletes/races/${rid}/sonuclar` : ""} track={!!siteDocs} onResultsFile={onResultsFile} />}
           {!over && (
             <>
@@ -1281,7 +1282,7 @@ export function RaceEditor({ sec = "", uid = "", head = null, title = "", alert 
             </li>
           </ul>
 
-        </>
+        </div>
       )}
 
 
@@ -1336,8 +1337,14 @@ export function RaceEditor({ sec = "", uid = "", head = null, title = "", alert 
         </>
       )}
 
-      {/* Yolculuk ve bütçe (yeni görünüm 2026-11-06, yeni-dil/ornek.png 4): uzun form yerine özet satırlar, dokununca yerinde açılır */}
+      {siteDocs && rid && (
+        <div hidden={tab !== "site" && tab !== "belge"}>
+          <RaceTrack orgId={orgId} race={{ ...r, id: rid }} chosen={chosen} view={tab === "belge" ? "docs" : "track"} onAll={() => setTab("belge")} more={siteDocs(tab === "site" || tab === "belge")} onResultsFile={onResultsFile} />
+        </div>
+      )}
       {prep && (
+        <div className="rsh-colB">
+      {/* Yolculuk ve bütçe (yeni görünüm 2026-11-06, yeni-dil/ornek.png 4): uzun form yerine özet satırlar, dokununca yerinde açılır */}
         <div ref={tripRef} className="scroll-mt-4">
           <Label>Yolculuk</Label>
           <Fold label="Gidiş" value={[r.departDate && tripDay(r.departDate), r.departTime].filter(Boolean).join(" · ") || "Yazılmadı"} open={fold === "go"} onToggle={() => flipFold("go")}>
@@ -1372,15 +1379,8 @@ export function RaceEditor({ sec = "", uid = "", head = null, title = "", alert 
             </Fold>
           </div>
         </div>
-      )}
 
       {/* Siteden gelen belgeler Dokümanlar sekmesinde (2026-11-04); sekme kapalıyken de bağlı (yeni gelenler işlenir) */}
-      {siteDocs && rid && (
-        <div hidden={tab !== "site" && tab !== "belge"}>
-          <RaceTrack orgId={orgId} race={{ ...r, id: rid }} chosen={chosen} view={tab === "belge" ? "docs" : "track"} onAll={() => setTab("belge")} more={siteDocs(tab === "site" || tab === "belge")} onResultsFile={onResultsFile} />
-        </div>
-      )}
-      {prep && (
         <div ref={docsRef} className="scroll-mt-4">
           <Label>Evrak</Label>
           {/* Evrak tek satır (Seyhun 2026-11-12 "belgeleri hazırla butonu daha iyi bir yerde"; örnek ev-*.png "Yap"): alttaki yapışık çubuk
@@ -1738,6 +1738,7 @@ export function RaceEditor({ sec = "", uid = "", head = null, title = "", alert 
             </li>
           </ul>
 
+        </div>
         </div>
       )}
       </>)}
