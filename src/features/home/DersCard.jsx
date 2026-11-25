@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
+import { Icon } from "@/components/ui/Icon";
+import { liveHead } from "@/features/liveScreen/fonts";
+import { useEsc } from "./SporcuMenu";
 import { useRouter } from "next/navigation";
 import { useData } from "@/features/data/DataProvider";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -24,6 +27,7 @@ export function DersCard({ tile = false }) {
   const now = useNow(60000);
   const fileRef = useRef(null);
   const [busy, setBusy] = useState(false);
+  const [pick, setPick] = useState(false);
   const mine = lessons.filter((l) => l.createdByUid === myUid);
   const today = weekdayOf(todayStr());
   const list = mine.filter((l) => l.day === today).sort((a, b) => (a.start || "").localeCompare(b.start || ""));
@@ -50,29 +54,48 @@ export function DersCard({ tile = false }) {
   }
   const photo = () => fileRef.current?.click();
 
-  // Sporcu ana sayfası (Sahne, Seyhun 2026-11-25 "A"): koyu kutu; program varsa şu anki ya da sıradaki ders, yoksa Fotoğrafla ekle · Elle ekle
+  // Sporcu ana sayfası (Sahne; Seyhun 2026-11-25 "çok kötü duruyor, başka mantıkla"; örnek sporcu-ana/ders-programi.html):
+  // tek parça kutu. Program yoksa büyük "Ekle" +; dokununca alttan pencere: Fotoğraftan · Elle. Program varsa şu anki/sıradaki ders büyük saatle; dokununca Ders programı.
   if (tile) {
     const cur = list.find(isNow) || list.find((l) => (l.start || "") > hm);
-    return (
-      <section aria-label="Ders programı" className="sh-tile">
-        <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPhoto} />
-        <Link href="/schedule" className="sh-k">Ders programı</Link>
-        {mine.length ? (
-          <Link href="/schedule" className="min-w-0">
-            <b className="sh-t">{cur ? `${cur.start} ${cur.title}` : list.length ? "Dersler bitti" : "Bugün ders yok"}</b>
-            <small className="sh-s">{cur && isNow(cur) ? "şimdi" : cur ? "sıradaki" : `${mine.length} ders kayıtlı`}</small>
-          </Link>
-        ) : (
-          <span className="flex flex-wrap gap-1.5">
-            <button type="button" data-press onClick={photo} disabled={busy} className="sh-mini sh-mini-on">
-              {busy ? "Okunuyor…" : "Fotoğrafla ekle"}
-            </button>
-            <Link href="/schedule?yeni=1" data-press className="sh-mini">
-              Elle ekle
-            </Link>
+    const input = <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPhoto} />;
+    if (mine.length)
+      return (
+        <Link href="/schedule" data-press aria-label="Ders programı" className="sh-tile">
+          <span className="sh-k">
+            {cur ? (
+              <>
+                Ders · <span className="sh-lime">{isNow(cur) ? "şimdi" : "sıradaki"}</span>
+              </>
+            ) : (
+              "Ders programı"
+            )}
           </span>
-        )}
-      </section>
+          {cur ? (
+            <span className="min-w-0">
+              <b className="sh-c sh-ders-n">{cur.start}</b>
+              <b className="sh-t">{cur.title}</b>
+            </span>
+          ) : (
+            <span className="min-w-0">
+              <b className="sh-t">{list.length ? "Dersler bitti" : "Bugün ders yok"}</b>
+              <small className="sh-s">{mine.length} ders kayıtlı</small>
+            </span>
+          )}
+        </Link>
+      );
+    return (
+      <>
+        {input}
+        <button type="button" data-press onClick={() => setPick(true)} disabled={busy} aria-label="Ders programı ekle" className="sh-tile">
+          <span className="sh-k">Ders programı</span>
+          <span className="sh-ders-add">
+            <b className="sh-c">{busy ? "Okunuyor…" : "Ekle"}</b>
+            {!busy && <span aria-hidden="true">+</span>}
+          </span>
+        </button>
+        {pick && <DersPick onClose={() => setPick(false)} onPhoto={photo} />}
+      </>
     );
   }
 
@@ -111,5 +134,49 @@ export function DersCard({ tile = false }) {
         </Link>
       )}
     </section>
+  );
+}
+
+// Ders programı ekle penceresi (sporcu Sahne): Fotoğraftan (dersler okunur) · Elle (yeni ders penceresi)
+function DersPick({ onClose, onPhoto }) {
+  const router = useRouter();
+  useEsc(true, onClose);
+  return (
+    <div role="dialog" aria-modal="true" aria-label="Ders programı ekle" data-theme="dark" className={`shm-dim ${liveHead.variable}`} onClick={onClose}>
+      <div className="shm-sheet" onClick={(e) => e.stopPropagation()}>
+        <span className="shm-grab" aria-hidden="true" />
+        <h2 className="sh-c shm-title">Ders programı ekle</h2>
+        <button
+          type="button"
+          data-press
+          onClick={() => {
+            onClose();
+            onPhoto();
+          }}
+          className="sh-opt sh-opt-on"
+        >
+          <Icon name="camera" className="size-5" />
+          <span>
+            <b>Fotoğraftan</b>
+            <small>Programın fotoğrafını çek, dersler okunur</small>
+          </span>
+        </button>
+        <button
+          type="button"
+          data-press
+          onClick={() => {
+            onClose();
+            router.push("/schedule?yeni=1");
+          }}
+          className="sh-opt"
+        >
+          <Icon name="edit" className="size-5" />
+          <span>
+            <b>Elle</b>
+            <small>Dersleri tek tek yaz</small>
+          </span>
+        </button>
+      </div>
+    </div>
   );
 }
