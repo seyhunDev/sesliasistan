@@ -51,7 +51,11 @@ function Library({ orgId }) {
       .catch(() => {});
   }, [orgId]);
   const secs = useMemo(() => librarySections(docs || [], { plans, races }), [docs, plans, races]);
-  const list = secs[tab];
+  // Etiket süzgeci (Seyhun 2026-11-25 Yönet videoları: sporcu, Orsa, Pupa, Start…): seçili etiketi taşıyan kayıtlar
+  const [tag, setTag] = useState("");
+  const [exp, setExp] = useState("");
+  const tagsOf = [...new Set(secs[tab].flatMap((x) => x.items.flatMap((m) => m.tags || [])))].sort((a, b) => a.localeCompare(b, "tr"));
+  const list = tag ? secs[tab].map((x) => ({ ...x, items: x.items.filter((m) => m.tags?.includes(tag)) })).filter((x) => x.items.length) : secs[tab];
   const all = [...secs.ant, ...secs.race].flatMap((s) => s.items);
   const n = (k) => secs[k].reduce((a, s) => a + s.items.length, 0);
   const sec = open && list.find((s) => s.key === open.sec);
@@ -100,7 +104,16 @@ function Library({ orgId }) {
         </header>
       </section>
       <div className="split-cols relative -mx-5 -mt-6 min-h-[50vh] rounded-t-[1.75rem] bg-bg px-5 pt-4">
-        <Seg value={tab} onChange={setTab} options={[["ant", "Antrenman", n("ant")], ["race", "Yarış", n("race")]]} />
+        <Seg value={tab} onChange={(t) => (setTab(t), setTag(""))} options={[["ant", "Antrenman", n("ant")], ["race", "Yarış", n("race")]]} />
+        {tagsOf.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-1.5" aria-label="Etiketler">
+            {tagsOf.map((t) => (
+              <button key={t} type="button" aria-pressed={tag === t} onClick={() => setTag((x) => (x === t ? "" : t))} className={`h-8 rounded-full px-3 text-[0.8125rem] font-semibold ${tag === t ? "bg-fg text-bg" : "bg-card text-fg"}`} data-press>
+                {t}
+              </button>
+            ))}
+          </div>
+        )}
         {error && <p className="mt-4 text-center text-[0.875rem] text-rec">{error}</p>}
         {!docs && <Loading label="Medya yükleniyor" />}
         {docs && !list.length && (
@@ -112,7 +125,7 @@ function Library({ orgId }) {
           </div>
         )}
         {list.map((s) => {
-          const shown = s.items.slice(0, 4);
+          const shown = exp === s.key || tag ? s.items : s.items.slice(0, 4);
           const more = s.items.length - shown.length;
           return (
             <section key={s.key}>
@@ -121,9 +134,18 @@ function Library({ orgId }) {
                   <b className="block truncate text-[1.0625rem] font-semibold">{s.title}</b>
                   <small className="block truncate text-[0.8125rem] text-mut">{s.sub}</small>
                 </div>
-                <Link href={s.href} className="shrink-0 text-[0.875rem] font-semibold text-acc active:opacity-60">
-                  Tümü ›
-                </Link>
+                {s.href ? (
+                  <Link href={s.href} className="shrink-0 text-[0.875rem] font-semibold text-acc active:opacity-60">
+                    Tümü ›
+                  </Link>
+                ) : (
+                  s.items.length > 4 &&
+                  !tag && (
+                    <button type="button" onClick={() => setExp((x) => (x === s.key ? "" : s.key))} className="shrink-0 text-[0.875rem] font-semibold text-acc active:opacity-60">
+                      {exp === s.key ? "Daha az" : "Tümü"}
+                    </button>
+                  )
+                )}
               </div>
               <div className="grid grid-cols-4 gap-1">
                 {shown.map((m, i) => (
@@ -142,7 +164,7 @@ function Library({ orgId }) {
         id={sec ? open.id : ""}
         onPick={(id) => setOpen((o) => ({ ...o, id }))}
         onClose={() => setOpen(null)}
-        label={() => sec?.title || ""}
+        label={(m) => [sec?.title, ...(m?.tags || [])].filter(Boolean).join(" · ")}
         onSave={give /* iPhone paylaşım ekranı: Videoyu Kaydet ya da WhatsApp vb. */}
         busy={busy}
       />
