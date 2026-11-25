@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { arrayUnion, collection, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, waitForPendingWrites, where } from "firebase/firestore";
+import { arrayUnion, collection, deleteField, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, waitForPendingWrites, where } from "firebase/firestore";
 import { addDoc, deleteDoc, setDoc, updateDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { LIVE_MS, cleanBilgi, MSG_MAX } from "@/lib/bilgi";
@@ -57,6 +57,9 @@ export const saveBilgi = (org, patch) => {
   mirror(org, p);
   return setDoc(ref(org, "ekran"), p, { merge: true });
 };
+
+// Ceza ver / kaldır (k: "1" | "2" | "fd" | ""): tek yazma, sporcu ekranı ekran belgesinden görür
+export const setCeza = (org, dev, k) => saveBilgi(org, { ceza: { [dev]: k ? { k, at: Date.now() } : deleteField() } });
 
 // Yeni link: ekranın ve son sesin kopyası yeni anahtarla açılır, eski kopya silinir
 export async function newLink(org) {

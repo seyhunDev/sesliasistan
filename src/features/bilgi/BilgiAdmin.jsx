@@ -11,7 +11,7 @@ import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { chooseDur, raceStart, useTimerRun, writeTimer } from "@/features/training/Countdown";
 import { mmss } from "@/lib/raceScore";
 import { Sheet } from "@/components/ui/Sheet";
-import { LIVE_MS, PK_NAMES, PK_TYPES, SEEN_WAIT, SES_MAX_SEC, SHOW, SHOW_DEF, buildCourse, deliveryOf, isFor, fmtPt, markKeys, membersOf, parsePt } from "@/lib/bilgi";
+import { LIVE_MS, PEN, PK_NAMES, PK_TYPES, SEEN_WAIT, SES_MAX_SEC, SHOW, SHOW_DEF, buildCourse, deliveryOf, isFor, fmtPt, markKeys, membersOf, parsePt } from "@/lib/bilgi";
 import { Switch } from "@/features/settings/ui";
 import { MsgList } from "./BilgiMesaj";
 import {
@@ -39,6 +39,7 @@ import {
   useKaliplar,
   useKanallar,
   useTekneler,
+  setCeza,
 } from "./bilgiStore";
 import { DayStart, KalipRow, KalipSheets, ToolsSheet, VideoTile, dayLabel, kanalDay, useRepeat, videoDone } from "./YonetParts";
 import { TekneMap } from "./TekneMap";
@@ -514,6 +515,50 @@ function PttTile({ to, ptt, now }) {
     </button>
   );
 }
+// Sporcu penceresi (Seyhun 2026-11-25 örnek "Yönet Ceza Uyarısı"): adına basılı tutunca açılır. Ceza: 360° / 720° / FD (faux départ);
+// sporcunun ekranında 10 sn tam ekran, sonra şerit; buradan "Cezayı kaldır" ile kalkar. Haritada noktası renkli, adının yanında rozet.
+function SporcuSheet({ org, id, boat, cur, onClose }) {
+  const toast = useToast();
+  const [pick, setPick] = useState("");
+  const [busy, setBusy] = useState(false);
+  const k = pick || cur?.k || "";
+  const name = [boat?.sail, boat?.name].filter(Boolean).join(" · ") || "Sporcu";
+  const run = async (v) => {
+    setBusy(true);
+    try {
+      await setCeza(org, id, v);
+      toast(v ? `${PEN[v].big} gönderildi` : "Ceza kaldırıldı");
+      setPick("");
+      onClose();
+    } catch {
+      toast("Gönderilemedi, tekrar dene.");
+    }
+    setBusy(false);
+  };
+  return (
+    <Sheet open={!!id} onClose={() => (setPick(""), onClose())} title={name}>
+      <div className="bzy-pens" role="radiogroup" aria-label="Ceza">
+        {Object.entries(PEN).map(([v, p]) => (
+          <button key={v} type="button" role="radio" aria-checked={k === v} data-k={v} onClick={() => setPick(v)} data-press>
+            <b>{p.big}</b>
+            <small>{v === "1" ? "1 ceza dönüşü" : v === "2" ? "2 ceza dönüşü" : "Faux départ"}</small>
+          </button>
+        ))}
+      </div>
+      <div className="mt-3 grid gap-2">
+        <Button variant="primary" full disabled={busy || !k || k === cur?.k} onClick={() => run(k)}>
+          {cur && k !== cur.k ? "Cezayı değiştir" : "Cezayı gönder"}
+        </Button>
+        {cur && (
+          <Button variant="danger" full disabled={busy} onClick={() => run("")}>
+            Cezayı kaldır
+          </Button>
+        )}
+      </div>
+    </Sheet>
+  );
+}
+
 // Kanal satırının sağındaki durum: konuşurken ne olduğu, sonra son gidenin durumu (birkaç saniye)
 function talkSt(ptt, last, d, now, to) {
   const name = last?.to?.name || "Hepsi";
@@ -839,7 +884,19 @@ export function BilgiAdmin() {
   const chBoats = (boats || []).filter((x) => !ch || x.ch === ch);
   // Haritada yalnız açık (son 90 sn'de haber veren) tekneler (Seyhun 2026-11-25): çıkan, uygulamayı kapatan ya da arka plana atanın eski
   // konumu donup kalmaz; listede "Offline" yazar
-  const liveBoats = chBoats.filter((x) => now - (x.t || 0) < LIVE_MS);
+  const ceza = b?.ceza || {};
+  const liveBoats = chBoats.filter((x) => now - (x.t || 0) < LIVE_MS).map((x) => (ceza[x.id] ? { ...x, pen: PEN[ceza[x.id].k].big, penK: ceza[x.id].k } : x));
+  const holdOn = (id) => {
+    const h = holdT.current;
+    h.fired = false;
+    clearTimeout(h.t);
+    if (id)
+      h.t = setTimeout(() => {
+        h.fired = true;
+        setSheet(`sp:${id}`);
+      }, 550);
+  };
+  const holdOff = () => clearTimeout(holdT.current.t);
 
   const repeat = useRepeat(org, kaliplar, ctx, got);
   const sendK = async (k) => {
@@ -852,6 +909,8 @@ export function BilgiAdmin() {
   const canKalip = last?.kind === "ses" && !!last.blob && !last.kalip && last.ok === true && now - last.at < 30e3;
   const kday = kanal?.open ? kanalDay((kanallar || []).find((x) => x.id === kanal.id) || kanal) : "";
   const pnl = useRef(null);
+  // Sporcu adına basılı tutunca (550 ms) o sporcunun penceresi (ceza); kısa dokunuş yalnız seçer
+  const holdT = useRef({ t: 0, fired: false });
   useEffect(() => {
     const el = pnl.current;
     if (!el || typeof ResizeObserver === "undefined") return;
@@ -993,9 +1052,25 @@ export function BilgiAdmin() {
               {!mini && (
                 <div className="bzy-who" aria-label="Kime">
                   {[{ id: "", label: "Hepsi", st: !last?.to ? allSt(dl0, last) : null }, ...members.map((m) => ({ id: m.id, no: m.sail || "", label: m.name || m.sail || "Sporcu", st: rowSt(last, m, now) }))].map((m) => (
-                    <button key={m.id || "hepsi"} type="button" aria-pressed={m.id ? toSel.includes(m.id) : !sel.length} onClick={() => pickTo(m.id)} data-press>
+                    <button
+                      key={m.id || "hepsi"}
+                      type="button"
+                      aria-pressed={m.id ? toSel.includes(m.id) : !sel.length}
+                      onPointerDown={() => holdOn(m.id)}
+                      onPointerUp={holdOff}
+                      onPointerLeave={holdOff}
+                      onPointerCancel={holdOff}
+                      onContextMenu={(e) => e.preventDefault()}
+                      onClick={() => (holdT.current.fired ? (holdT.current.fired = false) : pickTo(m.id))}
+                      data-press
+                    >
                       {m.no && m.label !== m.no ? <u className="num">{m.no}</u> : null}
                       {m.label}
+                      {m.id && ceza[m.id] ? (
+                        <em className="bzy-pen" data-k={ceza[m.id].k}>
+                          {PEN[ceza[m.id].k].big}
+                        </em>
+                      ) : null}
                       {m.st && <i data-k={m.st.k} aria-label={m.st.t} />}
                     </button>
                   ))}
@@ -1049,6 +1124,7 @@ export function BilgiAdmin() {
       />
       <KalipSheets org={org} list={kaliplar} view={sheet} onView={setSheet} src={canKalip || sheet === "kyap" ? last : null} to={to} members={members.length} onSend={sendK} repeat={repeat} onSaved={() => setLast((o) => (o ? { ...o, kalip: "saved" } : o))} />
       {antUsed && club && <AntrenmanSheets org={org} view={sheet} onView={setSheet} k={antDoc} boats={boats} ant={ant} />}
+      <SporcuSheet org={org} id={sheet.startsWith("sp:") ? sheet.slice(3) : ""} boat={chBoats.find((x) => `sp:${x.id}` === sheet)} cur={ceza[sheet.slice(3)]} onClose={() => setSheet("")} />
       <Sheet open={sheet === "kanal"} onClose={() => setSheet("")} title={kanal?.name || "Kanal"}>
         <KanalInfo kanal={kanal} link={b?.link || ""} count={members.length} onList={() => setSheet("kanallar")} />
       </Sheet>

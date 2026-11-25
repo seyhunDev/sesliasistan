@@ -34,7 +34,7 @@ function fitTo(m, lib, pts, duration) {
 function markEl() {
   const d = document.createElement("div");
   d.className = "tkm";
-  d.innerHTML = '<span class="tkm-l"><span class="tkm-t"></span><span class="bz-wave tkm-w"><i></i><i></i><i></i><i></i><i></i></span></span><i></i>';
+  d.innerHTML = '<span class="tkm-l"><span class="tkm-t"></span><b class="tkm-pen"></b><span class="bz-wave tkm-w"><i></i><i></i><i></i><i></i><i></i></span></span><i></i>';
   return d;
 }
 
@@ -105,6 +105,10 @@ export function TekneMap({ boats, course = null, full = false, talk = "", tracks
       const el = mk.getElement();
       el.querySelector(".tkm-t").textContent = [b.sail, b.name].filter(Boolean).join(" · ");
       el.classList.toggle("talk", !!talk && b.id === talk);
+      // Ceza rozeti (360° / 720° / FD): adın yanında, nokta da renklenir
+      const pen = el.querySelector(".tkm-pen");
+      pen.textContent = b.pen || "";
+      el.dataset.pen = b.penK || "";
       el.style.setProperty("--c", b.color || "");
       el.classList.toggle("old", !b.keep && now - (b.t || 0) > STALE);
     }
