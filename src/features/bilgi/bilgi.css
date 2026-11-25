@@ -705,3 +705,15 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 .bz-pens span { font-size: 1rem; font-weight: 700; line-height: 1.25; }
 @keyframes bz-penin { from { opacity: 0; transform: scale(1.04); } }
 @media (prefers-reduced-motion: reduce) { .bz-penb { animation: none; } }
+
+/* Kalıp türü: YAZI (asistan sesiyle okunur) limon, SES (kendi sesi) gri */
+.bzy-ktag { flex: none; display: inline-grid; place-items: center; height: 1.125rem; padding: 0 0.3125rem; border-radius: 0.3125rem; font: 800 0.625rem/1 var(--font-num), system-ui, sans-serif; font-style: normal; letter-spacing: .04em;
+  background: rgba(212, 255, 58, .16); color: #d4ff3a; }
+.bzy-ktag[data-k="ses"] { background: rgba(255, 255, 255, .1); color: #e4e4e7; }
+.bzy-kb small .bzy-ktag { height: 0.9375rem; font-size: 0.5625rem; }
+/* + Sesli kalıp: büyük kayıt düğmesi */
+.bzy-krec { height: 9rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.5rem; border: 1px solid var(--line, #2e2e33); border-radius: 1.5rem; background: var(--fill, #1f1f22); color: var(--fg); }
+.bzy-krec b { font: 800 2.75rem/1 var(--sc, system-ui); color: #ff5a5a; }
+.bzy-krec small { font-size: 0.875rem; font-weight: 600; color: var(--mut); }
+.bzy-krec[data-rec] { background: #d4ff3a; color: #111; border-color: #d4ff3a; }
+.bzy-krec[data-rec] b, .bzy-krec[data-rec] small { color: #111; }

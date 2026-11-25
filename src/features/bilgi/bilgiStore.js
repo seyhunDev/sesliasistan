@@ -557,11 +557,36 @@ export function useKaliplar(org) {
     if (!org) return;
     return onSnapshot(
       kalipRef(org),
-      (d) => setV({ org, list: Array.isArray(d.data()?.list) ? d.data().list : [] }),
+      (d) => {
+        // İlk açılışta hazır yazılı kalıplar bir kez eklenir (Seyhun 2026-11-25); silinenler geri gelmez (seeded)
+        if (!d.metadata.fromCache && !d.data()?.seeded) seedKalip(org, Array.isArray(d.data()?.list) ? d.data().list : []).catch(() => {});
+        setV({ org, list: Array.isArray(d.data()?.list) ? d.data().list : [] });
+      },
       () => setV({ org, list: [] }),
     );
   }, [org]);
   return v.org === org ? v.list : null;
+}
+// Yazılı kalıp (Seyhun 2026-11-25 "Google seslendirmesini kullanarak"): { id, name, text } (ses yok); gönderilince yazılı mesaj gibi gider,
+// sporcunun ekranı asistan sesiyle okur (aynı cümlenin sesi sunucuda saklı). Sesli kalıp: { id, name, dur, type } + k-{id} belgesinde ses.
+export const KALIP_HAZIR = ["İskota ayarına bak", "Tüyleri kontrol et", "Hedefi kontrol et", "İskota çek", "İskotayı boşalt", "Daha fazla trapeze çık", "Omuzları uzat"];
+const kalipText = (s) =>
+  String(s || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80);
+function seedKalip(org, list) {
+  const t = Date.now();
+  const have = new Set(list.map((x) => x.text || x.name));
+  const add = KALIP_HAZIR.filter((x) => !have.has(x)).map((x, i) => ({ id: `y${(t + i).toString(36)}`, name: x, text: x, at: t, used: t - i, n: 0 }));
+  return setDoc(kalipRef(org), { list: [...list, ...add].slice(0, KALIP_MAX), seeded: true }, { merge: true });
+}
+export async function addYaziKalip(org, list, text) {
+  const t = kalipText(text);
+  if (!t) throw new Error("empty");
+  const item = { id: newId(), name: t, text: t, at: Date.now(), used: Date.now(), n: 0 };
+  await setDoc(kalipRef(org), { list: [item, ...(list || [])].slice(0, KALIP_MAX) }, { merge: true });
+  return item;
 }
 const kalipName = (s) =>
   String(s || "")
@@ -577,16 +602,24 @@ export async function saveKalip(org, list, { blob, dur, name }) {
   await setDoc(ref(org, `k-${id}`), d);
   mirror(org, d, "ses", `k-${id}`);
   const item = { id, name: kalipName(name), dur: Math.round(dur), type, at: Date.now(), used: Date.now(), n: 0 };
-  await setDoc(kalipRef(org), { list: [item, ...(list || [])].slice(0, KALIP_MAX) });
+  await setDoc(kalipRef(org), { list: [item, ...(list || [])].slice(0, KALIP_MAX) }, { merge: true });
   return item;
 }
-export const renameKalip = (org, list, id, name) => setDoc(kalipRef(org), { list: (list || []).map((x) => (x.id === id ? { ...x, name: kalipName(name) } : x)) });
+// Yazılı kalıpta ad = okunacak cümle
+export const renameKalip = (org, list, id, name) =>
+  setDoc(kalipRef(org), { list: (list || []).map((x) => (x.id === id ? (x.text ? { ...x, name: kalipText(name), text: kalipText(name) } : { ...x, name: kalipName(name) }) : x)) }, { merge: true });
 export async function delKalip(org, list, id) {
-  await setDoc(kalipRef(org), { list: (list || []).filter((x) => x.id !== id) });
-  await deleteDoc(ref(org, `k-${id}`)).catch(() => {});
+  const k = (list || []).find((x) => x.id === id);
+  await setDoc(kalipRef(org), { list: (list || []).filter((x) => x.id !== id) }, { merge: true });
+  if (!k?.text) await deleteDoc(ref(org, `k-${id}`)).catch(() => {});
 }
 const MIRRORED = new Set();
 export async function sendKalip(org, list, k, ctx, to = null) {
+  if (k.text) {
+    const r = await sendMsg(org, k.text, ctx, to);
+    setDoc(kalipRef(org), { list: (list || []).map((x) => (x.id === k.id ? { ...x, used: Date.now(), n: (x.n || 0) + 1 } : x)) }, { merge: true }).catch(() => {});
+    return r;
+  }
   // Link sonradan yenilendiyse kopya yoktur: bu oturumda bir kez sesin kopyası tazelenir
   if (!MIRRORED.has(k.id)) {
     MIRRORED.add(k.id);
@@ -598,7 +631,7 @@ export async function sendKalip(org, list, k, ctx, to = null) {
   mirror(org, d, "ses", "son");
   await setDoc(ref(org, "ses"), d);
   const logId = await logSent(org, { kind: "ses", dur: d.dur, id: d.id, to: to?.name || "", kalip: k.name || "" }, ctx);
-  setDoc(kalipRef(org), { list: (list || []).map((x) => (x.id === k.id ? { ...x, used: Date.now(), n: (x.n || 0) + 1 } : x)) }).catch(() => {});
+  setDoc(kalipRef(org), { list: (list || []).map((x) => (x.id === k.id ? { ...x, used: Date.now(), n: (x.n || 0) + 1 } : x)) }, { merge: true }).catch(() => {});
   return { id: d.id, ok: await confirmed(), logId };
 }
 // Sporcu ekranı: kalıbın sesi (girişli: işletmenin belgesi, linkle: linkin kopyası); bir kez indirilir
