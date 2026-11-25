@@ -660,3 +660,16 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
   .bzy-two[data-n="3"] .bzy-pt b { font-size: 2.25rem; }
   .bzy-two[data-n="3"] .bzy-sure .bzy-sgo b { font-size: min(3.75rem, calc((100cqw - 1.5rem) / 2.9)); }
 }
+
+/* Yönet › Hava: Sahne Hava kutusu (sporcu.css .sh-wxp) ve gün şeridi pencerede */
+.bzy-wx { --sh-lime: #d4ff3a; --sh-line: #26262b; --sh-tile: #17171a; --sh-mut: #a1a1aa; display: grid; gap: 0.625rem; color: #fff; }
+.bzy-wx .sh-days { margin: 0; padding: 0; }
+/* Araçlar: koyu pencerede koyu kutular, beyaz yazı */
+.sahne .bzy-tgb { background: #1f1f22; color: #f4f4f5; border: 1px solid #2e2e33; }
+.sahne .bzy-tgb .bzy-i { color: #d4ff3a; }
+.sahne .bzy-seg2 button { background: #1f1f22; color: #f4f4f5; }
+.sahne .bzy-seg2 button[aria-pressed="true"] { background: #d4ff3a; color: #111; }
+.sahne .bzy-izle { background: #d4ff3a; color: #111; }
+.sahne { --lime: #d4ff3a; --sc: var(--lv-font-c), var(--font-num), system-ui, sans-serif; }
+.sahne .bzy-day { gap: 0.875rem; }
+.sahne .bzy-dt[data-on] b { color: #d4ff3a; }

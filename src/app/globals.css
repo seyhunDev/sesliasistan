@@ -1853,3 +1853,28 @@ html[data-theme="dark"] .it-step { background: rgba(11, 26, 51, .7); color: #dbe
 @media (min-width: 64rem) { .gibigor { bottom: calc(1.5rem + env(safe-area-inset-bottom)); } }
 /* Ana sayfa Hava'nın altındaki tam genişlik kart (bugünün fitness antrenmanı; Seyhun 2026-11-25) */
 @media (min-width: 64rem) { .iph-lead { grid-column: 1 / -1; } }
+
+/* SAHNE PENCERESİ (Seyhun 2026-11-25 Yönet "araçlar beyaz, ön açık gri, yazılar okunmuyor"): koyu Sahne sayfalarının pencereleri
+   (Sheet + SheetTone "sahne"): zemin #17171a, kutular #1f1f22, beyaz yazı, tek vurgu limon. .navy kurallarının (düğme, ton) üstüne yalnız renkler */
+.navy.sahne {
+  --bg: #0b0b0c;
+  --card: #1f1f22;
+  --fill: #1f1f22;
+  --fg: #f4f4f5;
+  --fg2: #d4d4d8;
+  --mut: #a1a1aa;
+  --line: #2e2e33;
+  --acc: #d4ff3a;
+  --acc2: #d4ff3a;
+  --on-acc: #111;
+  --accbg: rgba(212, 255, 58, .14);
+  --wx-acc: #d4ff3a;
+  background: #17171a;
+  color: #f4f4f5;
+}
+.sahne .btn { --btn-gray: #26262b; --btn-fg: #f4f4f5; }
+.sahne :is(.btn-primary, .btn-secondary[aria-pressed="true"]) { --btn-bg: #d4ff3a; --btn-fg: #111; }
+.sahne .btn-text { --btn-fg: #d4ff3a; }
+.sahne :is(.bg-bg, .bg-card) { background-color: #1f1f22; }
+.sahne :is(.bg-white) { background-color: #1f1f22; color: #f4f4f5; }
+.sahne :is(input, select, textarea) { color: #f4f4f5; }
