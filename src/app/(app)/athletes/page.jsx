@@ -18,6 +18,7 @@ import { useData } from "@/features/data/DataProvider";
 import { AccessSheet } from "@/features/athletes/AccessSheet";
 import { syncAthleteAtt } from "@/features/athletes/mirror";
 import { NewAthlete } from "@/features/athletes/NewAthlete";
+import { repairLinks } from "@/features/athletes/memberSync";
 
 // Arama ve karşılaştırma için: küçük harf, Türkçe
 const low = (s) => String(s || "").toLocaleLowerCase("tr-TR");
@@ -58,6 +59,7 @@ function AthleteList() {
   useEffect(() => {
     if (!data || synced.current === data) return;
     synced.current = data;
+    repairLinks(myUid, members, data.athletes).catch(() => {});
     for (const a of data.athletes) {
       const m = members.find((x) => x.athleteId === a.id && x.status !== "left" && x.account !== false);
       if (m) syncAthleteAtt(myUid, m.uid, a).catch(() => {});
