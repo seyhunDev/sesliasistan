@@ -31,6 +31,29 @@ export function SahneToggles({ auto, onMode, quiet, onQuiet }) {
   );
 }
 
+// Hareket ekranında fotoğrafın üstünde tek küçük kapsül: Otomatik (limon ↻ / el = elle), ses, sıra (Seyhun 2026-11-25)
+const HAND = "M8 13V5.5a1.5 1.5 0 0 1 3 0V12M11 11.5v-7a1.5 1.5 0 0 1 3 0V12M14 6.5a1.5 1.5 0 0 1 3 0V13M17 9.5a1.5 1.5 0 0 1 3 0V15a7 7 0 0 1-7 7h-1a7 7 0 0 1-6-3.5l-2.5-4.5a1.5 1.5 0 0 1 2.6-1.5L8 15";
+export function SahneIcons({ auto, onMode, quiet, onQuiet, count }) {
+  const ic = "grid size-9 place-items-center rounded-full";
+  return (
+    <div className="flex items-center gap-0.5 rounded-full bg-black/45 p-0.5 text-white backdrop-blur">
+      <button type="button" onClick={() => onMode(!auto)} aria-pressed={auto} aria-label={auto ? "Otomatik" : "Elle"} className={ic} style={auto ? { color: LIME } : undefined}>
+        {auto ? (
+          <Icon name="repeat" className="size-[1.125rem]" />
+        ) : (
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-[1.125rem]" aria-hidden>
+            <path d={HAND} />
+          </svg>
+        )}
+      </button>
+      <button type="button" onClick={onQuiet} aria-pressed={!quiet} aria-label={quiet ? "Sessiz" : "Ses açık"} className={`${ic} ${quiet ? "text-white/75" : ""}`}>
+        <Icon name={quiet ? "mute" : "volume"} className="size-[1.125rem]" />
+      </button>
+      {count && <span className={`${head} pl-1 pr-3 text-[1.0625rem] tabular-nums`}>{count}</span>}
+    </div>
+  );
+}
+
 export function SahneIntro({ name, items, sets, min, bg, speaking, onSay, onGo, onClose, toggles }) {
   const total = sets.reduce((t, s) => t + s.length, 0);
   const d = new Date();
