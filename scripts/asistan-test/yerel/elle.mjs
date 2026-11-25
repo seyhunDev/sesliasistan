@@ -3421,7 +3421,8 @@ group("Ortak düğmeler")([
     ["tarif", F("tarifte örnek cümle, sahne ve yazısız tarz", () => { const p = KP.picPrompt(KC.CHUNKS[0]); return p.includes("I'm looking forward to seeing you") && p.includes(KP.PICS["look-forward"]) && /no text/i.test(p); })],
     ["bilinmeyen kalıp", F("sahnesi olmayan kalıba tarif yok", () => KP.picPrompt({ id: "yok", head: "x", fills: [] }) === "")],
     ["Hatırla adımı", F("Kur → Hatırla → Konuş; Göster kalıbı yarına atar", () => /"Kur", "Hatırla", "Konuş"/.test(cs) && /last \? "Hatırla"/.test(cs) && /const show = \(\) => \{[\s\S]*?setMiss\(true\)/.test(cs) && /hearSay\(say0, blob\)/.test(cs))],
-    ["dinleme", F("/api/word hear: yazıya döker ve beklenen cümleyle karşılaştırır", () => /if \(body\?\.hear\) return hear\(au, body, audio\)/.test(wr) && /HEAR_SCHEMA/.test(wr))],
+    ["dinleme", F("/api/word hear: önce bağlamsız yazıya döker (scribe), sonra beklenen cümleyle karşılaştırır", () => /if \(body\?\.hear\) return hear\(au, body, audio\)/.test(wr) && /const heard = await scribe\(audio\);[\s\S]*?same\(heard, en\)/.test(wr) && /HEAR_OK/.test(wr))],
+    ["Konuş sesli cevap", F("Konuş: sesli cevap konuşmadan ayrı yazıya dökülür, 3 örnek cevap gelir", () => /heard = await scribe\(audio\);[\s\S]*?turns\.push\(\{ me: true, e: heard \}\)/.test(wr) && /hints: \{ type: "array"/.test(wr) && !/TALK_AUDIO/.test(wr))],
     ["Resimler listesi", F("⋯ içinde yalnız ana hesapta Resimler", () => /\{orgId && \(\s*<Button variant="secondary" onClick=\{\(\) => \(setMenu\(false\), setPics\(true\)\)\}>/.test(pg) && /<ChunkPics orgId=\{orgId\}/.test(pg))],
   ]);
 }

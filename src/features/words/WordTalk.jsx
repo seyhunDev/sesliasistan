@@ -30,12 +30,12 @@ function Marked({ text, word }) {
 // Yapay zeka soru ya da günlük cümle söyler (kelime geçer), kişi yazarak ya da mikrofonla cevaplar; hatalıysa altında "Daha doğru: …".
 // 5 cevaptan sonra kapanış cümlesi ve Sına. Her İngilizce satır dokununca okunur; Sesli yanıt açıksa yapay zekanın cümlesi kendiliğinden okunur
 // (üstteki hoparlörle bu ekranda kapatılır). Mikrofon: basılı tut-bırak gönderir; kısa dokunuş kaydı açar, ikinci dokunuş gönderir.
+// 2026-11-25: sesli cevap sunucuda önce bağlamsız yazıya dökülür (kişinin kendi sözü yazılır); altta küçük 3 örnek cevap hep görünür (dokununca okunur).
 export function WordTalk({ w, onClose, onQuiz }) {
   const toast = useToast();
   const tts = useTts();
   const [lines, setLines] = useState([]); // { who: "ai", e, t } | { who: "me", e, fix, ok, wait }
-  const [hint, setHint] = useState(null);
-  const [showHint, setShowHint] = useState(false);
+  const [hints, setHints] = useState([]); // kişinin verebileceği örnek cevaplar (altta küçük)
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [failed, setFailed] = useState(false);
@@ -55,8 +55,7 @@ export function WordTalk({ w, onClose, onQuiz }) {
         audio,
       );
       setLines((l) => [...l.map((x) => (x.wait ? { ...x, e: r.heard || x.e, fix: r.fix, ok: r.ok, wait: false } : x)), { who: "ai", ...r.next }]);
-      setHint(r.hint?.e ? r.hint : null);
-      setShowHint(false);
+      setHints(r.hints?.length ? r.hints : r.hint?.e ? [r.hint] : []);
       setDone(!!r.done);
       if (voiceRef.current) sayEn(r.next.e);
     } catch (e) {
@@ -78,7 +77,7 @@ export function WordTalk({ w, onClose, onQuiz }) {
   }, []);
   useEffect(() => {
     end.current?.scrollIntoView({ block: "end", behavior: "smooth" });
-  }, [lines, showHint]);
+  }, [lines, hints]);
 
   const send = () => {
     const t = text.trim();
@@ -173,16 +172,16 @@ export function WordTalk({ w, onClose, onQuiz }) {
             Tekrar dene
           </Button>
         )}
-        {hint && !busy && !done && (showHint ? (
-          <button type="button" onClick={() => sayEn(hint.e)} className="block border-l-2 border-[#8fb3ff]/40 pl-3 text-left">
-            <span className="block text-[1rem] leading-snug text-white/75">{hint.e}</span>
-            <span className="mt-0.5 block text-[0.8125rem] text-white/40">{hint.t}</span>
-          </button>
-        ) : (
-          <button type="button" onClick={() => setShowHint(true)} className="self-start py-1 text-[0.9375rem] text-white/45">
-            İpucu
-          </button>
-        ))}
+        {hints.length > 0 && !busy && !done && (
+          <div aria-label="Örnek cevaplar" className="mt-1 flex flex-col gap-2 border-l-2 border-[#8fb3ff]/30 pl-3">
+            {hints.map((h) => (
+              <button key={h.e} type="button" onClick={() => sayEn(h.e)} className="block text-left">
+                <span className="block text-[0.9375rem] leading-snug text-white/70">{h.e}</span>
+                <span className="block text-[0.75rem] leading-snug text-white/35">{h.t}</span>
+              </button>
+            ))}
+          </div>
+        )}
         <div ref={end} />
       </section>
 
@@ -205,7 +204,7 @@ export function WordTalk({ w, onClose, onQuiz }) {
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && send()}
-              placeholder={mic.on ? "Dinliyorum…" : "Cevabını yaz…"}
+              placeholder={mic.state === "opening" ? "Mikrofon açılıyor…" : mic.rec ? "Dinliyorum · bitince bas" : mic.state === "stopping" ? "Bakıyorum…" : "Yaz ya da mikrofona bas"}
               disabled={mic.on}
               autoCapitalize="sentences"
               lang="en"

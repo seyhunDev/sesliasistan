@@ -10,6 +10,7 @@ import { WordTalk } from "./WordTalk";
 import { hearSay } from "./wordData";
 import { useEnMic } from "./useEnMic";
 import { cachedPic, drawing, loadPic, makePic } from "./chunkPics";
+import { Altyazi } from "./Altyazi";
 
 // Kalıp bloklama (Seyhun 2026-11-02: "kalıplarla kelimeleri öğreneceğim… tek tek kelime öğrenmek istemiyorum"; örnek
 // /mnt/project-files/ingilizce-kelime/kaliplar/ornek.png onaylandı 2026-11-04). Bir kalıp dört adımda: Dinle · Değiştir (parçaya
@@ -303,80 +304,10 @@ export function ChunkStudy({ c, deck, today, topic, orgId, onSave, onNext, onOpe
     const answered = heard && (heard.shown || typeof heard.ok === "boolean");
     const wrong = answered && !heard.ok && !heard.shown;
     const st = listening || mic.state === "stopping" ? "wait" : mic.state === "opening" ? "open" : mic.rec ? "rec" : "idle";
-    return (
-      <>
-        {top(
-          <Button variant="icon" size="sm" aria-label="Hatırla'yı kapat" onClick={() => (mic.cancel(), setPhase("learn"))} className="!text-white/50">
-            <Icon name="x" className="size-5" />
-          </Button>,
-          <b className="font-semibold text-white/88">Hatırla</b>,
-          <span className="size-9" />,
-        )}
-        <Steps at={3} />
-        <section aria-label="Hatırla" className="relative flex flex-1 flex-col justify-center gap-5 py-6">
-          {pic.img ? <Pic pic={pic} className="mx-auto max-w-[20rem]" /> : <TrLine text={c.fills[0][2]} part={c.fills[0][1]} className="text-[1.5rem] font-semibold leading-[1.3]" />}
-          <div aria-live="polite" className="min-h-[3.25rem] text-[1.25rem] font-bold leading-snug">
-            {answered ? (
-              <button type="button" onClick={() => sayEn(say0)} className="text-left">
-                {heard.ok ? (
-                  <span className="inline-flex items-center gap-1.5 text-[#9fe7c6]">
-                    <Icon name="check" className="size-5" /> {say0}
-                  </span>
-                ) : (
-                  <>
-                    {wrong && <span className="block text-[0.9375rem] font-semibold text-[#f3a39a]">Sen: {heard.heard}</span>}
-                    <span className="text-white/90">{say0}</span>
-                  </>
-                )}
-              </button>
-            ) : heard?.err && st === "idle" ? (
-              <p className="text-[1rem] font-semibold text-[#f3a39a]">{heard.err}</p>
-            ) : null}
-          </div>
-          {(!answered || wrong) && (
-            <div className="flex flex-col items-center gap-3">
-              <button
-                type="button"
-                onClick={wrong ? again : tapMic}
-                aria-label={st === "rec" ? "Bitti" : "Bas ve konuş"}
-                aria-busy={st === "wait" || st === "open"}
-                className={`relative grid place-items-center rounded-full text-white transition-transform active:scale-95 ${wrong ? "size-14" : "size-[5.5rem]"} ${st === "rec" ? "bg-[#ff3d77]" : st === "idle" ? GRAD : "bg-white/10"}`}
-              >
-                {st === "rec" && (
-                  <span
-                    ref={lvRef}
-                    aria-hidden
-                    className="absolute inset-0 rounded-full bg-[#ff3d77]/35 transition-transform duration-75"
-                    style={{ transform: "scale(calc(1 + var(--lv, 0) * 0.7))" }}
-                  />
-                )}
-                {(st === "wait" || st === "open") && <span aria-hidden className="absolute inset-0 animate-spin rounded-full border-[3px] border-white/15 border-t-[#ffb38a]" />}
-                <Icon name={st === "rec" ? "up" : "mic"} className={`relative ${wrong ? "size-6" : "size-8"}`} />
-              </button>
-              <span className={`text-[0.9375rem] font-semibold ${st === "rec" ? "text-[#ff9ab4]" : "text-white/60"}`}>
-                {st === "rec" ? "Dinliyorum · bitince bas" : st === "open" ? "Mikrofon açılıyor…" : st === "wait" ? "Bakıyorum…" : wrong ? "Tekrar söyle" : "Bas ve konuş"}
-              </span>
-            </div>
-          )}
-        </section>
-        <footer className="relative flex items-center justify-between gap-3">
-          {answered ? (
-            <Button variant="text" onClick={() => (mic.cancel(), finish(!miss, false))} disabled={st !== "idle"} className="!px-0 !text-white/50">
-              Atla
-            </Button>
-          ) : (
-            <Button variant="text" onClick={show} disabled={st === "wait"} className="!px-0 !text-white/50">
-              Göster
-            </Button>
-          )}
-          {answered && (
-            <Button variant="secondary" full={false} onClick={() => (mic.cancel(), finish(!miss, true))} disabled={st === "wait"} className={GO}>
-              Konuş
-            </Button>
-          )}
-        </footer>
-      </>
-    );
+    const close = () => (mic.cancel(), setPhase("learn"));
+    const skip = () => (mic.cancel(), finish(!miss, false));
+    const talk = () => (mic.cancel(), finish(!miss, true));
+    return <Altyazi {...{ pic, say0, tr: c.fills[0][2], heard, answered, wrong, st, lvRef, onMic: wrong ? again : tapMic, onClose: close, onShow: show, onSkip: skip, onTalk: talk }} />;
   }
 
   if (phase === "talk") return <WordTalk w={{ en: patternText(c), tr: c.tr, kind: "phrase" }} onClose={() => setPhase(saved ? "done" : "learn")} />;
