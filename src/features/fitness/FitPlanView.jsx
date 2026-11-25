@@ -74,27 +74,17 @@ export function FitPlanView({ rec, by, onClose, onDelete }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      {land ? (
-        <div className="grid min-h-0 flex-1 grid-cols-[22rem_minmax(0,1fr)]">
-          <aside className="ck flex min-h-0 flex-col overflow-y-auto px-5 pb-[calc(1rem+env(safe-area-inset-bottom))]">
-            {top}
-            <div ref={setDockL} className="mt-auto pt-6" />
-          </aside>
-          <div data-scroll className="min-h-0 overflow-y-auto overscroll-contain px-5 pb-8 pt-[calc(1rem+env(safe-area-inset-top))]">
-            {workout}
-          </div>
+      {/* Tek ağaç: döndürünce yalnız sınıflar değişir, FitWorkout (açık adım adım ekran, sayaç) yeniden kurulmaz */}
+      <div data-scroll={land ? undefined : ""} className={land ? "grid min-h-0 flex-1 grid-cols-[22rem_minmax(0,1fr)]" : "min-h-0 flex-1 overflow-y-auto overscroll-contain"}>
+        <div className={land ? "ck flex min-h-0 flex-col overflow-y-auto px-5 pb-[calc(1rem+env(safe-area-inset-bottom))]" : "ck px-5 pb-11"}>
+          {top}
+          {land && <div ref={setDockL} className="mt-auto pt-6" />}
         </div>
-      ) : (
-        <>
-          <div data-scroll className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-            <section className="ck px-5 pb-11">{top}</section>
-            <div className="relative -mt-7 rounded-t-[1.75rem] bg-bg px-4 pb-6 pt-2">
-              <div className="mx-auto max-w-[40rem]">{workout}</div>
-            </div>
-          </div>
-          <div ref={setDockB} className="shrink-0 bg-bg px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] empty:hidden" />
-        </>
-      )}
+        <div data-scroll={land ? "" : undefined} className={land ? "min-h-0 overflow-y-auto overscroll-contain px-5 pb-8 pt-[calc(1rem+env(safe-area-inset-top))]" : "relative -mt-7 rounded-t-[1.75rem] bg-bg px-4 pb-6 pt-2"}>
+          <div className={land ? "" : "mx-auto max-w-[40rem]"}>{workout}</div>
+        </div>
+      </div>
+      {!land && <div ref={setDockB} className="shrink-0 bg-bg px-4 pb-[calc(0.5rem+env(safe-area-inset-bottom))] empty:hidden" />}
 
       <WhenSheet open={whenOpen} rec={rec} by={by} onClose={() => setWhenOpen(false)} />
       <Sheet top open={more} onClose={() => setMore(false)} title={name}>
