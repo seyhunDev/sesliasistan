@@ -14,16 +14,15 @@ import { useAssistant } from "@/features/assistant/AssistantProvider";
 import { useBirthday } from "@/features/birthdays/BirthdayProvider";
 import { useChat } from "@/features/chat/ChatProvider";
 import { useReceipt } from "@/features/receipts/ReceiptProvider";
-import { useKind } from "@/features/auth/useKind";
-import { useAuth } from "@/features/auth/AuthProvider";
-import { canSeeAthletes } from "@/features/athletes/access";
 import { useMeeting } from "@/features/meeting/MeetingProvider";
 import { ListenWave } from "@/features/speech/ListenWave";
 import { MicDot } from "@/features/speech/MicDot";
 import { useTts } from "@/features/speech/TtsProvider";
 import { SpeakerGlyph } from "@/features/speech/SpeakerGlyph";
 import { useSpeech } from "@/hooks/useSpeech";
-import { canReceipts, isAthleteSide, isPlain } from "@/lib/kinds";
+import { canReceipts } from "@/lib/kinds";
+import { useHesap } from "@/features/auth/useHesap";
+import { tabsOf } from "@/lib/hesapGorunum";
 import { miniText, pullAction } from "@/lib/miniOrb";
 import { ringOf } from "@/lib/assistRing";
 import { SideNav, useWide } from "./SideNav";
@@ -568,7 +567,7 @@ function ReadToggle() {
   );
 }
 
-function Dome({ noAi = false, plain = false, bar, slim, rec, active, leaving = false, small = false, state, live, talk, press, release, typeNow, typing, onTypingDone, cfg, onClose, onMini, setSlot, path, unread, voice = {}, typeInit = "" }) {
+function Dome({ noAi = false, tabs = [], bar, slim, rec, active, leaving = false, small = false, state, live, talk, press, release, typeNow, typing, onTypingDone, cfg, onClose, onMini, setSlot, path, unread, voice = {}, typeInit = "" }) {
   const client = useSyncExternalStore(noop, () => true, () => false);
   const box = useRef(null);
   const inner = useRef(null);
@@ -933,20 +932,10 @@ function Dome({ noAi = false, plain = false, bar, slim, rec, active, leaving = f
               {/* Bas-konuş (Seyhun 2026-10-25 "A · Çubuğun sağ ucunda"): dört sekme solda, büyük küre sağ uçta, baş parmağın altında */}
               <div className="mx-auto flex h-14 max-w-[34rem] items-stretch">
                 <div className="grid min-w-0 flex-1 grid-cols-4">
-                  <NavTab href="/" icon="home" label="Ana sayfa" active={path === "/"} />
-                  <NavTab href="/calendar" icon="cal" label="Takvim" active={path === "/calendar"} />
-                  {/* Normal kullanıcı (Seyhun 2026-11-24): Kulüp (Velora Sailing) ve İngilizce; Mesajlar ve Görevler menüde (Tümü) */}
-                  {plain ? (
-                    <>
-                      <NavTab href="/sailing" icon="anchor" label="Kulüp" active={path === "/sailing"} />
-                      <NavTab href="/english" icon="book" label="İngilizce" active={String(path || "").startsWith("/english")} />
-                    </>
-                  ) : (
-                    <>
-                      <NavTab href="/messages" icon="chat" label="Mesajlar" active={path === "/messages"} badge={unread} />
-                      <NavTab href="/tasks" icon="task" label="Görevler" active={path === "/tasks"} />
-                    </>
-                  )}
+                  {/* Sekmeler hesap görünümüne göre (lib/hesapGorunum.js TABS; normal kullanıcıda Kulüp ve İngilizce, Seyhun 2026-11-24) */}
+                  {tabs.map(([href, label, icon, key]) => (
+                    <NavTab key={href} href={href} icon={icon} label={label} active={href === "/" ? path === "/" : String(path || "").startsWith(href)} badge={key === "msg" ? unread : undefined} />
+                  ))}
                 </div>
                 {!noAi && (
                   <div data-ptt="" className="relative w-[6rem] shrink-0">
@@ -1008,7 +997,8 @@ export function TabBar({ cfg, bar, slim = false, rec = false, sideNav = false })
     document.body.dataset.typing = "1";
     return () => delete document.body.dataset.typing;
   }, [typing]);
-  const kind = useKind();
+  const h = useHesap(); // ana sayfa, alt çubuk, menü hesap görünümüne göre ("… gibi gör" dahil)
+  const kind = h.kind;
 
   const open = !!live.open;
   // Küçülen küre (Seyhun, 2026-10-14): konuşurken ya da iş sürerken aşağı çekilince asistan kapanmaz, sağ altta küre
@@ -1040,15 +1030,12 @@ export function TabBar({ cfg, bar, slim = false, rec = false, sideNav = false })
   };
   // Oluştur menüsü gruplu (Seyhun: "artı düğmesinin içeriğini geliştirin, daha fazla özelliğimiz var", 2026-10-06): kişinin
   // görebildiği her hızlı oluşturma işi, ana sayfadaki İşlemler'le aynı izinlerle. Sayfanın kendi seçenekleri en üstte.
-  const { profile } = useAuth();
   const { openMeeting } = useMeeting();
-  const staff = profile?.role === "staff";
-  const owner = profile?.role === "owner";
-  const side = isAthleteSide(kind);
+  const { staff, side, owner } = h;
   // Sporcu ve öğrenci: asistan yok (veli eskisi gibi). Fitness sayfalarında da şimdilik yok (Seyhun, 2026-10-16:
   // "simdilik sesli asistani fitness sayfalarinda kullanmayacagiz"; program yapay zekayla sayfanın kendi düğmelerinden).
   const noAi = kind === "athlete" || kind === "student" || String(path || "").startsWith("/fitness");
-  const athletes = canSeeAthletes(profile?.email);
+  const athletes = h.athletes;
   const to = (href) => () => router.push(href);
   const groups = [
     ["Kayıt", [
@@ -1119,7 +1106,7 @@ export function TabBar({ cfg, bar, slim = false, rec = false, sideNav = false })
     <>
       <Dome
         noAi={noAi}
-        plain={!owner && isPlain(kind)}
+        tabs={tabsOf(h.view)}
         bar={bar}
         slim={slim}
         rec={rec && !noAi}
