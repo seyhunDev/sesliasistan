@@ -2460,6 +2460,13 @@ group("Fitness hareket kütüphanesi")([
     const ph = FTP.templatePhotos("yelken-ev-12");
     return ph.length === 40 && new Set(ph.map((x) => x.name)).size === 40 && ph.every((x) => /^\/fitness\/hazir\/[a-z0-9-]+\.jpg$/.test(x.src));
   })],
+  ["hazır programın anlatımı", F("her hareketin nasıl yapılır anlatımı var; fotoğrafsızlar çizilir (prova hariç)", () => {
+    const p = FTP.fromTemplate("yelken-ev-12");
+    const all = p.days.flatMap((d) => d.items);
+    const draw = FTP.templateDraw("yelken-ev-12").map((x) => x.name);
+    return all.every((x) => x.how && x.how.length > 30) && all.find((x) => x.name === "Band row").setup.includes("kapı") &&
+      draw.length === 5 && draw.includes("Kedi deve") && !draw.includes("Ana harekete prova");
+  })],
   ["kopyaları birleştir", F("eski kopyalar: fotoğraflı kalır, bütün fotoğraf/videolar korunur, programdaki eski ad kalanı kullanır", () => {
     const M = (id, kind = "photo") => ({ id, kind, type: "image/jpeg", size: 1000, parts: 1 });
     const old = LB.cleanLib({ next: 4, items: {

@@ -135,6 +135,11 @@ export function cleanItem(it = {}) {
   }
   const note = S(it.note, 200);
   if (note) out.note = note;
+  // Nasıl yapılır (hazır programlar; adım adım ekranda ve sesli anlatımda): setup hareketten önceki hazırlık, how cümle cümle
+  const setup = S(it.setup, 200);
+  if (setup) out.setup = setup;
+  const how = S(it.how, 500);
+  if (how) out.how = how;
   const media = cleanMedia(it.media);
   if (media.length) out.media = media;
   const yt = cleanYt(it.yt);
