@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { doc, runTransaction } from "firebase/firestore";
 import { updateDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
-import { Icon } from "@/components/ui/Icon";
 import { Sheet } from "@/components/ui/Sheet";
 import { SwipeRow } from "@/components/ui/SwipeRow";
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -143,26 +142,6 @@ function List({ rows, onHide, hideLabel }) {
         <Row key={x.id} x={x} first={!i} onHide={onHide} hideLabel={hideLabel} />
       ))}
     </ul>
-  );
-}
-
-// Başlıktaki zil: sayı = görülmemiş bildirimler; dokununca pencere (açılınca sayı düşer)
-export function InboxBell({ inbox, onOpen }) {
-  const n = inbox.count;
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      aria-label={n ? `Senin için, ${n} yeni` : "Senin için"}
-      data-press className="btn btn-round size-10 relative mt-0.5 shrink-0 text-fg"
-    >
-      <Icon name="bell" className="size-5" />
-      {n > 0 && (
-        <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-rec px-1 text-[0.6875rem] font-bold tabular-nums text-white ring-2 ring-bg">
-          {n > 99 ? "99+" : n}
-        </span>
-      )}
-    </button>
   );
 }
 
