@@ -10,7 +10,7 @@ import { Row } from "./ui";
 // Google kalan kotayı API ile vermediği için sayaç uygulamanındır. Firebase kullanımı için konsol bağlantısı.
 // Aylık yapay zeka bütçesi (TL): yalnız bu telefonda; harcamanın yüzdesi gösterilir
 const BUDGET_KEY = "sa-ai-butce";
-const readBudget = () => {
+export const readBudget = () => {
   try {
     return Number(localStorage.getItem(BUDGET_KEY)) || 250;
   } catch {
@@ -18,8 +18,9 @@ const readBudget = () => {
   }
 };
 
-export function UsageRow() {
-  const [open, setOpen] = useState(false);
+// data: Ayarlar › Durum kartının okuduğu /api/usage cevabı; verilirse satır açık başlar (pencerede ikinci dokunuş ve okuma yok)
+export function UsageRow({ data = null } = {}) {
+  const [open, setOpen] = useState(!!data);
   const [budget, setBudget] = useState(readBudget);
   const saveBudget = (v) => {
     const n = Math.max(0, Math.round(Number(String(v).replace(",", ".")) || 0));
@@ -28,12 +29,9 @@ export function UsageRow() {
       localStorage.setItem(BUDGET_KEY, String(n));
     } catch {}
   };
-  const [d, setD] = useState(null);
+  const [d, setD] = useState(data);
   const [err, setErr] = useState("");
-  const toggle = async () => {
-    const next = !open;
-    setOpen(next);
-    if (!next || d) return;
+  const load = async () => {
     try {
       const res = await authFetch("/api/usage?ai=1");
       const j = await res.json();
@@ -42,6 +40,11 @@ export function UsageRow() {
     } catch (e) {
       setErr(e.message || "Okunamadı");
     }
+  };
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    if (next && !d) load();
   };
   const cur = usageRows(d?.ai?.month);
   const prev = usageRows(d?.ai?.prev);
