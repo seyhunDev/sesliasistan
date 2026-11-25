@@ -17,6 +17,10 @@ export const MSG_MAX = 200;
 export const SES_MAX_SEC = 20;
 // Mesaj ve ses yalnız tazeyse gösterilir/çalınır (ekran sonradan açılınca eski mesaj okunmaz)
 export const FRESH_MS = 60e3;
+// Kime (Seyhun 2026-11-25 "hangi sporcuya tıklıyorsam onunla, hepsine tıklıyorsam onlarla"): to = cihaz kimlikleri virgülle; boşsa herkes
+export const TO_MAX = 600;
+export const toList = (to) => String(to || "").split(",").filter(Boolean);
+export const isFor = (to, dev) => !to || toList(to).includes(dev);
 
 // Start sonrası ekranda ne görünsün (Seyhun 2026-11-15, örnek 5): Yönet'ten aç kapa. Varsayılan pusula + süre + saat
 export const SHOW = [["pusula", "Pusula"], ["ruzgar", "Rüzgâr"], ["parkur", "Harita"], ["sure", "Süre"], ["saat", "Saat"]];
@@ -37,8 +41,8 @@ export function cleanBilgi(d = {}) {
     link: /^[a-z0-9]{12,40}$/.test(d.link || "") ? d.link : "",
     state: S(d.state, 80),
     timer: t ? { dur: Number(t.dur) || 300, end: Number.isFinite(+t.end) && t.end != null ? +t.end : null, left: Number.isFinite(+t.left) && t.left != null ? +t.left : null, mode: S(t.mode, 20) } : null,
-    msg: m && m.id ? { id: S(m.id, 40), text: S(m.text, MSG_MAX), at: Number(m.at) || 0, to: S(m.to, 30) } : null,
-    pin: d.pin && typeof d.pin === "object" && d.pin.id ? { id: S(d.pin.id, 40), text: S(d.pin.text, MSG_MAX), at: Number(d.pin.at) || 0, to: S(d.pin.to, 30) } : null,
+    msg: m && m.id ? { id: S(m.id, 40), text: S(m.text, MSG_MAX), at: Number(m.at) || 0, to: S(m.to, TO_MAX) } : null,
+    pin: d.pin && typeof d.pin === "object" && d.pin.id ? { id: S(d.pin.id, 40), text: S(d.pin.text, MSG_MAX), at: Number(d.pin.at) || 0, to: S(d.pin.to, TO_MAX) } : null,
     parkur: cleanParkur(d.parkur),
     kanal: d.kanal && typeof d.kanal === "object" && d.kanal.id ? { id: S(d.kanal.id, 40), name: S(d.kanal.name, 30) || "Kanal", open: d.kanal.open === true } : null,
   };
@@ -57,7 +61,7 @@ export function deliveryOf(sent, boats, ch, now) {
   if (sent.ok === false) return { state: "fail", seen: 0, of: 0, missing: [] };
   if (sent.ok == null) return { state: "wait", seen: 0, of: 0, missing: [] };
   const pool = (boats || []).filter((b) => b.ch === ch);
-  const targets = sent.to ? pool.filter((b) => b.id === sent.to) : pool.filter((b) => (b.t || 0) > sent.at - LIVE_MS);
+  const targets = sent.to ? pool.filter((b) => isFor(sent.to, b.id)) : pool.filter((b) => (b.t || 0) > sent.at - LIVE_MS);
   const seen = targets.filter((b) => b.seen === sent.id);
   const missing = targets.filter((b) => b.seen !== sent.id).map((b) => b.sail || b.name || "?");
   const late = now - sent.at > SEEN_WAIT;

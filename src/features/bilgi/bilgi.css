@@ -462,3 +462,94 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 /* Katıl kartını kapat (Seyhun 2026-11-23): sol üstte ortak yuvarlak düğme */
 .bz-x { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 0.75rem); left: max(0.75rem, env(safe-area-inset-left, 0px)); }
 .bz-x svg { width: 1.25rem; height: 1.25rem; }
+
+/* Yönet "Sahne" (Seyhun 2026-11-25 örnek "Yönet bas-konuş köşesi" onaylandı): koyu harita ve koyu panel, tek vurgu limon (ana sayfa ve Fitness
+   gibi). İsimler hep açık (birden çok seçilir, Hepsi herkes); altta aynı boyda iki büyük kutu: solda Süre (kutunun tamamı Başlat/Bitir),
+   sağda Bas konuş. Pencereler (Sheet) eskisi gibi açık renk. */
+.bzy-app { --bg: #0b0b0c; --card: #17171a; --fg: #fff; --fg2: #e4e4e7; --mut: #a1a1aa; --line: #26262b; --acc: #d4ff3a; --on-acc: #111; --talk: #d4ff3a;
+  --glass: rgba(23, 23, 26, .9); --frost: rgba(23, 23, 26, .78); --frost-b: blur(18px) saturate(1.4); --lime: #d4ff3a; --sc: var(--lv-font-c), var(--font-num), system-ui, sans-serif;
+  background: #101418; color-scheme: dark; }
+.bzy-app .tkm-map.tkm-full { background: #101418; }
+.bzy-app .bzy-fab, .bzy-app .bzy-zm .btn, .bzy-app .bzy-tool { color: #fff; }
+.bzy-app .bzy-fab, .bzy-app .bzy-zm, .bzy-app .bzy-rail { border: 1px solid #2e2e33; box-shadow: 0 2px 12px rgba(0, 0, 0, .35); }
+.bzy-app .bzy-zm .btn + .btn { border-top-color: #2e2e33; }
+.bzy-app .bzy-tool:active, .bzy-app .bzy-tool[data-pressed] { background: rgba(255, 255, 255, .08); }
+.bzy-app .bzy-sep { background: #2e2e33; }
+.bzy-app .bzy-off { color: #ff6b6b; }
+.bzy-app .bzy-veil { background: linear-gradient(180deg, rgba(11, 11, 12, .1), rgba(11, 11, 12, .85) 60%); }
+.bzy-app .bzy-start p { color: var(--mut); }
+.bzy-app .bzy-talk .bz-wave, .bzy-app .tkm-w { color: var(--lime); }
+.bzy-app .tkm.talk i { background: var(--lime); }
+.bzy-app .tkm.talk i::after { border-color: var(--lime); }
+.bzy-app .bzy-sent { background: var(--card); border-color: #2e2e33; color: #fff; }
+.bzy-app[data-open] .bzy-rail { --pnl-h: 22rem; }
+.bzy-app .bzy-pnl { gap: 0.75rem; padding-top: 0.875rem; background: rgba(11, 11, 12, .94); border-top: 1px solid var(--line); box-shadow: 0 -6px 26px rgba(0, 0, 0, .4); }
+.bzy-app .bzy-kl { margin: 0; }
+.bzy-app .bzy-kn2 { color: var(--mut); font-size: 0.75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.bzy-app .bzy-kn2 .bzy-dot { background: var(--lime); box-shadow: 0 0 0 3px rgba(212, 255, 58, .16); }
+.bzy-app .bzy-tst { color: var(--mut); }
+.bzy-app .bzy-tst[data-k="ok"], .bzy-app .bzy-tst[data-k="rec"] { color: var(--lime); }
+.bzy-app .bzy-tst[data-k="bad"] { color: #ff6b6b; }
+.bzy-kbb { flex: none; width: 2.25rem; height: 2.25rem; display: grid; place-items: center; margin-left: auto; border: 1px solid #2e2e33; border-radius: 50%; background: #1f1f22; color: #fff; }
+.bzy-tst + .bzy-kbb { margin-left: 0; }
+.bzy-kbb[aria-pressed="true"] { background: #fff; color: #111; }
+.bzy-kbb .bzy-i { width: 1.125rem; height: 1.125rem; }
+.bzy-app .bzy-who { justify-content: flex-start; gap: 0.4375rem; max-height: 5.75rem; padding: 0; }
+.bzy-app .bzy-who button { height: 2.5rem; padding: 0 0.8125rem; border: 1px solid #2e2e33; border-radius: 999px; background: #1f1f22; box-shadow: none; color: #fff; font-weight: 700; }
+.bzy-app .bzy-who button[aria-pressed="true"] { background: #fff; border-color: #fff; color: #111; }
+.bzy-app .bzy-who u { color: var(--mut); font: 800 0.9375rem var(--sc); }
+.bzy-app .bzy-who button[aria-pressed="true"] u { color: #52525b; }
+.bzy-app .bzy-who i { background: #52525b; }
+.bzy-app .bzy-who i[data-k="seen"], .bzy-app .bzy-who i[data-k="ok"] { background: var(--lime); }
+.bzy-app .bzy-who button[aria-pressed="true"] i[data-k="seen"], .bzy-app .bzy-who button[aria-pressed="true"] i[data-k="ok"] { background: #65a30d; }
+.bzy-app .bzy-who i[data-k="bad"] { background: #ff6b6b; }
+.bzy-app .bzy-typ { margin: 0; background: #1f1f22; border: 1px solid #2e2e33; box-shadow: none; }
+.bzy-app .bzy-typ .bzy-in { background: transparent; color: #fff; }
+/* İki eşit kutu */
+.bzy-two { display: grid; grid-template-columns: 1fr 1fr; gap: 0.625rem; }
+.bzy-sure, .bzy-pt { position: relative; min-width: 0; height: 10.5rem; border-radius: 1.625rem; overflow: hidden; }
+.bzy-sure { display: flex; flex-direction: column; background: var(--card); border: 1px solid #2e2e33; color: #fff; }
+.bzy-sure::before { content: ""; position: absolute; left: 0; bottom: 0; height: 0.25rem; width: var(--p, 0%); background: var(--lime); transition: width 1s linear; }
+.bzy-sh { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; min-height: 2.25rem; padding: 0.625rem 0.625rem 0 1rem; font-size: 0.75rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--mut); }
+.bzy-sh .num { letter-spacing: .02em; }
+.bzy-app .bzy-dur { height: 1.875rem; padding: 0 0.5rem 0 0.75rem; border-radius: 999px; background: #1f1f22; color: #fff; font-size: 0.8125rem; letter-spacing: .02em; }
+.bzy-app .bzy-dur[aria-expanded="true"] { background: #fff; color: #111; }
+.bzy-app .bzy-lad i { width: 1.375rem; height: 1.375rem; background: #1f1f22; color: var(--mut); font-size: 0.75rem; }
+.bzy-app .bzy-lad i[data-on] { background: var(--lime); color: #111; }
+.bzy-sgo { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 0.25rem; padding: 0.25rem 1rem 1rem; border: 0; background: none; color: inherit; text-align: left; }
+.bzy-sgo b { font: 800 3.75rem/.85 var(--sc); letter-spacing: -.01em; white-space: nowrap; }
+.bzy-sgo span { font: 800 1.375rem/1 var(--sc); text-transform: uppercase; letter-spacing: .02em; color: var(--lime); }
+.bzy-sgo:active { background: rgba(255, 255, 255, .05); }
+.bzy-sure[data-run] .bzy-sgo b { color: var(--lime); }
+.bzy-sure[data-up] .bzy-sgo b { color: #fff; }
+.bzy-sure[data-run] .bzy-sgo span { color: #ff6b6b; }
+.bzy-app .bzy-durs { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 0.375rem; margin: 0.5rem 0.625rem 0.625rem; padding: 0; background: none; }
+.bzy-app .bzy-durs button { height: auto; border-radius: 0.875rem; background: #1f1f22; color: #fff; font: 800 1.75rem/1 var(--sc); }
+.bzy-app .bzy-durs button[aria-pressed="true"] { background: var(--lime); color: #111; box-shadow: none; }
+.bzy-pt { display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 0.25rem; padding: 0.875rem 1rem 1rem; border: 0; background: var(--lime); color: #111; text-align: left;
+  touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; transition: background-color .15s, box-shadow .15s, transform .08s; }
+.bzy-pt small { font-size: 0.75rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #3f4a10; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.bzy-pt b { max-width: 100%; font: 800 2.5rem/.95 var(--sc); text-transform: uppercase; letter-spacing: .01em; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.bzy-pt .bzy-i { width: 1.75rem; height: 1.75rem; stroke-width: 2.2; }
+.bzy-pt:active { transform: scale(.98); }
+.bzy-pt[data-st="arm"] { background: #a3b83a; }
+.bzy-pt[data-st="rec"] { background: #fff; box-shadow: 0 0 0 0.375rem rgba(212, 255, 58, .35); }
+.bzy-pt[data-st="rec"] small { color: #3f3f46; }
+.bzy-pt[data-st="cancel"] { background: #52525b; color: #fff; }
+.bzy-pt[data-st="cancel"] small { color: #e4e4e7; }
+.bzy-pt .bzy-tkl { position: static; transform: none; height: 1.75rem; }
+.bzy-pt .bzy-tkl i { background: #111; }
+.bzy-pt[data-st="cancel"] .bzy-tkl i { background: #fff; }
+.bzy-pt.bzy-ptt::after, .bzy-pt.bzy-ptt[data-cancel]::after { display: none; }
+@media (prefers-reduced-motion: reduce) { .bzy-pt, .bzy-sure::before { transition: none; } }
+@media (orientation: landscape), (min-width: 48rem) {
+  .bzy-app .bzy-pnl { border: 1px solid var(--line); }
+}
+@media (orientation: landscape) and (max-height: 32rem) {
+  .bzy-sure, .bzy-pt { height: 7.5rem; }
+  .bzy-sgo b { font-size: 2.75rem; }
+  .bzy-pt b { font-size: 1.75rem; -webkit-line-clamp: 1; }
+  .bzy-app .bzy-who { max-height: 2.5rem; }
+}
+.bzy-app .btn { --btn-gray: #1f1f22; --btn-fg: #fff; }
+.bzy-app .btn-primary { --btn-bg: var(--lime); --btn-fg: #111; }
