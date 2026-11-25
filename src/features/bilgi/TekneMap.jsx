@@ -81,6 +81,14 @@ export function TekneMap({ boats, course = null, full = false, talk = "", tracks
       marks.current = {};
     };
   }, [full]);
+  // Kutu boyu değişince (Yönet paneli büyüyüp küçülünce) harita yeniden çizilir
+  useEffect(() => {
+    const el = box.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => map.current?.resize());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     const m = map.current;

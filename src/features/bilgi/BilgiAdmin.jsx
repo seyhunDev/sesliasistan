@@ -27,14 +27,17 @@ import {
   openKanal,
   reopenKanal,
   saveBilgi,
+  sendKalip,
   sendMsg,
   sendSes,
   syncLink,
   useBilgi,
   useGelen,
+  useKaliplar,
   useKanallar,
   useTekneler,
 } from "./bilgiStore";
+import { DayStart, KalipRow, KalipSheets, ToolsSheet, VideoTile, dayLabel, kanalDay, useRepeat, videoDone } from "./YonetParts";
 import { TekneMap } from "./TekneMap";
 import { usePtt } from "./usePtt";
 import { Wave } from "./Wave";
@@ -49,8 +52,6 @@ import { loadAthletes } from "@/features/athletes/data";
 import { PlaceWx } from "@/features/weather/PlaceWx";
 import { racePlace } from "@/features/athletes/raceWeather";
 import { getPlace } from "@/features/weather/weather";
-import { RecPick } from "@/features/raceMedia/RecPick";
-import { setShooting } from "@/features/raceMedia/shooting";
 import { hasCamera } from "@/lib/nativeIos";
 import "./bilgi.css";
 
@@ -248,20 +249,7 @@ function PanelClock({ org }) {
     </div>
   );
 }
-// Video (Seyhun 2026-11-21 "yönetim ekranında video butonu olmalı, geri sayımı gösteren"): ortak kamera (RecPick), üstünde bu sayaç akar.
-// Video iPhone'un Fotoğraflar'ına kaydedilir. Sayaç yalnız uygulamada görünür, bu yüzden düğme yalnız uygulamada.
 const noSub = () => () => {};
-function VideoBtn() {
-  const toast = useToast();
-  const app = useSyncExternalStore(noSub, hasCamera, () => false);
-  if (!app) return null;
-  const done = (f) => (setShooting(null), toast(f?.asset ? "Video Fotoğraflar'a kaydedildi" : "Video kaydedilemedi. Fotoğraflar iznini kontrol et."));
-  return (
-    <RecPick onFile={done} className="btn btn-round bzy-fab" aria-label="Video çek">
-      <Ic n="cam" />
-    </RecPick>
-  );
-}
 // Telefonun konumu bir kez ("Konumum": hakem botundaysan ya da şamandıranın yanındaysan)
 const here = () =>
   new Promise((ok) =>
@@ -436,44 +424,26 @@ const IC = {
   chev: <path d="M6 9l6 6 6-6" />,
   up: <path d="M6 15l6-6 6 6" />,
   send: <path d="M5 12h13M13 6l6 6-6 6" />,
+  more: (
+    <>
+      <circle cx="5" cy="12" r="1" />
+      <circle cx="12" cy="12" r="1" />
+      <circle cx="19" cy="12" r="1" />
+    </>
+  ),
+  rota: (
+    <>
+      <path d="M4 19c4 0 4-6 8-6s4-8 8-8" />
+      <circle cx="4" cy="19" r="1.5" />
+      <circle cx="20" cy="5" r="1.5" />
+    </>
+  ),
 };
 const Ic = ({ n }) => (
   <svg viewBox="0 0 24 24" className="bzy-i" aria-hidden="true">
     {IC[n]}
   </svg>
 );
-
-// Kanal aç ekranı (Seyhun 2026-11-22 "kanalı açmadan bu sayfayı göstermemiz mantıklı"): kanal kapalıyken yalnız bu kart. Ad o günün
-// antrenmanı ya da yarışıyla hazır gelir; link her kanalda aynı kalır. Eski kanallar listesi (tekrar aç, iz, sil) buradan da açılır.
-function KanalStart({ org, kanal, def, onList }) {
-  const toast = useToast();
-  const [name, setName] = useState(def);
-  const [busy, setBusy] = useState(false);
-  const open = async () => {
-    setBusy(true);
-    await openKanal(org, name, kanal).catch(() => toast("Kanal açılamadı"));
-    setBusy(false);
-  };
-  return (
-    <form
-      className="bzy-start"
-      onSubmit={(e) => {
-        e.preventDefault();
-        if (name.trim() && !busy) open();
-      }}
-    >
-      <h1>Yeni kanal</h1>
-      <p>Sporcular linkle katılır, ekranları başlar.</p>
-      <input className="bzy-in" value={name} maxLength={30} onChange={(e) => setName(e.target.value)} aria-label="Kanal adı" />
-      <Button type="submit" full loading={busy} disabled={!name.trim()} className="bzy-open">
-        Kanal aç
-      </Button>
-      <Button type="button" variant="text" full onClick={onList}>
-        Eski kanallar
-      </Button>
-    </form>
-  );
-}
 
 // Kanal penceresi (alt paneldeki küçük kanal adına dokununca): Link, Ekranı aç, Eski kanallar ve izler
 function KanalInfo({ kanal, link, count, onList }) {
@@ -772,7 +742,10 @@ export function BilgiAdmin() {
       setSheet("kaydet");
     }
   }
-  const iz = useIz(org, izK?.id || "");
+  const iz = useIz(org, izK?.id || "", !!izK && !(kanal?.open && kanal.id === izK.id));
+  const kaliplar = useKaliplar(org);
+  const [mini, setMini] = useState(false);
+  const app = useSyncExternalStore(noSub, hasCamera, () => false);
   useEffect(() => {
     if (org && kanal?.open && kanal.id && kanallar && !kanallar.some((x) => x.id === kanal.id)) ensureKanal(org, kanal).catch(() => {});
   }, [org, kanal, kanallar]);
@@ -856,12 +829,32 @@ export function BilgiAdmin() {
   // konumu donup kalmaz; listede "Offline" yazar
   const liveBoats = chBoats.filter((x) => now - (x.t || 0) < LIVE_MS);
 
+  const repeat = useRepeat(org, kaliplar, ctx, got);
+  const sendK = async (k) => {
+    const at = clock();
+    got({ kind: "ses", dur: k.dur, to, at, ok: null, kalip: k.name });
+    const r = await sendKalip(org, kaliplar, k, ctx, to).catch(() => ({ ok: false }));
+    got({ kind: "ses", dur: k.dur, to, at, ...r, ok: !!r.ok, kalip: k.name });
+  };
+  // "Kalıp yap": bas-konuşla giden son ses 30 sn boyunca kalıp olarak saklanabilir
+  const canKalip = last?.kind === "ses" && !!last.blob && !last.kalip && last.ok === true && now - last.at < 30e3;
+  const kday = kanal?.open ? kanalDay((kanallar || []).find((x) => x.id === kanal.id) || kanal) : "";
+  const pnl = useRef(null);
+  useEffect(() => {
+    const el = pnl.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => el.closest(".bzy-app")?.style.setProperty("--pnl", `${el.offsetHeight}px`));
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
+  const swipe = useRef(0);
   if (!org) return <main className="p-6 text-mut">Bu sayfa ana hesapta ve antrenörde açılır.</main>;
 
   // Harita düzeni (Seyhun 2026-11-22 örnekler "Yönet harita düzeni" + "Yönet alt panel" onaylandı "Yap"): harita bütün ekran. Kanal kapalıyken
   // yalnız Kanal aç kartı. Açıkken üstte yalnız geri; solda araçlar (en altta onaylı Kapat), sağda yakınlaştır/uzaklaştır/sığdır/video;
   // altta süre paneli (küçük kanal adı → Link, Ekranı aç, Eski kanallar; süre; boydan boya Başlat), üstünde sağda ayrı konuşma (örnek "Yönet alt kısım 2").
   const open = !!kanal?.open;
+  const antOnTop = club && (!!ant || !yaris.data);
   const tools = [
     ...(yaris.data
       ? [
@@ -870,18 +863,20 @@ export function BilgiAdmin() {
           ["prog", "Program"],
         ]
       : []),
-    ["hava", "Hava"],
+    ...(antOnTop ? [["ant", "Antrenman"]] : []),
     ["parkur", "Parkur"],
     ["ekran", "Ekran"],
+    ["hava", "Hava"],
     ["mesaj", "Mesajlar"],
+    ["rota", "Rotalar"],
     ["kayit", "Kayıtlar"],
   ];
   const closeAsk = () => {
     let err = false;
     return ask({
-      title: "Kanal kapatılsın mı?",
-      text: "Sporcuların ekranı durur. İz ve kayıtlar saklanır.",
-      yes: "Kapat",
+      title: "Gün bitsin mi?",
+      text: "Sporcuların ekranı durur. Rotalar ve kayıtlar saklanır.",
+      yes: "Günü bitir",
       run: () => closeKanal(org, kanal.id).catch((e) => ((err = true), Promise.reject(e))),
     }).then((ok) => {
       if (err) return toast("Kapatılamadı");
@@ -896,8 +891,13 @@ export function BilgiAdmin() {
   if (!antUsed && (sheet === "ant" || sheet === "kaydet")) setAntUsed(true);
   const antBase = sheet === "kaydet" && antK ? antK : kanal;
   const antDoc = antBase?.id ? { ...antBase, ...(kanallar?.find((x) => x.id === antBase.id) || {}) } : null;
+  const pickTool = (k) => {
+    if (k === "rota") return setSheet(""), setIzK(kanal);
+    setSheet(k);
+  };
+  const names = [...new Set([antAd, yaris.data?.race?.name?.slice(0, 30), "Antrenman"].filter(Boolean))];
   return (
-    <main className="bzy-app" aria-label="Bilgi ekranı yönetimi" data-open={open ? "1" : undefined}>
+    <main className="bzy-app" aria-label="Bilgi ekranı yönetimi" data-open={open && !izK ? "1" : undefined} data-mini={mini ? "1" : undefined}>
       <TekneMap boats={izK ? iz.boats : liveBoats} tracks={izK ? iz.tracks : null} course={course.has ? course : null} talk={izK ? "" : talk?.dev || ""} full api={mapApi} />
       {izK && <IzPanel k={izK} iz={iz} onClose={() => setIzK(null)} />}
       {!izK && talk && !liveBoats.some((x) => x.id === talk.dev && Number.isFinite(x.lat)) && (
@@ -906,38 +906,32 @@ export function BilgiAdmin() {
           <Wave />
         </div>
       )}
-      {!izK && (
-        <Link href="/" className="btn btn-round bzy-fab bzy-back" aria-label="Geri" data-press>
-          <Ic n="back" />
-        </Link>
-      )}
       {!izK && !open && (
         <>
+          <Link href="/" className="btn btn-round bzy-fab bzy-back" aria-label="Geri" data-press>
+            <Ic n="back" />
+          </Link>
           <div className="bzy-veil" />
-          <KanalStart key={kanal?.id || "yok"} org={org} kanal={kanal} def={antAd || yaris.data?.race?.name?.slice(0, 30) || "Antrenman"} onList={() => setSheet("kanallar")} />
+          <DayStart key={kanal?.id || "yok"} org={org} kanal={kanal} kanallar={kanallar} names={names} onList={() => setSheet("kanallar")} onIz={(k) => setIzK(k)} />
         </>
       )}
       {!izK && open && (
         <>
-          <nav className="bzy-rail" aria-label="Araçlar">
-            {antOn ? (
-              <button type="button" className="bzy-tool" onClick={() => setSheet("ant")} data-press>
-                <Ic n="ant" />
-                <small>Antrenman</small>
-              </button>
-            ) : null}
-            {tools.map(([k, l]) => (
-              <button key={k} type="button" className="bzy-tool" onClick={() => setSheet(k)} data-press>
-                <Ic n={k} />
-                <small>{l}</small>
-              </button>
-            ))}
-            <i className="bzy-sep" />
-            <button type="button" className="bzy-tool bzy-off" onClick={closeAsk} data-press>
-              <Ic n="kapat" />
-              <small>Kapat</small>
+          <div className="bzy-tb">
+            <Link href="/" className="btn btn-round bzy-fab" aria-label="Geri" data-press>
+              <Ic n="back" />
+            </Link>
+            <button type="button" className="bzy-dayb" onClick={() => setSheet("kanal")} data-press>
+              <i className="bzy-dot" aria-hidden="true" />
+              <b>{kanal.name}</b>
+              <span className="num">
+                {dayLabel(kday)} · {members.length} kişi
+              </span>
             </button>
-          </nav>
+            <button type="button" className="btn btn-round bzy-fab" aria-label="Araçlar" onClick={() => setSheet("araclar")} data-press>
+              <Ic n="more" />
+            </button>
+          </div>
           <div className="bzy-rr">
             <div className="bzy-zm">
               <button type="button" className="btn btn-icon" aria-label="Yakınlaştır" onClick={() => mapApi.current?.zoom(1)} data-press>
@@ -950,37 +944,55 @@ export function BilgiAdmin() {
             <button type="button" className="btn btn-round bzy-fab" aria-label="Tekneleri sığdır" onClick={() => mapApi.current?.fit()} data-press>
               <Ic n="fit" />
             </button>
-            <VideoBtn />
           </div>
-          <div className="bzy-bot">
+          <div className="bzy-bot" ref={pnl}>
             {(dl0?.state === "fail" || dl0?.state === "part") && <LastSent last={last} boats={boats} ch={ch} now={now} onAgain={again} />}
             <section className="bzy-pnl" aria-label="Konuşma ve süre">
+              <button
+                type="button"
+                className="bzy-grab"
+                aria-label={mini ? "Paneli büyüt" : "Haritayı büyüt"}
+                aria-expanded={!mini}
+                onPointerDown={(e) => (swipe.current = e.clientY)}
+                onPointerUp={(e) => {
+                  const dy = e.clientY - swipe.current;
+                  setMini((m) => (Math.abs(dy) < 12 ? !m : dy > 0));
+                }}
+              />
               <div className="bzy-kl">
-                <button type="button" className="bzy-kn2" onClick={() => setSheet("kanal")} data-press>
-                  <i className="bzy-dot" aria-hidden="true" />
-                  <span>
-                    {kanal.name} · {members.length} kişi
-                  </span>
-                </button>
-                {tst && (
+                {tst ? (
                   <span className="bzy-tst" data-k={tst[0] || undefined} aria-live="polite">
                     {tst[1]}
                   </span>
+                ) : (
+                  <span className="bzy-tst" />
                 )}
-                <button type="button" className="bzy-kbb" onClick={() => setTyping((x) => !x)} aria-pressed={typing} aria-label="Yazarak mesaj" data-press>
-                  <Ic n="kb" />
-                </button>
-              </div>
-              <div className="bzy-who" aria-label="Kime">
-                {[{ id: "", label: "Hepsi", st: !last?.to ? allSt(dl0, last) : null }, ...members.map((m) => ({ id: m.id, no: m.sail || "", label: m.name || m.sail || "Sporcu", st: rowSt(last, m, now) }))].map((m) => (
-                  <button key={m.id || "hepsi"} type="button" aria-pressed={m.id ? toSel.includes(m.id) : !sel.length} onClick={() => pickTo(m.id)} data-press>
-                    {m.no && m.label !== m.no ? <u className="num">{m.no}</u> : null}
-                    {m.label}
-                    {m.st && <i data-k={m.st.k} aria-label={m.st.t} />}
+                {canKalip && (
+                  <button type="button" className="bzy-kyap" onClick={() => setSheet("kyap")} data-press>
+                    Kalıp yap
                   </button>
-                ))}
+                )}
+                {!mini && (
+                  <button type="button" className="bzy-kbb" onClick={() => setTyping((x) => !x)} aria-pressed={typing} aria-label="Yazarak mesaj" data-press>
+                    <Ic n="kb" />
+                  </button>
+                )}
               </div>
-              {typing && (
+              {!mini && (
+                <div className="bzy-who" aria-label="Kime">
+                  {[{ id: "", label: "Hepsi", st: !last?.to ? allSt(dl0, last) : null }, ...members.map((m) => ({ id: m.id, no: m.sail || "", label: m.name || m.sail || "Sporcu", st: rowSt(last, m, now) }))].map((m) => (
+                    <button key={m.id || "hepsi"} type="button" aria-pressed={m.id ? toSel.includes(m.id) : !sel.length} onClick={() => pickTo(m.id)} data-press>
+                      {m.no && m.label !== m.no ? <u className="num">{m.no}</u> : null}
+                      {m.label}
+                      {m.st && <i data-k={m.st.k} aria-label={m.st.t} />}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {!mini && (
+                <KalipRow list={kaliplar} rep={repeat.rep} now={now} onSend={sendK} onHold={(k) => setSheet(`ktek:${k.id}`)} onStop={repeat.stop} onAll={() => setSheet("kaliplar")} />
+              )}
+              {!mini && typing && (
                 <form
                   className="bzy-typ"
                   onSubmit={async (e) => {
@@ -1006,19 +1018,29 @@ export function BilgiAdmin() {
                   </button>
                 </form>
               )}
-              <div className="bzy-two">
+              <div className="bzy-two" data-n={app ? "3" : "2"}>
                 <PanelClock org={org} />
+                <VideoTile app={app} onDone={videoDone(toast)} />
                 <PttTile to={to} ptt={ptt} now={now} />
               </div>
             </section>
           </div>
         </>
       )}
+      <ToolsSheet
+        open={sheet === "araclar"}
+        onClose={() => setSheet("")}
+        tools={tools}
+        Ic={Ic}
+        onPick={pickTool}
+        onEnd={() => (setSheet(""), closeAsk())}
+      />
+      <KalipSheets org={org} list={kaliplar} view={sheet} onView={setSheet} src={canKalip || sheet === "kyap" ? last : null} to={to} members={members.length} onSend={sendK} repeat={repeat} onSaved={() => setLast((o) => (o ? { ...o, kalip: "saved" } : o))} />
       {antUsed && club && <AntrenmanSheets org={org} view={sheet} onView={setSheet} k={antDoc} boats={boats} ant={ant} />}
       <Sheet open={sheet === "kanal"} onClose={() => setSheet("")} title={kanal?.name || "Kanal"}>
         <KanalInfo kanal={kanal} link={b?.link || ""} count={members.length} onList={() => setSheet("kanallar")} />
       </Sheet>
-      <Sheet big open={sheet === "kanallar"} onClose={() => setSheet("")} title="Kanallar">
+      <Sheet big open={sheet === "kanallar"} onClose={() => setSheet("")} title="Günler">
         <KanalList
           org={org}
           list={kanallar}

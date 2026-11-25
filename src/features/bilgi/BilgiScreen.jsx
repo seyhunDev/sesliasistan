@@ -6,7 +6,7 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { sunsetHM } from "@/lib/attRemind";
 import { FRESH_MS, SHOW_DEF, isFor, beepOf, buildCourse, dirName, normDeg, pFlag, screenMode, seqMarks, startView, declination, quatHeading, tiltHeading, windRel } from "@/lib/bilgi";
 import { CourseMap } from "./CourseMap";
-import { deviceId, offPos, readWho, savePusula, saveTekneKim, saveWho, sendGelen, sendIz, sendPos, useBilgi, useBilgiDoc, usePublic, useTekneKim } from "./bilgiStore";
+import { deviceId, kalipSes, offPos, readWho, savePusula, saveTekneKim, saveWho, sendGelen, sendIz, sendPos, useBilgi, useBilgiDoc, usePublic, useTekneKim } from "./bilgiStore";
 import { usePtt } from "./usePtt";
 import { sayDevice, sayWith } from "@/lib/speech/ttsClient";
 import { PttCancel, Wave } from "./Wave";
@@ -484,7 +484,8 @@ function useBeeps(on, left) {
 let AUDIO = null;
 
 // Gelen mesaj sesli okunur, bas-konuş kaydı çalınır. Ekran açılmadan önceki (taze olmayan) mesaj/ses çalınmaz.
-function useVoice(on, msg, ses) {
+// Hazır kalıp (Seyhun 2026-11-25): ses belgesinde yalnız kalıp kimliği gelir; ses loadKalip ile bir kez indirilir
+function useVoice(on, msg, ses, loadKalip) {
   const [talk, setTalk] = useState(false);
   const seen = useRef({ msg: null, ses: null });
   useEffect(() => {
@@ -504,12 +505,16 @@ function useVoice(on, msg, ses) {
     seen.current.ses = ses.id;
     if (first && Date.now() - ses.at > 5000) return;
     const a = AUDIO;
-    if (!on || !a || !ses.data || Date.now() - ses.at > FRESH_MS) return;
-    a.src = `data:${ses.type || "audio/mp4"};base64,${ses.data}`;
-    a.onplaying = () => setTalk(true);
-    a.onended = a.onerror = a.onpause = () => setTalk(false);
-    a.play().catch(() => setTalk(false));
-  }, [on, ses]);
+    if (!on || !a || Date.now() - ses.at > FRESH_MS) return;
+    const play = (data, type) => {
+      a.src = `data:${type || "audio/mp4"};base64,${data}`;
+      a.onplaying = () => setTalk(true);
+      a.onended = a.onerror = a.onpause = () => setTalk(false);
+      a.play().catch(() => setTalk(false));
+    };
+    if (ses.data) play(ses.data, ses.type);
+    else if (ses.kalip && loadKalip) loadKalip(ses.kalip).then((x) => x?.data && seen.current.ses === ses.id && play(x.data, x.type || ses.type));
+  }, [on, ses]); // eslint-disable-line react-hooks/exhaustive-deps
   // Tarayıcı sesi yalnız dokunuştan sonra çalar: aynı ses öğesi dokunuşta bir kez sessizce çalınır, sonra gelen kayıtlar onunla çalar
   const unlock = async () => {
     try {
@@ -704,7 +709,8 @@ export function BilgiScreen({ pub = "" }) {
   // Kanal: yalnız açık kanala katılınca çalışır; kanal kapanır ya da yenisi açılırsa ekran yeniden katılma kartına döner
   const kanal = b === undefined ? undefined : b?.kanal || null;
   const [joined, setJoined] = useState("");
-  const active = on && !!kanal?.open && joined === kanal.id;
+  // Bir kez katılan ekran (Seyhun 2026-11-25 "kanal hep aynı, günler ayrı") Yönet yeni günü başlatınca kendiliğinden o güne geçer
+  const active = on && !!kanal?.open && !!joined;
   const dev = useSyncExternalStore(noSub, deviceId, () => "");
   const forMe = (x) => x && isFor(x.to, dev);
   const myMsg = forMe(b?.msg) ? b.msg : null;
@@ -713,7 +719,7 @@ export function BilgiScreen({ pub = "" }) {
   const goOff = usePresence(active, who, pub ? porg : org, pub, profile?.uid, kanal?.id || "", active ? fresh?.id || "" : "");
   // Hesapla girişte kimlik hesaptan (isim + kayıtlı yelken no); girişsiz linkte bu telefonda saklı olan
   const acct = useTekneKim(profile);
-  const [talk, unlock] = useVoice(active, myMsg, mySes);
+  const [talk, unlock] = useVoice(active, myMsg, mySes, (id) => kalipSes(org, pub, id));
   const pos = useMyPos(active);
   const { data: mine } = useCanliRace(active && !!who?.sail, 60e3);
   // Sporcudan Yönet'e bas-konuş (Seyhun 2026-11-17, örnek C): altta ortada mikrofon; basılı tut, konuş, bırakınca Yönet'e gider

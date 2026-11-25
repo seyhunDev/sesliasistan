@@ -18,24 +18,28 @@ const len = (ms) => {
   const m = Math.max(1, Math.round(ms / 60000));
   return m < 60 ? `${m} dk` : `${Math.floor(m / 60)} sa${m % 60 ? ` ${m % 60} dk` : ""}`;
 };
+// Gün (Seyhun 2026-11-25): kaydın tarihi (day), yoksa açıldığı gün
+const dOf = (k) => (k.day ? new Date(`${k.day}T12:00:00`) : new Date(k.at || 0));
+const dayNo = (k) => dOf(k).getDate();
+const monOf = (k) => dOf(k).toLocaleDateString("tr-TR", { month: "short" });
 const kn = (v) => (v == null ? "" : `${String(v.toFixed(1)).replace(".", ",")} kn`);
 
 // İz verisi ve oynatıcı durumu; kid değişince baştan
 const SPEEDS = [10, 30, 1];
-export function useIz(org, kid) {
+export function useIz(org, kid, closed = false) {
   const [data, setData] = useState(null);
   const [st, setSt] = useState({ kid: "", rel: 0, play: false, sp: 0 });
   useEffect(() => {
     if (!org || !kid) return;
     let live = true;
-    loadIz(org, kid).then(
+    loadIz(org, kid, closed).then(
       (docs) => live && setData({ kid, ...izTracks(docs) }),
       () => live && setData({ kid, tracks: [], t0: 0, t1: 0, err: true }),
     );
     return () => {
       live = false;
     };
-  }, [org, kid]);
+  }, [org, kid, closed]);
   const d = kid && data?.kid === kid ? data : null;
   const s = st.kid === kid ? st : { kid, rel: 0, play: false, sp: 0 };
   const span = d ? Math.max(0, Math.round((d.t1 - d.t0) / 1000)) : 0;
@@ -139,7 +143,10 @@ export function KanalList({ org, list, cur, hidden, busy, onIz, onOpen, onClose,
         return (
           <div key={k.id} className="bzy-kli">
             <div className="bzy-li">
-              <i className={`bzy-dot${open ? "" : " off"}`} />
+              <span className="bzy-dt" data-on={open ? "1" : undefined}>
+                <b className="num">{dayNo(k)}</b>
+                <small>{monOf(k)}</small>
+              </span>
               <div className="min-w-0 flex-1">
                 {edit?.id === k.id ? (
                   <input
@@ -155,10 +162,13 @@ export function KanalList({ org, list, cur, hidden, busy, onIz, onOpen, onClose,
                 ) : (
                   <>
                     <b>{k.name}</b>
-                    <span>{open ? `Açık · ${hm(k.at)}'den beri` : `${day(k.at)} · ${hm(k.at)}${k.end ? ` · ${len(k.end - k.at)}` : ""}`}</span>
+                    <span>{open ? `Açık · ${hm(k.at)}'den beri` : `${hm(k.at)}${k.end ? ` · ${len(k.end - k.at)}` : ""}`}</span>
                   </>
                 )}
               </div>
+              <button type="button" className="bzy-izle" onClick={() => onIz(k)} data-press>
+                İzle
+              </button>
               <button type="button" className="bzy-ic" onClick={() => setMenu((x) => (x === k.id ? "" : k.id))} aria-label="Diğer" aria-expanded={menu === k.id} data-press>
                 <svg viewBox="0 0 24 24">
                   <circle cx="5" cy="12" r="1" />
