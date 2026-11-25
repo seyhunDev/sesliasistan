@@ -7,7 +7,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { authFetch } from "@/lib/authFetch";
 import { RecPick } from "@/features/raceMedia/RecPick";
 import { setShooting } from "@/features/raceMedia/shooting";
-import { addYaziKalip, delKalip, openKanal, renameKalip, reopenKanal, saveKalip, sendKalip } from "./bilgiStore";
+import { KALIP_HAZIR, addYaziKalip, delKalip, openKanal, renameKalip, reopenKanal, saveKalip, sendKalip } from "./bilgiStore";
 import { sayWith } from "@/lib/speech/ttsClient";
 import { voiceType } from "@/lib/chatFile";
 import { VTAGS, myTags, rememberTag } from "./yonetVideo";
@@ -220,8 +220,9 @@ export const kalipEntry = (k) => (k.text ? { kind: "msg", text: k.text, kalip: k
 export function KalipRow({ list, rep, now, onSend, onHold, onStop, onAll }) {
   const t = useRef(null);
   const held = useRef(false);
-  if (!list?.length) return null;
-  const top = [...list].sort((a, b) => (b.used || 0) - (a.used || 0)).slice(0, 3);
+  // Liste boşken ya da yüklenirken hazır yazılı kalıplar gösterilir (satır hep görünür; Seyhun 2026-11-25 "hazır komutlar gösterilmiyor")
+  const src = list?.length ? list : KALIP_HAZIR.map((x, i) => ({ id: `h${i}`, name: x, text: x, used: -i }));
+  const top = [...src].sort((a, b) => (b.used || 0) - (a.used || 0)).slice(0, 3);
   const down = (k) => {
     held.current = false;
     clearTimeout(t.current);
