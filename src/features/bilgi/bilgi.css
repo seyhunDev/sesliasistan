@@ -751,3 +751,10 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 .bz-seg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.1875rem; padding: 0.1875rem; background: #0b1a33; border: 1px solid #24375a; border-radius: 0.875rem; }
 .bz-seg button { height: 2.5rem; border: 0; border-radius: 0.6875rem; background: transparent; color: #7d90b5; font-size: 0.875rem; font-weight: 700; }
 .bz-seg button[aria-pressed="true"] { background: #3d7bff; color: #fff; }
+
+/* Ceza görünür giriş (2026-11-25): seçili sporcunun penceresi ya da sporcu listesi; iPhone'da basılı tutmada büyüteç/menü çıkmasın */
+.bzy-who button, .bzy-kb { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.bzy-cezab { flex: none; height: 2.25rem; padding: 0 0.875rem; border: 0; border-radius: 999px; background: var(--pen, #ff5a3c); color: #fff; font-size: 0.875rem; font-weight: 700; }
+.bzy-tst + .bzy-cezab { margin-left: 0; }
+.bzy-cezal { display: grid; gap: 0.5rem; }
+.bzy-cezal button { display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; min-height: 3rem; padding: 0 1rem; border: 1px solid #2e2e33; border-radius: 0.875rem; background: #1f1f22; color: #fff; font-size: 1rem; font-weight: 600; text-align: left; }

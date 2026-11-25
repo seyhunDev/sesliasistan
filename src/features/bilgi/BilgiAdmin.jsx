@@ -1074,6 +1074,11 @@ export function BilgiAdmin() {
                     Kalıp yap
                   </button>
                 )}
+                {!mini && members.length > 0 && (
+                  <button type="button" className="bzy-cezab" onClick={() => setSheet(sel.length === 1 ? `sp:${sel[0].id}` : "ceza")} data-press>
+                    Ceza
+                  </button>
+                )}
                 {!mini && (
                   <button type="button" className="bzy-kbb" onClick={() => setTyping((x) => !x)} aria-pressed={typing} aria-label="Yazarak mesaj" data-press>
                     <Ic n="kb" />
@@ -1156,6 +1161,17 @@ export function BilgiAdmin() {
       <KalipSheets org={org} list={kaliplar} view={sheet} onView={setSheet} src={canKalip || sheet === "kyap" ? last : null} to={to} members={members.length} onSend={sendK} repeat={repeat} onSaved={() => setLast((o) => (o ? { ...o, kalip: "saved" } : o))} />
       {antUsed && club && <AntrenmanSheets org={org} view={sheet} onView={setSheet} k={antDoc} boats={boats} ant={ant} />}
       <SporcuSheet org={org} id={sheet.startsWith("sp:") ? sheet.slice(3) : ""} boat={chBoats.find((x) => `sp:${x.id}` === sheet)} cur={ceza[sheet.slice(3)]} onClose={() => setSheet("")} onVideo={(bt) => shot([athTag(bt)])} onNot={(i) => setSheet(`not:${i}`)} />
+      {/* Görünür giriş (Seyhun 2026-11-25 "ceza çalışmıyor"): basılı tutmayı bilmeyen için; tek sporcu seçiliyse doğrudan onun penceresi */}
+      <Sheet open={sheet === "ceza"} onClose={() => setSheet("")} title="Ceza · sporcu seç">
+        <div className="bzy-cezal">
+          {members.map((m) => (
+            <button key={m.id} type="button" onClick={() => setSheet(`sp:${m.id}`)} data-press>
+              <span>{[m.sail, m.name].filter(Boolean).join(" · ") || "Sporcu"}</span>
+              {ceza[m.id] ? <em className="bzy-pen" data-k={ceza[m.id].k}>{PEN[ceza[m.id].k].big}</em> : null}
+            </button>
+          ))}
+        </div>
+      </Sheet>
       <Sheet open={sheet.startsWith("not:")} onClose={() => setSheet("")} title={`Sesli not · ${athTag(chBoats.find((x) => `not:${x.id}` === sheet)) || "Sporcu"}`}>
         {sheet.startsWith("not:") && (
           <KalipKayit
