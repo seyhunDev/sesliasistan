@@ -20,6 +20,8 @@ import { seriesDates } from "@/lib/repeat";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { readWarmData, saveWarmData, slim } from "@/lib/warmStart";
 import { pulseSync } from "@/lib/syncLine";
+import { trainingShares } from "@/lib/sporcuPaylas";
+import { todayStr } from "@/lib/utils/format";
 
 // Bu alanlardan biri değişince kayıttaki kişilere "değişti" bildirimi gider
 const CHANGE_KEYS = ["title", "date", "endDate", "time", "allDay", "place", "due", "body", "status"];
@@ -120,6 +122,18 @@ export function DataProvider({ children }) {
   useEffect(() => {
     if (owner && uid && attAt === null && canSeeAthletes(email)) updateDoc(doc(db, "users", uid), { attAt: "on" }).catch(() => {});
   }, [owner, uid, attAt, email]);
+
+  // Ana hesabın antrenman planları uygulamadaki sporculara açılır (people'a eklenir; lib/sporcuPaylas.js). Yalnız eksik olana yazılır.
+  const sharedRef = useRef(new Set());
+  useEffect(() => {
+    if (!owner || !uid || !orgId) return;
+    for (const x of trainingShares(data.plans, members, uid, todayStr())) {
+      const key = `${x.id}|${x.people.join()}`;
+      if (sharedRef.current.has(key)) continue;
+      sharedRef.current.add(key);
+      updateDoc(doc(db, "orgs", orgId, "plans", x.id), { people: x.people }).catch(() => {});
+    }
+  }, [owner, uid, orgId, data.plans, members]);
 
   const memRef = useRef([]);
   useEffect(() => {
