@@ -920,6 +920,11 @@ group("Ana sayfa kartları")([
     const MR = await import("@/lib/raceDays");
     const t = "2026-11-25";
     const r = (s, e) => ({ startDate: s, endDate: e || s });
+    const SP = await import("@/lib/sporcuPaylas");
+    const mem = [{ uid: "a1", kind: "athlete", account: true }, { uid: "p1", kind: "parent" }, { uid: "s1", kind: "staff" }, { uid: "a2", kind: "athlete", status: "left" }];
+    const ps = [{ id: "x", cat: "Antrenman", date: t, people: ["o"] }, { id: "y", cat: "Antrenman", date: "2026-11-20" }, { id: "z", title: "Toplantı", date: t }, { id: "w", cat: "Antrenman", date: t, people: ["o", "a1", "p1"] }];
+    const sh = SP.trainingShares(ps, mem, "o", t);
+    if (!(sh.length === 1 && sh[0].id === "x" && sh[0].people.join() === "o,a1,p1")) return false;
     return MR.daysTo(r("2026-11-24", "2026-11-26"), t) === -1 && MR.daysTo(r(t), t) === 0 && MR.daysTo(r("2026-11-28"), t) === 3 && MR.upcoming([r("2026-11-20"), r("2026-11-28")], t).length === 1;
   })],
   ["sırada listesi", F("süren plan ŞİMDİ, sonra bugün/yarın/gün adı; iptal ve geçen sayılmaz; en çok n", () => {
