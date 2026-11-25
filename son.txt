@@ -1,8 +1,8 @@
-Commit: 972f95f · Fitness antrenman ekranı: iPad döndürünce antrenman sıfırlanmasın (#1524)
-Zaman: 2026-11-25-1129 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/45573665241
+Commit: eb85e57 · Fitness ekranları ana sayfanın Sahne dilinde (#1544)
+Zaman: 2026-11-25-1508 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/45607623914
 
-TAM TEST · 25.11.2026 11:08:51
+TAM TEST · 25.11.2026 14:47:43
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1402/1433 geçti · 31 kalan · 1218 sn
+SONUÇ: 1401/1433 geçti · 32 kalan · 1238 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
@@ -169,9 +169,9 @@ Node.js v22.23.5
   ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 47/47
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 117/135
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 116/135
   ✓ Sekme çubuğundaki yeşil düğme: 2/2
-  ✗ Ana sayfa: 3/8
+  ✗ Ana sayfa: 2/8
       ✗ “iş düğmeleri”
           beklenen: dört sütun, iki satır (en çok 8), her düğmede ikon ve ad
           olan:     0 düğme · 0 sütun · 0 ikonlu
@@ -183,6 +183,9 @@ Node.js v22.23.5
           olan:     {"out":[["yatay",{"has":false,"scroll":-1,"cal":false,"calH":0,"tl":false,"nav":false,"closed":true,"err":"günü kapat: TimeoutError: locator.click: Timeout 6000ms exceeded.\nCall log:\n  - waiting for locator('.cal-emb [aria-label=\\'Günü kapat\\']')\n","adds":false,"opened":false,"quick":false,"closed2":true}],["dikey",{"has":false,"scroll":-1,"cal":false,"calH":0,"tl":false,"nav":false,"closed":true,"err":"günü kapat: TimeoutError: locator.click: Timeout 6000ms exceeded.\nCall log:\n  - waiting for locator('.cal-emb [aria-label=\\'Günü kapat\\']')\n","adds":false,"opened":false,"quick":false,"closed2":true}]],"ph":{"screen":false,"cal":false,"tl":false}}
       ✗ “saat saat hava tablosu”
           beklenen: hava kartında saat sütunları, Yağmur mm satırı ve kırmızı çerçeveli şimdiki saat
+          olan:     hata: locator.click: Timeout 30000ms exceeded.
+      ✗ “Tümü grupları”
+          beklenen: Tümü penceresinde gruplar kapalı başlar, dokununca tek grup açılır, Yarışlar bir kez
           olan:     hata: locator.click: Timeout 30000ms exceeded.
       ✗ “yarış günü havası”
           beklenen: yarın (Foça'da yarış) takvimde seçilince hava alanı aynı kalır, yarış yeri tablosu çıkmaz; altında o günün planları alt alta okunur
@@ -244,10 +247,10 @@ Node.js v22.23.5
           olan:     sütun 48 · gün düğmesi 0 · 5,5 true
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 12 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+          olan:     ölçülen sütun 15 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
       ✗ “radar ve nokta”
           beklenen: ölçülen sütunlar tabloda; Bölge başlığı, istasyon adı ve bölge haritası
-          olan:     yağan çubuk 12 · açıklama 12 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
+          olan:     yağan çubuk 15 · açıklama 15 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
   ✗ Senaryolar: 0/1
       ✗ “çalıştırma”
           beklenen: tamamlanır
