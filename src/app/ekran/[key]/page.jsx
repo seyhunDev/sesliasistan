@@ -1,4 +1,4 @@
-import { BilgiScreen } from "@/features/bilgi/BilgiScreen";
+import { BilgiKenar, BilgiScreen } from "@/features/bilgi/BilgiScreen";
 import { ToastProvider } from "@/components/ui/ToastProvider";
 
 // Sporcu bilgi ekranı, herkese açık link (Seyhun 2026-11-15): girişsiz, linki alan herkes açar. Anahtar Bilgi ekranı › Yönet'te
@@ -8,6 +8,7 @@ export default async function Page({ params }) {
   const { key } = await params;
   return (
     <ToastProvider>
+      <BilgiKenar />
       <BilgiScreen pub={String(key || "").slice(0, 40)} />
     </ToastProvider>
   );

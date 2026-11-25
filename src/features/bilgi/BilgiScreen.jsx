@@ -318,6 +318,65 @@ const WHY = {
 // bırakır; değilse ekrandan çıkar (uygulamada geri; linkte yalnız geri gidilecek sayfa varsa görünür).
 // Hesapla girişte (acct; Seyhun 2026-11-25) sorulmaz: isim hesabın adı, yelken no kayıtlıysa gösterilir; yoksa yalnız yelken no yazılır
 // (hesaba kaydedilir, sonraki açılışta sorulmaz). Değiştirmek Ayarlar › Tekne ekranı'ndan.
+// Koruyucu mod (Seyhun 2026-11-25): kılıf kenarları kapatınca ekran içeri alınır; seçim bu telefonda saklı ("" kapalı, s/m/l)
+const KOR_KEY = "sa-bilgi-koruyucu";
+const KOR = [
+  ["", "Kapalı"],
+  ["s", "Az"],
+  ["m", "Orta"],
+  ["l", "Çok"],
+];
+function korSub(cb) {
+  window.addEventListener("storage", cb);
+  window.addEventListener("sa-koruyucu", cb);
+  return () => {
+    window.removeEventListener("storage", cb);
+    window.removeEventListener("sa-koruyucu", cb);
+  };
+}
+function korGet() {
+  try {
+    const v = localStorage.getItem(KOR_KEY) || "";
+    return KOR.some(([k]) => k === v) ? v : "";
+  } catch {
+    return "";
+  }
+}
+function korSet(v) {
+  try {
+    if (v) localStorage.setItem(KOR_KEY, v);
+    else localStorage.removeItem(KOR_KEY);
+  } catch {}
+  window.dispatchEvent(new Event("sa-koruyucu"));
+}
+// Kılıfın altında kalan kenar şeridi (ekranın dışında, sayfa düzeyinde): siyah, dokunuşları yutar
+export function BilgiKenar() {
+  const kor = useKoruyucu();
+  if (!kor) return null;
+  const no = (e) => e.preventDefault();
+  return <div className="bz-kenar" aria-hidden="true" onPointerDown={no} onClick={no} onContextMenu={no} />;
+}
+function useKoruyucu() {
+  return useSyncExternalStore(korSub, korGet, () => "");
+}
+function KorPick() {
+  const v = useKoruyucu();
+  return (
+    <>
+      <div className="bz-kor-t" id="bz-kor-t">
+        Koruyucu mod
+      </div>
+      <div className="bz-seg" role="group" aria-labelledby="bz-kor-t">
+        {KOR.map(([k, t]) => (
+          <button key={k || "off"} type="button" aria-pressed={v === k} onClick={() => korSet(k)}>
+            {t}
+          </button>
+        ))}
+      </div>
+    </>
+  );
+}
+
 function StartCard({ onGo, onClose, kanal, why = "", acct = null, uid = "" }) {
   // Saklı kimlik ilk çizimden sonra okunur (sunucu çizimiyle uyuşsun): sunucuda null
   const raw = useSyncExternalStore(noSub, whoRaw, () => null);
@@ -389,6 +448,7 @@ function StartCard({ onGo, onClose, kanal, why = "", acct = null, uid = "" }) {
                 </label>
               </>
             )}
+            <KorPick />
             <button type="submit" className="btn btn-primary" disabled={!acct.sail && !sail.trim()}>
               Katıl ve başlat
             </button>
@@ -410,6 +470,7 @@ function StartCard({ onGo, onClose, kanal, why = "", acct = null, uid = "" }) {
             <span>{who.name}</span>
           </div>
         )}
+        {!acct && <KorPick />}
         {!acct && (
           <button type="submit" className="btn btn-primary" disabled={edit && !sail.trim() && !name.trim()}>
             Katıl ve başlat
@@ -852,6 +913,7 @@ export function BilgiScreen({ pub = "" }) {
   const ses = pub ? pses : ownSes;
   const [on, setOn] = useState(false);
   const [big, setBig] = useState(false);
+  const kor = useKoruyucu();
   const now = useTick(250);
   const h = useHeading(on);
   useRecord(on, org, profile?.uid, profile?.name);
@@ -994,7 +1056,7 @@ export function BilgiScreen({ pub = "" }) {
     ) : null;
 
   return (
-    <main className={`bz${active ? " bz-pton" : ""}${showMap ? " bz-mapon" : ""}${night ? "" : " bz-day"} bz-m-${mode}${mode === "pre" && sv.phase !== "none" ? " bz-cnt" : ""}`} data-bilgi>
+    <main className={`bz${kor ? ` bz-kor bz-kor-${kor}` : ""}${active ? " bz-pton" : ""}${showMap ? " bz-mapon" : ""}${night ? "" : " bz-day"} bz-m-${mode}${mode === "pre" && sv.phase !== "none" ? " bz-cnt" : ""}`} data-bilgi>
       {active && (
         <button type="button" className="bz-out" data-ask={bye ? "1" : undefined} onClick={exit} disabled={bye === 2} data-press>
           {bye === 2 ? "Çıkılıyor…" : bye ? "Çıkılsın mı?" : "Çıkış"}
