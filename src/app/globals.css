@@ -1939,3 +1939,8 @@ html[data-theme="dark"] .it-step { background: rgba(11, 26, 51, .7); color: #dbe
   .jb-run i { animation-duration: 2.4s; }
   .jb-pg.jb-flow i, .jb-steps i.c::after { animation: none; width: 100%; opacity: .5; }
 }
+
+/* Adım adım antrenman "Sahne" (FitSahne.jsx): okunurken ses dalgası oynar */
+.fit-speak .fit-wave i { animation: fitwave .9s ease-in-out infinite; }
+@keyframes fitwave { 50% { height: 18px; } }
+@media (prefers-reduced-motion: reduce) { .fit-speak .fit-wave i { animation: none; height: 12px; } }

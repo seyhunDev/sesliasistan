@@ -12,6 +12,7 @@ import { todayStr } from "@/lib/utils/format";
 import { STATUS, itemLine, monthStats, myFit, records, statusOf, weekStats } from "@/lib/fitness/model";
 import { HistoryCard, MonthCard, ProgressCard } from "./FitDashboard";
 import { FitPhoto, WeekBoxes } from "./FitDark";
+import { markStart } from "./guideVoice";
 
 // Sporcunun Fitness sayfası (salt okunur; Seyhun 2026-10-25 "bizim fitness sayfası gibi"): ana hesabın Sporcular sekmesi gibi baştan sona koyu,
 // üstte salon fotoğrafı. Bugünün antrenmanı büyük yazılır, altında bu hafta (çubuk + Pzt–Paz kutuları) ve tek ana düğme;
@@ -84,7 +85,15 @@ export function AthleteFitness() {
             )}
             <WeekBoxes days={week.days} today={today} onOpen={open} className="mt-3" />
             {plan && (
-              <Button full onClick={() => open(plan)} className="mt-4 [--acc:#3d7bff]">
+              <Button
+                full
+                onClick={() => {
+                  // Başla/Devam: adım adım ekran hemen açılır (hiç set yapılmadıysa önce sesli giriş)
+                  if (st !== "done" && st !== "skip") markStart(plan.id);
+                  open(plan);
+                }}
+                className="mt-4 [--acc:#3d7bff]"
+              >
                 {st === "done" || st === "skip" ? "Sonucu aç" : began(plan) ? "Devam et" : "Antrenmana başla"}
               </Button>
             )}
