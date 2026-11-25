@@ -17,7 +17,7 @@ const pad = (n) => String(n).padStart(2, "0");
 // mavi dolu kart. Program yoksa "Fotoğrafla ekle" (fotoğraf okunur, Ders programı sayfasında önizleme açılır, kaydı kişi seçer) ve "Elle ekle"
 // (Ders programı sayfası, yeni ders penceresi açık). Program varsa bugünün dersleri (şu anki ders vurgulu) ve "Güncelle" (yeni fotoğraf).
 // Başlığa dokununca Ders programı sayfası. Veri cihazdaki derslerden (kişinin kendi eklediği; ek okuma yok).
-export function DersCard() {
+export function DersCard({ tile = false }) {
   const { lessons, myUid } = useData();
   const toast = useToast();
   const router = useRouter();
@@ -49,6 +49,32 @@ export function DersCard() {
     setBusy(false);
   }
   const photo = () => fileRef.current?.click();
+
+  // Sporcu ana sayfası (Sahne, Seyhun 2026-11-25 "A"): koyu kutu; program varsa şu anki ya da sıradaki ders, yoksa Fotoğrafla ekle · Elle ekle
+  if (tile) {
+    const cur = list.find(isNow) || list.find((l) => (l.start || "") > hm);
+    return (
+      <section aria-label="Ders programı" className="sh-tile">
+        <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPhoto} />
+        <Link href="/schedule" className="sh-k">Ders programı</Link>
+        {mine.length ? (
+          <Link href="/schedule" className="min-w-0">
+            <b className="sh-t">{cur ? `${cur.start} ${cur.title}` : list.length ? "Dersler bitti" : "Bugün ders yok"}</b>
+            <small className="sh-s">{cur && isNow(cur) ? "şimdi" : cur ? "sıradaki" : `${mine.length} ders kayıtlı`}</small>
+          </Link>
+        ) : (
+          <span className="flex flex-wrap gap-1.5">
+            <button type="button" data-press onClick={photo} disabled={busy} className="sh-mini sh-mini-on">
+              {busy ? "Okunuyor…" : "Fotoğrafla ekle"}
+            </button>
+            <Link href="/schedule?yeni=1" data-press className="sh-mini">
+              Elle ekle
+            </Link>
+          </span>
+        )}
+      </section>
+    );
+  }
 
   return (
     <section aria-label="Ders programı" className="flex flex-col gap-2.5 rounded-[1.5rem] bg-acc px-4 py-3.5 text-white">

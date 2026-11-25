@@ -1,0 +1,75 @@
+/* Sporcu ana sayfası "Sahne" (SporcuHome.jsx; Seyhun 2026-11-25 A). Fitness Sahne ile aynı dil: koyu zemin, Barlow Condensed başlık, tek vurgu limon.
+   Telefon: tek sütun. iPad (48rem+): iki sütun (solda bugün ve yarış, sağda kartlar ve kutular). */
+body.sh-body { background: #0b0b0c; }
+.sh {
+  --sh-lime: #d4ff3a; --sh-fit: #ff7a1a; --sh-yel: #ffe14d; --sh-line: #26262b; --sh-tile: #17171a; --sh-mut: #a1a1aa;
+  min-height: 100dvh; background: #0b0b0c; color: #fff;
+  padding: calc(0.75rem + env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) calc(var(--stage-h, 6rem) + 1.5rem) max(1rem, env(safe-area-inset-left));
+  max-width: 72rem; margin: 0 auto;
+}
+.sh-c { font-family: var(--lv-font-c), var(--font-num), system-ui, sans-serif; font-weight: 800; text-transform: uppercase; line-height: .9; letter-spacing: .01em; }
+.sh-top { display: flex; align-items: center; gap: .5rem; }
+.sh-date { flex: 1; min-width: 0; font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--sh-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sh-pill { border: 1px solid #3f3f46; border-radius: 999px; padding: .4rem .8rem; font-size: .8125rem; font-weight: 700; color: #fff; white-space: nowrap; }
+.sh-me { width: 2.25rem; height: 2.25rem; border-radius: 50%; background: #1f1f22; display: grid; place-items: center; font-weight: 700; font-size: .75rem; flex-shrink: 0; }
+.sh-grid { display: grid; gap: .8rem; margin-top: .9rem; }
+.sh-col { display: flex; flex-direction: column; gap: .8rem; min-width: 0; }
+.sh-hi { font-size: clamp(2.4rem, 11vw, 3.4rem); margin: 0; }
+.sh-hi em { font-style: normal; color: var(--sh-lime); }
+.sh-wx { display: flex; align-items: center; gap: .45rem; flex-wrap: wrap; font-size: .875rem; color: #d4d4d8; }
+.sh-wx b { color: #fff; font-weight: 700; }
+.sh-wx i { width: 1px; height: .9rem; background: #3f3f46; }
+.sh-k { font-size: .6875rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.sh-lime { color: var(--sh-lime); }
+
+/* BUGÜN dev kartı */
+.sh-hero { position: relative; border-radius: 1.5rem; overflow: hidden; min-height: 14rem; display: flex; flex-direction: column; justify-content: flex-end;
+  background: linear-gradient(180deg, rgba(0,0,0,0) 30%, rgba(0,0,0,.85)), radial-gradient(120% 80% at 80% 10%, #155e75, #0b0b0c 70%); }
+.sh-sail { position: absolute; right: 1.25rem; top: 1rem; width: 5.5rem; height: 7rem; pointer-events: none; }
+.sh-hero-in { display: flex; flex-direction: column; align-items: flex-start; text-align: left; padding: 1rem 1rem 1.1rem; padding-right: 8.5rem; gap: .25rem; color: #fff; }
+.sh-hero-t { font-size: clamp(2.2rem, 10vw, 3.2rem); overflow-wrap: anywhere; }
+.sh-meta { display: flex; gap: 1rem; flex-wrap: wrap; font-size: .75rem; color: #d4d4d8; margin-top: .25rem; }
+.sh-meta b { display: block; color: #fff; font-size: 1.15rem; font-weight: 700; }
+.sh-go { position: absolute; right: 1rem; bottom: 1rem; background: var(--sh-lime); color: #111; border-radius: 999px; padding: .6rem 1rem; font-size: .875rem; font-weight: 800; white-space: nowrap; }
+
+/* Fitness ve İngilizce: yan yana kayan kartlar (iPad'de alt alta değil yan yana, kaymaz) */
+.sh-row { display: flex; gap: .7rem; overflow-x: auto; scroll-snap-type: x mandatory; margin: 0 -1rem; padding: 0 1rem; scrollbar-width: none; }
+.sh-row::-webkit-scrollbar { display: none; }
+.sh-card { flex: 0 0 78%; scroll-snap-align: start; border-radius: 1.25rem; padding: .95rem; min-height: 9.5rem; display: flex; flex-direction: column; justify-content: space-between; gap: .4rem; text-align: left; color: #fff; }
+.sh-row > .sh-card:only-child { flex-basis: 100%; }
+.sh-card-t { font-size: 1.9rem; overflow-wrap: anywhere; }
+.sh-card small { font-size: .8125rem; opacity: .85; }
+.sh-fit { background: linear-gradient(160deg, #3a1d0a, #120b06); border: 1px solid #3b2414; }
+.sh-fit .sh-k { color: var(--sh-fit); }
+.sh-fit .sh-bar i { background: var(--sh-fit); }
+.sh-en { background: linear-gradient(160deg, #2b2508, #0f0e06); border: 1px solid #3a3410; }
+.sh-en .sh-k { color: var(--sh-yel); }
+.sh-en .sh-bar i { background: var(--sh-yel); }
+.sh-bar { display: block; height: .3rem; border-radius: .2rem; background: #ffffff22; margin-top: .45rem; overflow: hidden; }
+.sh-bar i { display: block; height: 100%; border-radius: .2rem; }
+
+/* Kayıtlı yarış */
+.sh-race { display: flex; align-items: center; gap: .8rem; background: var(--sh-tile); border: 1px solid var(--sh-line); border-radius: 1.2rem; padding: .8rem .9rem; }
+.sh-race-n { font-size: 2.4rem; color: var(--sh-lime); flex-shrink: 0; }
+.sh-race b { display: block; font-size: .95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sh-race small { display: block; color: var(--sh-mut); font-size: .78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Kutular */
+.sh-tiles { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
+.sh-tile { background: var(--sh-tile); border: 1px solid var(--sh-line); border-radius: 1.15rem; padding: .8rem; min-height: 6rem; display: flex; flex-direction: column; justify-content: space-between; gap: .3rem; text-align: left; color: #fff; min-width: 0; }
+.sh-tile .sh-k { color: var(--sh-mut); letter-spacing: .04em; text-transform: none; font-size: .75rem; font-weight: 700; }
+.sh-t { display: block; font-size: 1.05rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sh-s { display: block; font-size: .75rem; color: var(--sh-mut); }
+.sh-sailing { background: linear-gradient(160deg, #0e4a5c, #0b1a24); border-color: #164e63; }
+.sh-sailing .sh-k { color: #a5f3fc; }
+.sh-mini { border-radius: 999px; padding: .35rem .65rem; font-size: .75rem; font-weight: 700; background: #ffffff1a; color: #fff; white-space: nowrap; }
+.sh-mini-on { background: var(--sh-lime); color: #111; }
+
+@media (min-width: 48rem) {
+  .sh { padding-left: max(1.5rem, env(safe-area-inset-left)); padding-right: max(1.5rem, env(safe-area-inset-right)); }
+  .sh-grid { grid-template-columns: 1.25fr 1fr; gap: 1.1rem; align-items: start; }
+  .sh-hero { min-height: 20rem; }
+  .sh-sail { width: 8rem; height: 10rem; }
+  .sh-row { margin: 0; padding: 0; overflow: visible; }
+  .sh-card { flex: 1 1 0; min-width: 0; }
+}

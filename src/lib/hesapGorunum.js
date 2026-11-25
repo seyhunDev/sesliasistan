@@ -52,7 +52,10 @@ export function homeActions(o) {
       o.athletes && { href: "/athletes/attendance", icon: "checks", label: "Yoklama" },
       o.athletes && !o.side && { href: "/bilgi/yonet", icon: "clock", label: "Yönet" }, // süre, yoklama, günlük (2026-11-23; adı Seyhun 2026-11-25)
       !o.athletes && !o.side && full && o.training && { href: "/training", icon: "clock", label: "Antrenman" },
-      { href: o.races ? "/athletes/races" : "/races", icon: "flag", label: "Yarışlar" }, // Kulübüm · Takvim tek sayfa
+      o.side && { href: "/sailing", icon: "anchor", label: "Velora Sailing" }, // sporcu kendi Velora hesabıyla girer (/api/sailing-giris)
+      o.side
+        ? { href: "/my-races", icon: "flag", label: "Yarışlarım" } // sporcu yalnız kayıtlı olduğu yarışları görür (Seyhun 2026-11-25)
+        : { href: o.races ? "/athletes/races" : "/races", icon: "flag", label: "Yarışlar" }, // Kulübüm · Takvim tek sayfa
       o.athletes && !o.side && { href: "/media", icon: "image", label: "Medya" }, // antrenman ve yarış fotoğraf/videoları (Seyhun 2026-10-22)
       o.athletes && o.owner && { href: "/dues", icon: "wallet", label: "Aidatlar" },
       !o.staff && { href: "/inventory", icon: "box", label: "Envanter" },
@@ -68,7 +71,7 @@ export function homeActions(o) {
     ]],
     ["Kişisel", [
       { href: "/fitness", icon: "dumbbell", label: "Fitness" }, // herkeste (Seyhun 2026-11-25 "normal kullanıcı ve sporcular da fitness görebilmeli")
-      !o.side && { href: "/english", icon: "chat", label: "İngilizce" }, // kelimeler ve hazır cümleler (Seyhun 2026-10-22)
+      { href: "/english", icon: "chat", label: "İngilizce" }, // kelimeler ve kalıplar; sporcuda da (Seyhun 2026-11-25), ilerlemesi kendi cihazında
       o.shop && { href: "/shopping", icon: "cart", label: "Alışveriş" },
       o.lessons && full && { href: "/schedule", icon: "book", label: "Dersler", hid: true },
     ]],
