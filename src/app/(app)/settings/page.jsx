@@ -7,12 +7,11 @@ import { Sheet } from "@/components/ui/Sheet";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { BrainCard } from "@/features/brain/BrainCard";
 import { useData } from "@/features/data/DataProvider";
-import { Fold, NotifyMoreRow, NotifyRow, PermissionsRow, PowerRow, SizeRow, SummaryRow, ThemeRow, VoiceRow, WeatherPlaceRow, PasswordRow, TekneKimRow, useNotifications, RacesRow, RaceLiveRow, LedgerRow } from "@/features/settings/Groups";
+import { Fold, NotifyMoreRow, NotifyRow, PermissionsRow, PowerRow, SizeRow, SummaryRow, ThemeRow, VoiceRow, WeatherPlaceRow, PasswordRow, TekneKimRow, useNotifications, LedgerRow } from "@/features/settings/Groups";
 import { Group, Row } from "@/features/settings/ui";
 import { BackupRow } from "@/features/settings/Backup";
-import { DeviceDataRow } from "@/features/settings/DeviceData";
 import { MailFilesRow, MoveAllRow } from "@/features/settings/MoveAll";
-import { UsageRow } from "@/features/settings/Usage";
+import { Durum } from "@/features/settings/Durum";
 import { CallsRow } from "@/features/settings/Calls";
 import { CalendarFeedRow } from "@/features/settings/CalendarFeed";
 import { PastChatsRow } from "@/features/settings/PastChats";
@@ -20,7 +19,6 @@ import { EnergyRow } from "@/features/settings/Energy";
 import { AndroidApkRow } from "@/features/settings/AndroidApk";
 import { CleanAccountsRow } from "@/features/settings/CleanAccounts";
 import { buildLine } from "@/lib/buildInfo";
-import { openText, readOpens } from "@/lib/openTime";
 import { logout } from "@/lib/auth";
 import { FaceIdRow } from "@/features/ios/AppLock";
 import { KIND_LABEL, isCoach, isPlain, kindOf } from "@/lib/kinds";
@@ -68,12 +66,6 @@ function VersionRow() {
       <p className="px-4 pb-3.5 text-[0.875rem] leading-snug text-mut">{more}</p>
     </Fold>
   );
-}
-
-// Açılış süresi: bu cihazdaki son açılışlar (lib/openTime.js)
-function OpenRow() {
-  const [text] = useState(() => (typeof window === "undefined" ? "" : openText(readOpens())));
-  return text ? <Row title="Açılış süresi" sub={text} /> : null;
 }
 
 // Ana hesap dışındaki kişiler (çalışan, aile, sporcu…): yalnız kişinin kendisine gereken ayarlar (Seyhun, 2026-10-19).
@@ -155,18 +147,21 @@ export default function SettingsPage() {
   if (h.preview) return <PersonSettings profile={{ ...profile, role: "staff", kind: h.kind, coach: false }} n={n} />;
   if (profile.role !== "owner") return <PersonSettings profile={profile} n={n} />;
 
+  // Yeni düzen (örnek velora-tarama/ayarlar.html, Seyhun 2026-11-25 "yap"): en üstte Durum kartları; Kişiler ve hesaplar ayrı grup;
+  // Geliştirici en altta, sürüm sayfanın sonunda tek satır. Kalkanlar (gizli, silinmedi): Ana sayfada yarışlar / yarış kısayolu
+  // (yarışlar artık hep görünür), ayrı Yapay zeka kullanımı, Açılış süresi, Telefondaki veriler ve Yayın satırları (kartlara taşındı).
+  const ver = buildLine().split(" · ").slice(0, 2).join(" · ");
   return (
     <main className="wide mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
       <Top profile={profile} label="Ana hesap" />
       <Body>
-        <Sec title="Genel">
+        <Durum />
+
+        <Sec title="Görünüm">
           <SizeRow />
           <ThemeRow />
           <WeatherPlaceRow />
           <TekneKimRow />
-          <RacesRow />
-          <RaceLiveRow />
-          <Row title="Yayın" href="/settings/yayin" />
         </Sec>
 
         <Sec title="Bildirimler">
@@ -182,37 +177,34 @@ export default function SettingsPage() {
           <PermissionsRow />
         </Sec>
 
-        <Sec title="Veri ve cihaz">
-          <EnergyRow />
-          <UsageRow />
-          <DeviceDataRow />
-          <BackupRow />
-          <Row title="Gmail ve banka mailleri" href="/mail/setup" />
-          <CalendarFeedRow />
-        </Sec>
-
-        <Sec>
-          <Row title="Testler" href="/settings/tests" />
-        </Sec>
-
         {/* Üç hesap görünümü (Seyhun 2026-11-25 "ben her şeye hakim olmalıyım"): ötekilerin ana sayfası, alt çubuğu, menüsü; veri yine senin */}
-        <Sec title="Görünüm">
+        <Sec title="Kişiler ve hesaplar">
+          <Row title="Kişiler" sub={members.length ? `${members.length} kişi` : ""} href="/staff" />
           <Row title="Normal kullanıcı gibi gör" onClick={() => (setGibiGor("normal"), router.push("/"))} chevron />
           <Row title="Sporcu gibi gör" onClick={() => (setGibiGor("sporcu"), router.push("/"))} chevron />
+          <CleanAccountsRow />
+        </Sec>
+
+        <Sec title="Bağlantılar ve yedek">
+          <Row title="Gmail ve banka mailleri" href="/mail/setup" />
+          <CalendarFeedRow />
+          <BackupRow />
+        </Sec>
+
+        <Sec title="Ölçüm">
+          <EnergyRow />
         </Sec>
 
         <Sec title="Hesap">
           <PasswordRow />
           <FaceIdRow />
-          <VersionRow />
-          <AndroidApkRow />
-          <OpenRow />
-          <CleanAccountsRow />
           <Row title="Çıkış yap" danger onClick={() => logout()} />
         </Sec>
 
-        <Sec>
-          <SheetRow title="Arşivlenenler" sub="6">
+        <Sec title="Geliştirici">
+          <Row title="Testler" href="/settings/tests" />
+          <AndroidApkRow />
+          <SheetRow title="Arşivlenenler" sub="5">
             <Group>
               <LedgerRow />
               <Fold title="Öğrenme" sub={profile.brainOff ? "Kapalı" : "Açık"}>
@@ -221,10 +213,11 @@ export default function SettingsPage() {
               <CallsRow />
               <MoveAllRow />
               <MailFilesRow />
-              <Row title="Kişiler" sub={members.length ? `${members.length} kişi` : ""} href="/staff" />
             </Group>
           </SheetRow>
         </Sec>
+
+        {ver && <p className="pb-2 text-center text-[0.75rem] text-mut">Sürüm {ver}</p>}
       </Body>
     </main>
   );

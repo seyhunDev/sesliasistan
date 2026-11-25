@@ -24,7 +24,7 @@ import { todayStr } from "@/lib/utils/format";
 // Görünmeyen iş: sayaç 0 olunca yarışın start saati yine yazılır (telefon ana sayfadayken de; yalnız bu yarışın sayacı).
 export function RaceLive({ open }) {
   const { profile } = useAuth();
-  const r = profile?.raceLive === "off" ? null : liveRace(open, todayStr());
+  const r = liveRace(open, todayStr());
   if (!r) return null;
   return <Line id={r.id} orgId={profile?.orgId} title={r.title} />;
 }

@@ -282,7 +282,7 @@ function Kokpit() {
   const fit = useMemo(() => fitDays(plans, fitOthers || [], members, h.profile?.uid), [plans, fitOthers, members, h.profile?.uid]);
   const fw = fitWeek(fit, today);
   const sport = !!h.athletes;
-  const live = sport && liveRace(race.open, today) && h.profile?.raceLive !== "off";
+  const live = sport && liveRace(race.open, today);
   return (
     <>
       <span className="sh-sec">KULÜP</span>

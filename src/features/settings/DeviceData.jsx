@@ -1,7 +1,7 @@
 "use client";
 
 import { useConfirm } from "@/components/ui/ConfirmProvider";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -130,7 +130,8 @@ const PARTS = [
   ["restBytes", "Diğer", "bg-mut/40"],
 ];
 
-export function DeviceDataRow() {
+// sheetOpen/onClose: Ayarlar › Durum kartından açılır (satır çizilmez, pencere dışarıdan açılır)
+export function DeviceDataRow({ sheetOpen, onClose } = {}) {
   const confirmAsk = useConfirm();
   const toast = useToast();
   const { profile } = useAuth();
@@ -146,6 +147,10 @@ export function DeviceDataRow() {
     load();
     setOpen(true);
   };
+  const ctrl = sheetOpen !== undefined;
+  useEffect(() => {
+    if (sheetOpen) load();
+  }, [sheetOpen]);
   // Yarış/antrenman adları yalnız medya listesi açılınca okunur (yarış başına bir okuma)
   const nameOf = (id) => {
     if (id.startsWith("ant-")) return plans.find((p) => `ant-${p.id}` === id)?.title || "Antrenman";
@@ -228,8 +233,8 @@ export function DeviceDataRow() {
 
   return (
     <>
-      <Row title="Telefondaki veriler" sub={ok ? sizeText(d.total) : ""} onClick={show} chevron />
-      <Sheet open={open} onClose={() => setOpen(false)} title="Telefondaki veriler">
+      {!ctrl && <Row title="Telefondaki veriler" sub={ok ? sizeText(d.total) : ""} onClick={show} chevron />}
+      <Sheet open={ctrl ? sheetOpen : open} onClose={ctrl ? onClose : () => setOpen(false)} title="Telefondaki veriler">
         {!d ? (
           <p className="py-4 text-[0.875rem] text-mut">Hesaplanıyor…</p>
         ) : d.err ? (
