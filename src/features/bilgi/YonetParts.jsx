@@ -7,7 +7,9 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { authFetch } from "@/lib/authFetch";
 import { RecPick } from "@/features/raceMedia/RecPick";
 import { setShooting } from "@/features/raceMedia/shooting";
-import { delKalip, openKanal, renameKalip, reopenKanal, saveKalip, sendKalip } from "./bilgiStore";
+import { addYaziKalip, delKalip, openKanal, renameKalip, reopenKanal, saveKalip, sendKalip } from "./bilgiStore";
+import { sayWith } from "@/lib/speech/ttsClient";
+import { voiceType } from "@/lib/chatFile";
 
 // Yönet yeni düzen (Seyhun 2026-11-25 örnekler "Yönet yeni düzen" + "Yönet hazır kalıplar" onaylandı "Yap"): günü başlat, hazır kalıplar,
 // tekrar, Video kutusu, Araçlar penceresi. Ana ekran BilgiAdmin.jsx.
@@ -152,9 +154,9 @@ export function useRepeat(org, list, ctx, onSent) {
       if (!k) return setRep(null);
       busy.current = true;
       const at = Date.now();
-      live.current.onSent({ kind: "ses", dur: k.dur, to: r.to, at, ok: null, kalip: k.name });
+      live.current.onSent({ ...kalipEntry(k), to: r.to, at, ok: null });
       const res = await sendKalip(org, live.current.list, k, live.current.ctx, r.to).catch(() => ({ ok: false }));
-      live.current.onSent({ kind: "ses", dur: k.dur, to: r.to, at, ...res, ok: !!res.ok, kalip: k.name });
+      live.current.onSent({ ...kalipEntry(k), to: r.to, at, ...res, ok: !!res.ok });
       busy.current = false;
       setRep((o) => (o && o.kid === r.kid ? (o.n + 1 >= o.times ? null : { ...o, n: o.n + 1, next: o.next + o.every * 1000 }) : o));
     }, 400);
@@ -169,6 +171,9 @@ export function useRepeat(org, list, ctx, onSent) {
     stop: () => setRep(null),
   };
 }
+
+// Gönderilen kalıbın son-giden kaydı: yazılı kalıp mesaj gibi (sporcu ekranı okur), sesli kalıp ses
+export const kalipEntry = (k) => (k.text ? { kind: "msg", text: k.text, kalip: k.name } : { kind: "ses", dur: k.dur, kalip: k.name });
 
 // Son 3 kalıp: dokun = seçilenlere bir kez; basılı tut = Tekrarla; tekrar sürerken dokun = Durdur
 export function KalipRow({ list, rep, now, onSend, onHold, onStop, onAll }) {
@@ -210,7 +215,7 @@ export function KalipRow({ list, rep, now, onSend, onHold, onStop, onAll }) {
             aria-label={on ? `${k.name}: durdur` : `${k.name}: gönder`}
           >
             <b>{k.name}</b>
-            <small className="num">{on ? `${rep.n}/${rep.times} · 0:${pad(left)}` : `${k.dur} sn`}</small>
+            <small className="num">{on ? `${rep.n}/${rep.times} · 0:${pad(left)}` : k.text ? <i className="bzy-ktag">YAZI</i> : `${k.dur} sn`}</small>
           </button>
         );
       })}
@@ -261,7 +266,10 @@ export function KalipSheets({ org, list, view, onView, src, to, members, onSend,
         )}
       </Sheet>
       <Sheet big open={view === "kaliplar"} onClose={() => onView("")} title="Kalıplar">
-        {view === "kaliplar" && <KalipList org={org} list={list} to={to} onSend={(k) => (onSend(k), onView(""))} onRep={(k) => onView(`ktek:${k.id}`)} />}
+        {view === "kaliplar" && <KalipList org={org} list={list} to={to} onSend={(k) => (onSend(k), onView(""))} onRep={(k) => onView(`ktek:${k.id}`)} onRec={() => onView("kkayit")} />}
+      </Sheet>
+      <Sheet open={view === "kkayit"} onClose={() => onView("kaliplar")} title="Sesli kalıp">
+        {view === "kkayit" && <KalipKayit org={org} list={list} onDone={() => (onView("kaliplar"), toast("Kalıp kaydedildi"))} />}
       </Sheet>
     </>
   );
@@ -333,47 +341,192 @@ function KalipTekrar({ k, to, online, onGo }) {
   );
 }
 
-function KalipList({ org, list, to, onSend, onRep }) {
+// Kalıplar (Seyhun 2026-11-25 örnek "Yönet Kalıplar Örneği"): yazılı (asistan sesiyle okunur) ve sesli (kendi sesi) aynı listede.
+// Ada dokun: düzenle; Dinle (yazılı: sporcunun duyacağı ses); tekrarla; gönder; sil. Altta + Yazılı kalıp, + Sesli kalıp.
+const KF = [
+  ["", "Hepsi"],
+  ["yazi", "Yazı"],
+  ["ses", "Ses"],
+];
+function KalipList({ org, list, to, onSend, onRep, onRec }) {
   const toast = useToast();
   const [edit, setEdit] = useState(null);
-  if (!list?.length) return <p className="text-mut">Kalıp yok</p>;
+  const [f, setF] = useState("");
+  const [add, setAdd] = useState(null);
+  const shown = (list || []).filter((k) => !f || (f === "yazi" ? !!k.text : !k.text));
   const del = (k) => delKalip(org, list, k.id).catch(() => toast("Silinemedi"));
+  const save = async () => {
+    try {
+      await addYaziKalip(org, list, add);
+      setAdd(null);
+    } catch {
+      toast("Kaydedilemedi");
+    }
+  };
   return (
-    <div className="bzy-list">
-      {list.map((k) => (
-        <div key={k.id} className="bzy-li items-center">
-          <div className="min-w-0 flex-1">
-            {edit?.id === k.id ? (
-              <input
-                className="bzy-in"
-                autoFocus
-                value={edit.v}
-                maxLength={30}
-                onChange={(e) => setEdit({ id: k.id, v: e.target.value })}
-                onBlur={() => (edit.v.trim() && edit.v.trim() !== k.name && renameKalip(org, list, k.id, edit.v).catch(() => toast("Kaydedilemedi")), setEdit(null))}
-                onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
-                aria-label="Kalıp adı"
-              />
-            ) : (
-              <button type="button" className="bzy-kname" onClick={() => setEdit({ id: k.id, v: k.name })}>
-                <b>{k.name}</b>
-                <span>
-                  {k.dur} sn{k.n ? ` · ${k.n} kez` : ""}
-                </span>
-              </button>
-            )}
-          </div>
-          <button type="button" className="btn btn-round btn-sm" aria-label={`${k.name}: tekrarla`} onClick={() => onRep(k)} data-press>
-            <I n="rep" />
+    <div className="flex flex-col gap-3 pb-2">
+      <div className="bzy-seg2">
+        {KF.map(([k, l]) => (
+          <button key={k} type="button" aria-pressed={f === k} onClick={() => setF(k)} data-press>
+            <small>{l}</small>
           </button>
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => onSend(k)} data-press>
-            {to ? to.name : "Gönder"}
-          </button>
-          <button type="button" className="btn btn-text btn-sm text-rec" onClick={() => del(k)} data-press>
-            Sil
-          </button>
+        ))}
+      </div>
+      {add !== null && (
+        <div className="flex gap-2">
+          <input className="bzy-in flex-1" autoFocus value={add} maxLength={80} placeholder="Okunacak cümle" onChange={(e) => setAdd(e.target.value)} onKeyDown={(e) => e.key === "Enter" && save()} aria-label="Yazılı kalıp" />
+          <Button size="sm" disabled={!add.trim()} onClick={save}>
+            Kaydet
+          </Button>
         </div>
-      ))}
+      )}
+      {!shown.length ? (
+        <p className="text-mut">Kalıp yok</p>
+      ) : (
+        <div className="bzy-list">
+          {shown.map((k) => (
+            <div key={k.id} className="bzy-li items-center">
+              <i className="bzy-ktag" data-k={k.text ? "yazi" : "ses"}>
+                {k.text ? "YAZI" : "SES"}
+              </i>
+              <div className="min-w-0 flex-1">
+                {edit?.id === k.id ? (
+                  <input
+                    className="bzy-in"
+                    autoFocus
+                    value={edit.v}
+                    maxLength={k.text ? 80 : 30}
+                    onChange={(e) => setEdit({ id: k.id, v: e.target.value })}
+                    onBlur={() => (edit.v.trim() && edit.v.trim() !== k.name && renameKalip(org, list, k.id, edit.v).catch(() => toast("Kaydedilemedi")), setEdit(null))}
+                    onKeyDown={(e) => e.key === "Enter" && e.currentTarget.blur()}
+                    aria-label={k.text ? "Okunacak cümle" : "Kalıp adı"}
+                  />
+                ) : (
+                  <button type="button" className="bzy-kname" onClick={() => setEdit({ id: k.id, v: k.name })}>
+                    <b>{k.name}</b>
+                    <span>
+                      {k.text ? "Asistan sesi" : `${k.dur} sn`}
+                      {k.n ? ` · ${k.n} kez` : ""}
+                    </span>
+                  </button>
+                )}
+              </div>
+              {k.text && (
+                <button type="button" className="btn btn-round btn-sm" aria-label={`${k.name}: dinle`} onClick={() => listen(k.text)} data-press>
+                  ▶
+                </button>
+              )}
+              <button type="button" className="btn btn-round btn-sm" aria-label={`${k.name}: tekrarla`} onClick={() => onRep(k)} data-press>
+                <I n="rep" />
+              </button>
+              <button type="button" className="btn btn-primary btn-sm" onClick={() => onSend(k)} data-press>
+                {to ? to.name : "Gönder"}
+              </button>
+              <button type="button" className="btn btn-text btn-sm text-rec" onClick={() => del(k)} data-press>
+                Sil
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-2">
+        <Button full onClick={() => setAdd((x) => (x === null ? "" : null))}>
+          + Yazılı kalıp
+        </Button>
+        <Button full variant="secondary" onClick={onRec}>
+          + Sesli kalıp
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// Yazılı kalıbı Yönet'te dinle: sporcunun duyacağı asistan sesi (aynı seslendirme, sunucuda saklı)
+let LISTEN = null;
+function listen(text) {
+  try {
+    LISTEN = LISTEN || new Audio();
+    sayWith(LISTEN, text, { style: "asistan", timeoutMs: 6000 });
+  } catch {}
+}
+
+// + Sesli kalıp: sporculara gitmeden kayıt; dinle, beğenmezsen yeniden çek, ad ver, sakla (en çok 30 sn, tam ses tek parça)
+const KAYIT_MAX = 30;
+function KalipKayit({ org, list, onDone }) {
+  const toast = useToast();
+  const [st, setSt] = useState({ s: "idle" }); // idle | rec { t0 } | done { blob, dur }
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const r = useRef(null);
+  const [now, setNow] = useState(0);
+  useEffect(() => {
+    if (st.s !== "rec") return;
+    const id = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(id);
+  }, [st.s]);
+  useEffect(() => () => r.current?.stop?.(), []);
+  const url = useMemo(() => (st.blob ? URL.createObjectURL(st.blob) : ""), [st.blob]);
+  useEffect(() => () => url && URL.revokeObjectURL(url), [url]);
+  const start = async () => {
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+    } catch {
+      return toast("Mikrofon açılamadı");
+    }
+    const type = voiceType();
+    const mr = new MediaRecorder(stream, { ...(type ? { mimeType: type } : {}), audioBitsPerSecond: 32000 });
+    const bits = [];
+    const t0 = Date.now();
+    mr.ondataavailable = (e) => e.data?.size && bits.push(e.data);
+    mr.onstop = () => {
+      stream.getTracks().forEach((t) => t.stop());
+      clearTimeout(timer);
+      r.current = null;
+      const dur = (Date.now() - t0) / 1000;
+      if (dur < 0.6 || !bits.length) return setSt({ s: "idle" });
+      const blob = new Blob(bits, { type: mr.mimeType || type || "audio/mp4" });
+      setSt({ s: "done", blob, dur });
+      if (!name) firstWords(blob).then((w) => w && setName((n) => n || w));
+    };
+    const timer = setTimeout(() => mr.state !== "inactive" && mr.stop(), KAYIT_MAX * 1000);
+    r.current = { stop: () => mr.state !== "inactive" && mr.stop() };
+    mr.start();
+    setNow(t0);
+    setSt({ s: "rec", t0 });
+  };
+  const save = async () => {
+    setBusy(true);
+    try {
+      await saveKalip(org, list, { blob: st.blob, dur: st.dur, name: name || `Kalıp ${(list?.length || 0) + 1}` });
+      onDone();
+    } catch {
+      toast("Kaydedilemedi");
+    }
+    setBusy(false);
+  };
+  const sec = st.s === "rec" ? Math.max(0, Math.floor((now - st.t0) / 1000)) : 0;
+  return (
+    <div className="flex flex-col gap-3 pb-2">
+      {st.s === "done" ? (
+        <>
+          <audio src={url} controls className="w-full" />
+          <input className="bzy-in" value={name} maxLength={30} placeholder="Ad" onChange={(e) => setName(e.target.value)} aria-label="Kalıp adı" />
+          <div className="grid grid-cols-2 gap-2">
+            <Button full variant="secondary" onClick={() => (setSt({ s: "idle" }), start())}>
+              Yeniden çek
+            </Button>
+            <Button full loading={busy} onClick={save}>
+              Kaydet
+            </Button>
+          </div>
+        </>
+      ) : (
+        <button type="button" className="bzy-krec" data-rec={st.s === "rec" ? "1" : undefined} onClick={() => (st.s === "rec" ? r.current?.stop() : start())} data-press>
+          <b className="num">{st.s === "rec" ? `0:${pad(sec)}` : "●"}</b>
+          <small>{st.s === "rec" ? `Bitirmek için dokun · en çok ${KAYIT_MAX} sn` : "Kayda başla"}</small>
+        </button>
+      )}
     </div>
   );
 }

@@ -41,7 +41,7 @@ import {
   useTekneler,
   setCeza,
 } from "./bilgiStore";
-import { DayStart, KalipRow, KalipSheets, ToolsSheet, VideoTile, dayLabel, kanalDay, useRepeat, videoDone } from "./YonetParts";
+import { DayStart, KalipRow, KalipSheets, kalipEntry, ToolsSheet, VideoTile, dayLabel, kanalDay, useRepeat, videoDone } from "./YonetParts";
 import { TekneMap } from "./TekneMap";
 import { usePtt } from "./usePtt";
 import { Wave } from "./Wave";
@@ -901,9 +901,9 @@ export function BilgiAdmin() {
   const repeat = useRepeat(org, kaliplar, ctx, got);
   const sendK = async (k) => {
     const at = clock();
-    got({ kind: "ses", dur: k.dur, to, at, ok: null, kalip: k.name });
+    got({ ...kalipEntry(k), to, at, ok: null });
     const r = await sendKalip(org, kaliplar, k, ctx, to).catch(() => ({ ok: false }));
-    got({ kind: "ses", dur: k.dur, to, at, ...r, ok: !!r.ok, kalip: k.name });
+    got({ ...kalipEntry(k), to, at, ...r, ok: !!r.ok });
   };
   // "Kalıp yap": bas-konuşla giden son ses 30 sn boyunca kalıp olarak saklanabilir
   const canKalip = last?.kind === "ses" && !!last.blob && !last.kalip && last.ok === true && now - last.at < 30e3;
