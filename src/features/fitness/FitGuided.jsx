@@ -155,13 +155,27 @@ function useSetClock(onEnd) {
   };
 }
 
+// Cümle cümle adımlar: programdaki anlatım (hazır programlar) önce, yoksa listedeki hareketin anlatımı
+const sentences = (t) =>
+  String(t || "")
+    .split(/(?<=[.!?])\s+|;\s*/)
+    .map((x) => x.trim().replace(/\.$/, ""))
+    .filter(Boolean);
 function howOf(it) {
+  if (it?.how) return sentences(it.how);
   const steps = guideSteps(it?.ex);
   if (steps.length) return steps;
   return String(exById(it?.ex)?.how || "")
     .split(/;\s*/)
     .map((x) => x.trim().replace(/\.$/, ""))
     .filter(Boolean);
+}
+
+// Sesli anlatım: önce hazırlık, sonra nasıl yapılır (listedeki harekette ilk 3 adım); boşsa ""
+function howSay(it) {
+  const h = it?.how ? howOf(it) : howOf(it).slice(0, 3);
+  const t = [it?.setup ? `Hazırlık: ${String(it.setup).replace(/\.$/, "")}` : "", ...h].filter(Boolean);
+  return t.length ? ` ${t.join(". ")}.` : "";
 }
 
 const kgText = (v) => `${String(v).replace(".", ",")} kg`;
@@ -237,6 +251,14 @@ function HowBody({ it }) {
   const more = [it.breath ? `Nefes: ${it.breath}` : "", it.tempo ? `Tempo: ${it.tempo}` : "", it.note || ""].filter(Boolean);
   return (
     <>
+      {it.setup && (
+        <p className="mt-2 text-[1rem] leading-snug text-white/85">
+          <b className="mr-1.5 text-[0.75rem] font-bold uppercase tracking-[.12em]" style={{ color: LIME }}>
+            Hazırlık
+          </b>
+          {it.setup}
+        </p>
+      )}
       {more.length > 0 && <p className="mt-2 text-[1rem] leading-snug text-white/80">{more.join(" · ")}</p>}
       {how.length > 0 && (
         <ol className="mt-3 space-y-2">
@@ -321,7 +343,7 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
   const moveText = (p) => {
     const it = items[p.i] || {};
     const g = sayGoal(it, sets[p.i]?.[p.k]);
-    return `${ORD[p.i] ? `${ORD[p.i]} hareket` : "Sıradaki hareket"}: ${it.name}. ${sets[p.i]?.length || 0} set${g ? `, ${g}` : ""}.`;
+    return `${ORD[p.i] ? `${ORD[p.i]} hareket` : "Sıradaki hareket"}: ${it.name}. ${sets[p.i]?.length || 0} set${g ? `, ${g}` : ""}.${p.k ? "" : howSay(it)}`;
   };
 
   // Ekran açıkken arkadaki sayfa kaymasın; kapanınca okuma susar
@@ -379,8 +401,7 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
   // Dinlenmede söylenen: süre ve sıradaki (yeni hareketse adı, yapılışı, seti)
   function restText(n, sec, newEx) {
     if (!newEx) return `${sec} saniye dinlen. Sonra set ${n.k + 1}.`;
-    const h = howOf(items[n.i]).slice(0, 3);
-    return `${sec} saniye dinlen. ${moveText(n)}${h.length ? ` ${h.join(". ")}.` : ""}`;
+    return `${sec} saniye dinlen. ${moveText({ ...n, k: 0 })}`;
   }
   function pauseAll() {
     seq.current++;
@@ -507,8 +528,8 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
     }
     if (!pos) return done < total ? `${total - done} set kaldı. Kalan setlere dönmek için ekrandaki düğmeye dokun.` : "Hepsi tamam. Nasıl geçti? Bitirmek için \"antrenmanı bitir\" de.";
     if (g.op === "how") {
-      const h = howOf(items[pos.i]);
-      return h.length ? `${items[pos.i]?.name}: ${h.join(". ")}.` : `${items[pos.i]?.name} için açıklama yok.`;
+      const h = howSay(items[pos.i]);
+      return h ? `${items[pos.i]?.name}.${h}` : `${items[pos.i]?.name} için açıklama yok.`;
     }
     if (g.op === "more") {
       if (!rest.run) return "Şu an dinlenme yok.";

@@ -332,8 +332,9 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, o
     if (seed) return;
     if (isOwner) {
       try {
-        const n = await seedTemplatePhotos({ id, orgId: me?.orgId, lib, addMany, onProg: (i, all) => setSeed(`Fotoğraflar ${i} / ${all}`) });
-        if (n) toast(`${n} hareket fotoğrafı eklendi`);
+        const r = await seedTemplatePhotos({ id, orgId: me?.orgId, lib, addMany, onProg: setSeed });
+        const n = r.added + r.drawn;
+        if (n || r.failed) toast([n ? `${n} hareket fotoğrafı eklendi` : "", r.failed ? `${r.failed} fotoğraf çizilemedi, "+" ile ekleyebilirsin` : ""].filter(Boolean).join(" · "));
       } catch (x) {
         toast(/storage\//.test(x?.code || "") ? "Fotoğraflar yüklenemedi: Firebase Storage açık değil" : "Fotoğraflar yüklenemedi");
       } finally {

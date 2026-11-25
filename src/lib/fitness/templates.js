@@ -2,6 +2,7 @@
 // Hareket adları kulübün kendi hareketi olarak kalır (ex: ""). Fotoğraflar uygulamayla gelir (public/fitness/hazir/*.jpg,
 // PHOTOS): program seçilince fotoğrafı olmayan hareketlerin kütüphanesine yüklenir (templatePhotos, NewProgram).
 import { cleanProgram } from "./model";
+import { HOW } from "./templateHow";
 
 // Hazırlık ve reset hareketleri arka arkaya akar (PDF: her biri 1 dk): araya kısa geçiş
 const prep = (name, more = {}) => ({ ex: "", name, sets: 1, part: "isinma", rest: 10, gap: 10, ...more });
@@ -221,6 +222,22 @@ const PHOTOS = {
   "Uzun verişli nefes": "uzun-verisli-nefes",
 };
 
+// Uygulamayla fotoğrafı gelmeyen hareketler yapay zekayla çizilir (/api/fitness-pic); prova çizilmez (ilk ana hareketin kolayı)
+const NO_PIC = new Set(["Ana harekete prova"]);
+// Fotoğrafı gelmeyen, çizilecek hareketler: [{ ex, name, kind, setup, how }]
+export function templateDraw(id) {
+  const p = fromTemplate(id);
+  const seen = new Set();
+  const out = [];
+  for (const d of p?.days || [])
+    for (const it of d.items || []) {
+      if (PHOTOS[it.name] || NO_PIC.has(it.name) || seen.has(it.name)) continue;
+      seen.add(it.name);
+      out.push({ ex: it.ex || "", name: it.name, kind: it.kind, setup: it.setup || "", how: it.how || "" });
+    }
+  return out;
+}
+
 // Programın fotoğraflı hareketleri, her hareket bir kez: [{ ex, name, kind, src }]
 export function templatePhotos(id) {
   const p = fromTemplate(id);
@@ -240,5 +257,7 @@ export function templatePhotos(id) {
 export function fromTemplate(id, start = "") {
   const t = TEMPLATES.find((x) => x.id === id);
   if (!t) return null;
-  return { ...cleanProgram({ ...t.prog, start }), template: t.id };
+  // Her harekete nasıl yapılır anlatımı (templateHow.js)
+  const days = t.prog.days.map((d) => ({ ...d, items: d.items.map((it) => ({ ...HOW[it.name], ...it })) }));
+  return { ...cleanProgram({ ...t.prog, days, start }), template: t.id };
 }
