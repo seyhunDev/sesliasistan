@@ -1,0 +1,8 @@
+## Nerede kaldım
+- Sporcu antrenman giriş akışı "Sahne" (Seyhun 2026-11-25: "antrenmana başlayınca bir giriş olsun, seslendirelim; devam deyince hareketler güzelce gösterilsin; fotoğraf yoksa ortada + olsun, yalnız ben göreyim"; örnek /mnt/project-files/fitness-giris/ornek.html, "A · Sahne" seçildi; telefonda denenmedi): Sporcunun Fitness sayfasında "Antrenmana başla / Devam et" adım adım ekranı hemen açar (`markStart`). Hiç set yapılmadıysa önce giriş: ilk hareketin görüntüsü arkada, antrenmanın adı dev dar harflerle, dakika (`estMinutes`) · hareket · set, "Dinle", hareket şeridi, "Devam et"; açılınca sesli okunur. Hareket ekranı koyu: fotoğraf/video üst yarıda kenardan kenara (dokununca tam ekran), üstte hareket başına hikâye çizgisi, ad görüntünün üstünde, adımlar altında, alt panelde dev tekrar/süre + set noktaları + limon düğme; her yeni hareketin adı ve seti söylenir, sağ üstteki hoparlör susturur (`sa-fit-sessiz`). Fotoğrafı olmayan harekette sporcu dev sıra numarasını, ana hesap ortada "+" görür; eklenen dosya hareket kütüphanesine yazılır, bütün programlara ve sporculara taşınır (`useFitLib.setMedia`). Asistanla "devam et" girişi geçer. Dosyalar: `FitSahne.jsx` (yeni), `FitGuided.jsx`, `FitWorkout.jsx`, `AthleteFitness.jsx`, globals.css (`.fit-wave`). Yazı Barlow Condensed (`liveScreen/fonts` liveHead).
+
+## Sıradaki işler
+0. Telefonda: sporcu hesabıyla "Antrenmana başla" (giriş okunuyor mu, iPhone'da ses çıkıyor mu), Devam et, Tamamlandı/dinlenme, fotoğrafsız harekette ana hesapla "+" ile fotoğraf/video ekleme.
+
+## Tasarım
+- Adım adım antrenman "Sahne" görünümünde (koyu #0c0d0f, tam ekran görüntü, Barlow Condensed dev büyük harf, tek vurgu limon #d4ff3a). Fitness ana sayfası ayrı iş.

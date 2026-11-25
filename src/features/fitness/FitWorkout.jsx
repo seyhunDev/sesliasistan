@@ -213,6 +213,7 @@ export function FitWorkout({ rec, by, hero = false }) {
       )}
       {guide && (
         <FitGuided
+          name={name}
           items={items}
           sets={sets}
           at={at}
