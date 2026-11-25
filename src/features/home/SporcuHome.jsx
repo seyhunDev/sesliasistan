@@ -28,10 +28,10 @@ import { SahneTop, SporcuAdd, SporcuMenu } from "./SporcuMenu";
 
 // SPORCU ANA SAYFASI · "Sahne" (Seyhun 2026-11-25 "tamamen farklı, profesyonel, modern"; A seçti; örnek velora-tarama/sporcu-ana-yeni.html):
 // Fitness Sahne ile aynı dil: koyu zemin, dar dev başlıklar (Barlow Condensed), tek vurgu limon sarısı. Telefon önce; iPad'de iki sütun (sporcu.css).
-// Günün sırası (Seyhun 2026-11-25 "bugün antrenman yoksa önemli olan ne?"; örnek velora-tarama/sporcu-ana-sira.html):
-// · antrenman varsa en üstte antrenman dev kartı (içinde Tekne ekranı); fitness da varsa hemen altında yatay tek fitness kartı
-// · antrenman yoksa fitness en üstteki dev alana geçer, Tekne ekranı onun altında küçük kutu (Velora Sailing yanında)
-// · ikisi de yoksa "Serbest gün" ve Tekne ekranı
+// Günün sırası, bugün ne varsa o üstte (Seyhun 2026-11-25 "fitness varsa fitness öncelikli"; "serbest günde tekne ekranına gerek yok"):
+// · fitness varsa en üstte fitness dev kartı; antrenman da varsa hemen altında antrenman dev kartı (içinde Tekne ekranı)
+// · yalnız antrenman varsa en üstte antrenman kartı (içinde Tekne ekranı)
+// · ikisi de yoksa (serbest gün) dev kart ve Tekne ekranı hiç yok; yarış/İngilizce/kutular yukarı çıkar
 // Sonra kayıtlı yarış kendi kartında (kaç gün kaldı büyük; /api/my-races), İngilizce yatay kart, kutular. Bekleyen yok (Seyhun 2026-11-25 "zaten takvim var").
 // Üst çubuk: ☰ menü · tarih · ＋ · zil · profil, hepsi aynı yuvarlak düğme; menü ve + Ekle koyu (SporcuMenu.jsx). Asistan yok.
 const pad = (n) => String(n).padStart(2, "0");
@@ -64,7 +64,6 @@ export function SporcuHome() {
     document.body.classList.add("sh-body");
     return () => document.body.classList.remove("sh-body");
   }, []);
-  const boat = !tr; // antrenman kartı yoksa Tekne ekranı küçük kutu
   return (
     <>
       <main data-theme="dark" className={`sh ${liveHead.variable}`} data-home-sporcu>
@@ -72,19 +71,13 @@ export function SporcuHome() {
         <div className="sh-grid">
           <div className="sh-col">
             <Hello tr={tr} now={now} />
-            {tr ? <Today tr={tr} /> : fit ? <FitHero fit={fit} /> : <Today tr={null} />}
-            {tr && fit && <FitWide fit={fit} />}
-            {boat && fit && (
-              <div className="sh-tiles">
-                <BoatTile />
-                <SailingTile />
-              </div>
-            )}
+            {fit && <FitHero fit={fit} />}
+            {tr && <Today tr={tr} />}
             <RaceCard />
           </div>
           <div className="sh-col">
             <EnCard />
-            <Tiles sailing={!(boat && fit)} />
+            <Tiles />
             <PaidNotice />
           </div>
         </div>
@@ -169,11 +162,11 @@ export function useTodayFit() {
 }
 const fitKey = (f) => (f.fin ? (f.st === "done" ? "YAPILDI" : "ATLANDI") : `BUGÜN${f.p.time ? ` · ${f.p.time.slice(0, 5)}` : ""}`);
 
-// Antrenman dev kartı: adı, saati, rüzgârı, süresi, yeri; yoksa "Serbest gün". Sağ altta Tekne ekranı (/bilgi).
+// Antrenman dev kartı: adı, saati, rüzgârı, süresi, yeri. Sağ altta Tekne ekranı (/bilgi).
 function Today({ tr }) {
   const { w } = useWeather();
   const { open } = usePlanOpen();
-  const at = tr?.time && dayHours(w, todayStr())?.find((r) => r.hh === tr.time.slice(0, 2));
+  const at = tr.time && dayHours(w, todayStr())?.find((r) => r.hh === tr.time.slice(0, 2));
   return (
     <section className="sh-hero" aria-label="Bugün">
       <svg className="sh-sail" viewBox="0 0 60 80" aria-hidden="true">
@@ -181,38 +174,28 @@ function Today({ tr }) {
         <path d="M33 10 L33 62 L54 62 Z" fill="#d4ff3a55" />
         <path d="M4 66 H56 L48 74 H12 Z" fill="#ffffff33" />
       </svg>
-      {tr ? (
-        <button type="button" onClick={() => open(tr)} className="sh-hero-in">
-          <span className="sh-k sh-lime">BUGÜN{tr.time ? ` · ${tr.time.slice(0, 5)}` : ""} · ANTRENMAN</span>
-          <span className="sh-c sh-hero-t">{tr.title || "Antrenman"}</span>
-          <span className="sh-meta">
-            {at && (
-              <span>
-                Rüzgâr<b className="num">{Math.round(at.wind ?? 0)} kn</b>
-              </span>
-            )}
-            {/* Süre yazılmaz, yalnız başlama saati (Seyhun 2026-11-25 "süreyi yazmayalım, 15:00 kalsın sadece") */}
-            {tr.time && (
-              <span>
-                Saat<b className="num">{tr.time.slice(0, 5)}</b>
-              </span>
-            )}
-            {tr.place && (
-              <span>
-                Yer<b>{tr.place}</b>
-              </span>
-            )}
-          </span>
-        </button>
-      ) : (
-        <div className="sh-hero-in">
-          <span className="sh-k sh-lime">BUGÜN</span>
-          <span className="sh-c sh-hero-t">Serbest gün</span>
-          <span className="sh-meta">
-            <span>Start sayacı · pusula · parkur</span>
-          </span>
-        </div>
-      )}
+      <button type="button" onClick={() => open(tr)} className="sh-hero-in">
+        <span className="sh-k sh-lime">BUGÜN{tr.time ? ` · ${tr.time.slice(0, 5)}` : ""} · ANTRENMAN</span>
+        <span className="sh-c sh-hero-t">{tr.title || "Antrenman"}</span>
+        <span className="sh-meta">
+          {at && (
+            <span>
+              Rüzgâr<b className="num">{Math.round(at.wind ?? 0)} kn</b>
+            </span>
+          )}
+          {/* Süre yazılmaz, yalnız başlama saati (Seyhun 2026-11-25 "süreyi yazmayalım, 15:00 kalsın sadece") */}
+          {tr.time && (
+            <span>
+              Saat<b className="num">{tr.time.slice(0, 5)}</b>
+            </span>
+          )}
+          {tr.place && (
+            <span>
+              Yer<b>{tr.place}</b>
+            </span>
+          )}
+        </span>
+      </button>
       <Link href="/bilgi" data-press className="sh-go">
         Tekne ekranı
       </Link>
@@ -220,7 +203,7 @@ function Today({ tr }) {
   );
 }
 
-// Antrenman yokken en üstte: fitness dev kartı (turuncu), hareket şeridi, Başla
+// Bugün fitness varsa en üstte: fitness dev kartı (turuncu), hareket şeridi, Başla
 function FitHero({ fit }) {
   const dur = durText(fit.p.durationMin);
   return (
@@ -330,15 +313,6 @@ function RaceCard() {
   );
 }
 
-function BoatTile() {
-  return (
-    <Link href="/bilgi" data-press className="sh-tile sh-boat">
-      <span className="sh-k">Tekne ekranı</span>
-      <b className="sh-t">Aç</b>
-      <small className="sh-s">Start · pusula · parkur</small>
-    </Link>
-  );
-}
 export function SailingTile() {
   return (
     <Link href="/sailing" data-press className="sh-tile sh-sailing">
@@ -349,7 +323,7 @@ export function SailingTile() {
   );
 }
 
-function Tiles({ sailing }) {
+function Tiles() {
   const h = useHesap();
   const { tasks, myUid } = useData();
   const { recs } = useMyAttendance(h.kind);
@@ -357,7 +331,7 @@ function Tiles({ sailing }) {
   const open = (tasks || []).filter((t) => !t.done && !t.doneBy?.[myUid]).length;
   return (
     <div className="sh-tiles">
-      {sailing && <SailingTile />}
+      <SailingTile />
       <DersCard tile />
       <Link href="/my-attendance" data-press className="sh-tile">
         <span className="sh-k">{h.kind === "parent" ? "Yoklama" : "Yoklamam"}</span>
