@@ -376,33 +376,38 @@ group("Sesle parkur: geri alma")([
   ...["Ali'nin planını sil", "rüzgar 330 sil", "geri al bunu Ali'ye gönder"].map((s) => [s, { desc: "geri alma değil", fn: PKS.courseUndo, ok: (r) => r === false }]),
 ]);
 
-// Ortak seslendirme (lib/server/tts.js): önce Gemini-TTS (yönergeli), API kapalıysa Chirp 3 HD; ağ taklit edilir
+// Ortak seslendirme (lib/server/tts.js): önce Gemini-TTS (Vertex, yönergeli, WAV), kapalıysa Chirp 3 HD; ağ taklit edilir
 {
   const realFetch = globalThis.fetch;
   const TT = await import("@/lib/server/tts");
   let queue = Promise.resolve(); // testler aynı anda başlar; fetch taklidi paylaşıldığı için sırayla
   const run = (mode) => (text) => (queue = queue.then(() => once(mode, text)));
+  const pcm = Buffer.alloc(480).toString("base64");
   const once = async (mode, text) => {
     const sent = [];
     process.env.GOOGLE_TTS_KEY = "test";
-    globalThis.fetch = async (_u, init) => {
+    process.env.GEMINI_TTS_KEY = "test-g";
+    globalThis.fetch = async (u, init) => {
       const b = JSON.parse(init.body);
-      sent.push(b);
-      if (b.voice.modelName && mode === "kapali") return new Response('{"error":"API disabled"}', { status: 403 });
+      const vertex = /aiplatform\.googleapis\.com/.test(u);
+      sent.push({ url: String(u), vertex, b });
+      if (vertex && mode === "kapali") return new Response('{"error":"denied"}', { status: 403 });
+      if (vertex) return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ inlineData: { mimeType: "audio/L16;codec=pcm;rate=24000", data: pcm } }] } }] }), { status: 200 });
       return new Response(JSON.stringify({ audioContent: Buffer.from("mp3").toString("base64") }), { status: 200 });
     };
     try {
       const r = await TT.synthesize({ text, voice: "Kore", style: "fitness", rate: mode === "yavas" ? 0.9 : 1 });
-      return { engine: r.engine, sent };
+      return { engine: r.engine, type: r.type, wav: r.audio.subarray(0, 4).toString(), sent };
     } finally {
       globalThis.fetch = realFetch;
     }
   };
+  const ptext = (r) => r.sent.at(-1)?.b?.contents?.[0]?.parts?.[0]?.text || "";
   group("Ortak seslendirme")([
-    ["Gemini açık: doğal ses", { desc: "gemini, model + fitness yönergesi + Kore", fn: run("acik"), ok: (r) => r.engine === "gemini" && r.sent.length === 1 && r.sent[0].voice.modelName === TT.TTS_GEMINI_MODEL() && r.sent[0].input.prompt === TT.TTS_STYLES.fitness && r.sent[0].voice.name === "Kore" }],
-    ["Gemini yavaş hız", { desc: "yönergeye 'Biraz yavaş'", fn: run("yavas"), ok: (r) => /Biraz yavaş/.test(r.sent.at(-1).input.prompt) }],
-    ["Gemini kapalı: Chirp yedeği", { desc: "chirp, tr-TR-Chirp3-HD-Kore", fn: run("kapali"), ok: (r) => r.engine === "chirp" && r.sent.at(-1).voice.name === "tr-TR-Chirp3-HD-Kore" }],
-    ["Gemini kapalıyken bir daha denenmez", { desc: "doğrudan chirp", fn: run("acik"), ok: (r) => r.engine === "chirp" && !r.sent[0].voice.modelName }],
+    ["Gemini açık: doğal ses", { desc: "Vertex, model + fitness yönergesi + Kore, WAV", fn: run("acik"), ok: (r) => r.engine === "gemini" && r.type === "audio/wav" && r.wav === "RIFF" && r.sent.length === 1 && r.sent[0].vertex && r.sent[0].url.includes(TT.TTS_GEMINI_MODEL()) && r.sent[0].url.includes("key=test-g") && ptext(r).startsWith(TT.TTS_STYLES.fitness) && r.sent[0].b.generationConfig.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName === "Kore" }],
+    ["Gemini yavaş hız", { desc: "yönergeye 'Biraz yavaş'", fn: run("yavas"), ok: (r) => /Biraz yavaş/.test(ptext(r)) }],
+    ["Gemini kapalı: Chirp yedeği", { desc: "chirp, tr-TR-Chirp3-HD-Kore", fn: run("kapali"), ok: (r) => r.engine === "chirp" && r.sent.at(-1).b.voice.name === "tr-TR-Chirp3-HD-Kore" }],
+    ["Gemini kapalıyken bir daha denenmez", { desc: "doğrudan chirp", fn: run("acik"), ok: (r) => r.engine === "chirp" && !r.sent[0].vertex }],
     ["Aynı metin bellekten", { desc: "istek gitmez", fn: () => { run("acik")("Bellek denemesi."); return run("acik")("Bellek denemesi."); }, ok: (r) => r.sent.length === 0 }],
   ]);
 }

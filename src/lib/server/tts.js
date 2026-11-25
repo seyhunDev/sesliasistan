@@ -1,11 +1,11 @@
 // Ortak seslendirme servisi (Seyhun, 2026-11-25: "doğal Gemini sesi her yerde, fitness'ta da").
 // Tek giriş: synthesize({ text, voice, lang, style, rate, cache }) → { audio: Buffer, type, engine, cached }.
-// Sıra: 1) Gemini-TTS (Cloud Text-to-Speech, model gemini-2.5-flash-tts; anlatıcı yönergesi "style" ile doğal, akıcı)
+// Sıra: 1) Gemini-TTS (Vertex AI generateContent, model gemini-2.5-flash-tts, anahtar GEMINI_TTS_KEY; "style" yönergesiyle doğal, akıcı; WAV)
 //       2) olmazsa Chirp 3 HD (aynı ses adı, hızlı ve ayda 1 milyon harf ücretsiz)
 //       3) GOOGLE_TTS_KEY hiç yoksa ve TTS_ENGINE=gemini ise eski Gemini API yolu (GEMINI_API_KEY, WAV)
-// Anahtar: GOOGLE_TTS_KEY (Netlify). Gemini-TTS için aynı Google projesinde (828345188662) "Vertex AI API" açık olmalı.
+// Anahtarlar (Netlify): GOOGLE_TTS_KEY (Chirp) ve GEMINI_TTS_KEY (servis hesabına bağlı, Vertex AI User; proje 828345188662).
 // Velora Sailing (seyhunDev/velora-sailing, scripts/tts.mjs) aynı modeli ve sesi kullanır.
-// Önbellek: cache: true verilirse ses Firebase Storage'a tts-cache/<sha256>.mp3 olarak yazılır; aynı metin+ses+stil
+// Önbellek: cache: true verilirse ses Firebase Storage'a tts-cache/<sha256>.wav olarak yazılır; aynı metin+ses+stil
 // bir daha üretilmez (ücret yok). Sabit metinler (fitness anlatımı, kelime satırları, tanıtım) için açın; kişisel veri
 // içerebilecek asistan cevapları için AÇMAYIN. Ayrıca süreç içinde küçük bir bellek önbelleği hep vardır.
 // Kullanım: docs/seslendirme.md
@@ -36,8 +36,7 @@ const voiceId = (v) => {
 let geminiOffUntil = 0;
 const mem = new Map(); // süreç içi önbellek: anahtar → { audio, type, engine }
 
-// Gemini-TTS (Vertex) kimlik ister: düz API anahtarı 403 "aiplatform.endpoints.predict denied" alır. Bunun için
-// servis hesabına bağlı (rolü Vertex AI User) ayrı bir anahtar GEMINI_TTS_KEY; yoksa GOOGLE_TTS_KEY denenir.
+// Chirp (Cloud Text-to-Speech) çağrısı, GOOGLE_TTS_KEY ile.
 async function cloudTts(body, ms, key = process.env.GOOGLE_TTS_KEY) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), ms);
@@ -65,16 +64,37 @@ async function cloudTts(body, ms, key = process.env.GOOGLE_TTS_KEY) {
   }
 }
 
+// Vertex AI generateContent (velora-sailing ile aynı, 2026-11-25'te çalıştı). Cloud TTS + modelName yolu API anahtarını
+// kabul etmiyor (401 "API keys are not supported"). Yanıt ham PCM (s16le, 24 kHz) → WAV.
+const VERTEX_PROJECT = () => process.env.TTS_VERTEX_PROJECT || "828345188662";
 async function gemini({ text, voice, lang, style, rate, timeoutMs }) {
-  return cloudTts(
-    {
-      input: { prompt: (TTS_STYLES[style] || TTS_STYLES.asistan) + (lang === "en" ? "" : PACE(rate)), text },
-      voice: { languageCode: lang === "en" ? "en-US" : "tr-TR", name: voice, modelName: TTS_GEMINI_MODEL() },
-      audioConfig: { audioEncoding: "MP3" },
-    },
-    timeoutMs,
-    process.env.GEMINI_TTS_KEY || process.env.GOOGLE_TTS_KEY,
-  );
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  const prompt = (TTS_STYLES[style] || TTS_STYLES.asistan) + (lang === "en" ? " Read this text:\n" : `${PACE(rate)} Şu metni oku:\n`) + text;
+  try {
+    const url = `https://aiplatform.googleapis.com/v1/projects/${VERTEX_PROJECT()}/locations/global/publishers/google/models/${encodeURIComponent(TTS_GEMINI_MODEL())}:generateContent?key=${encodeURIComponent(process.env.GEMINI_TTS_KEY)}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+        generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } } },
+      }),
+      signal: ctrl.signal,
+    });
+    const raw = await res.text();
+    if (!res.ok) throw Object.assign(new Error(`${res.status} ${raw.slice(0, 200)}`), { status: res.status });
+    const parts = JSON.parse(raw).candidates?.[0]?.content?.parts || [];
+    const audio = parts.filter((p) => p.inlineData?.data);
+    if (!audio.length) throw new Error("ses verisi yok");
+    const sr = Number(/rate=(\d+)/.exec(audio[0].inlineData.mimeType || "")?.[1]) || 24000;
+    return pcmToWav(Buffer.concat(audio.map((p) => Buffer.from(p.inlineData.data, "base64"))), sr);
+  } catch (e) {
+    if (e.name === "AbortError") throw Object.assign(new Error("zaman aşımı"), { status: 0 });
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 const CHIRP_TR = (v) => [...new Set([`tr-TR-Chirp3-HD-${v}`, process.env.GOOGLE_TTS_VOICE, "tr-TR-Chirp3-HD-Aoede", "tr-TR-Wavenet-E", "tr-TR-Standard-E"].filter(Boolean))];
@@ -145,7 +165,7 @@ async function geminiApi({ text, voice, style }) {
   throw new Error(last);
 }
 
-export const ttsReady = () => !!process.env.GOOGLE_TTS_KEY || (process.env.TTS_ENGINE === "gemini" && !!process.env.GEMINI_API_KEY);
+export const ttsReady = () => !!process.env.GOOGLE_TTS_KEY || !!process.env.GEMINI_TTS_KEY || (process.env.TTS_ENGINE === "gemini" && !!process.env.GEMINI_API_KEY);
 const geminiOn = () => process.env.TTS_ENGINE !== "chirp" && Date.now() > geminiOffUntil;
 
 export const ttsKey = ({ text, voice, lang, style, rate }) =>
@@ -159,7 +179,7 @@ async function bucketFile(key) {
   if (!adminReady()) return null;
   adminDb(); // varsayılan uygulama açılsın
   const { getStorage } = await import("firebase-admin/storage");
-  return getStorage().bucket(name).file(`tts-cache/${key}.mp3`);
+  return getStorage().bucket(name).file(`tts-cache/${key}.wav`);
 }
 
 /**
@@ -191,7 +211,7 @@ export async function synthesize(o) {
       file = await bucketFile(key);
       if (file && (await file.exists())[0]) {
         const [buf] = await file.download();
-        const hit = { audio: buf, type: "audio/mpeg", engine: file.metadata?.metadata?.engine || "gemini" };
+        const hit = { audio: buf, type: file.metadata?.contentType || "audio/wav", engine: file.metadata?.metadata?.engine || "gemini" };
         remember(key, hit);
         return { ...hit, cached: true };
       }
@@ -203,17 +223,18 @@ export async function synthesize(o) {
 
   let out = null;
   const errs = [];
-  if (process.env.GOOGLE_TTS_KEY) {
-    if (geminiOn()) {
+  if (process.env.GOOGLE_TTS_KEY || process.env.GEMINI_TTS_KEY) {
+    if (geminiOn() && process.env.GEMINI_TTS_KEY) {
       try {
-        out = { audio: await gemini({ text, voice, lang, style, rate, timeoutMs: o?.timeoutMs || 6000 }), type: "audio/mpeg", engine: "gemini" };
+        out = { audio: await gemini({ text, voice, lang, style, rate, timeoutMs: o?.timeoutMs || 6000 }), type: "audio/wav", engine: "gemini" };
       } catch (e) {
         errs.push(`gemini: ${e.message}`);
         console.error("[tts] gemini", e.message);
         if ([400, 401, 403, 404].includes(e.status)) geminiOffUntil = Date.now() + 10 * 60 * 1000;
+        else if (e.status === 429) geminiOffUntil = Date.now() + 60 * 1000; // Vertex kotası düşük: bir dakika Chirp'le okunur
       }
     }
-    if (!out) {
+    if (!out && process.env.GOOGLE_TTS_KEY) {
       try {
         out = { audio: await chirp({ text, voice, lang, rate }), type: "audio/mpeg", engine: "chirp" };
       } catch (e) {

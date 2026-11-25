@@ -10,7 +10,7 @@ export const runtime = "nodejs";
 // Yanıt: ses dosyası (audio/mpeg); başlıkta x-tts-engine (gemini|chirp) ve x-tts-cached (1|0).
 export async function POST(request) {
   // Anahtar yoksa ve TTS_ENGINE=device ise istemci cihazın kendi sesiyle okur
-  if (process.env.TTS_ENGINE === "device" && !process.env.GOOGLE_TTS_KEY) return NextResponse.json({ error: "Sunucu sesi kapalı" }, { status: 501 });
+  if (process.env.TTS_ENGINE === "device" && !process.env.GOOGLE_TTS_KEY && !process.env.GEMINI_TTS_KEY) return NextResponse.json({ error: "Sunucu sesi kapalı" }, { status: 501 });
   const au = await requireUser(request);
   if (!au.ok) return unauthorized(au);
   if (!ttsReady()) return NextResponse.json({ error: "Ses anahtarı yok" }, { status: 501 });
