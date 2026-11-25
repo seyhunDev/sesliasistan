@@ -3,13 +3,13 @@
 import { useState } from "react";
 import { doc } from "firebase/firestore";
 import { updateDoc } from "@/lib/firebase/write";
-import { Icon } from "@/components/ui/Icon";
 import { Sheet } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useData } from "@/features/data/DataProvider";
 import { authFetch } from "@/lib/authFetch";
 import { db } from "@/lib/firebase/clientApp";
-import { kindOf, loginMessage, shownLogin, waPhone } from "@/lib/kinds";
+import { kindOf, shownLogin, waPhone } from "@/lib/kinds";
+import { LoginResult } from "./LoginResult";
 
 const randomPw = () => Math.random().toString(36).slice(2, 6) + Math.floor(1000 + Math.random() * 9000);
 
@@ -41,19 +41,17 @@ export function SendLogin({ person, onClose }) {
     setBusy(false);
   }
 
-  const text = pw ? loginMessage({ name: parent ? parent.name : person.name, forName: parent ? person.name : "", login, password: pw, site: typeof location !== "undefined" ? location.origin : "" }) : "";
   return (
     <Sheet open onClose={onClose} title={`${person.name} · giriş bilgileri`}>
       <div className="space-y-3.5 pb-2">
-        <div className="rounded-2xl bg-bg p-3.5 text-[0.9375rem]">
-          <p>
-            Kullanıcı adı: <b className="font-semibold">{login || "—"}</b>
-          </p>
-          <p>
-            Şifre: <b className="font-semibold tabular-nums">{pw || "yeni oluşturulacak"}</b>
-          </p>
-        </div>
-        {parent && <p className="text-[0.8125rem] text-mut">Sporcunun telefonu yok; velisi {parent.name} ({parent.phone}) numarasına gönderilecek.</p>}
+        {!pw && (
+          <div className="rounded-2xl bg-bg p-3.5 text-[0.9375rem]">
+            <p>
+              Kullanıcı adı: <b className="font-semibold">{login || "—"}</b>
+            </p>
+          </div>
+        )}
+        {parent && !pw && <p className="text-[0.8125rem] text-mut">Sporcunun telefonu yok; velisi {parent.name} ({parent.phone}) numarasına gönderilecek.</p>}
         {!pw ? (
           <>
             <label className="block">
@@ -66,20 +64,7 @@ export function SendLogin({ person, onClose }) {
             </button>
           </>
         ) : (
-          <>
-            <pre className="whitespace-pre-wrap rounded-2xl bg-card p-3 font-sans text-[0.875rem] leading-snug ring-1 ring-line">{text}</pre>
-            <a
-              href={`https://wa.me/${to}?text=${encodeURIComponent(text)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex h-12 items-center justify-center gap-2 rounded-xl bg-[#25d366] text-[0.9375rem] font-semibold text-white"
-            >
-              <Icon name="whatsapp" className="size-5" /> WhatsApp’ta gönder
-            </a>
-            <button type="button" onClick={() => navigator.clipboard?.writeText(text).then(() => toast("Kopyalandı"), () => toast("Kopyalanamadı"))} data-press className="btn btn-secondary w-full text-acc">
-              Metni kopyala
-            </button>
-          </>
+          <LoginResult name={parent ? parent.name : person.name} forName={parent ? person.name : ""} login={login} password={pw} phone={phone} onDone={onClose} />
         )}
       </div>
     </Sheet>

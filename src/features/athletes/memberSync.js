@@ -50,3 +50,21 @@ export async function clubAthleteFor({ name, birth = "", phone = "" }, members =
   if (same) return same.id;
   return createAthlete({ studentName: name.trim(), studentBirthDate: day(birth), studentPhone: phone });
 }
+
+// Kopuk bağlar (Seyhun 2026-11-25 "Sporcu bulunamadı"): kulüpte artık olmayan sporcuya bağlı Kişiler kaydı aynı adlı,
+// boştaki kulüp sporcusuna yeniden bağlanır; yoksa bağ kaldırılır ("Sporcu kartı" eski karta gitmesin).
+// Yalnız kulüp listesi tam yüklenince çağrılır (boş liste gelirse hiçbir şeye dokunmaz). Dönüş: düzeltilen kayıt sayısı
+export async function repairLinks(orgId, members, athletes) {
+  if (!athletes?.length) return 0;
+  const ids = new Set(athletes.map((a) => a.id));
+  const live = members.filter((m) => m.status !== "left");
+  const taken = new Set(live.filter((m) => m.athleteId && ids.has(m.athleteId)).map((m) => m.athleteId));
+  let n = 0;
+  for (const m of live.filter((x) => x.athleteId && !ids.has(x.athleteId))) {
+    const same = athletes.find((a) => low(a.studentName) === low(m.name) && !taken.has(a.id));
+    if (same) taken.add(same.id);
+    await updateDoc(doc(db, "orgs", orgId, "members", m.uid), { athleteId: same ? same.id : deleteField(), updatedAt: new Date().toISOString() });
+    n++;
+  }
+  return n;
+}
