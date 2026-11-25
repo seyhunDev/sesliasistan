@@ -81,6 +81,7 @@ export function IpadHome({ weather, inbox, onInbox, side, can = {} }) {
       </header>
 
       <HavaPanel w={w} err={err} refresh={refresh} date={date} today={today} rows={rows} nowH={nowH} onOpen={goWeather} />
+      {side.lead /* Hava'nın altında tam genişlik (normal kullanıcı ve sporcuda bugünün fitness antrenmanı) */}
 
       <section className="iph-pn iph-cal" aria-label="Takvim">
         <DayLane date={date} today={today} nowH={isToday ? nowH : null} dname={dname} can={can} />

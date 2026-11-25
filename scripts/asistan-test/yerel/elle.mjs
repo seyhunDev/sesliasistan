@@ -2089,10 +2089,10 @@ group("Fitness")([
   ["yerel komutlar", F("planlara ekle, kaldır, yaptım, atladım, kaç antrenman; ayrıntı yapay zekaya", () =>
     FW.fitLocal("programı planlara ekle")?.op === "plans" && FW.fitLocal("fitness programını takvimden kaldır")?.op === "unplan" && FW.fitLocal("bugünkü antrenmanı yaptım")?.op === "done" &&
     FW.fitLocal("bugün antrenmanı atladım")?.op === "skip" && FW.fitLocal("bu hafta kaç antrenman yaptım")?.op === "stats" && FW.fitLocal("squat 3 set yaptım") === null && FW.fitLocal("çarşambayı bacak günü yap") === null)],
-  ["ana sayfa düğmesi", F("ana hesapta Fitness var, çalışanda yok", async () => {
+  ["ana sayfa düğmesi", F("Fitness herkeste: ana hesap, çalışan, sporcu (Seyhun 2026-11-25)", async () => {
     const HT = await import("@/lib/homeTiles");
     const has = (o) => HT.homeActions(o).some((g) => g.items.some((a) => a.href === "/fitness"));
-    return has({ owner: true }) && !has({ staff: true });
+    return has({ owner: true }) && has({ staff: true }) && has({ staff: true, side: true });
   })],
   ["tanıtım tahmini", F("boy/kilo yoksa yok; 82 kg 175 cm: 8 haftada 78-80 kg, VKİ 26,8, yeni erkek +1-1,5 kg kas", async () => {
     const FC = await import("@/lib/fitness/forecast");
@@ -2104,7 +2104,7 @@ group("Fitness")([
   ["adım adım: sıradaki set", F("ilk yapılmamış set, sonraki harekete geçer, hepsi bitince null", () => { const s = [[{ ok: true }, { ok: false }], [{ ok: false }]]; return FM2.nextOpen(s)?.i === 0 && FM2.nextOpen(s).k === 1 && FM2.nextOpen(s, 0, 2)?.i === 1 && FM2.nextOpen([[{ ok: true }]]) === null; })],
   ["adım adım: − / +", F("tekrar 1, kilo 2,5, saniye 5; sıfırın altına inmez", () => FM2.bump("10", "reps", 1) === "11" && FM2.bump("40", "kg", -1) === "37.5" && FM2.bump("30", "sec", 1) === "35" && FM2.bump("1", "reps", -1) === "")],
   ["sporcu: bugünkü ya da sıradaki", F("yalnız kendi antrenmanı, yapılmışı atlar", () => { const u = "s1"; const ps = [FPL("2026-10-13", SQ, { st: "done" }, { id: "a", fit2: 1 }), FPL("2026-10-15", SQ, null, { id: "b" }), FPL("2026-10-14", SQ, null, { id: "c" })].map((p, n) => ({ ...p, fit: { ...p.fit, for: n === 2 ? "x" : u } })); const r = FM2.athleteNext(ps, u, "2026-10-13"); return r && !r.today && r.plan.date === "2026-10-15" && FM2.myFit(ps, u).length === 2 && FM2.athleteNext([], u, "2026-10-13") === null; })],
-  ["sporcu kısayolu", F("sporcuda yalnız antrenmanı varsa Fitness", async () => { const H = await import("@/lib/homeTiles"); const has = (o) => H.homeActions(o).some((g) => g.items.some((a) => a.href === "/fitness")); return has({ staff: false }) && !has({ staff: true }) && has({ staff: true, fit: true }); })],
+  ["sporcu kısayolu", F("sporcuda ve normal kullanıcıda antrenmanı olmasa da Fitness (Seyhun 2026-11-25)", async () => { const H = await import("@/lib/homeTiles"); const has = (o) => H.homeActions(o).some((g) => g.items.some((a) => a.href === "/fitness")); return has({ staff: false }) && has({ staff: true, side: true }) && has({ staff: true, plain: true }); })],
 ]);
 
 // Fitness: ana hesabın sporcuya hazırladığı program (fit.for)

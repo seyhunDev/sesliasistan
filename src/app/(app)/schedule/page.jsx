@@ -80,6 +80,13 @@ export default function SchedulePage() {
     fileRef.current?.click();
   }
   const newLesson = () => setEdit({ title: "", day, start: "09:00", end: "09:45", place: "", teacher: "" });
+  // Ana sayfadaki Ders programı kartının "Elle ekle"si (?yeni=1; Seyhun 2026-11-25): yeni ders penceresi açık gelir
+  useEffect(() => {
+    if (!/[?&]yeni=1/.test(window.location.search)) return;
+    window.history.replaceState(null, "", "/schedule");
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setEdit({ title: "", day: weekdayOf(todayStr()), start: "09:00", end: "09:45", place: "", teacher: "" });
+  }, []);
 
   const list = lessons.filter((l) => l.day === day).sort(byTime);
   const counts = SHORT.map((_, i) => lessons.filter((l) => l.day === i + 1).length);
