@@ -1,0 +1,43 @@
+/* Yoklamam "Sahne" (my-attendance/page.jsx; Seyhun 2026-11-25 "Yap", örnek project-files/yoklamam-sahne/ornek.html).
+   Ana sayfanın koyu dili (features/home/sporcu.css: .sh, .sh-top, .sh-rb, .sh-c). Üstte bu ay (devam %, sayılar, gün kareleri), altında son antrenmanlar.
+   Telefon tek sütun; iPad yatay (64rem+) solda bu ay, sağda liste. */
+main.ya-sh { max-width: 30rem; }
+.ya-g { display: flex; flex-direction: column; gap: .9rem; margin-top: 1rem; }
+.ya-two { display: flex; flex-direction: column; gap: .9rem; min-width: 0; }
+.ya-col { display: flex; flex-direction: column; gap: .9rem; min-width: 0; }
+.ya-kid { font-size: 2.1rem; margin: .4rem 0 -.2rem; overflow-wrap: anywhere; }
+.ya-hero { background: #141416; border: 1px solid #26262b; border-radius: 1.4rem; padding: .95rem 1rem 1rem; display: flex; flex-direction: column; gap: .75rem; }
+.ya-k { font-size: .6875rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #a1a1aa; }
+.ya-row { display: flex; align-items: flex-end; gap: 1rem; }
+.ya-big { font-size: 5rem; color: var(--sh-lime); flex-shrink: 0; }
+.ya-big[data-none] { color: #52525b; }
+.ya-st { flex: 1; min-width: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .4rem; margin-bottom: .35rem; }
+.ya-st span { display: flex; flex-direction: column; min-width: 0; }
+.ya-st b { font-family: var(--lv-font-c), var(--font-num), system-ui, sans-serif; font-weight: 800; font-size: 1.9rem; line-height: 1; }
+.ya-st small { font-size: .72rem; font-weight: 600; color: #a1a1aa; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ya-strip { display: flex; gap: .25rem; flex-wrap: wrap; }
+.ya-strip i { width: 1.05rem; height: 1.05rem; border-radius: .3rem; background: var(--ya-c, #3f3f46); }
+.ya-sh [data-s="present"] { --ya-c: #d4ff3a; }
+.ya-sh [data-s="absent"] { --ya-c: #ff6b6b; }
+.ya-sh [data-s="excused"] { --ya-c: #fbbf5c; }
+.ya-c { color: var(--ya-c); }
+.ya-sec { font-size: .6875rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; color: #71717a; margin: .1rem 0 -.35rem .15rem; }
+.ya-ls { list-style: none; margin: 0; background: #141416; border: 1px solid #26262b; border-radius: 1.25rem; padding: .15rem .9rem; }
+.ya-ls li { display: flex; align-items: center; gap: .8rem; padding: .6rem 0; min-width: 0; }
+.ya-ls li + li { border-top: 1px solid #1f1f22; }
+.ya-dt { width: 2.6rem; flex-shrink: 0; text-align: center; }
+.ya-dt b { display: block; font-size: 1.65rem; line-height: .95; }
+.ya-dt small { display: block; font-size: .6rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #71717a; }
+.ya-wd { flex: 1; min-width: 0; font-size: .9375rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ya-tg { flex-shrink: 0; border-radius: 999px; padding: .25rem .65rem; font-size: .72rem; font-weight: 800; color: var(--ya-c, #a1a1aa); background: color-mix(in srgb, var(--ya-c, #a1a1aa) 12%, transparent); }
+.ya-more { width: 100%; min-height: 2.9rem; border-radius: 999px; background: #1f1f22; border: 1px solid #2e2e33; color: #fff; font-size: .875rem; font-weight: 800; }
+.ya-more:active { transform: scale(.98); }
+.ya-none { margin: 0; padding: .85rem .2rem; font-size: .9375rem; font-weight: 600; color: #71717a; }
+@media (min-width: 48rem) {
+  main.ya-sh { max-width: 46rem; }
+  .ya-big { font-size: 6.4rem; }
+}
+@media (min-width: 64rem) {
+  main.ya-sh { max-width: 64rem; }
+  .ya-two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 1.2rem; align-items: start; }
+}
