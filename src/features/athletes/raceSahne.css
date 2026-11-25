@@ -68,3 +68,11 @@ body:has(main.rsh) .sidenav.navy { background: #0f0f11; --sn-line: #1f1f22; --sn
   body[data-side] main.rsh .rsh-days { margin: 0; padding: 0; }
   main.rsh .rsh-tt { font-size: 3rem; }
 }
+/* iPad yatay (Seyhun 2026-11-25 "Yap"): Hazırlık iki sütun, solda Yapılacaklar ve Yarış, sağda Yolculuk ve Evrak */
+@media (min-width: 64rem) {
+  body[data-side] main.rsh .race-body:has(> .rsh-colA) { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); column-gap: 1.25rem; align-items: start; }
+  body[data-side] main.rsh .race-body:has(> .rsh-colA) > * { grid-column: 1 / -1; }
+  body[data-side] main.rsh .race-body > .rsh-colA { grid-column: 1; }
+  body[data-side] main.rsh .race-body > .rsh-colB { grid-column: 2; }
+  body[data-side] main.rsh .race-body > :is(.rsh-colA, .rsh-colB) > :first-child { margin-top: .5rem; }
+}
