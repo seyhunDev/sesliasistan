@@ -7,7 +7,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { authFetch } from "@/lib/authFetch";
 import { RecPick } from "@/features/raceMedia/RecPick";
 import { setShooting } from "@/features/raceMedia/shooting";
-import { KALIP_HAZIR, addYaziKalip, delKalip, openKanal, renameKalip, reopenKanal, saveKalip, sendKalip } from "./bilgiStore";
+import { KALIP_HAZIR, KALIP_ONERI, addYaziKalip, delKalip, openKanal, renameKalip, reopenKanal, saveKalip, sendKalip } from "./bilgiStore";
 import { sayWith } from "@/lib/speech/ttsClient";
 import { voiceType } from "@/lib/chatFile";
 import { VTAGS, myTags, rememberTag } from "./yonetVideo";
@@ -310,7 +310,7 @@ export function KalipSheets({ org, list, view, onView, src, to, members, onSend,
       <Sheet big open={view === "kaliplar"} onClose={() => onView("")} title="Kalıplar">
         {view === "kaliplar" && <KalipList org={org} list={list} to={to} onSend={(k) => (onSend(k), onView(""))} onRep={(k) => onView(`ktek:${k.id}`)} onRec={() => onView("kkayit")} />}
       </Sheet>
-      <Sheet open={view === "kkayit"} onClose={() => onView("kaliplar")} title="Sesli kalıp">
+      <Sheet big open={view === "kkayit"} onClose={() => onView("kaliplar")} title="Sesli kalıp">
         {view === "kkayit" && <KalipKayit org={org} list={list} onDone={() => (onView("kaliplar"), toast("Kalıp kaydedildi"))} />}
       </Sheet>
     </>
@@ -550,8 +550,12 @@ export function KalipKayit({ org, list, onDone, save: saveTo = null, max = KAYIT
     setBusy(false);
   };
   const sec = st.s === "rec" ? Math.max(0, Math.floor((now - st.t0) / 1000)) : 0;
+  // Önerilen cümle: dokununca büyük yazılır, söylenip kaydedilir; kendi sesiyle kaydedilenler ✓
+  const said = new Set((list || []).filter((x) => !x.text).map((x) => String(x.name || "").toLocaleLowerCase("tr")));
+  const oneri = !saveTo && st.s === "idle";
   return (
     <div className="flex flex-col gap-3 pb-2">
+      {!saveTo && name && st.s !== "done" && <b className="bzy-kcum">{name}</b>}
       {st.s === "done" ? (
         <>
           <audio src={url} controls className="w-full" />
@@ -570,6 +574,26 @@ export function KalipKayit({ org, list, onDone, save: saveTo = null, max = KAYIT
           <b className="num">{st.s === "rec" ? `0:${pad(sec)}` : "●"}</b>
           <small>{st.s === "rec" ? `Bitirmek için dokun · en çok ${max} sn` : "Kayda başla"}</small>
         </button>
+      )}
+      {oneri && (
+        <div className="bzy-kon" aria-label="Önerilen cümleler">
+          {KALIP_ONERI.map(([g, xs]) => (
+            <section key={g}>
+              <small>{g}</small>
+              <div>
+                {xs.map((x) => {
+                  const ok = said.has(x.toLocaleLowerCase("tr"));
+                  return (
+                    <button key={x} type="button" aria-pressed={name === x} data-ok={ok ? "1" : undefined} onClick={() => setName((n) => (n === x ? "" : x))} data-press>
+                      {ok ? "✓ " : ""}
+                      {x}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+          ))}
+        </div>
       )}
     </div>
   );
