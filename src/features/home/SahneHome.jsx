@@ -18,6 +18,7 @@ import { dayHours, dirDeg, nowOf, windName } from "@/features/weather/weather";
 import { SkyIcon, WindArrow, WindChart, rainText, useObsRows } from "@/features/weather/WxPanel";
 import { useNow } from "@/hooks/useNow";
 import { invoiceTile } from "@/lib/invoices";
+import { isFit } from "@/lib/fitness/model";
 import { canReceipts } from "@/lib/kinds";
 import { attHref, clubDues, dayPlans, dayWeather, duesLive, fitDays, fitWeek, liveRace, planTone, readSum, saveSum } from "@/lib/homeTiles";
 import { isTraining } from "@/lib/trainingLog";
@@ -44,7 +45,7 @@ const hOf = (t) => (t && /^\d{1,2}:\d{2}/.test(t) ? +t.split(":")[0] + +t.split(
 const OWNER_BIG = (athletes) => [
   BIG[0],
   athletes ? { href: "/athletes", label: "Sporcular", sub: "Liste · yoklama · yarış", cls: "shm-blue" } : BIG[2],
-  BIG[1],
+  { ...BIG[1], sub: "Sporcuların programı" },
   BIG[3],
 ];
 const NORMAL_BIG = (coach) => [coach ? { href: "/bilgi/yonet", label: "Yönet", sub: "Sporcularım", cls: "shm-blue" } : BIG[0], BIG[1], BIG[2], BIG[3]];
@@ -200,9 +201,14 @@ function Days({ days, date, today, onSel }) {
 }
 
 // Seçili günün planları: saat, tür rengi, başlık, yer ya da kişi sayısı; şu an süren plan limon zeminli. Dokununca plan açılır.
+// Ana hesapta fitness planı Fitness sayfasında o günün sporcularıyla açılır (Seyhun 2026-11-25 "fitness'a basınca benim fitness'ıma gidiyor, yanlış;
+// benimkine de fitness sayfasına gitmeli"); diğer hesaplarda plan kendisi açılır.
 function Plans({ date, nowH }) {
   const { plans } = useData();
-  const { open } = usePlanOpen();
+  const { open: openPlan } = usePlanOpen();
+  const { owner } = useHesap();
+  const router = useRouter();
+  const open = (p) => (owner && isFit(p) ? router.push(`/fitness?sporcular=1&gun=${date}`) : openPlan(p));
   const list = dayPlans(plans, date);
   const end = (p) => Math.max(hOf(p.endTime) ?? hOf(p.time) + (p.durationMin ? p.durationMin / 60 : isTraining(p) ? 2 : 1), hOf(p.time) + 0.5);
   const live = (p) => nowH != null && hOf(p.time) != null && nowH >= hOf(p.time) && nowH < end(p);
@@ -262,7 +268,7 @@ function Kokpit() {
       <div className="sh-tiles">
         {sport && <AttTile today={today} />}
         {fw.n > 0 && (
-          <Link href="/fitness" data-press className="sh-tile">
+          <Link href={`/fitness?sporcular=1&gun=${today}`} data-press className="sh-tile">
             <span className="sh-k">Fitness · bu hafta</span>
             <b className="sh-c sh-kn">
               {fw.done}/{fw.n}
