@@ -15,6 +15,7 @@ import { useData } from "@/features/data/DataProvider";
 import { useToast } from "@/components/ui/ToastProvider";
 import { DikiliLogin, useDikiliUser } from "@/features/athletes/Connect";
 import { EditAthlete } from "@/features/athletes/EditAthlete";
+import { AppLogin } from "@/features/athletes/AppLogin";
 import { alertText, expiryOf } from "@/lib/expiry";
 import { todayStr } from "@/lib/utils/format";
 import { loadRaces } from "@/features/athletes/races";
@@ -303,6 +304,8 @@ function Detail() {
         <Row label="Yelken sınıfı" value={cls || "Atanmamış"} />
         <Row label="Antrenör" value={coach || "Atanmamış"} />
       </Card>
+
+      <AppLogin athlete={a} />
 
       <BodyCard a={a} />
 
