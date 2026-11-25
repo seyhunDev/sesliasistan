@@ -9,6 +9,7 @@ import { ToastProvider } from "@/components/ui/ToastProvider";
 import { ConfirmProvider } from "@/components/ui/ConfirmProvider";
 import { TimerSound } from "@/features/training/Countdown";
 import { TimerChip } from "@/features/training/TimerChip";
+import { GibiGorBar } from "@/features/auth/GibiGorBar";
 import { IosBridge } from "@/features/ios/IosBridge";
 import { BilgiSync } from "@/features/bilgi/BilgiSync";
 import { AntTemizle } from "@/features/training/AntTemizle";
@@ -102,6 +103,7 @@ export default function AppLayout({ children }) {
                   {children}
                   {!live && <TabBarHost />}
                   {!live && <TimerChip />}
+                  {!live && <GibiGorBar />}
                   <BrainSync />
                   <OpenFromUrl />
                   <InboxSeen />
