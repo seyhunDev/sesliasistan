@@ -336,11 +336,13 @@ async function startKanal(org, id, name, prev) {
   await syncLink(org);
   return at;
 }
-export async function openKanal(org, name, prev = null) {
+// day: "YYYY-AA-GG" (Seyhun 2026-11-25 "kanal hep aynı, o günün verisi o tarihte"): Yönet "Günü başlat" gün başına bir kayıt açar;
+// aynı tarih zaten varsa reopenKanal ile o gün sürer
+export async function openKanal(org, name, prev = null, day = "") {
   const id = newId();
   const n = kanalName(name);
   const at = await startKanal(org, id, n, prev);
-  await setDoc(kanalRef(org, id), { name: n, at, end: null });
+  await setDoc(kanalRef(org, id), { name: n, at, end: null, ...(day ? { day } : {}) });
 }
 // Eski kanalı tekrar aç (aynı link; izler ve kayıtlar aynı kanalda birikir)
 export async function reopenKanal(org, k, prev = null) {
@@ -390,7 +392,11 @@ export async function deleteKanal(org, id) {
     (s) => s.docs.map((d) => d.ref),
     () => [],
   );
-  const refs = (await Promise.all([top("bilgiIz"), top("bilgiTekne"), top("bilgiGelen"), log])).flat();
+  const packed = getDocs(collection(db, "orgs", org, "bilgiKanal", id, "iz")).then(
+    (s) => s.docs.map((d) => d.ref),
+    () => [],
+  );
+  const refs = (await Promise.all([top("bilgiIz"), top("bilgiTekne"), top("bilgiGelen"), log, packed])).flat();
   for (let i = 0; i < refs.length; i += 20) await Promise.all(refs.slice(i, i + 20).map((r) => deleteDoc(r).catch(() => {})));
   await deleteDoc(kanalRef(org, id));
   return refs.length;
@@ -399,9 +405,38 @@ export async function deleteKanal(org, id) {
 // İz (Seyhun 2026-11-17 "sonra sporcunun ne yaptığını izlemek istiyorum"): ekran 5 sn'de bir nokta toplar, dakikada bir tek belge yazar.
 // bilgiIz { org, k, ch, dev, sail, name, uid, t0, pts: [sn, enlem, boylam, hız (kn), …] düz liste (Firestore iç içe dizi almaz) }
 export const sendIz = (d) => addDoc(collection(db, "bilgiIz"), d);
-export async function loadIz(org, ch) {
-  const s = await getDocs(query(collection(db, "bilgiIz"), where("org", "==", org), where("ch", "==", ch)));
-  return s.docs.map((d) => d.data());
+// Rotalar (Seyhun 2026-11-25): gün kapandıktan sonra ilk açılışta dakikalık belgeler sporcu başına tek belgeye toplanır
+// (orgs/{org}/bilgiKanal/{gün}/iz/{cihaz}); sonraki izlemeler 1.200 yerine sporcu sayısı kadar okur. Gün tekrar açılırsa yeni dakikalık
+// belgeler toplananlarla birlikte okunur ve gün kapanınca yine toplanır.
+export async function loadIz(org, ch, closed = false) {
+  const [raw, packed] = await Promise.all([
+    getDocs(query(collection(db, "bilgiIz"), where("org", "==", org), where("ch", "==", ch))),
+    getDocs(collection(db, "orgs", org, "bilgiKanal", ch, "iz")).catch(() => null),
+  ]);
+  const rows = raw.docs.map((d) => d.data());
+  const prev = packed ? packed.docs.map((d) => d.data()) : [];
+  if (closed && rows.length) packIz(org, ch, [...prev, ...rows], raw.docs).catch(() => {});
+  return [...prev, ...rows];
+}
+async function packIz(org, ch, docs, rawDocs) {
+  const by = {};
+  for (const d of docs) {
+    const id = d.dev || d.uid || `${d.sail}-${d.name}`;
+    const x = (by[id] ||= { dev: d.dev || id, sail: d.sail || "", name: d.name || "", uid: d.uid || "", p: new Map() });
+    const a = Array.isArray(d.pts) ? d.pts : [];
+    for (let i = 0; i + 3 < a.length; i += 4) {
+      const t = Math.round((d.t0 || 0) / 1000) + a[i];
+      if (Number.isFinite(a[i + 1]) && Number.isFinite(a[i + 2])) x.p.set(t, [a[i + 1], a[i + 2], a[i + 3]]);
+    }
+  }
+  for (const x of Object.values(by)) {
+    const ts = [...x.p.keys()].sort((a, b) => a - b);
+    if (!ts.length) continue;
+    const t0 = ts[0];
+    const pts = ts.flatMap((t) => [t - t0, ...x.p.get(t)]);
+    await setDoc(doc(db, "orgs", org, "bilgiKanal", ch, "iz", String(x.dev).replace(/\//g, "_").slice(0, 60)), { ch, dev: x.dev, sail: x.sail, name: x.name, uid: x.uid, t0: t0 * 1000, pts });
+  }
+  for (let i = 0; i < rawDocs.length; i += 20) await Promise.all(rawDocs.slice(i, i + 20).map((d) => deleteDoc(d.ref).catch(() => {})));
 }
 
 // Son gönderilenler (yönetimde açılınca bir kez okunur)
@@ -478,3 +513,77 @@ export function useGelen(org) {
 
 // Gelen ses Yönet'te çalınınca günlüğe de yazılır (Kayıtlar; ses verisi yazılmaz)
 export const logGelen = (org, g, ctx) => logSent(org, { kind: "gelen", dur: g.dur || 0, id: g.id, from: [g.sail, g.name].filter(Boolean).join(" ") }, ctx);
+
+// Hazır kalıplar (Seyhun 2026-11-25 örnek "Yönet hazır kalıplar"): kaydedilmiş bas-konuş sesi. Liste orgs/{org}/bilgi/kaliplar { list: [{ id, name,
+// dur, type, at, used, n }] } (Yönet açılınca tek okuma), ses orgs/{org}/bilgi/k-{id} { type, dur, data } ve linkin kopyası bilgiAcik/{anahtar}/ses/k-{id}.
+// Gönderince bilgi/ses belgesine yalnız kalıp kimliği yazılır; sporcu ekranı sesi ilk sefer indirip saklar.
+export const KALIP_MAX = 30;
+const kalipRef = (org) => ref(org, "kaliplar");
+export function useKaliplar(org) {
+  const [v, setV] = useState({ org: "", list: null });
+  useEffect(() => {
+    if (!org) return;
+    return onSnapshot(
+      kalipRef(org),
+      (d) => setV({ org, list: Array.isArray(d.data()?.list) ? d.data().list : [] }),
+      () => setV({ org, list: [] }),
+    );
+  }, [org]);
+  return v.org === org ? v.list : null;
+}
+const kalipName = (s) =>
+  String(s || "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 30) || "Kalıp";
+export async function saveKalip(org, list, { blob, dur, name }) {
+  const data = await b64(blob);
+  if (!data || data.length > 700000) throw new Error("big");
+  const id = newId();
+  const type = (blob.type || "audio/mp4").split(";")[0];
+  const d = { type, dur: Math.round(dur), data, kalip: id };
+  await setDoc(ref(org, `k-${id}`), d);
+  mirror(org, d, "ses", `k-${id}`);
+  const item = { id, name: kalipName(name), dur: Math.round(dur), type, at: Date.now(), used: Date.now(), n: 0 };
+  await setDoc(kalipRef(org), { list: [item, ...(list || [])].slice(0, KALIP_MAX) });
+  return item;
+}
+export const renameKalip = (org, list, id, name) => setDoc(kalipRef(org), { list: (list || []).map((x) => (x.id === id ? { ...x, name: kalipName(name) } : x)) });
+export async function delKalip(org, list, id) {
+  await setDoc(kalipRef(org), { list: (list || []).filter((x) => x.id !== id) });
+  await deleteDoc(ref(org, `k-${id}`)).catch(() => {});
+}
+const MIRRORED = new Set();
+export async function sendKalip(org, list, k, ctx, to = null) {
+  // Link sonradan yenilendiyse kopya yoktur: bu oturumda bir kez sesin kopyası tazelenir
+  if (!MIRRORED.has(k.id)) {
+    MIRRORED.add(k.id);
+    getDoc(ref(org, `k-${k.id}`))
+      .then((s) => s.exists() && mirror(org, s.data(), "ses", `k-${k.id}`))
+      .catch(() => {});
+  }
+  const d = { id: newId(), at: Date.now(), type: k.type || "audio/mp4", dur: k.dur || 0, kalip: k.id, to: to?.dev || "" };
+  mirror(org, d, "ses", "son");
+  await setDoc(ref(org, "ses"), d);
+  const logId = await logSent(org, { kind: "ses", dur: d.dur, id: d.id, to: to?.name || "", kalip: k.name || "" }, ctx);
+  setDoc(kalipRef(org), { list: (list || []).map((x) => (x.id === k.id ? { ...x, used: Date.now(), n: (x.n || 0) + 1 } : x)) }).catch(() => {});
+  return { id: d.id, ok: await confirmed(), logId };
+}
+// Sporcu ekranı: kalıbın sesi (girişli: işletmenin belgesi, linkle: linkin kopyası); bir kez indirilir
+const KSES = new Map();
+export function kalipSes(org, pub, id) {
+  if (!id) return Promise.resolve(null);
+  if (!KSES.has(id)) {
+    const r = pub ? pubRef(pub, "ses", `k-${id}`) : org ? ref(org, `k-${id}`) : null;
+    // Linkte SDK okuyamazsa (usePublic gibi) REST ile
+    const p = r
+      ? getDoc(r).then(
+          (s) => (s.exists() ? s.data() : null),
+          () => (pub ? restGet(pub, `/ses/k-${id}`).catch(() => null) : null),
+        )
+      : Promise.resolve(null);
+    KSES.set(id, p);
+    p.then((x) => !x && KSES.delete(id));
+  }
+  return KSES.get(id);
+}
