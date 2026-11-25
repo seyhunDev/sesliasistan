@@ -215,9 +215,19 @@ function Slide({ orgId, m, onOpen, still }) {
   const { url, err, fail } = useBlobUrl(orgId, m);
   if (err) return <span className="grid size-full place-items-center text-[0.8125rem] text-white/70">{m.kind === "video" ? "Video açılamadı" : "Fotoğraf açılamadı"}</span>;
   if (!url) return <span className="block size-full bg-[#1a1c20]" />;
+  // Hareket hiç kesilmez (Seyhun 2026-11-25): fotoğraf/video kendi oranında, üst çubuk ile hareket adı arasındaki alana
+  // ortalanır (telefon/iPad, dik/yatay). Boş kalan yer aynı fotoğrafın bulanık hâliyle dolar.
+  const fit = "size-full object-contain";
   return (
-    <button type="button" onClick={() => !still && onOpen(m)} aria-label={m.kind === "video" ? "Videoyu büyüt" : "Fotoğrafı büyüt"} className="block size-full">
-      {m.kind === "video" ? <video src={url} autoPlay={!still} loop muted playsInline onError={fail} className="size-full object-cover" /> : <img src={url} alt="" onError={fail} className="size-full object-cover" />}
+    <button type="button" onClick={() => !still && onOpen(m)} aria-label={m.kind === "video" ? "Videoyu büyüt" : "Fotoğrafı büyüt"} className="relative block size-full overflow-hidden">
+      {m.kind !== "video" && <img src={url} alt="" aria-hidden className="absolute inset-0 size-full scale-125 object-cover opacity-55 blur-2xl" />}
+      <span className={`absolute inset-x-3 flex items-center justify-center ${still ? "bottom-[38%] top-[calc(env(safe-area-inset-top)+3.75rem)]" : "bottom-[6.5rem] top-[calc(env(safe-area-inset-top)+4.25rem)]"}`}>
+        {m.kind === "video" ? (
+          <video src={url} autoPlay={!still} loop muted playsInline onError={fail} className={fit} />
+        ) : (
+          <img src={url} alt="" onError={fail} className={fit} />
+        )}
+      </span>
     </button>
   );
 }
@@ -642,7 +652,7 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
   return (
     <div role="dialog" aria-label="Antrenman" className={`${liveHead.variable} fixed inset-0 z-[54] flex flex-col bg-[#0c0d0f] text-[#f4f4f2]`}>
       <div className="relative min-h-0 flex-1 overflow-y-auto overscroll-contain">
-        <div className="relative h-[58dvh] min-h-[18rem]">
+        <div className="relative h-[58dvh] min-h-[22rem] landscape:h-[80dvh]">
           {has ? (
             <MediaBox key={pos.i} it={it} />
           ) : kind === "owner" ? (
