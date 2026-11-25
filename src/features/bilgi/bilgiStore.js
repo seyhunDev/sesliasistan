@@ -652,3 +652,57 @@ export function kalipSes(org, pub, id) {
   }
   return KSES.get(id);
 }
+
+// Sporcuya sesli not (Seyhun 2026-11-25 "o sporcuya özel bir sesli not"): hemen çalınmaz; o sporcuya (cihaz) ve güne saklanır, sporcu ekranında
+// "Notlar" altında dinler. Ses orgs/{org}/bilgi/n-{id}, liste bilgi/notlar-{cihaz} { dev, uid, list: [{ id, dur, type, day, at }] } (en çok 20);
+// açık link kopyası bilgiAcik/{key}/ses/ altında aynı adlarla. Kural değişmez (bilgi belgeleri).
+const NOT_MAX = 20;
+export async function sendNot(org, boat, blob, dur, day) {
+  const data = await b64(blob);
+  if (!boat?.id || !data || data.length > 700000) throw new Error("big");
+  const id = newId();
+  const type = (blob.type || "audio/mp4").split(";")[0];
+  const d = { type, dur: Math.round(dur), data, not: id };
+  await setDoc(ref(org, `n-${id}`), d);
+  mirror(org, d, "ses", `n-${id}`);
+  const lr = ref(org, `notlar-${boat.id}`);
+  const cur = await getDoc(lr).then(
+    (s) => (Array.isArray(s.data()?.list) ? s.data().list : []),
+    () => [],
+  );
+  const item = { id, dur: Math.round(dur), type, day, at: Date.now() };
+  const doc1 = { dev: boat.id, uid: boat.uid || "", list: [item, ...cur].slice(0, NOT_MAX) };
+  await setDoc(lr, doc1);
+  mirror(org, doc1, "ses", `notlar-${boat.id}`);
+  return item;
+}
+export function useNotlar(org, pub, dev) {
+  const [v, setV] = useState({ k: "", list: [] });
+  const k = dev && (pub || org) ? `${pub || org}/${dev}` : "";
+  useEffect(() => {
+    if (!k) return;
+    const r = pub ? pubRef(pub, "ses", `notlar-${dev}`) : ref(org, `notlar-${dev}`);
+    return onSnapshot(
+      r,
+      (s) => setV({ k, list: Array.isArray(s.data()?.list) ? s.data().list : [] }),
+      () => setV({ k, list: [] }),
+    );
+  }, [k]); // eslint-disable-line react-hooks/exhaustive-deps
+  return v.k === k ? v.list : [];
+}
+const NSES = new Map();
+export function notSes(org, pub, id) {
+  if (!id) return Promise.resolve(null);
+  if (!NSES.has(id)) {
+    const r = pub ? pubRef(pub, "ses", `n-${id}`) : org ? ref(org, `n-${id}`) : null;
+    const p = r
+      ? getDoc(r).then(
+          (s) => (s.exists() ? s.data() : null),
+          () => (pub ? restGet(pub, `/ses/n-${id}`).catch(() => null) : null),
+        )
+      : Promise.resolve(null);
+    NSES.set(id, p);
+    p.then((x) => !x && NSES.delete(id));
+  }
+  return NSES.get(id);
+}

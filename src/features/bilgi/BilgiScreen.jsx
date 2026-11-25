@@ -6,7 +6,7 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { sunsetHM } from "@/lib/attRemind";
 import { FRESH_MS, PEN, PEN_BIG_MS, SHOW_DEF, isFor, beepOf, buildCourse, dirName, normDeg, pFlag, screenMode, seqMarks, startView, declination, quatHeading, tiltHeading, windRel } from "@/lib/bilgi";
 import { CourseMap } from "./CourseMap";
-import { deviceId, kalipSes, offPos, readWho, savePusula, saveTekneKim, saveWho, sendGelen, sendIz, sendPos, useBilgi, useBilgiDoc, usePublic, useTekneKim } from "./bilgiStore";
+import { deviceId, kalipSes, notSes, useNotlar, offPos, readWho, savePusula, saveTekneKim, saveWho, sendGelen, sendIz, sendPos, useBilgi, useBilgiDoc, usePublic, useTekneKim } from "./bilgiStore";
 import { usePtt } from "./usePtt";
 import { sayDevice, sayWith } from "@/lib/speech/ttsClient";
 import { PttCancel, Wave } from "./Wave";
@@ -482,6 +482,10 @@ function useBeeps(on, left) {
 
 // Ses öğesi tek: ekran tek, dokunuşla açılan öğe sonra gelen kayıtları çalar
 let AUDIO = null;
+function audioEl() {
+  if (!AUDIO) AUDIO = new Audio();
+  return AUDIO;
+}
 
 // Gelen mesaj sesli okunur, bas-konuş kaydı çalınır. Ekran açılmadan önceki (taze olmayan) mesaj/ses çalınmaz.
 // Hazır kalıp (Seyhun 2026-11-25): ses belgesinde yalnız kalıp kimliği gelir; ses loadKalip ile bir kez indirilir
@@ -623,6 +627,61 @@ function PenAlert({ pen, now }) {
       <b className="num">{p.big}</b>
       <span>{p.t}</span>
     </div>
+  );
+}
+
+// Antrenörün sesli notları (Seyhun 2026-11-25): Yönet'te bu sporcuya bırakılan notlar; sağ üstte "Notlar" (bugünkü sayısı), dokununca liste, dinle
+const todayKey = (t) => {
+  const d = new Date(t);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+function Notlar({ org, pub, dev, now }) {
+  const list = useNotlar(org, pub, dev);
+  const [open, setOpen] = useState(false);
+  const [playing, setPlaying] = useState("");
+  if (!list.length) return null;
+  const today = todayKey(now);
+  const n = list.filter((x) => x.day === today).length;
+  const play = async (x) => {
+    if (playing === x.id) {
+      AUDIO?.pause();
+      return setPlaying("");
+    }
+    setPlaying(x.id);
+    const a = audioEl();
+    const d = await notSes(org, pub, x.id);
+    if (!d?.data) return setPlaying("");
+    a.src = `data:${d.type || x.type || "audio/mp4"};base64,${d.data}`;
+    a.onended = a.onerror = a.onpause = () => setPlaying((p) => (p === x.id ? "" : p));
+    a.play().catch(() => setPlaying(""));
+  };
+  return (
+    <>
+      <button type="button" className="bz-notb" onClick={() => setOpen(true)} data-press>
+        Notlar{n ? <b className="num">{n}</b> : null}
+      </button>
+      {open && (
+        <div className="bz-notl" role="dialog" aria-label="Antrenörün notları">
+          <div className="bz-notl-in">
+            <div className="bz-notl-h">
+              <b>Antrenörün notları</b>
+              <button type="button" onClick={() => (AUDIO?.pause(), setOpen(false))} aria-label="Kapat" data-press>
+                ✕
+              </button>
+            </div>
+            {list.map((x) => (
+              <button key={x.id} type="button" className="bz-notr" data-on={playing === x.id ? "1" : undefined} onClick={() => play(x)} data-press>
+                <i aria-hidden="true">{playing === x.id ? "❚❚" : "▶"}</i>
+                <span>{x.day === today ? "Bugün" : new Date(`${x.day}T12:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" })}</span>
+                <small className="num">
+                  {new Date(x.at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })} · {x.dur} sn
+                </small>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -1051,6 +1110,7 @@ export function BilgiScreen({ pub = "" }) {
         </span>
       )}
       {showMap && map}
+      {dev && <Notlar org={org} pub={pub} dev={dev} now={now} />}
       {!active && <StartCard onGo={start} onClose={!pub || canBack ? leave : null} kanal={kanal} why={pub ? pwhy : ""} acct={acct} uid={profile?.uid || ""} />}
     </main>
   );
