@@ -49,7 +49,7 @@ export function SahneTop({ inbox, onInbox, onMenu, onAdd }) {
   );
 }
 
-function useEsc(open, onClose) {
+export function useEsc(open, onClose) {
   useEffect(() => {
     if (!open) return;
     const k = (e) => e.key === "Escape" && onClose();
