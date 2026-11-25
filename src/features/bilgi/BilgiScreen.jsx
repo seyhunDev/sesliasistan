@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { sunsetHM } from "@/lib/attRemind";
-import { FRESH_MS, SHOW_DEF, isFor, beepOf, buildCourse, dirName, normDeg, pFlag, screenMode, seqMarks, startView, declination, quatHeading, tiltHeading, windRel } from "@/lib/bilgi";
+import { FRESH_MS, PEN, PEN_BIG_MS, SHOW_DEF, isFor, beepOf, buildCourse, dirName, normDeg, pFlag, screenMode, seqMarks, startView, declination, quatHeading, tiltHeading, windRel } from "@/lib/bilgi";
 import { CourseMap } from "./CourseMap";
 import { deviceId, kalipSes, offPos, readWho, savePusula, saveTekneKim, saveWho, sendGelen, sendIz, sendPos, useBilgi, useBilgiDoc, usePublic, useTekneKim } from "./bilgiStore";
 import { usePtt } from "./usePtt";
@@ -595,6 +595,37 @@ function useVoice(on, msg, ses, loadKalip) {
   return [talk, unlock];
 }
 
+// Ceza uyarısı (Seyhun 2026-11-25): Yönet ceza verince ilk 10 sn tam ekran (arkası bulanık, geri sayım), asistan sesiyle okunur;
+// sonra üstte şerit olarak kalır, Yönet kaldırana kadar. Tam ekrana dokununca hemen şeride iner.
+function PenAlert({ pen, now }) {
+  const [seen, setSeen] = useState(null);
+  if (pen?.at && seen?.at !== pen.at) setSeen({ at: pen.at, until: now + PEN_BIG_MS });
+  const p = pen && PEN[pen.k];
+  useEffect(() => {
+    if (!pen?.at || !PEN[pen.k] || Date.now() - pen.at > 120e3) return;
+    const opts = { style: "asistan", timeoutMs: 5000 };
+    if (AUDIO) sayWith(AUDIO, PEN[pen.k].say, opts);
+    else sayDevice(PEN[pen.k].say, opts);
+  }, [pen?.at]); // eslint-disable-line react-hooks/exhaustive-deps
+  if (!p) return null;
+  const left = seen?.at === pen.at ? Math.ceil((seen.until - now) / 1000) : 0;
+  if (left > 0)
+    return (
+      <button type="button" className="bz-penb" data-k={pen.k} onClick={() => setSeen((x) => x && { ...x, until: 0 })} aria-live="assertive">
+        <small>Antrenör · ceza</small>
+        <b className="num">{p.big}</b>
+        <span>{p.t}</span>
+        <em className="num">{left}</em>
+      </button>
+    );
+  return (
+    <div className="bz-pens" data-k={pen.k} role="status">
+      <b className="num">{p.big}</b>
+      <span>{p.t}</span>
+    </div>
+  );
+}
+
 function Tape({ h }) {
   const W = 300;
   const px = 3.2;
@@ -910,6 +941,7 @@ export function BilgiScreen({ pub = "" }) {
           {bye === 2 ? "Çıkılıyor…" : bye ? "Çıkılsın mı?" : "Çıkış"}
         </button>
       )}
+      {active && <PenAlert pen={b?.ceza?.[dev]} now={now} />}
       {talk && (
         <span className="bz-talk" role="status">
           Yönet

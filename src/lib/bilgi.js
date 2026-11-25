@@ -45,7 +45,23 @@ export function cleanBilgi(d = {}) {
     pin: d.pin && typeof d.pin === "object" && d.pin.id ? { id: S(d.pin.id, 40), text: S(d.pin.text, MSG_MAX), at: Number(d.pin.at) || 0, to: S(d.pin.to, TO_MAX) } : null,
     parkur: cleanParkur(d.parkur),
     kanal: d.kanal && typeof d.kanal === "object" && d.kanal.id ? { id: S(d.kanal.id, 40), name: S(d.kanal.name, 30) || "Kanal", open: d.kanal.open === true } : null,
+    ceza: cleanCeza(d.ceza),
   };
+}
+
+// Ceza uyarısı (Seyhun 2026-11-25): Yönet bir sporcuya 360° / 720° ceza dönüşü ya da faux départ verir; ekran belgesinde
+// ceza = { [cihaz]: { k: "1" | "2" | "fd", at } }. Sporcu ekranı 10 sn tam ekran, sonra şerit; Yönet kaldırana kadar durur.
+export const PEN = {
+  1: { big: "360°", t: "Bir ceza dönüşü yap", say: "Bir ceza dönüşü yap" },
+  2: { big: "720°", t: "İki ceza dönüşü yap", say: "İki ceza dönüşü yap" },
+  fd: { big: "FD", t: "Faux départ · hattın gerisine dön, yeniden başla", say: "Faux départ. Hattın gerisine dön, yeniden başla" },
+};
+export const PEN_BIG_MS = 10e3;
+function cleanCeza(c) {
+  if (!c || typeof c !== "object") return {};
+  const o = {};
+  for (const [dev, v] of Object.entries(c)) if (/^[a-z0-9]{12,24}$/.test(dev) && v && PEN[v.k]) o[dev] = { k: String(v.k), at: Number(v.at) || 0 };
+  return o;
 }
 
 // Kanal (Seyhun 2026-11-15): Yönet bir kanal açar (Antrenman, Yarış…); bilgi ekranı yalnız açık kanala katılarak başlar.

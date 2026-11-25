@@ -673,3 +673,35 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 .sahne { --lime: #d4ff3a; --sc: var(--lv-font-c), var(--font-num), system-ui, sans-serif; }
 .sahne .bzy-day { gap: 0.875rem; }
 .sahne .bzy-dt[data-on] b { color: #d4ff3a; }
+
+/* Ceza (Seyhun 2026-11-25): 360° / 720° turuncu-kırmızı, FD sarı. Yönet penceresi, isim rozeti, harita rozeti, sporcu ekranı */
+:root { --pen: #ff5a3c; --pen-fd: #ffd60a; }
+.bzy-pens { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+.bzy-pens button { height: 5.25rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.3rem; border: 1px solid var(--line, #2e2e33); border-radius: 1rem; background: var(--fill, #1f1f22); color: var(--fg); }
+.bzy-pens b { font: 800 2rem/1 var(--sc, system-ui); }
+.bzy-pens small { font-size: 0.75rem; font-weight: 600; color: var(--mut); }
+.bzy-pens button[aria-checked="true"] { border-color: var(--pen); background: rgba(255, 90, 60, .14); }
+.bzy-pens button[data-k="fd"][aria-checked="true"] { border-color: var(--pen-fd); background: rgba(255, 214, 10, .12); }
+.bzy-pen { font: 800 0.75rem/1 var(--lv-font-c), var(--font-num), system-ui, sans-serif; font-style: normal; letter-spacing: .03em; padding: 0.1875rem 0.3125rem; border-radius: 0.3125rem; background: var(--pen); color: #fff; }
+.bzy-pen[data-k="fd"] { background: var(--pen-fd); color: #111; }
+.tkm-pen { display: none; font: 800 0.6875rem/1 var(--lv-font-c), var(--font-num), system-ui, sans-serif; padding: 0.125rem 0.25rem; border-radius: 0.25rem; background: var(--pen); color: #fff; }
+.tkm[data-pen]:not([data-pen=""]) .tkm-pen { display: inline-block; }
+.tkm[data-pen="fd"] .tkm-pen { background: var(--pen-fd); color: #111; }
+.tkm[data-pen]:not([data-pen=""]) i { background: var(--pen); box-shadow: 0 0 0 4px rgba(255, 90, 60, .3); }
+.tkm[data-pen="fd"] i { background: var(--pen-fd); box-shadow: 0 0 0 4px rgba(255, 214, 10, .3); }
+.tkm[data-pen]:not([data-pen=""]) { opacity: 1; z-index: 4; }
+/* Sporcu ekranı: ilk 10 sn tam ekran (arkası bulanık), sonra üstte şerit; Yönet kaldırana kadar */
+.bz-penb { position: fixed; inset: 0; z-index: 40; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; padding: 1.5rem; text-align: center; border: 0; color: #fff;
+  background: rgba(10, 10, 12, .55); -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px); animation: bz-penin .25s ease-out; }
+.bz-penb small { font-size: 0.9375rem; font-weight: 600; color: #d4d4d8; }
+.bz-penb b { font: 800 clamp(5rem, 30vw, 10rem)/.85 var(--lv-font-c), var(--font-num), system-ui, sans-serif; color: var(--pen); }
+.bz-penb[data-k="fd"] b { color: var(--pen-fd); }
+.bz-penb span { font-size: clamp(1.25rem, 5vw, 2rem); font-weight: 700; max-width: 18ch; line-height: 1.25; }
+.bz-penb em { font-style: normal; width: 3.5rem; height: 3.5rem; display: grid; place-items: center; border-radius: 50%; border: 4px solid rgba(255, 255, 255, .25); font: 800 1.375rem/1 var(--font-num), system-ui; }
+.bz-pens { position: fixed; left: max(0.75rem, env(safe-area-inset-left)); right: max(0.75rem, env(safe-area-inset-right)); top: calc(env(safe-area-inset-top, 0px) + 3.25rem); z-index: 30;
+  display: flex; align-items: center; gap: 0.75rem; padding: 0.625rem 0.875rem; border: 0; border-radius: 1rem; background: var(--pen); color: #fff; text-align: left; box-shadow: 0 6px 20px rgba(0, 0, 0, .35); }
+.bz-pens[data-k="fd"] { background: var(--pen-fd); color: #111; }
+.bz-pens b { flex: none; font: 800 2rem/1 var(--lv-font-c), var(--font-num), system-ui, sans-serif; }
+.bz-pens span { font-size: 1rem; font-weight: 700; line-height: 1.25; }
+@keyframes bz-penin { from { opacity: 0; transform: scale(1.04); } }
+@media (prefers-reduced-motion: reduce) { .bz-penb { animation: none; } }
