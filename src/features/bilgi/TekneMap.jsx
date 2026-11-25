@@ -42,7 +42,12 @@ function markEl() {
 // tracks: geri oynatmada izler [{ id, color, line: [[boylam, enlem], …] }]; boat.color verilirse nokta o renkte
 // api (Yönet harita düzeni, Seyhun 2026-11-22): sağdaki düğmeler için { zoom(+1/-1), fit() }. Tam ekranda sığdırma alt paneli ve yan
 // sıraları hesaba katar (tekneler panelin altında kalmasın).
-export function TekneMap({ boats, course = null, full = false, talk = "", tracks = null, api = null }) {
+// onPen(id): ceza rozetine dokununca (Yönet: cezayı tek dokunuşla kaldır, Seyhun 2026-11-25)
+export function TekneMap({ boats, course = null, full = false, talk = "", tracks = null, api = null, onPen = null }) {
+  const penCb = useRef(onPen);
+  useEffect(() => {
+    penCb.current = onPen;
+  });
   const box = useRef(null);
   const map = useRef(null);
   const ml = useRef(null);
@@ -100,14 +105,24 @@ export function TekneMap({ boats, course = null, full = false, talk = "", tracks
       if (!Number.isFinite(b.lat) || !Number.isFinite(b.lon)) continue;
       seen.add(b.id);
       let mk = marks.current[b.id];
-      if (!mk) mk = marks.current[b.id] = new lib.Marker({ element: markEl(), anchor: "bottom" }).setLngLat([b.lon, b.lat]).addTo(m);
+      if (!mk) {
+        const elm = markEl();
+        const id = b.id;
+        elm.querySelector(".tkm-pen").addEventListener("click", (e) => {
+          e.stopPropagation();
+          penCb.current?.(id);
+        });
+        mk = marks.current[b.id] = new lib.Marker({ element: elm, anchor: "bottom" }).setLngLat([b.lon, b.lat]).addTo(m);
+      }
       mk.setLngLat([b.lon, b.lat]);
       const el = mk.getElement();
       el.querySelector(".tkm-t").textContent = [b.sail, b.name].filter(Boolean).join(" · ");
       el.classList.toggle("talk", !!talk && b.id === talk);
       // Ceza rozeti (360° / 720° / FD): adın yanında, nokta da renklenir
       const pen = el.querySelector(".tkm-pen");
-      pen.textContent = b.pen || "";
+      pen.textContent = b.pen ? `${b.pen} ✕` : "";
+      pen.setAttribute("role", "button");
+      pen.setAttribute("aria-label", b.pen ? `${b.name || "Sporcu"}: cezayı kaldır` : "");
       el.dataset.pen = b.penK || "";
       el.style.setProperty("--c", b.color || "");
       el.classList.toggle("old", !b.keep && now - (b.t || 0) > STALE);
