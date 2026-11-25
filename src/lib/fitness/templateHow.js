@@ -12,10 +12,10 @@ export const HOW = {
     how: "Önce ayak tabanını topun üstünde yavaşça ileri geri yuvarla. Sonra ellerinle duvara yaslan, arka bacağın düz, topuğun yerde. Baldırında hafif gerilme hisset, zorlamadan bekle.",
   },
   "90 90 kalça geçişi": {
-    how: "Yere otur, iki dizin de doksan derece bükülü olsun. Ellerin arkada destek versin, gövden dik. Dizlerini yavaşça bir yandan öbür yana devir. Hareket kalçadan gelsin, acele etme.",
+    how: "Yere otur, iki dizin de doksan derece bükülü olsun. Ellerin yanlarda yere destek versin, gövden dik. Dizlerini yavaşça bir yandan öbür yana devir. Hareket kalçadan gelsin, acele etme.",
   },
   "Open book": {
-    setup: "Yan yat, başının altına küçük bir yastık koy.",
+    setup: "Matın üstüne yan yat.",
     how: "Dizlerin bükülü ve üst üste, kolların önde birleşik. Üstteki kolunu kitap açar gibi arkaya aç, gözlerin elini takip etsin. Dizlerin ayrılmasın. Nefes vererek aç, nefes alarak geri kapat.",
   },
   "Wall slide": {
@@ -31,7 +31,7 @@ export const HOW = {
     how: "Kollarını önde uzat, alnını yere bırak. İki elini birlikte bir yana kaydır, karşı yanında gerilmeyi hisset. Rahat nefes al, sonra diğer yana geç.",
   },
   "Bacaklar yukarı sakin nefes": {
-    setup: "Kalçan duvara yakın, sırtüstü uzan.",
+    setup: "Kalçan duvara yakın, sırtüstü uzan, başının altına bir yastık koy.",
     how: "Bacaklarını duvara dayayıp yukarı uzat. Ellerin karnında. Burundan yavaş al, uzun ver. Her nefeste biraz daha gevşe.",
   },
   // ---- Kuvvet A hazırlık ----
@@ -68,12 +68,12 @@ export const HOW = {
     how: "Bir ayak önde, bir ayak geride uzun adım. Gövden dik. Arka dizini kontrollü indir. Ön dizin ikinci parmağın üstünden gitsin, içe kaçmasın. Ön topuktan iterek kalk.",
   },
   "Tek bacak Romanian deadlift": {
-    setup: "Çantayı ya da su şişesini elinde tut.",
+    setup: "Sırt çantasını askısından tek elinle tut.",
     how: "Tek bacak üstünde dur, diz hafif bükülü. Kalçanı geriye it, gövdeni öne eğ, arka bacağın geriye uzansın. Pelvis düz kalsın, yana açılmasın. Kalçadan iterek dik dur.",
   },
   "Band row": {
-    setup: "Bandı kapı koluna ya da sağlam bir yere göğüs hizasında bağla.",
-    how: "Dik otur ya da dur, kolların önde. Dirseklerini gövdene yakın tutarak bandı karnına çek. Kürek kemiklerini birbirine yaklaştır. Omuzların kulaktan uzak. Yavaşça bırak.",
+    setup: "Bandı önüne, diz hizasında sağlam bir yere bağla, alçak bir taburede otur.",
+    how: "Gövden dik, kolların önde düz. Dirseklerini gövdene yakın tutarak bandı karnına çek. Kürek kemiklerini birbirine yaklaştır. Omuzların kulaktan uzak. Yavaşça bırak.",
   },
   "Eğimli şınav": {
     setup: "Ellerini sağlam bir masaya ya da tezgâha koy.",
@@ -93,8 +93,8 @@ export const HOW = {
     how: "Burundan nefes al, karnını ve belini yere doğru şişir. Yavaşça ver, gevşe. Omuzların kalkmasın.",
   },
   "Hip hinge drill": {
-    setup: "Ayakların kalça genişliğinde, ellerin kalçanda.",
-    how: "Dizlerin hafif bükülü. Kalçanı geriye it, gövdeni sırtın düz kalarak öne eğ. Hareket kalçadan katlanma. Kalçanı öne itip dik dur.",
+    setup: "Ayakların kalça genişliğinde, kolların yanlarda.",
+    how: "Dizlerin hafif bükülü. Kalçanı geriye it, gövdeni sırtın düz kalarak öne eğ, ellerin uyluklarından dizlere doğru kaysın. Hareket kalçadan katlanma. Kalçanı öne itip dik dur.",
   },
   "Squat to reach": {
     how: "Ayakların omuz genişliğinde. Derin çömel, dirseklerinle dizlerini hafifçe dışa it. Kalkarken kollarını tavana uzat, göğsünü aç. Topukların yerde kalsın.",
@@ -108,34 +108,34 @@ export const HOW = {
     how: "Kolların düz. Bandı iki yana açarak göğsüne getir. Kürek kemiklerini sık. Yavaşça geri bırak. Omuzlar kulaktan uzak.",
   },
   "Lateral lunge reach": {
-    how: "Geniş dur. Bir yana adım at, o dizini bük, diğer bacağın düz kalsın. Kalçan geride, sırtın düz. Karşı kolunu çapraz uzat. Topuktan iterek ortaya dön.",
+    how: "Geniş dur. Bir yana adım at, o dizini bük, diğer bacağın düz kalsın. Kalçan geride, sırtın düz. Bir elini yere doğru uzat, diğer kolunu tavana aç, göğsün açılsın. Topuktan iterek ortaya dön.",
   },
   // ---- Kuvvet B ana ----
   "Sırt çantalı squat": {
-    setup: "Sırt çantasını iki askıyla tak, gerekirse önde göğsüne al.",
+    setup: "Sırt çantasını iki askıyla sırtına tak, ellerin askılarda.",
     how: "Ayakların omuz genişliğinde. Kalçanı geri ve aşağı indir, dizlerin parmak yönünde. Topukların ve ayak tabanın yerde. Göğsün dik. Topuktan iterek kalk.",
   },
   "Hip thrust": {
-    setup: "Sırtının üst kısmını kanepeye ya da sağlam bir yere daya, dizlerin bükülü.",
-    how: "Topuklarınla yere bas, kalçanı yukarı it. Üstte gövden yerle paralel, kalçanı sık. Bel değil kalça çalışsın, kaburgaların aşağıda. Yavaşça in.",
+    setup: "Mata sırtüstü yat, başın kanepeye yakın, dizlerin bükülü, kolların yanlarda. İstersen sırtının üstünü kanepeye dayayarak da yapabilirsin.",
+    how: "Topuklarınla yere bas, kalçanı yukarı it. Üstte omuzdan dizine düz bir çizgi olsun, kalçanı sık. Bel değil kalça çalışsın, kaburgaların aşağıda. Yavaşça in.",
   },
   "Yarım diz band pulldown": {
     setup: "Bandı kapının üstüne ya da yüksek bir yere bağla, yarım diz çök.",
     how: "Gövden dik. Bandı dirseklerini aşağı ve geriye çekerek göğsüne getir. Kaburgaların aşağıda, belin boşluk yapmasın. Yavaşça yukarı bırak.",
   },
   "Half kneeling tek kol press": {
-    setup: "Bandı alçak bir yere bağla ya da elinde su şişesi tut, yarım diz çök.",
-    how: "Kalçanı sık, gövden dik. Tek kolunla bandı ya da şişeyi yukarı ve hafif öne it. Bel boşluğun artmasın, gövden dönmesin. Yavaşça geri indir.",
+    setup: "Bandı yanına ya da arkana göğüs hizasında bağla, yarım diz çök, bandı göğsünün önünde tut.",
+    how: "Kalçanı sık, gövden dik. Tek kolunla bandı göğsünden düz öne it. Bel boşluğun artmasın, gövden dönmesin. Yavaşça geri indir.",
   },
   "Reverse lunge": {
-    how: "Dik dur. Bir ayağınla geriye uzun adım at, arka dizini yere yaklaştır. Ön dizin ikinci parmağın üstünde. Ön topuktan iterek başa dön. Sessiz ve kontrollü in.",
+    how: "Dik dur, ellerin göğsünde birleşik. Bir ayağınla geriye uzun adım at, arka dizini yere yaklaştır. Ön dizin ikinci parmağın üstünde. Ön topuktan iterek başa dön. Sessiz ve kontrollü in.",
   },
   "Pallof press": {
     setup: "Bandı göğüs hizasında yana bağla, bandın yanına dur.",
     how: "Bandı iki elinle göğsünde tut. Kollarını öne düz uzat, bir saniye bekle, geri çek. Band seni döndürmeye çalışır, sen dönme. Kalçan ve omuzların hep önde.",
   },
   "Suitcase carry": {
-    setup: "Tek eline ağır bir çanta ya da su bidonu al.",
+    setup: "Tek eline bir dambıl, ağır bir çanta ya da su bidonu al.",
     how: "Dik ve uzun dur, omuzların aynı hizada. Yükün olduğu yana eğilmeden yavaşça yürü. Karnını sıkı tut. Süre bitince elini değiştir.",
   },
   // ---- Yelken mikrodozu ----
@@ -144,12 +144,12 @@ export const HOW = {
     how: "Duvardan aşağı kayıp sandalyede oturur gibi dur, dizlerin doksan dereceye yakın. Kollarını önde tut, gövdeni sık. Dizlerin dışa ya da içe kaçmasın. Süre bitene kadar sabit kal.",
   },
   "Band rope pull": {
-    setup: "Bandı kapı koluna bağla, karşısına otur ya da çömel.",
-    how: "Bandı halat çeker gibi el el arkaya çek. Dirsekler gövdeye yakın, kürek kemiklerin birbirine yaklaşsın. Gövden dik.",
+    setup: "Bandı kapıya göğüs hizasında bağla, karşısında yarım çömelme duruşuna geç, kolların önde.",
+    how: "Bandı halat çeker gibi el el kendine doğru çek. Dirsekler gövdeye yakın, kürek kemiklerin birbirine yaklaşsın. Gövden dik.",
   },
   "Lateral step and stick": {
-    setup: "Yanına alçak bir basamak ya da çizgi koy.",
-    how: "Yana bir adım at ve tek ayak üstüne yumuşak in. Dizin bükülü, ikinci parmağın üstünde. İki saniye dengede kal. Sonra geri dön.",
+    setup: "Alçak bir basamağın üstüne çık.",
+    how: "Basamaktan yana in, iki ayağınla yumuşakça yere bas ve çömelerek dur. Dizlerin bükülü, parmak yönünde, içe kaçmasın. İki saniye bu duruşta kal. Sonra geri dön.",
   },
   "Half kneeling chop": {
     setup: "Bandı yüksek bir yere bağla, yanına yarım diz çök.",
@@ -176,14 +176,14 @@ export const HOW = {
     how: "Gövdeni dikleştir, kalçanı hafifçe sık. Kalçanı nazikçe öne it, arka bacağın önünde gerilme hisset. Belini çukurlaştırma. Sonra bacak değiştir.",
   },
   "Adduktor esnetme": {
-    how: "Bacaklarını geniş aç. Ağırlığını bir yana ver, o dizini bük, diğer bacağın düz kalsın. Sırtın dik. İç bacakta gerilmeyi hisset, sonra yan değiştir.",
+    how: "Bacaklarını geniş aç, ellerini önde yere koy. Ağırlığını bir yana ver, o dizini bük, diğer bacağın düz kalsın. Sırtın düz. İç bacakta gerilmeyi hisset, sonra yan değiştir.",
   },
   "Torakal rotasyon": {
-    setup: "Sırtüstü yat, dizlerin bükülü, kolların yanlara açık.",
+    setup: "Sırtüstü yat, dizlerin bükülü, kolların yanlarda yerde.",
     how: "Omuzların yerde kalsın. Dizlerini yavaşça bir yana bırak, başını karşı yana çevir. Rahat nefes al, sonra diğer yana geç.",
   },
   "Uzun verişli nefes": {
-    setup: "Bağdaş kur ya da sırtüstü uzan.",
-    how: "Gözlerini kapat. Burundan dört saniye al, altı saniyede yavaşça ver. Her verişte omuzlarını ve çeneni gevşet.",
+    setup: "Mata bağdaş kur, ellerini dizlerine koy.",
+    how: "Sırtın dik, gözlerini kapat. Burundan dört saniye al, altı saniyede yavaşça ver. Her verişte omuzlarını ve çeneni gevşet.",
   },
 };
