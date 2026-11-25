@@ -109,7 +109,8 @@ export function WordTalk({ w, onClose, onQuiz }) {
     mic.start();
   };
   const up = () => {
-    if (!mic.on) return;
+    if (!mic.on || mic.state === "stopping") return;
+    if (mic.state === "opening") return void (press.current.tap = true); // mikrofon henüz açılmadı: açık kalsın, ikinci dokunuş gönderir
     if (press.current.tap) return finish(); // ikinci dokunuş: gönder
     if (Date.now() - press.current.at < 300) press.current.tap = true; // kısa dokunuş: kayıt açık kalır
     else finish();
