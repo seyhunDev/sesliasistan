@@ -13,7 +13,7 @@ import { TEMPLATES } from "@/lib/fitness/templates";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useFitLib } from "./useFitLib";
-import { seedMalePhotos, seedTemplatePhotos } from "./templateSeed";
+import { seedTemplatePhotos } from "./templateSeed";
 
 // Seçenek kartlarının simgesi ve kısa açıklaması (yazı model.js'teki listelerden)
 const GOAL_UI = {
@@ -245,7 +245,7 @@ export function ProfileFields({ f, set, withGoal = true, withPlace = true }) {
 export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, onTemplate, busy, goal, athletes = [], forUid = "", error = "" }) {
   const [mode, setMode] = useState("ai");
   const { profile: me, isOwner } = useAuth();
-  const { lib, addMany, addMale } = useFitLib();
+  const { lib, addMany } = useFitLib();
   const toast = useToast();
   const [seed, setSeed] = useState("");
   const [file, setFile] = useState(null);
@@ -340,12 +340,6 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, o
       } finally {
         setSeed("");
       }
-      // Erkek fotoğrafları arka planda (program ekranı açılırken sürer; yarıda kalırsa bir sonraki seçişte devam eder)
-      seedMalePhotos({ id, orgId: me?.orgId, lib, addMale })
-        .then((r) => {
-          if (r.drawn || r.failed) toast([r.drawn ? `${r.drawn} erkek fotoğrafı eklendi` : "", r.failed ? `${r.failed} erkek fotoğrafı çizilemedi${r.stopped ? ", yarın örnek programı yeniden seçince devam eder" : ""}` : ""].filter(Boolean).join(" · "));
-        })
-        .catch(() => toast("Erkek fotoğrafları yüklenemedi"));
     }
     onTemplate?.(id, f, pre);
   };

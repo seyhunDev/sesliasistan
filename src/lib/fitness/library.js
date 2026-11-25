@@ -72,6 +72,9 @@ export function cleanLib(v = {}) {
   for (const [a, b] of Object.entries(v?.alias || {})) if (a && a.length <= 60 && !items[a] && items[b]) alias[a] = b;
   const out = { next: Math.max(next, Math.round(+v?.next) || 1), items };
   if (Object.keys(alias).length) out.alias = alias;
+  // Erkek model (Hareketler › Modeller): erkek fotoğrafları bu kişiyle çizilir
+  const mm = cleanMedia(v?.models?.m ? [v.models.m] : [], 1)[0];
+  if (mm) out.models = { m: mm };
   return out;
 }
 

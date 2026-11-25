@@ -91,7 +91,7 @@ const RATIOS = [[1, "1:1"], [1.5, "3:2"], [2 / 3, "2:3"], [4 / 3, "4:3"], [3 / 4
 const ratioOf = (w, h) => RATIOS.reduce((b, r) => (Math.abs(Math.log(w / h / r[0])) < Math.abs(Math.log(w / h / b[0])) ? r : b))[1];
 const hasMale = (lib) => (x) => (libEntry(lib, x)?.media || []).some((m) => m.g === "m");
 
-export async function seedMalePhotos({ id, orgId, lib, addMale, onProg }) {
+export async function seedMalePhotos({ id, orgId, lib, addMale, model = "", onProg }) {
   const all = templatePhotos(id);
   const todo = all.filter((x) => !hasMale(lib)(x));
   if (!orgId || !todo.length) return { drawn: 0, failed: 0, stopped: false };
@@ -112,7 +112,7 @@ export async function seedMalePhotos({ id, orgId, lib, addMale, onProg }) {
         const ratio = ratioOf(bmp.width, bmp.height);
         bmp.close?.();
         const t = how[x.name] || {};
-        const r = await authFetch("/api/fitness-pic", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: x.name, setup: t.setup, how: t.how, ref: await b64(blob), male: true, ratio }) });
+        const r = await authFetch("/api/fitness-pic", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ name: x.name, setup: t.setup, how: t.how, ref: await b64(blob), ref2: model, male: true, ratio }) });
         const j = await r.json().catch(() => ({}));
         if (!r.ok || !j.data) {
           failed++;
