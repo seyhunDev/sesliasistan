@@ -41,6 +41,22 @@ export function useFitLib() {
     },
     [orgId],
   );
+  // Birden çok hareketin fotoğrafı tek kayıtla (hazır program): [{ it, meta }]; fotoğrafı/videosu olan harekete dokunulmaz
+  const addMany = useCallback(
+    async (list) => {
+      if (!orgId || !list?.length) return null;
+      let cur = await loadLib(orgId, { force: true });
+      for (const { it, meta } of list) {
+        const e = libEntry(cur, it);
+        if (e?.media?.length || e?.yt) continue;
+        cur = libSetMedia(cur, it, { media: [meta] });
+      }
+      const saved = await saveLib(orgId, cur);
+      spreadLib(orgId, all.current).catch((e) => console.warn("[fitness] fotoğraflar sporculara aktarılamadı", e));
+      return saved;
+    },
+    [orgId],
+  );
   // Aynı adlı kopyaları birleştirir; programlar ve antrenmanlar kalanın fotoğraf/videosunu alır
   const merge = useCallback(
     async (keep, keys) => {
@@ -84,5 +100,5 @@ export function useFitLib() {
     },
     [orgId],
   );
-  return { lib, setMedia, merge, attach, rename, drop };
+  return { lib, setMedia, addMany, merge, attach, rename, drop };
 }

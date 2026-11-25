@@ -2440,6 +2440,7 @@ group("Instagram sonuç (yalnız fotoğraf)")([
 
 // Fitness hareket kütüphanesi (library.js): numara, aynı harekete aynı video, kulübün kendi hareketleri
 const LB = await import("@/lib/fitness/library");
+const FTP = await import("@/lib/fitness/templates");
 const FMK = await import("@/lib/fitness/model");
 const YT = { id: "dQw4w9WgXcQ" };
 group("Fitness hareket kütüphanesi")([
@@ -2479,6 +2480,15 @@ group("Fitness hareket kütüphanesi")([
     const { lib, added } = LB.libAdd(a, [{ ex: "", name: "ŞINAV" }]);
     return !added.length && Object.keys(lib.items).length === 1 && LB.libNo(lib, { ex: "", name: "Şınav" }) === 1 &&
       LB.withLib({ ex: "", name: "şınav", sets: 3 }, lib).media?.[0]?.id === "p1";
+  })],
+  ["yazım farkı ikinci kayıt açmaz", F("\"Burun nefesi + yürüyüş\" = \"Burun nefesi - yürüyüş\" = \"Yürüyüş ve burun nefesi\"; eski kopya Kopyalar'da çıkar", () => {
+    const { lib } = LB.libAdd(LB.cleanLib(), [{ ex: "", name: "Burun nefesi + yürüyüş" }, { ex: "", name: "Burun nefesi - yürüyüş" }, { ex: "", name: "Yürüyüş ve burun nefesi" }]);
+    const old = LB.cleanLib({ next: 3, items: { "c:a": { no: 1, name: "Burun nefesi + yürüyüş" }, "c:b": { no: 2, name: "Yürüyüş ve burun nefesi" } } });
+    return Object.keys(lib.items).length === 1 && LB.libDupes(old).length === 1 && LB.nameKey("Squat to reach") !== LB.nameKey("Squat");
+  })],
+  ["hazır programın fotoğrafları", F("Yelken ev kuvveti: 40 hareket fotoğraflı, her hareket bir kez", () => {
+    const ph = FTP.templatePhotos("yelken-ev-12");
+    return ph.length === 40 && new Set(ph.map((x) => x.name)).size === 40 && ph.every((x) => /^\/fitness\/hazir\/[a-z0-9-]+\.jpg$/.test(x.src));
   })],
   ["kopyaları birleştir", F("eski kopyalar: fotoğraflı kalır, bütün fotoğraf/videolar korunur, programdaki eski ad kalanı kullanır", () => {
     const M = (id, kind = "photo") => ({ id, kind, type: "image/jpeg", size: 1000, parts: 1 });
@@ -2691,20 +2701,20 @@ group("Fitness: program ayrıntıları ve şablon")([
     const d = FMI.planDrafts(p);
     return d.length === 4 && d[0].fit.items[0].sets === 3 && !d[0].fit.phase && d[3].fit.items[0].sets === 2 && d[3].fit.phase === "Hafif" && d[3].fit.note === "gün notu · az";
   })],
-  ["hazır şablon", F("Yelken ev kuvveti PDF'teki hafta: 7 gün (kuvvet A, B, mikrodoz, reset günleri), bütün hareketler, 12 hafta, evreler ve kurallar", () => {
+  ["hazır şablon", F("Yelken ev kuvveti PDF'teki hafta (ortak: kişiye özel gitar/saat notu yok): 7 gün (kuvvet A, B, mikrodoz, reset günleri), bütün hareketler, 12 hafta, evreler ve kurallar", () => {
     const p = FTPL.fromTemplate("yelken-ev-12", "2026-10-19");
     const at = (n) => p.days.find((d) => d.dow === n);
     const [a, b, c] = [at(2), at(4), at(5)];
     const split = a.items.find((x) => x.name === "Sırt çantalı split squat");
     return p.weeks === 12 && p.days.length === 7 && a.time === "17:45" && a.items.length === 15 && b.items.length === 15 && c.items.length === 12 &&
-      a.items.every((x) => !x.ex) && split.repsTo === 12 && split.side && split.rest === 75 && split.note.includes("çantaya 1–2 kg") && a.note.includes("gitar") &&
+      a.items.every((x) => !x.ex) && split.repsTo === 12 && split.side && split.rest === 75 && split.note.includes("çantaya 1–2 kg") && !/gitar|17\.45/.test(a.note) && !p.forAge &&
       p.phases.length === 6 && p.rules.includes("Trafik ışığı") && FMI.planDrafts(p).length === 84;
   })],
   ["hazır şablon rutin", F("Pzt 19:00 8 dk reset, Çrş 19:00 nefes ve mobilite, Cmt ve Paz 16:00 yelken sonrası 6 dk; Cuma 2 tur, hareketler arası 20 sn; hazırlıkta uzun dinlenme yok", () => {
     const p = FTPL.fromTemplate("yelken-ev-12", "2026-10-19");
     const at = (n) => p.days.find((d) => d.dow === n);
     const fri = at(5).items;
-    return at(1).time === "19:00" && at(1).items.length === 8 && at(1).note.includes("atletizm") && at(3).items.length === 5 && at(6).time === "16:00" && at(7).items.length === 6 &&
+    return at(1).time === "19:00" && at(1).items.length === 8 && /atletizm/i.test(at(1).note) && at(3).items.length === 5 && at(6).time === "16:00" && at(7).items.length === 6 &&
       fri[0].name === fri[6].name && fri[0].note.startsWith("1. tur") && fri[6].note.startsWith("2. tur") && fri.every((x) => x.sets === 1 && FMI.restAfter(x, true) === 20) &&
       !at(5).time && at(2).items.filter((x) => x.part === "isinma").every((x) => FMI.restAfter(x, true) === 10) && p.rules.includes("Her gün 8 dk reset:");
   })],
