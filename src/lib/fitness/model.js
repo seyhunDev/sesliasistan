@@ -160,10 +160,11 @@ export function cleanMedia(list, max = 3) {
     .filter((m) => m && typeof m.id === "string" && m.id && (m.kind === "photo" || m.kind === "video"))
     .slice(0, max)
     .map((m) => {
-      if (m.link) return typeof m.url === "string" && /^https:\/\/\S+$/.test(m.url) && m.url.length <= 1200 ? { id: m.id.slice(0, 40), kind: m.kind, url: m.url, link: true } : null;
+      if (m.link) return typeof m.url === "string" && /^https:\/\/\S+$/.test(m.url) && m.url.length <= 1200 ? { id: m.id.slice(0, 40), kind: m.kind, url: m.url, link: true, ...(m.g === "m" ? { g: "m" } : {}) } : null;
       const o = { id: m.id.slice(0, 40), kind: m.kind, type: String(m.type || "").slice(0, 40), size: Math.max(0, +m.size || 0), parts: Math.min(40, Math.max(1, Math.round(+m.parts) || 1)) };
       // Storage'daki dosya: indirme adresi (https, firebasestorage) künyede durur, video oradan akarak oynar
       if (typeof m.url === "string" && /^https:\/\/firebasestorage\.googleapis\.com\//.test(m.url) && m.url.length < 1200) o.url = m.url;
+      if (m.g === "m") o.g = "m"; // erkek fotoğrafı (hazır program, 2026-11-25): erkek kullanıcıya bu gösterilir
       return o;
     })
     .filter(Boolean);

@@ -15,6 +15,7 @@ import { YtPlayer } from "./YtVideo";
 import { FitGuided } from "./FitGuided";
 import { clearStart, isStart } from "./guideVoice";
 import { ytThumb } from "@/lib/fitness/youtube";
+import { forSex } from "@/lib/fitness/library";
 import { FEELS, PARTS, cheerOf, clockText, cleanRes, isTimed, restAfter, itemLine, itemMore, resRows, setTimeText, statusOf, STATUS, targetFor } from "@/lib/fitness/model";
 import { todayStr, when } from "@/lib/utils/format";
 
@@ -59,6 +60,7 @@ function partsOf(items) {
 export function FitWorkout({ rec, by, hero = false, bare = false, dock = null }) {
   const confirmAsk = useConfirm();
   const { plans, updateRecord } = useData();
+  const { profile } = useAuth();
   const toast = useToast();
   const fit = rec.fit || { items: [] };
   // Sporcu kendisine hazırlanan programı yalnız işaretler ve bitirir; set, tekrar, kilo, süre değiştiremez
@@ -154,7 +156,9 @@ export function FitWorkout({ rec, by, hero = false, bare = false, dock = null })
 
   if (!edit && fit.res?.st) return <ResultCard rec={rec} fit={fit} hero={hero} onEdit={() => setEdit(true)} />;
 
-  const items = fit.items || [];
+  // Fotoğraf cinsiyete göre (erkeğe erkek fotoğrafı): sporcu programında programdaki cinsiyet, kendi programında profil
+  const sex = fit.sex || (fit.for ? "" : profile?.fit?.sex || "");
+  const items = (fit.items || []).map((it) => (it.media?.some((m) => m.g === "m") ? { ...it, media: forSex(it.media, sex) } : it));
   const allDone = total > 0 && done === total;
   // Sıradaki set: ilk işaretlenmemiş
   const next = (() => {

@@ -209,7 +209,7 @@ export function FitnessHome() {
       // Seçilenler kesin: gün ve saatler formdakiyle aynı olsun
       const days = r.program.days.map((d) => ({ ...d, time: d.time || pre.time, min: d.min || pre.min }));
       setNewOpen(false);
-      const who = pre.for ? { for: pre.for, forName: pre.forName, forAge: f.age || 0, sport: f.sport || "" } : {};
+      const who = pre.for ? { for: pre.for, forName: pre.forName, forAge: f.age || 0, sport: f.sport || "", forSex: f.sex || "" } : {};
       setEdit({ prog: fixStart({ ...r.program, goal: r.program.goal || f.goal, level: r.program.level || f.level, place: r.program.place || f.place, ...who, days, weeks: pre.weeks, start: pre.start, note: r.program.note || r.message }), fresh: true, simple: true, k: Date.now() });
     } catch (e) {
       // Hata pencerede kalır (önceden yalnız kısa bildirimdi, kaçırılıyordu)
@@ -227,7 +227,7 @@ export function FitnessHome() {
       const opt = { ask: extra, age: pre.for ? f.age || 0 : 0, sport: pre.for ? f.sport || "" : "" };
       const r = file ? await importFile(file, opt) : await importText(text, opt);
       if (!r.program?.days?.length) throw new Error(r.message || "Programda antrenman bulunamadı");
-      const who = pre.for ? { for: pre.for, forName: pre.forName, forAge: f.age || 0, sport: f.sport || "" } : {};
+      const who = pre.for ? { for: pre.for, forName: pre.forName, forAge: f.age || 0, sport: f.sport || "", forSex: f.sex || "" } : {};
       setNewOpen(false);
       setEdit({ prog: fixStart({ ...cleanProgram(r.program), ...who, start: pre.start }), fresh: true, k: Date.now() });
       if (r.message) toast(r.message);
@@ -243,7 +243,7 @@ export function FitnessHome() {
     const t = TEMPLATES.find((x) => x.id === id);
     const p = fromTemplate(id, pre.start);
     if (!t || !p) return;
-    const who = pre.for ? { for: pre.for, forName: pre.forName, forAge: f.age || t.forAge || 0, sport: f.sport || t.sport || "" } : {};
+    const who = pre.for ? { for: pre.for, forName: pre.forName, forAge: f.age || t.forAge || 0, sport: f.sport || t.sport || "", forSex: f.sex || t.forSex || "" } : {};
     setNewOpen(false);
     setEdit({ prog: fixStart({ ...p, ...who, title: pre.for ? `${pre.forName} · ${t.title}` : p.title }), fresh: true, k: Date.now() });
   }
@@ -252,7 +252,7 @@ export function FitnessHome() {
     if (!pre.for) saveProfile(uid, f).then(setFitProf).catch(() => {});
     setNewOpen(false);
     const days = pre.days.map((dow) => ({ dow, time: pre.time, min: pre.min, name: "Antrenman", items: [cleanItem({ ex: "warmup", min: 5 }), cleanItem({ ex: "stretch", min: 5 })] }));
-    const who = pre.for ? { for: pre.for, forName: pre.forName, forAge: f?.age || 0, sport: f?.sport || "" } : {};
+    const who = pre.for ? { for: pre.for, forName: pre.forName, forAge: f?.age || 0, sport: f?.sport || "", forSex: f?.sex || "" } : {};
     setEdit({ prog: { ...cleanProgram({ title: pre.for ? `${pre.forName} · fitness` : "Fitness programım", goal: f?.goal, level: f?.level, place: f?.place, weeks: pre.weeks, start: pre.start, days }), ...who }, fresh: true, k: Date.now() });
   }
 
