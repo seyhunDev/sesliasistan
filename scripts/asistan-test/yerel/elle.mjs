@@ -2198,7 +2198,9 @@ group("Fitness: sporcu programı")([
     const W = await import("@/lib/fitness/words");
     const g = (x) => W.guideWord(x)?.op;
     return g("tamam") === "done" && g("sonraki") === "done" && g("seti bitirdim") === "done" && g("set tamam") === "done" && g("bu hareketi atla") === "skip" && g("15 saniye ekle") === "more" &&
-      g("nasıl yapılır") === "how" && g("antrenmanı bitir") === "finish" && W.guideWord("zor geçti")?.k === 1 && W.guideWord("kolay")?.k === 3 && !g("yarın saat 10'da Ali'ye mesaj at");
+      g("nasıl yapılır") === "how" && g("antrenmanı bitir") === "finish" && W.guideWord("zor geçti")?.k === 1 && W.guideWord("kolay")?.k === 3 && !g("yarın saat 10'da Ali'ye mesaj at") &&
+      g("durdur") === "pause" && g("bekle") === "pause" && g("devam et") === "done" && W.guideWord("otomatiğe geç")?.k === true && W.guideWord("otomatik aç")?.k === true &&
+      W.guideWord("elle devam")?.k === false && W.guideWord("otomatiği kapat")?.k === false;
   })],
   ["sporcu adı", F("cümlede geçen sporcu; adı yapay zekaya gitmez", async () => {
     const W = await import("@/lib/fitness/words");
