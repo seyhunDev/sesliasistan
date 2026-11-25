@@ -10,6 +10,7 @@ import { setShooting } from "@/features/raceMedia/shooting";
 import { addYaziKalip, delKalip, openKanal, renameKalip, reopenKanal, saveKalip, sendKalip } from "./bilgiStore";
 import { sayWith } from "@/lib/speech/ttsClient";
 import { voiceType } from "@/lib/chatFile";
+import { VTAGS, myTags, rememberTag } from "./yonetVideo";
 
 // Yönet yeni düzen (Seyhun 2026-11-25 örnekler "Yönet yeni düzen" + "Yönet hazır kalıplar" onaylandı "Yap"): günü başlat, hazır kalıplar,
 // tekrar, Video kutusu, Araçlar penceresi. Ana ekran BilgiAdmin.jsx.
@@ -127,6 +128,46 @@ export function VideoTile({ app, onDone }) {
   );
 }
 export const videoDone = (toast) => (f) => (setShooting(null), toast(f?.asset ? "Video Fotoğraflar'a kaydedildi" : "Video kaydedilemedi. Fotoğraflar iznini kontrol et."));
+
+// Video etiketleri (Seyhun 2026-11-25): çekimden sonra açılır; seçili sporcu(lar) hazır etiketli, Orsa/Pupa/Start… dokunarak, yenisi yazılarak.
+// Kaydet ya da pencereyi kapatmak videoyu o günün galerisine (Medya › Antrenman › Yönet) gönderir; video kaybolmaz.
+export function VideoTags({ job, onSave }) {
+  const [tags, setTags] = useState(null);
+  const [add, setAdd] = useState("");
+  const cur = tags || job?.tags || [];
+  const pool = [...new Set([...(job?.tags || []), ...myTags(), ...VTAGS])];
+  const flip = (t) => setTags(cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]);
+  const done = (list = cur) => (setTags(null), setAdd(""), onSave(list));
+  const plus = () => {
+    const t = add.trim();
+    if (!t) return;
+    rememberTag(t);
+    setTags([...new Set([...cur, t])]);
+    setAdd("");
+  };
+  return (
+    <Sheet open={!!job} onClose={() => done()} title="Video etiketleri">
+      <div className="flex flex-col gap-3 pb-2">
+        <div className="bzy-chips">
+          {pool.map((t) => (
+            <button key={t} type="button" aria-pressed={cur.includes(t)} onClick={() => flip(t)} data-press>
+              {t}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <input className="bzy-in flex-1" value={add} maxLength={24} placeholder="Yeni etiket" onChange={(e) => setAdd(e.target.value)} onKeyDown={(e) => e.key === "Enter" && plus()} aria-label="Yeni etiket" />
+          <Button size="sm" variant="secondary" disabled={!add.trim()} onClick={plus}>
+            Ekle
+          </Button>
+        </div>
+        <Button full onClick={() => done()}>
+          Galeriye kaydet
+        </Button>
+      </div>
+    </Sheet>
+  );
+}
 
 // Tekrar: kalıp her `every` sn'de bir, `times` kez; Hepsi seçiliyse her seferinde o an kanalda açık olanlara gider.
 // Yönet ekranı açıkken çalışır (telefon kilitlenince tarayıcı durur); sürerken ekran kapanmaz.

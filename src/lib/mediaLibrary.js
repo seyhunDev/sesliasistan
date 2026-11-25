@@ -29,7 +29,11 @@ export function librarySections(docs, { plans = [], races = [], today = dayOf(ne
     if (!items.length) continue;
     const last = items[items.length - 1].at;
     const n = `${items.length} kayıt`;
-    if (d.id.startsWith("ant-")) {
+    if (d.id.startsWith("ant-yonet-")) {
+      // Yönet'te çekilen videolar (Seyhun 2026-11-25): her gün bir bölüm, etiketli (sporcu, Orsa, Pupa…)
+      const day = d.id.slice(10);
+      ant.push({ key: d.id, id: d.id, title: "Yönet", sub: `${dayText(day, today)} · ${n}`, href: "", items, last });
+    } else if (d.id.startsWith("ant-")) {
       const pid = d.id.slice(4);
       const p = plans.find((x) => x.id === pid);
       const day = p?.date || dayOf(items[0].at);
