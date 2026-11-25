@@ -196,7 +196,8 @@ export function ClubRows({ open, fit }) {
     <>
       {race && <Row href={`/athletes/races/${race.id}`} lead={<ClubIcon name="flag" color="#2563eb" />} title={race.title} sub={race.sub} right={race.right} />}
       {train && <Row href={`/athletes/attendance?gun=${train.date}`} lead={<ClubIcon name="checks" color="#2563eb" />} title={`Antrenman · ${train.when}`} sub={who} right={`${train.n} kişi`} />}
-      <Row href="/fitness" lead={<ClubIcon name="dumbbell" color="#16a34a" />} title="Fitness" right={fw.n ? `${fw.done}/${fw.n}` : null} sub={fw.n ? "Bu hafta yapıldı" : "Bu hafta antrenman yok"} />
+      {/* Bu hafta fitness antrenmanı yoksa satır görünmez (Seyhun 2026-11-25) */}
+      {fw.n > 0 && <Row href="/fitness" lead={<ClubIcon name="dumbbell" color="#16a34a" />} title="Fitness" right={`${fw.done}/${fw.n}`} sub="Bu hafta yapıldı" />}
     </>
   );
 }

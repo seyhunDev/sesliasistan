@@ -53,7 +53,7 @@ export function OwnerHome() {
   );
 }
 
-// Sayfa düğmeleri (homeActions, yetkiye göre) "Tümü" penceresinde (HomeGrid allOnly); sağ sütun / telefonda alt kısım: yarış, Bekleyen, Kulüp, hesaba göre kartlar.
+// Sayfa düğmeleri (homeActions, yetkiye göre) "Tümü" penceresinde (HomeGrid); sağ sütun / telefonda alt kısım: yarış, Bekleyen, Kulüp, hesaba göre kartlar.
 export function HomeFeed({ weather, inbox, onInbox, quota }) {
   const { profile } = useAuth();
   const { plans, lessons, members, notes, fitOthers } = useData();
@@ -93,7 +93,7 @@ export function HomeFeed({ weather, inbox, onInbox, quota }) {
         inbox={inbox}
         onInbox={onInbox}
         side={{
-          all: <HomeGrid allOnly pages={actions} side={side} athletes={!!athletes} receipts={canReceipts(kind)} owner={owner} />,
+          all: <HomeGrid pages={actions} />,
           body: (
             <>
               {athletes && <RaceLive open={race.open} />}
