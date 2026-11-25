@@ -23,8 +23,8 @@ function device(text) {
 }
 
 // İngilizce satırı okur (Seyhun 2026-10-26: "İngilizce her şeyi duyabiliyor olmamız lazım, tıklayarak"): önce sunucudaki
-// Google İngilizce sesi (/api/tts lang "en", GOOGLE_TTS_KEY), aynı satır ikinci kez sorulmaz (bellekte); anahtar yoksa ya da
-// 4 sn'de gelmezse telefonun sesi. iPhone'da ses öğesi dokunuş anında sessiz sesle açılır, sonra gelen ses çalabilir.
+// doğal İngilizce ses (/api/tts lang "en": Gemini-TTS, olmazsa Chirp; satırlar sunucuda saklanır, cache: true), aynı satır ikinci kez sorulmaz (bellekte); anahtar yoksa ya da
+// 8 sn'de gelmezse telefonun sesi. iPhone'da ses öğesi dokunuş anında sessiz sesle açılır, sonra gelen ses çalabilir.
 let el = null;
 let server = true;
 let job = 0;
@@ -70,8 +70,8 @@ export function sayEn(text) {
   let url = got.get(t);
   if (!url) {
     const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 4000);
-    url = authFetch("/api/tts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: t, lang: "en", rate: 0.95 }), signal: ctrl.signal })
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    url = authFetch("/api/tts", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ text: t, lang: "en", rate: 0.95, cache: true }), signal: ctrl.signal })
       .then(async (r) => {
         if (r.status === 501) server = false;
         if (!r.ok) throw new Error(String(r.status));

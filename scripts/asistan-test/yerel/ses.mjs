@@ -375,3 +375,34 @@ group("Sesle parkur: geri alma")([
   ...["geri al", "Yanlış.", "yanlış anladın", "sil", "sonuncuyu sil", "iptal"].map((s) => [s, { desc: "geri alır", fn: PKS.courseUndo, ok: (r) => r === true }]),
   ...["Ali'nin planını sil", "rüzgar 330 sil", "geri al bunu Ali'ye gönder"].map((s) => [s, { desc: "geri alma değil", fn: PKS.courseUndo, ok: (r) => r === false }]),
 ]);
+
+// Ortak seslendirme (lib/server/tts.js): önce Gemini-TTS (yönergeli), API kapalıysa Chirp 3 HD; ağ taklit edilir
+{
+  const realFetch = globalThis.fetch;
+  const TT = await import("@/lib/server/tts");
+  let queue = Promise.resolve(); // testler aynı anda başlar; fetch taklidi paylaşıldığı için sırayla
+  const run = (mode) => (text) => (queue = queue.then(() => once(mode, text)));
+  const once = async (mode, text) => {
+    const sent = [];
+    process.env.GOOGLE_TTS_KEY = "test";
+    globalThis.fetch = async (_u, init) => {
+      const b = JSON.parse(init.body);
+      sent.push(b);
+      if (b.voice.modelName && mode === "kapali") return new Response('{"error":"API disabled"}', { status: 403 });
+      return new Response(JSON.stringify({ audioContent: Buffer.from("mp3").toString("base64") }), { status: 200 });
+    };
+    try {
+      const r = await TT.synthesize({ text, voice: "Kore", style: "fitness", rate: mode === "yavas" ? 0.9 : 1 });
+      return { engine: r.engine, sent };
+    } finally {
+      globalThis.fetch = realFetch;
+    }
+  };
+  group("Ortak seslendirme")([
+    ["Gemini açık: doğal ses", { desc: "gemini, model + fitness yönergesi + Kore", fn: run("acik"), ok: (r) => r.engine === "gemini" && r.sent.length === 1 && r.sent[0].voice.modelName === TT.TTS_GEMINI_MODEL() && r.sent[0].input.prompt === TT.TTS_STYLES.fitness && r.sent[0].voice.name === "Kore" }],
+    ["Gemini yavaş hız", { desc: "yönergeye 'Biraz yavaş'", fn: run("yavas"), ok: (r) => /Biraz yavaş/.test(r.sent.at(-1).input.prompt) }],
+    ["Gemini kapalı: Chirp yedeği", { desc: "chirp, tr-TR-Chirp3-HD-Kore", fn: run("kapali"), ok: (r) => r.engine === "chirp" && r.sent.at(-1).voice.name === "tr-TR-Chirp3-HD-Kore" }],
+    ["Gemini kapalıyken bir daha denenmez", { desc: "doğrudan chirp", fn: run("acik"), ok: (r) => r.engine === "chirp" && !r.sent[0].voice.modelName }],
+    ["Aynı metin bellekten", { desc: "istek gitmez", fn: () => { run("acik")("Bellek denemesi."); return run("acik")("Bellek denemesi."); }, ok: (r) => r.sent.length === 0 }],
+  ]);
+}

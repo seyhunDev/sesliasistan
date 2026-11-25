@@ -8,6 +8,7 @@ import { FRESH_MS, SHOW_DEF, beepOf, buildCourse, dirName, normDeg, pFlag, scree
 import { CourseMap } from "./CourseMap";
 import { deviceId, offPos, readWho, savePusula, saveTekneKim, saveWho, sendGelen, sendIz, sendPos, useBilgi, useBilgiDoc, usePublic, useTekneKim } from "./bilgiStore";
 import { usePtt } from "./usePtt";
+import { sayDevice, sayWith } from "@/lib/speech/ttsClient";
 import { PttCancel, Wave } from "./Wave";
 import { mineOf, useCanliRace } from "@/features/liveScreen/sonuclar";
 import { groupColor } from "@/lib/roundScore";
@@ -491,15 +492,11 @@ function useVoice(on, msg, ses) {
     const first = seen.current.msg === null;
     seen.current.msg = msg.id;
     if (first && Date.now() - msg.at > 5000) return;
-    if (!on || Date.now() - msg.at > FRESH_MS || !("speechSynthesis" in window)) return;
-    const u = new SpeechSynthesisUtterance(msg.text);
-    u.lang = "tr-TR";
-    const v = speechSynthesis.getVoices().find((x) => /^tr/i.test(x.lang));
-    if (v) u.voice = v;
-    u.onstart = () => setTalk(true);
-    u.onend = u.onerror = () => setTalk(false);
-    speechSynthesis.cancel();
-    speechSynthesis.speak(u);
+    if (!on || Date.now() - msg.at > FRESH_MS) return;
+    // Doğal ses (Gemini, lib/speech/ttsClient.js); giriş yoksa ya da 5 sn'de gelmezse cihaz sesi
+    const opts = { style: "asistan", timeoutMs: 5000, onStart: () => setTalk(true), onEnd: () => setTalk(false) };
+    if (AUDIO) sayWith(AUDIO, msg.text, opts);
+    else sayDevice(msg.text, opts);
   }, [on, msg]);
   useEffect(() => {
     if (!ses?.id || seen.current.ses === ses.id) return;

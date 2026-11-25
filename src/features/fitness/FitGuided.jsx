@@ -14,6 +14,9 @@ import { useTts } from "@/features/speech/TtsProvider";
 import { liveHead } from "@/features/liveScreen/fonts";
 import { LIME, SahneAdd, SahneBtn, SahneIntro, SahneToggles, head } from "./FitSahne";
 
+// Antrenör sesi: doğal Gemini sesi, "fitness" tarzı; metinler sabit olduğu için sunucuda saklanır (docs/seslendirme.md)
+const FIT_VOICE = { style: "fitness", cache: true };
+
 // Adım adım antrenman (FitWorkout'tan açılır, tam ekran): yalnız o anki hareket ve set görünür.
 // "Tamamlandı" seti işaretler (FitWorkout kaydeder), dinlenme sayacı başlar, sonra sıradaki set / hareket gelir.
 // Sayılar programdaki gibi gösterilir (− / + yok).
@@ -340,7 +343,7 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
   const waitGo = useRef(false); // dinlenme bitti, anlatım bitince başlanacak
   const min = estMinutes(items);
   const say = (t) => {
-    if (!quiet && t) tts.speak(t);
+    if (!quiet && t) tts.speak(t, undefined, FIT_VOICE);
   };
   const introText = `Bugün ${name || "antrenman"} var. ${items.length} hareket, ${total} set${min ? `, yaklaşık ${min} dakika sürecek` : ""}. ${items[0]?.name || ""} ile başlıyoruz. Hazır olunca devam et.`;
   const moveText = (p) => {
@@ -397,8 +400,8 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
       return;
     }
     talk.current = true;
-    tts.speak(t, end);
-    setTimeout(end, 5000 + t.length * 90);
+    tts.speak(t, end, FIT_VOICE);
+    setTimeout(end, 8000 + t.length * 90); // ilk sefer doğal ses üretilirken birkaç sn sürebilir
   }
   const hush = () => {
     talkId.current++;
@@ -417,8 +420,8 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
       setTimeout(fire, 1500);
       return;
     }
-    tts.speak(t, fire);
-    setTimeout(fire, 5000 + t.length * 90);
+    tts.speak(t, fire, FIT_VOICE);
+    setTimeout(fire, 8000 + t.length * 90);
   }
   const startSet = (p) => {
     seq.current++;
@@ -622,7 +625,7 @@ export function FitGuided({ name = "", items = [], sets = [], at = null, onCheck
           min={min}
           bg={mediaOf(first).some((x) => x.m) ? <MediaBox it={{ ...first, yt: null }} still /> : null}
           speaking={tts.speaking}
-          onSay={() => (tts.speaking ? tts.stop() : tts.speak(introText))}
+          onSay={() => (tts.speaking ? tts.stop() : tts.speak(introText, undefined, FIT_VOICE))}
           onGo={go}
           onClose={onClose}
           toggles={toggles}

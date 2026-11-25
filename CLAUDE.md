@@ -22,7 +22,7 @@ Her görev bitince kullanıcıya önce test edip GitHub'a göndermesini hatırla
 - Sayfalar: `src/app/(app)/<sayfa>/page.jsx`; giriş `src/app/(auth)`; API: `src/app/api/<ad>/route.js`.
 - Asistan arayüzü: `src/features/assistant` (AssistantSheet, AssistantProvider, AssistantFab); sunucu: `src/app/api/assistant`, `src/services/assistantService.js`.
 - Yapay zeka: `src/lib/ai` (gemini, anthropic, assistant, rules, schema, errors); ön cevap `src/lib/precue.js`; yerel kurallar `src/lib/assistantLocal.js`.
-- Ses: `src/hooks/useSpeech.js`, `src/features/speech`, `src/app/api/transcribe`, `src/app/api/tts`.
+- Ses: `src/hooks/useSpeech.js`, `src/features/speech`, `src/app/api/transcribe`, `src/app/api/tts`; seslendirme tek yerden `src/lib/server/tts.js` (Gemini doğal ses + önbellek, kılavuz `docs/seslendirme.md`).
 - Ana sayfa ve alt çubuk: `src/features/home` (TabBar, HomeHero, StageBrief…); ekleme/taslak: `src/features/add`.
 - Veri: `src/features/data/DataProvider.jsx`, Firebase `src/lib/firebase`, sunucu yönetici `src/lib/server`; kurallar `firestore.rules`.
 - Diğer özellikler `src/features/<ad>` (athletes, chat, mail, receipts, meeting, weather, staff…); ortak arayüz `src/components/ui`.
