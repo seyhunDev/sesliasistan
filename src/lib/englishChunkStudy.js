@@ -4,13 +4,16 @@
 // Akış: Dinle · Değiştir (boşluğa parçaları dene) · Kur (Türkçesinden blokları dizerek İngilizcesini kur) · Konuş (yapay zeka).
 // Kur'da hepsi ilk denemede doğruysa kalıp bir sonraki aralığa geçer (1, 2, 4, 7, 14 gün; deste aralıklarıyla aynı),
 // aralıklar bitince öğrenildi. Hata varsa yarın yeniden.
+// Bölümler (2026-11-26, lib/englishPaths.js): Kalıplar, Önemli fiiller, Günlük durumlar aynı biçimde; ilerleme aynı chunks alanında
+// (kimlikler eşsiz). path verilmezse bütün bölümler; konu (topic) bölüm içindeki grup (fiil, durum, kalıp konusu).
 import { CHUNKS, CHUNK_TOPICS } from "@/lib/englishChunks";
+import { ALL_CHUNKS, PATHS, pathById } from "@/lib/englishPaths";
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const GAPS = [1, 2, 4, 7, 14];
-const IDS = new Set(CHUNKS.map((c) => c.id));
+const IDS = new Set(ALL_CHUNKS.map((c) => c.id));
 
-export const chunkById = (id) => CHUNKS.find((c) => c.id === id) || null;
+export const chunkById = (id) => ALL_CHUNKS.find((c) => c.id === id) || null;
 // Parçalı cümle: { en, tr } (boşluk dolu)
 export const fillText = (c, f) => `${c.head} ${f[0]}${c.tail ? (/^[?.!,]/.test(c.tail) ? c.tail : ` ${c.tail}`) : "."}`.replace(/\s+([?.!,])/g, "$1");
 export const patternText = (c) => `${c.head} …${c.tail ? (/^[?.!,]/.test(c.tail) ? c.tail : ` ${c.tail}`) : ""}`;
@@ -37,18 +40,21 @@ const addDays = (day, n) => {
 };
 
 export const chunkState = (deck, id) => deck?.chunks?.[id] || null;
-const ofTopic = (topic) => CHUNKS.filter((c) => !topic || c.topic === topic);
+const ofTopic = (topic, path = "") => (path ? pathById(path).chunks : ALL_CHUNKS).filter((c) => !topic || c.topic === topic);
 // Bugün tekrarı gelenler (en eskisi önce)
-export const dueChunks = (deck, today, topic = "") =>
-  ofTopic(topic)
+export const dueChunks = (deck, today, topic = "", path = "") =>
+  ofTopic(topic, path)
     .filter((c) => chunkState(deck, c.id)?.st === "study" && chunkState(deck, c.id).due <= today)
     .sort((a, b) => chunkState(deck, a.id).due.localeCompare(chunkState(deck, b.id).due));
 
 // Sıradaki kalıp: tekrarı gelen, sonra yeni (liste sırasıyla), sonra tekrarı ileride olan çalışılan; skip: bu açılışta geçilenler.
 // Hepsi öğrenildiyse null.
-export function nextChunk(deck, { today, topic = "", skip = [] } = {}) {
-  const all = ofTopic(topic);
-  const due = dueChunks(deck, today, topic);
+// fromStart: "Baştan çalış" (bölüm bitmiş olsa da liste sırasıyla baştan)
+export function nextChunk(deck, { today, topic = "", path = "", skip = [], fromStart = false } = {}) {
+  const all = ofTopic(topic, path);
+  const sk0 = new Set(skip);
+  if (fromStart) return all.find((c) => !sk0.has(c.id)) || null;
+  const due = dueChunks(deck, today, topic, path);
   const fresh = all.filter((c) => !chunkState(deck, c.id));
   const later = all.filter((c) => chunkState(deck, c.id)?.st === "study" && !due.includes(c));
   const order = [...due, ...fresh, ...later];
@@ -91,25 +97,32 @@ export function streak(days, today) {
 }
 // Sayılar: { known, study, words: öğrenilen + çalışılan kalıplardaki parça sayısı, total, days }
 export function chunkStats(deck, today) {
-  const st = CHUNKS.map((c) => [c, chunkState(deck, c.id)]).filter(([, s]) => s);
+  const st = ALL_CHUNKS.map((c) => [c, chunkState(deck, c.id)]).filter(([, s]) => s);
   return {
     known: st.filter(([, s]) => s.st === "known").length,
     study: st.filter(([, s]) => s.st === "study").length,
     words: st.reduce((n, [c]) => n + c.fills.length, 0),
-    total: CHUNKS.length,
+    total: ALL_CHUNKS.length,
     days: streak(deck?.cdays, today),
   };
 }
 // Konu ilerlemesi: [{ topic, done, total }] (done: başlanmış kalıp)
-export const chunkTopics = (deck) =>
-  CHUNK_TOPICS.map((topic) => {
-    const l = ofTopic(topic);
+export const chunkTopics = (deck, path = "kalip") =>
+  (path === "kalip" ? CHUNK_TOPICS : pathById(path).topics).map((topic) => {
+    const l = ofTopic(topic, path);
     return { topic, done: l.filter((c) => chunkState(deck, c.id)).length, known: l.filter((c) => chunkState(deck, c.id)?.st === "known").length, total: l.length };
   });
+// Bölüm ilerlemesi (açılış): done = en az bir kez çalışılan, known = öğrenilen, total; complete = hepsi çalışıldı
+export function pathStats(deck, path) {
+  const l = pathById(path).chunks;
+  const done = l.filter((c) => chunkState(deck, c.id)).length;
+  return { done, known: l.filter((c) => chunkState(deck, c.id)?.st === "known").length, total: l.length, complete: done === l.length };
+}
+export const allPathStats = (deck) => PATHS.map((p) => ({ path: p, ...pathStats(deck, p.id) }));
 export const studyChunkRows = (deck) =>
-  CHUNKS.filter((c) => chunkState(deck, c.id)?.st === "study").sort((a, b) => chunkState(deck, a.id).due.localeCompare(chunkState(deck, b.id).due));
+  ALL_CHUNKS.filter((c) => chunkState(deck, c.id)?.st === "study").sort((a, b) => chunkState(deck, a.id).due.localeCompare(chunkState(deck, b.id).due));
 export const knownChunkRows = (deck) =>
-  CHUNKS.filter((c) => chunkState(deck, c.id)?.st === "known").sort((a, b) => (chunkState(deck, b.id).kd || "").localeCompare(chunkState(deck, a.id).kd || ""));
+  ALL_CHUNKS.filter((c) => chunkState(deck, c.id)?.st === "known").sort((a, b) => (chunkState(deck, b.id).kd || "").localeCompare(chunkState(deck, a.id).kd || ""));
 
 // Kur görevleri: kalıbın n parçası için { tr, answer: [blok], pool: [blok] } (blok: { t, slot }).
 // Doğru bloklar: baş + parça (+ son, noktalama değilse). Çeldiriciler: yakın yanlış baş (near) ve aynı kalıbın başka bir parçası.
