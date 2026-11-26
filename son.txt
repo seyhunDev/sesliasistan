@@ -1,8 +1,8 @@
-Commit: f75732f · Tanıtım sayfaları: /tanitim ve /tanitim/simulator herkese açık, katıl formu başvurulara gider (#1608)
-Zaman: 2026-11-26-2323 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/45888415484
+Commit: 580614f · Sağlık: zamanlayıcı nöbeti ve merkezî hata kaydı (#1615)
+Zaman: 2026-11-27-0037 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/45897353400
 
-TAM TEST · 26.11.2026 23:05:46
+TAM TEST · 27.11.2026 00:20:07
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -21,7 +21,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1291/1315 geçti · 24 kalan · 1045 sn
+SONUÇ: 1291/1315 geçti · 24 kalan · 1066 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
