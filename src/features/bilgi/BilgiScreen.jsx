@@ -696,7 +696,13 @@ function TalkTile({ ptt, now }) {
   const left = ptt.max - sec;
   const label = { rec: `Konuşuyor · ${Math.floor(sec / 60)}:${pad(sec % 60)}`, arm: "Mikrofon açılıyor", send: "Gönderiliyor", ok: "Gönderildi" }[st] || "Dokun, konuş";
   return (
-    <button
+    <>
+      {rec && (
+        <button type="button" className="bz-ttx" onClick={ptt.cancel} data-press>
+          ✕ Vazgeç
+        </button>
+      )}
+      <button
       type="button"
       className="bz-ptt bz-tt"
       data-st={st || undefined}
@@ -720,15 +726,25 @@ function TalkTile({ ptt, now }) {
           <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
         </svg>
       )}
-      <em>{rec ? (left <= 10 ? `${left} sn kaldı · dokun, gönder` : "Dokun, gönder") : "Antrenöre"}</em>
+      <em>{rec ? (left <= 10 ? `${left} sn kaldı` : "Gönder") : "Antrenöre"}</em>
+      {rec && (
+        <span className="bz-go" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M3.4 20.4 21 12 3.4 3.6v6.6L15 12 3.4 13.8z" />
+          </svg>
+        </span>
+      )}
     </button>
+    </>
   );
 }
 
 function PenAlert({ pen, now }) {
   const [seen, setSeen] = useState(null);
-  if (pen?.at && seen?.at !== pen.at) setSeen({ at: pen.at, until: now + PEN_BIG_MS });
-  const p = pen && PEN[pen.k];
+  if (pen?.at && seen?.at !== pen.at) setSeen({ at: pen.at, k: pen.k, until: now + PEN_BIG_MS });
+  // Antrenör cezayı 5 sn sonra kaldırır (2026-11-26); tam ekran yine de 10 sn'sini bitirir, sonra şerit çıkmaz
+  const big = seen && now < seen.until ? seen : null;
+  const p = PEN[pen?.k] || (big && PEN[big.k]);
   useEffect(() => {
     if (!pen?.at || !PEN[pen.k] || Date.now() - pen.at > 120e3) return;
     const opts = { style: "asistan", timeoutMs: 5000 };
@@ -736,10 +752,10 @@ function PenAlert({ pen, now }) {
     else sayDevice(PEN[pen.k].say, opts);
   }, [pen?.at]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!p) return null;
-  const left = seen?.at === pen.at ? Math.ceil((seen.until - now) / 1000) : 0;
+  const left = big ? Math.ceil((big.until - now) / 1000) : 0;
   if (left > 0)
     return (
-      <button type="button" className="bz-penb" data-k={pen.k} onClick={() => setSeen((x) => x && { ...x, until: 0 })} aria-live="assertive">
+      <button type="button" className="bz-penb" data-k={big.k} onClick={() => setSeen((x) => x && { ...x, until: 0 })} aria-live="assertive">
         <small>Antrenör · ceza</small>
         <b className="num">{p.big}</b>
         <span>{p.t}</span>
