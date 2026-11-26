@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { VELORA_ADMIN } from "@/lib/sharedRace";
 
 const cache = new Map(); // token -> { uid, email, exp }
 
@@ -28,6 +29,68 @@ function overLimit(uid) {
   hits.set(uid, list);
   if (hits.size > 500) hits.delete(hits.keys().next().value);
   return "";
+}
+
+// Güvenilir kulüp (sistem taraması 2026-11-26, madde 1): kayıt herkese açık (Velora Sailing bağlantısı) ve kayıt olan herkes
+// kendi kulübünün ana hesabı olur. İzin listesindeki (ALLOWED_EMAILS) ya da Velora ana hesabının (VELORA_ADMIN,
+// NEXT_PUBLIC_SPORCU_EMAILS) kulübü sınırsızdır; diğer kulüplerin günlük yapay zekâ harcaması AI_ORG_DAY_USD (varsayılan 0,5 $)
+// ile sınırlıdır. Harcama aiUsage.js'in yazdığı usage/ai_{kulüp}_{ay}.usdDay.{gün}'den okunur (kulüp başına 2 dakikada bir okuma).
+const trustList = () => [
+  ...allowList(),
+  VELORA_ADMIN,
+  ...(process.env.NEXT_PUBLIC_SPORCU_EMAILS || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean),
+];
+const orgInfo = globalThis.__orgTrust || (globalThis.__orgTrust = new Map()); // uid -> { org, trusted }
+const daySpend = globalThis.__orgDaySpend || (globalThis.__orgDaySpend = new Map()); // org -> { at, usd }
+const adminOn = () => !!(process.env.FIREBASE_CLIENT_EMAIL && process.env.FIREBASE_PRIVATE_KEY && process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID);
+const TZ_DAY = () => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Istanbul" }).format(new Date());
+
+async function trustOf(uid, email) {
+  const hit = orgInfo.get(uid);
+  if (hit && hit.exp > Date.now()) return hit;
+  const list = trustList();
+  let v = { org: uid, trusted: list.includes((email || "").toLowerCase()) };
+  if (!v.trusted) {
+    const { adminAuth, profileOf } = await import("@/lib/server/admin");
+    const p = await profileOf(uid);
+    if (p.role === "staff" && p.orgId && p.orgId !== uid) {
+      const owner = await profileOf(p.orgId);
+      const oe = owner.role === "owner" ? ((await adminAuth().getUser(p.orgId)).email || "").toLowerCase() : "";
+      v = { org: p.orgId, trusted: !!oe && list.includes(oe) };
+    }
+  }
+  v.exp = Date.now() + 30 * 60e3;
+  orgInfo.set(uid, v);
+  if (orgInfo.size > 500) orgInfo.delete(orgInfo.keys().next().value);
+  return v;
+}
+
+async function orgOverCap(org) {
+  const cap = Number(process.env.AI_ORG_DAY_USD);
+  const limit = process.env.AI_ORG_DAY_USD && Number.isFinite(cap) && cap >= 0 ? cap : 0.5;
+  const day = TZ_DAY();
+  let s = daySpend.get(org);
+  if (!s || s.day !== day || Date.now() - s.at > 2 * 60e3) {
+    const { adminDb } = await import("@/lib/server/admin");
+    const d = (await adminDb().collection("usage").doc(`ai_${org}_${day.slice(0, 7)}`).get()).data();
+    s = { at: Date.now(), day, usd: Number(d?.usdDay?.[day.slice(8, 10)]) || 0 };
+    daySpend.set(org, s);
+    if (daySpend.size > 500) daySpend.delete(daySpend.keys().next().value);
+  }
+  return s.usd >= limit;
+}
+
+// Güvenilmeyen kulüp günlük yapay zekâ sınırını geçtiyse 429. Yönetici anahtarı yoksa ya da okunamazsa engellemez.
+async function capCheck(uid, email) {
+  if (!adminOn()) return null;
+  try {
+    const t = await trustOf(uid, email);
+    if (t.trusted || !(await orgOverCap(t.org))) return null;
+    return { ok: false, status: 429, error: "Bu hesabın bugünkü yapay zekâ kullanım sınırı doldu. Yarın tekrar dene." };
+  } catch (e) {
+    console.warn("[auth] kulüp sınırı okunamadı:", e?.message?.slice(0, 120));
+    return null;
+  }
 }
 
 // Hesabın rolü: kişi (çalışan) mı, kişiyse ana hesabı izin listesinde mi. { staff, ok }
@@ -66,6 +129,10 @@ async function check(uid, email, cached, free = false) {
     return { ok: false, status: 403, error: "Bu hesabın asistanı kullanma izni yok. Yöneticiden erişim iste." };
   }
   const over = free ? "" : overLimit(uid);
+  if (!over && !free) {
+    const capped = await capCheck(uid, email);
+    if (capped) return capped;
+  }
   if (over) {
     return {
       ok: false,
