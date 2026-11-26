@@ -11,11 +11,10 @@ import { Fold, NotifyMoreRow, NotifyRow, PermissionsRow, PowerRow, SizeRow, Summ
 import { Group, Row } from "@/features/settings/ui";
 import { BackupRow } from "@/features/settings/Backup";
 import { MailFilesRow, MoveAllRow } from "@/features/settings/MoveAll";
-import { Durum } from "@/features/settings/Durum";
+import { Durum, TtsQuotaRow } from "@/features/settings/Durum";
 import { CallsRow } from "@/features/settings/Calls";
 import { CalendarFeedRow } from "@/features/settings/CalendarFeed";
 import { PastChatsRow } from "@/features/settings/PastChats";
-import { EnergyRow } from "@/features/settings/Energy";
 import { AndroidApkRow } from "@/features/settings/AndroidApk";
 import { CleanAccountsRow } from "@/features/settings/CleanAccounts";
 import { buildLine } from "@/lib/buildInfo";
@@ -152,12 +151,12 @@ export default function SettingsPage() {
   if (h.preview) return <PersonSettings profile={{ ...profile, role: "staff", kind: h.kind, coach: false }} n={n} />;
   if (profile.role !== "owner") return <PersonSettings profile={profile} n={n} />;
 
-  // Yeni düzen (örnek velora-tarama/ayarlar.html, Seyhun 2026-11-25 "yap"): en üstte Durum kartları; Kişiler ve hesaplar ayrı grup;
+  // Yeni düzen (örnek velora-tarama/ayarlar.html, Seyhun 2026-11-25 "yap"; 2026-11-26 grafikli Durum, dik iPad 52rem + 2 sütun): en üstte Durum kartları; Kişiler ve hesaplar ayrı grup;
   // Geliştirici en altta, sürüm sayfanın sonunda tek satır. Kalkanlar (gizli, silinmedi): Ana sayfada yarışlar / yarış kısayolu
   // (yarışlar artık hep görünür), ayrı Yapay zeka kullanımı, Açılış süresi, Telefondaki veriler ve Yayın satırları (kartlara taşındı).
   const ver = buildLine().split(" · ").slice(0, 2).join(" · ");
   return (
-    <main className={`sahne-pg ${liveHead.variable} wide mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]`}>
+    <main className={`sahne-pg ${liveHead.variable} wide mx-auto max-w-[30rem] px-5 md:max-w-[52rem] md:px-8 pb-[calc(3rem+env(safe-area-inset-bottom))]`}>
       <Top profile={profile} label="Ana hesap" />
       <Body>
         <Durum />
@@ -177,6 +176,7 @@ export default function SettingsPage() {
 
         <Sec title="Ses ve asistan">
           <VoiceRow />
+          <TtsQuotaRow />
           <PowerRow />
           <PastChatsRow />
           <PermissionsRow />
@@ -195,10 +195,6 @@ export default function SettingsPage() {
           <Row title="Gmail ve banka mailleri" href="/mail/setup" />
           <CalendarFeedRow />
           <BackupRow />
-        </Sec>
-
-        <Sec title="Ölçüm">
-          <EnergyRow />
         </Sec>
 
         <Sec title="Hesap">

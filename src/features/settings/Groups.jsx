@@ -21,7 +21,7 @@ import { WIND_KN, WIND_KNS } from "@/lib/notifyExtra";
 import { SIZES, applySize } from "@/lib/textSize";
 import { THEMES, applyTheme, readTheme } from "@/lib/theme";
 import { getPlace, placeLabel, searchPlaces, setPlace } from "@/features/weather/weather";
-import { Badge, Btn, Chips, Row, Switch } from "./ui";
+import { Badge, Btn, Chips, Mini, Row, Switch } from "./ui";
 import { useRaceHome } from "@/features/athletes/raceHome";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { saveTekneKim, useTekneKim } from "@/features/bilgi/bilgiStore";
@@ -60,7 +60,7 @@ export function SizeRow() {
     });
   };
   return (
-    <Fold title="Yazı boyutu" sub={SIZES.find(([v]) => v === size)?.[1]}>
+    <Fold title="Yazı boyutu" sub={SIZES.find(([v]) => v === size)?.[1]} right={<Mini pct={((Math.max(0, SIZES.findIndex(([v]) => v === size)) + 1) / SIZES.length) * 100} />}>
       <Chips value={size} options={SIZES} onChange={pick} />
     </Fold>
   );

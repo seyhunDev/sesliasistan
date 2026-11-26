@@ -104,3 +104,12 @@ export function Badge({ children, tone = "mut" }) {
   const t = { ok: "bg-ok/10 text-ok", warn: "bg-amber-500/10 text-amber-700", mut: "bg-bg text-mut" }[tone];
   return <span className={`shrink-0 rounded-full px-2 py-0.5 text-[0.6875rem] font-semibold ${t}`}>{children}</span>;
 }
+
+// Satırda küçük oran çubuğu (ör. yazı boyutu, seslendirme kotası); pct 0-100
+export function Mini({ pct }) {
+  return (
+    <span className="h-1.5 w-[4.5rem] shrink-0 overflow-hidden rounded-full bg-mut/25" aria-hidden="true">
+      <i className="block h-full rounded-full bg-acc" style={{ width: `${Math.max(3, Math.min(100, pct))}%` }} />
+    </span>
+  );
+}
