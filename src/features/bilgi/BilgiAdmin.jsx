@@ -541,6 +541,62 @@ function PttTile({ to, ptt, now }) {
 // Sporcu penceresi (Seyhun 2026-11-25 örnek "Yönet Ceza Uyarısı"): adına basılı tutunca açılır. Ceza: 360° / 720° / FD (faux départ);
 // sporcunun ekranında 10 sn tam ekran, sonra şerit; buradan "Cezayı kaldır" ile kalkar. Haritada noktası renkli, adının yanında rozet.
 const sailName = (bt) => [bt?.sail, bt?.name].filter(Boolean).join(" · ");
+// Ceza sayfası (Seyhun 2026-11-26 örnek "Ceza ve Kalıp sayfası" 1–4): alt panel o an yalnız ceza için; önce sporcu (büyük kareler),
+// sonra 360° / 720° / FD. Gönderince panel eski haline döner. Cezası olana "Kaldır" da çıkar.
+function PenPage({ org, members, ceza, ctx, pick, onPick, onDone }) {
+  const toast = useToast();
+  const [busy, setBusy] = useState(false);
+  const m = members.find((x) => x.id === pick);
+  const cur = m ? ceza[m.id] : null;
+  const run = async (v) => {
+    if (busy || !m) return;
+    setBusy(true);
+    try {
+      await setCeza(org, m.id, v);
+      if (v || cur?.k) logEv(org, v ? { kind: "ceza", k: v, to: sailName(m), dev: m.id } : { kind: "ceza-off", k: cur.k, to: sailName(m), dev: m.id }, ctx);
+      toast(v ? `${sailName(m) || "Sporcu"} · ${PEN[v].big} gönderildi` : "Ceza kaldırıldı");
+      onDone();
+    } catch {
+      toast("Gönderilemedi, tekrar dene.");
+    }
+    setBusy(false);
+  };
+  if (!m)
+    return (
+      <div className="bzy-pga">
+        {members.map((x) => (
+          <button key={x.id} type="button" className="bzy-sqb" onClick={() => onPick(x.id)} data-press>
+            <small>{x.sail ? String(x.sail).replace(/\d+/g, "").trim() || "No" : "Sporcu"}</small>
+            <b>{String(x.sail || "").match(/\d+/)?.[0] || (x.name || "?").slice(0, 3)}</b>
+            <span>{x.name || x.sail || "Sporcu"}</span>
+            {ceza[x.id] ? <em data-k={ceza[x.id].k}>{PEN[ceza[x.id].k].big}</em> : null}
+          </button>
+        ))}
+      </div>
+    );
+  return (
+    <>
+      <button type="button" className="bzy-pgw" onClick={() => onPick("")} data-press>
+        <b>{String(m.sail || "").match(/\d+/)?.[0] || ""}</b>
+        <span>{m.name || m.sail || "Sporcu"}</span>
+        <u>Değiştir</u>
+      </button>
+      <div className="bzy-pgp">
+        {Object.entries(PEN).map(([v, p]) => (
+          <button key={v} type="button" className="bzy-sqb" data-k={v} disabled={busy || cur?.k === v} onClick={() => run(v)} data-press>
+            <small>{v === "1" ? "Bir dönüş" : v === "2" ? "İki dönüş" : "Faux départ"}</small>
+            <b>{p.big}</b>
+          </button>
+        ))}
+      </div>
+      {cur && (
+        <button type="button" className="bzy-pgoff" disabled={busy} onClick={() => run("")} data-press>
+          {PEN[cur.k].big} kaldır
+        </button>
+      )}
+    </>
+  );
+}
 function SporcuSheet({ org, id, boat, cur, ctx, onClose, onVideo, onNot }) {
   const toast = useToast();
   const [pick, setPick] = useState("");
@@ -1005,9 +1061,13 @@ export function BilgiAdmin() {
   // Hazır kalıplar kapalı durur (Seyhun 2026-11-26 "el dokunabiliyor, bir anda gidilebiliyor"): "Kalıplar" ile açılır,
   // birini gönderince ya da 10 sn dokunulmazsa kapanır (tekrar sürüyorsa açık kalır)
   const [kOpen, setKOpen] = useState(0);
+  // Alt panel sayfası: "" | "ceza" | "kalip" (Seyhun 2026-11-26 "o an zaten sadece ceza vereceğiz"); penFor: cezası verilecek sporcu
+  const [pg, setPg] = useState("");
+  const [penFor, setPenFor] = useState("");
+  const openPg = (p) => (setMini(false), setTyping(false), setKOpen(0), setPenFor(p === "ceza" && sel.length === 1 ? sel[0].id : ""), setPg(p));
 
   const repeat = useRepeat(org, kaliplar, ctx, got);
-  const kShow = !!repeat.rep || (kOpen > 0 && now - kOpen < 10e3);
+  const kShow = !!repeat.rep;
   const sendK = async (k) => {
     const at = clock();
     got({ ...kalipEntry(k), to, at, ok: null });
@@ -1160,7 +1220,18 @@ export function BilgiAdmin() {
                   setMini((m) => (Math.abs(dy) < 12 ? !m : dy > 0));
                 }}
               />
-              <div className="bzy-kl">
+              {pg && !mini && (
+                <div className="bzy-pgh">
+                  <h3 data-k={pg}>
+                    <small>{pg === "ceza" ? (penFor ? sailName(members.find((x) => x.id === penFor)) || "Sporcu" : "Kime") : `Hazır · ${to?.name || "Hepsi"}`}</small>
+                    {pg === "ceza" ? "Ceza" : "Kalıp"}
+                  </h3>
+                  <button type="button" className="bzy-pgx" onClick={() => setPg("")} aria-label="Kapat" data-press>
+                    ✕
+                  </button>
+                </div>
+              )}
+              {!pg && <div className="bzy-kl">
                 {tst ? (
                   <span className="bzy-tst" data-k={tst[0] || undefined} aria-live="polite">
                     {tst[1]}
@@ -1173,8 +1244,8 @@ export function BilgiAdmin() {
                     Kalıp yap
                   </button>
                 )}
-              </div>
-              {!mini && (
+              </div>}
+              {!mini && pg !== "ceza" && (
                 <div className="bzy-who" aria-label="Kime">
                   {[{ id: "", label: "Hepsi", st: !last?.to ? allSt(dl0, last) : null }, ...members.map((m) => ({ id: m.id, no: m.sail || "", label: m.name || m.sail || "Sporcu", st: rowSt(last, m, now) }))].map((m) => (
                     <button
@@ -1201,7 +1272,7 @@ export function BilgiAdmin() {
                   ))}
                 </div>
               )}
-              {!mini && typing && (
+              {!mini && !pg && typing && (
                 <form
                   className="bzy-typ"
                   onSubmit={async (e) => {
@@ -1227,22 +1298,29 @@ export function BilgiAdmin() {
                   </button>
                 </form>
               )}
-              <div className="bzy-two" data-n="2">
-                <PanelClock org={org} />
-                <PttTile to={to} ptt={ptt} now={now} />
-              </div>
+              {!(pg && !mini) && (
+                <div className="bzy-two" data-n="2">
+                  <PanelClock org={org} />
+                  <PttTile to={to} ptt={ptt} now={now} />
+                </div>
+              )}
+              {pg === "ceza" && !mini && <PenPage org={org} members={members} ceza={ceza} ctx={ctx} pick={penFor} onPick={setPenFor} onDone={() => setPg("")} />}
+              {pg === "kalip" && !mini && (
+                <KalipRow page list={kaliplar} rep={repeat.rep} now={now} onSend={(k) => (setPg(""), sendK(k))} onHold={(k) => setSheet(`ktek:${k.id}`)} onStop={repeat.stop} onAll={() => setSheet("kkayit")} />
+              )}
               {/* Küçük kareler (Seyhun 2026-11-26 örnek A "konuş butonu tarzında, daha küçük, kare"): Ceza · Kalıp · Video · Yaz;
                   Kalıp açıkken yerlerini kalıp kareleri alır; konuşurken soluklaşır */}
               {!mini &&
+                !pg &&
                 (kShow ? (
                   <KalipRow list={kaliplar} rep={repeat.rep} now={now} onSend={(k) => (setKOpen(0), sendK(k))} onHold={(k) => setSheet(`ktek:${k.id}`)} onStop={repeat.stop} onAll={() => (setKOpen(0), setSheet("kaliplar"))} onClose={() => setKOpen(0)} />
                 ) : (
                   <div className="bzy-sq" data-n={app ? "4" : "3"} data-dim={ptt.rec ? "1" : undefined}>
-                    <button type="button" className="bzy-sqb pen" disabled={!members.length} onClick={() => setSheet(sel.length === 1 ? `sp:${sel[0].id}` : "ceza")} data-press>
+                    <button type="button" className="bzy-sqb pen" disabled={!members.length} onClick={() => openPg("ceza")} data-press>
                       <small>Sporcu</small>
                       <b>Ceza</b>
                     </button>
-                    <button type="button" className="bzy-sqb" aria-expanded={false} onClick={() => setKOpen(clock())} data-press>
+                    <button type="button" className="bzy-sqb" aria-expanded={false} onClick={() => openPg("kalip")} data-press>
                       <small>Hazır</small>
                       <b>Kalıp</b>
                     </button>
