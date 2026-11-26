@@ -48,6 +48,8 @@ export default function AppLayout({ children }) {
   // Sporcu bilgi ekranı (/bilgi) da tek ekran: alt çubuk ve açılır notlar yok
   const path = usePathname();
   const live = path.startsWith("/canli") || path === "/bilgi" || path === "/bilgi/yonet";
+  // İngilizce çalışma tek ekran: alt çubuk (iPad'de sol menü) gizli, sayfanın kendi mikrofonu ve geri düğmesi var (Seyhun 2026-11-26)
+  const study = path === "/english";
 
   // Geri düğmeleri gelinen sayfaya dönsün diye uygulama içi geçmiş izlenir
   useEffect(() => installTrail(), []);
@@ -101,7 +103,7 @@ export default function AppLayout({ children }) {
                   {!live && <NewVersionBar />}
                   <PushSync profile={profile} />
                   {children}
-                  {!live && <TabBarHost />}
+                  {!live && !study && <TabBarHost />}
                   {!live && <TimerChip />}
                   {!live && <GibiGorBar />}
                   <BrainSync />

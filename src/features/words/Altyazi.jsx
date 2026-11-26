@@ -8,13 +8,13 @@ import { enHead } from "./fonts";
 // Kalıplar › Hatırla, "Altyazı" tasarımı (Seyhun 2026-11-25 A seçti; örnek /mnt/project-files/ingilizce-hatirla/ornek.html):
 // kalıbın resmi bütün ekranı kaplar, cümle film altyazısı gibi altta belirir, en altta tek büyük "Bas ve konuş" çubuğu.
 // Durum (st): idle · open (mikrofon açılıyor) · rec (dinliyor; çubuk ve dalga sesle büyür, --lv) · wait (yapay zeka bakıyor).
-// Sonuç: doğru yeşil; yanlış "Sen: …" + doğrusu + "Tekrar söyle"; Göster'de yalnız doğrusu. Telefon ve iPad, dikey ve yatay aynı düzen;
+// Üç nokta yalnız düğmede (altyazıda dinlerken/bakarken Türkçesi kalır; Seyhun 2026-11-26 "iki yerde gösteriyor"). Sonuç: doğru yeşil; yanlış "Sen: …" + doğrusu + "Tekrar söyle"; Göster'de yalnız doğrusu. Telefon ve iPad, dikey ve yatay aynı düzen;
 // geniş ekranda yazı büyür, içerik ortada en çok 48rem.
 const Y = "#ffe14d";
+const GO = "bg-[#3ddc84] text-[#06210f]"; // doğru bilince sıradaki adıma (Konuş) geçiş: yeşil "Devam et" (Seyhun 2026-11-26)
 const BARS = [0.45, 0.8, 1, 0.65, 0.9, 0.55, 1, 0.7, 0.5, 0.85];
 
 export function Altyazi({ pic, say0, tr, heard, answered, wrong, st, lvRef, onMic, onClose, onShow, onSkip, onTalk }) {
-  const busy = st === "wait" || st === "open";
   const label = st === "rec" ? "Dinliyorum · bitince bas" : st === "open" ? "Mikrofon açılıyor…" : st === "wait" ? "Bakıyorum…" : wrong ? "Tekrar söyle" : "Bas ve konuş";
   return (
     <div role="dialog" aria-label="Hatırla" className={`${enHead.variable} fixed inset-0 z-[54] flex flex-col overflow-hidden bg-black text-white`}>
@@ -52,11 +52,7 @@ export function Altyazi({ pic, say0, tr, heard, answered, wrong, st, lvRef, onMi
                 {say0}
               </span>
             </button>
-          ) : st === "wait" ? (
-            <Loader size="lg" className="text-[#ffe14d]" label="Bakıyorum" />
-          ) : st === "rec" || st === "open" ? (
-            <span className="text-white/50">…</span>
-          ) : heard?.err ? (
+          ) : heard?.err && st === "idle" ? (
             <span className="block font-sans text-[1.05rem] font-semibold leading-snug text-[#ff8a7a] md:text-[1.25rem]">{heard.err}</span>
           ) : (
             <span className="text-[0.62em] font-semibold text-white/55">{tr}</span>
@@ -68,45 +64,20 @@ export function Altyazi({ pic, say0, tr, heard, answered, wrong, st, lvRef, onMi
             <button type="button" onClick={onSkip} className="h-[3.6rem] flex-1 rounded-full border-[1.5px] border-white/30 text-[1.0625rem] font-semibold active:scale-[.98]">
               Atla
             </button>
-            <button type="button" onClick={onTalk} style={{ background: Y }} className="h-[3.6rem] flex-[1.4] rounded-full text-[1.0625rem] font-bold text-[#1a1505] active:scale-[.98]">
-              Konuş
+            <button type="button" onClick={onTalk} className={`h-[3.6rem] flex-[1.4] rounded-full ${GO} text-[1.0625rem] font-bold active:scale-[.98]`}>
+              Devam et
             </button>
           </div>
         ) : (
           <div className="flex flex-col gap-3">
-            <button
-              ref={lvRef}
-              type="button"
-              onClick={onMic}
-              aria-label={st === "rec" ? "Bitti, gönder" : label}
-              aria-busy={busy}
-              style={st === "idle" ? { background: Y } : undefined}
-              className={`relative flex h-16 w-full items-center justify-center gap-3 rounded-full text-[1.0625rem] font-bold transition-[background-color,transform] active:scale-[.98] md:h-[4.5rem] md:text-[1.1875rem] ${st === "idle" ? "text-[#1a1505]" : st === "rec" ? "bg-[#ff3d5a] text-white" : "bg-white/14 text-white"}`}
-            >
-              {st === "rec" && (
-                <span
-                  aria-hidden="true"
-                  className="absolute inset-0 rounded-full bg-[#ff3d5a]/30 transition-transform duration-75"
-                  style={{ transform: "scale(calc(1 + var(--lv, 0) * .06), calc(1 + var(--lv, 0) * .45))" }}
-                />
-              )}
-              {busy ? <Loader size="sm" className="relative text-white" label={label} /> : <Icon name={st === "rec" ? "up" : "mic"} className="relative size-6" />}
-              <span className="relative">{label}</span>
-              {st === "rec" && (
-                <span aria-hidden="true" className="relative flex h-6 items-center gap-[3px]">
-                  {BARS.map((k, i) => (
-                    <i key={i} className="w-[3px] rounded-full bg-white transition-[height] duration-75" style={{ height: `calc(18% + var(--lv, 0) * ${Math.round(k * 82)}%)` }} />
-                  ))}
-                </span>
-              )}
-            </button>
+            <SpeakPill st={st} label={label} lvRef={lvRef} onClick={onMic} />
             {wrong && st === "idle" && (
               <div className="flex justify-between px-2 text-[1rem] font-semibold text-white/70">
                 <button type="button" onClick={onSkip} className="h-10">
                   Atla
                 </button>
                 <button type="button" onClick={onTalk} className="h-10">
-                  Konuş
+                  Devam et
                 </button>
               </div>
             )}
@@ -114,5 +85,40 @@ export function Altyazi({ pic, say0, tr, heard, answered, wrong, st, lvRef, onMi
         )}
       </div>
     </div>
+  );
+}
+
+// Büyük "Bas ve konuş" çubuğu (Hatırla ve Konuş aynı parçayı kullanır). st: idle · open · rec · wait; dinlerken dalga --lv ile büyür.
+// Üç nokta (Loader) yalnız burada görünür.
+export function SpeakPill({ st, label, lvRef, onClick, disabled = false }) {
+  const busy = st === "wait" || st === "open";
+  return (
+    <button
+      ref={lvRef}
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={st === "rec" ? "Bitti, gönder" : label}
+      aria-busy={busy}
+      style={st === "idle" ? { background: Y } : undefined}
+      className={`relative flex h-16 w-full min-w-0 items-center justify-center gap-3 rounded-full text-[1.0625rem] font-bold transition-[background-color,transform] active:scale-[.98] disabled:opacity-50 md:h-[4.5rem] md:text-[1.1875rem] ${st === "idle" ? "text-[#1a1505]" : st === "rec" ? "bg-[#ff3d5a] text-white" : "bg-white/14 text-white"}`}
+    >
+      {st === "rec" && (
+        <span
+          aria-hidden="true"
+          className="absolute inset-0 rounded-full bg-[#ff3d5a]/30 transition-transform duration-75"
+          style={{ transform: "scale(calc(1 + var(--lv, 0) * .06), calc(1 + var(--lv, 0) * .45))" }}
+        />
+      )}
+      {busy ? <Loader size="sm" className="relative text-white" label={label} /> : <Icon name={st === "rec" ? "up" : "mic"} className="relative size-6" />}
+      <span className="relative">{label}</span>
+      {st === "rec" && (
+        <span aria-hidden="true" className="relative flex h-6 items-center gap-[3px]">
+          {BARS.map((k, i) => (
+            <i key={i} className="w-[3px] rounded-full bg-white transition-[height] duration-75" style={{ height: `calc(18% + var(--lv, 0) * ${Math.round(k * 82)}%)` }} />
+          ))}
+        </span>
+      )}
+    </button>
   );
 }
