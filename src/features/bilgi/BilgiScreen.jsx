@@ -9,7 +9,7 @@ import { CourseMap } from "./CourseMap";
 import { deviceId, kalipSes, notSes, useNotlar, offPos, readWho, savePusula, saveTekneKim, saveWho, sendGelen, sendIz, sendPos, useBilgi, useBilgiDoc, usePublic, useTekneKim } from "./bilgiStore";
 import { usePtt } from "./usePtt";
 import { sayDevice, sayWith } from "@/lib/speech/ttsClient";
-import { PttCancel, Wave } from "./Wave";
+import { Wave } from "./Wave";
 import { mineOf, useCanliRace } from "@/features/liveScreen/sonuclar";
 import { groupColor } from "@/lib/roundScore";
 import { liveHead } from "@/features/liveScreen/fonts";
@@ -937,7 +937,8 @@ export function BilgiScreen({ pub = "" }) {
   const pos = useMyPos(active);
   const { data: mine } = useCanliRace(active && !!who?.sail, 60e3);
   // Sporcudan Yönet'e bas-konuş (Seyhun 2026-11-17, örnek C): altta ortada mikrofon; basılı tut, konuş, bırakınca Yönet'e gider
-  const ptt = usePtt({ send: (blob, sec) => sendGelen(dev, { org: pub ? porg : org, k: pub, ch: kanal?.id || "", sail: who?.sail, name: who?.name, uid: profile?.uid }, blob, sec) });
+  // Yönet'teki gibi aç/kapa (Seyhun 2026-11-26): dokun başlasın, tekrar dokun gönder; en çok 60 sn
+  const ptt = usePtt({ send: (blob, sec) => sendGelen(dev, { org: pub ? porg : org, k: pub, ch: kanal?.id || "", sail: who?.sail, name: who?.name, uid: profile?.uid }, blob, sec), max: 60 });
   const recSec = ptt.rec ? Math.max(0, Math.floor((now - ptt.rec.t0) / 1000)) : 0;
 
   // Tek dokunuş: pusula izni (iPhone), sesin açılması ve ekranın açık kalması tarayıcının dokunuş istediği işler
@@ -1070,7 +1071,6 @@ export function BilgiScreen({ pub = "" }) {
           <Wave />
         </span>
       )}
-      {active && ptt.rec && <PttCancel on={!!ptt.rec.cancel} className="bz-pcx" />}
       {active && (
         <button
           type="button"
@@ -1078,15 +1078,13 @@ export function BilgiScreen({ pub = "" }) {
           data-rec={ptt.rec ? "1" : undefined}
           data-cancel={ptt.rec?.cancel ? "1" : undefined}
           data-ok={ptt.done && now - ptt.done.at < 2000 ? "1" : undefined}
-          aria-label="Bas konuş"
-          onPointerDown={(e) => ptt.begin(e, "y", null)}
-          onPointerMove={ptt.move}
-          onPointerUp={ptt.end}
-          onPointerCancel={ptt.end}
+          aria-label={ptt.rec ? "Bitir ve gönder" : "Konuş"}
+          aria-pressed={!!ptt.rec}
+          onPointerDown={(e) => ptt.flip(e, "y", null)}
           onContextMenu={(e) => e.preventDefault()}
         >
           {ptt.rec ? (
-            <b className="num">{ptt.rec.cancel ? "✕" : recSec}</b>
+            <b className="num">{recSec}</b>
           ) : (
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
               <rect x="9" y="3" width="6" height="11" rx="3" />
