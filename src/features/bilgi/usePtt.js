@@ -172,8 +172,16 @@ export function usePtt({ send, onSent, live = null, max = SES_MAX_SEC }) {
     if (s.mr) stop();
     else s.up = true;
   };
+  // Vazgeç (Seyhun 2026-11-26): kayıt gönderilmeden kapanır
+  const cancel = () => {
+    const s = st.current;
+    if (!s) return;
+    s.far = true;
+    if (s.mr) stop();
+    else s.up = true;
+  };
   useEffect(() => () => stop(), []);
-  return { rec, done, arm, tap, lvl, sending, begin, end, move, flip, max };
+  return { rec, done, arm, tap, lvl, sending, begin, end, move, flip, cancel, max };
 }
 
 // Mikrofonun ses seviyesi (kayıt düğmesindeki çubuklar): saniyede ~12 kez 0–1 arası; durdurma işlevi döner. Açılamazsa çubuklar kendiliğinden oynar.

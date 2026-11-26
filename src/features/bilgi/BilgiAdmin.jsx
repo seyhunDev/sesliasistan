@@ -495,7 +495,13 @@ function PttTile({ to, ptt, now }) {
   const sec = rec ? Math.max(0, Math.floor((now - rec.t0) / 1000)) : 0;
   const name = to?.name || "Hepsi";
   return (
-    <button
+    <div className="bzy-ptw">
+      {rec && (
+        <button type="button" className="bzy-ptx" onClick={ptt.cancel} data-press>
+          ✕ Vazgeç
+        </button>
+      )}
+      <button
       type="button"
       className="bzy-pt bzy-ptt"
       data-st={st || undefined}
@@ -517,7 +523,15 @@ function PttTile({ to, ptt, now }) {
       ) : (
         <Ic n="mic" />
       )}
+      {rec && (
+        <span className="bzy-go" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="currentColor">
+            <path d="M3.4 20.4 21 12 3.4 3.6v6.6L15 12 3.4 13.8z" />
+          </svg>
+        </span>
+      )}
     </button>
+    </div>
   );
 }
 // Sporcu penceresi (Seyhun 2026-11-25 örnek "Yönet Ceza Uyarısı"): adına basılı tutunca açılır. Ceza: 360° / 720° / FD (faux départ);
@@ -938,15 +952,24 @@ export function BilgiAdmin() {
     if (!c) return;
     const bt = chBoats.find((x) => x.id === id);
     setCeza(org, id, null).then(
-      () => toast(`${athTag(bt) || "Sporcu"} · ${PEN[c.k].big} kaldırıldı`, { action: { label: "Geri al", onClick: () => setCeza(org, id, c.k).catch(() => {}) } }),
+      () => toast(`${athTag(bt) || "Sporcu"} · ${PEN[c.k].big} kaldırıldı`, { action: { label: "Geri al", onClick: () => setCeza(org, id, c.k, true).catch(() => {}) } }),
       () => toast("Kaldırılamadı, tekrar dene."),
     );
   };
-  // Yeni ceza bildirimi (Seyhun 2026-11-26): haritanın sağ üstünde büyük kare, 5 sn geri sayıp kapanır, dokununca hemen kapanır.
-  // Yalnız bildirim kapanır; ceza sporcuda kalır (kaldırmak: haritadaki rozet ✕ ya da sporcu penceresi)
-  const [penSeen, setPenSeen] = useState(0);
-  const penNew = Object.entries(ceza).reduce((a, [id, c]) => (PEN[c?.k] && c.at > (a?.c.at || 0) ? { id, c } : a), null);
-  const penLeft = penNew && penNew.c.at > penSeen ? Math.ceil((penNew.c.at + 5e3 - now) / 1000) : 0;
+  // Ceza bildirimi (Seyhun 2026-11-26 "gösterilsin 5 saniye, geri sayım yapılsın, ceza da kaldırılsın"): haritanın sağ üstünde büyük
+  // kare; 5 sn sayar, sonra ceza kendiliğinden kalkar (Geri al ile geri gelir ve artık kendiliğinden kalkmaz). Dokununca hemen kalkar.
+  // Sporcu ekranı 10 sn'lik tam ekranını yine de bitirir.
+  const penNew = Object.entries(ceza).reduce((a, [id, c]) => (PEN[c?.k] && !c.keep && c.at > (a?.c.at || 0) ? { id, c } : a), null);
+  const penLeft = penNew ? Math.max(0, Math.ceil((penNew.c.at + 5e3 - now) / 1000)) : 0;
+  const penGone = useRef(new Set());
+  useEffect(() => {
+    for (const [id, c] of Object.entries(ceza)) {
+      const key = `${id}:${c?.at}`;
+      if (!PEN[c?.k] || c.keep || now - c.at < 5e3 || penGone.current.has(key)) continue;
+      penGone.current.add(key);
+      unPen(id);
+    }
+  }, [now]); // eslint-disable-line react-hooks/exhaustive-deps
   // Hazır kalıplar kapalı durur (Seyhun 2026-11-26 "el dokunabiliyor, bir anda gidilebiliyor"): "Kalıplar" ile açılır,
   // birini gönderince ya da 10 sn dokunulmazsa kapanır (tekrar sürüyorsa açık kalır)
   const [kOpen, setKOpen] = useState(0);
@@ -1061,7 +1084,7 @@ export function BilgiAdmin() {
             </button>
           </div>
           {penLeft > 0 && (
-            <button type="button" className="bzy-penc" data-k={penNew.c.k} onClick={() => setPenSeen(penNew.c.at)} aria-label="Ceza bildirimini kapat" data-press>
+            <button type="button" className="bzy-penc" data-k={penNew.c.k} onClick={() => (penGone.current.add(`${penNew.id}:${penNew.c.at}`), unPen(penNew.id))} aria-label="Cezayı kaldır" data-press>
               <small>Ceza verildi</small>
               <b>{PEN[penNew.c.k].big}</b>
               <span>{athTag(chBoats.find((x) => x.id === penNew.id)) || "Sporcu"}</span>

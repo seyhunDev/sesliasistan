@@ -60,7 +60,7 @@ export const PEN_BIG_MS = 10e3;
 function cleanCeza(c) {
   if (!c || typeof c !== "object") return {};
   const o = {};
-  for (const [dev, v] of Object.entries(c)) if (/^[a-z0-9]{12,24}$/.test(dev) && v && PEN[v.k]) o[dev] = { k: String(v.k), at: Number(v.at) || 0 };
+  for (const [dev, v] of Object.entries(c)) if (/^[a-z0-9]{12,24}$/.test(dev) && v && PEN[v.k]) o[dev] = { k: String(v.k), at: Number(v.at) || 0, ...(v.keep ? { keep: true } : {}) };
   return o;
 }
 
