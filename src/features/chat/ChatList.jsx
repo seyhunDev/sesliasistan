@@ -164,7 +164,7 @@ export function ChatList() {
 
   return (
     // min-h-lvh: liste kısa olsa da sayfa en az ekran boyu; Safari alt çubuğu küçülmüş kalır, alt menü yerinden oynamaz
-    <main className="mx-auto min-h-lvh max-w-[30rem] px-5 pb-[calc(8rem+env(safe-area-inset-bottom))]">
+    <main className="sahne-pg mx-auto min-h-lvh max-w-[30rem] px-5 pb-[calc(8rem+env(safe-area-inset-bottom))]">
       {/* Yeni tasarım (2026-11-03): lacivert üstte geri, ad, "+ Sohbet", arama, Tümü · Okunmamış · Gruplar ve sabit grup kısa yolları */}
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Mesajlar">
         <header className="flex items-center gap-2.5">

@@ -92,7 +92,7 @@ export default function PlansPage() {
   const sel = people.find(([k]) => k === who)?.[1] || "";
 
   return (
-    <main className="split mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
+    <main className="sahne-pg split mx-auto max-w-[30rem] px-5 pb-[calc(7.5rem+env(safe-area-inset-bottom))]">
       <section className="ck -mx-5 px-5 pb-10 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Planlar">
         <header className="flex items-center gap-2.5">
           <BackButton href="/" />

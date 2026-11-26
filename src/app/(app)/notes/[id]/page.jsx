@@ -120,7 +120,7 @@ export default function NotePage() {
 
   if (id && !rec && notes.length) {
     return (
-      <main className="mx-auto max-w-[30rem] px-5 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+      <main className="sahne-pg mx-auto max-w-[30rem] px-5 pt-[calc(0.75rem+env(safe-area-inset-top))]">
         <BackButton href="/notes" />
         <Empty icon="note" title="Not bulunamadı" />
       </main>
@@ -182,7 +182,7 @@ export default function NotePage() {
   const whoNames = assigned.map((u) => nameOf(u)).filter(Boolean).join(", ");
 
   return (
-    <main className="mx-auto flex min-h-[100dvh] max-w-[30rem] flex-col px-5 pb-[calc(6rem+env(safe-area-inset-bottom))]">
+    <main className="sahne-pg mx-auto flex min-h-[100dvh] max-w-[30rem] flex-col px-5 pb-[calc(6rem+env(safe-area-inset-bottom))]">
       <section className="ck -mx-5 px-5 pb-10 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Not">
         <header className="flex items-center gap-2.5">
           <BackButton href="/notes" />
