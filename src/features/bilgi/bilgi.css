@@ -323,7 +323,8 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 }
 
 /* Kendi sırası, grubu, startı (Seyhun 2026-11-19 örnek "Yönet ve ekranda sonuçlar"): pusulanın altında üç küçük kutu, start öncesi */
-.bz-me { display: flex; justify-content: center; gap: 0.5rem; padding-top: 0.5rem; }
+.bz-me { display: flex; justify-content: center; gap: 0.5rem; padding-top: 0.5rem; animation: bzMeIn 0.3s ease-out; }
+@keyframes bzMeIn { from { opacity: 0; } }
 .bz-me > span { display: flex; flex-direction: column; gap: 0.3rem; min-width: 5.2rem; padding: 0.5rem 0.75rem; border-radius: 0.75rem; background: color-mix(in srgb, var(--bz-txt) 7%, transparent); }
 .bz-me small { font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; opacity: 0.6; }
 .bz-me b { display: inline-flex; align-items: center; gap: 0.35rem; font-size: 1.375rem; font-weight: 700; line-height: 1; }
