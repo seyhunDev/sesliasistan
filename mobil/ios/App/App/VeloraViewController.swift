@@ -18,8 +18,8 @@ class VeloraViewController: CAPBridgeViewController {
         // Uygulamalar arası geçişte beyaz ekran (Seyhun 2026-11-06, iPhone, iPad ve Mac): sistem arkadaki uygulamanın görüntüsünü
         // bellekten atınca, dönüşte sayfa yeniden çizilene kadar web görünümünün kendi zemini görünüyordu (beyaz). Zemin Velora
         // laciverti: o kısa anda beyaz yerine lacivert görünür (ana sayfa ve açılış ekranıyla aynı renk).
-        // 2026-11-23: açık tema (ana sayfa Apple beyazı #f5f5f7); ad aynı kaldı.
-        let lacivert = UIColor(red: 245 / 255, green: 245 / 255, blue: 247 / 255, alpha: 1)
+        // 2026-11-23: açık tema; 2026-11-26: koyu Sahne #0b0b0c (açılış ekranıyla aynı); ad aynı kaldı.
+        let lacivert = UIColor(red: 11 / 255, green: 11 / 255, blue: 12 / 255, alpha: 1)
         view.backgroundColor = lacivert
         if let w = webView {
             w.isOpaque = false

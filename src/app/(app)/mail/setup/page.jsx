@@ -110,7 +110,7 @@ export default function MailSetupPage() {
   const live = seen && now - Date.parse(seen) < 20 * 60e3;
 
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
+    <main className="sahne-pg mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
       <PageHeader title="Mail ayarları" back="/mail" />
 
       <Group title="Durum" footer={seen && profile.mailOutbox < 2 ? "Yeni: yarış evrakını Mail düğmesiyle kendine ve eklediğin adreslere gönderebilirsin. Bunun için aşağıdaki kodu ve appsscript.json'u yeniden kopyala, kur'u çalıştır." : seen ? "Yarış evrakını Mail düğmesiyle kendine ve eklediğin adreslere gönderebilirsin." : undefined}>

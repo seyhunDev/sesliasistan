@@ -7,8 +7,8 @@ export default function manifest() {
         // Uygulama dik kullanılır. Android buna uyar; iPhone ana ekran uygulamasında bunu yok sayar
         // (Safari yön kilitlemeye izin vermez), orada yan çevirince dik düzen ortada aynen kalır.
         orientation: "portrait",
-        background_color: "#f5f5f7",
-        theme_color: "#f5f5f7",
+        background_color: "#0b0b0c",
+        theme_color: "#0b0b0c",
         icons: [
             { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
             { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },

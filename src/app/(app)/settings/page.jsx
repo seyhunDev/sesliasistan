@@ -25,26 +25,27 @@ import { KIND_LABEL, isCoach, isPlain, kindOf } from "@/lib/kinds";
 import { setGibiGor, useHesap } from "@/features/auth/useHesap";
 import { useRouter } from "next/navigation";
 import { ProfilePhoto } from "@/features/people/ProfilePhoto";
+import { liveHead } from "@/features/liveScreen/fonts";
 
-// Lacivert üst: geri, Ayarlar, altında ad · hesap türü, sağda fotoğraf (yeni tasarım, 2026-11-03)
+// Sahne üst (2026-11-26, uygulamanın koyu dili): geri, dar büyük AYARLAR, altında ad · hesap türü, sağda fotoğraf
 function Top({ profile, label }) {
   return (
-    <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Ayarlar">
+    <section className="pb-5 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Ayarlar">
       <header className="flex items-center gap-2.5">
         <BackButton href="/" />
         <div className="min-w-0 flex-1 leading-tight">
-          <h1 className="truncate text-[1.375rem] font-bold tracking-[-.02em]">Ayarlar</h1>
-          <p className="truncate text-[0.8125rem] text-white/65">{[profile.name, label].filter(Boolean).join(" · ")}</p>
+          <h1 className="sahne-t truncate text-[2rem]">Ayarlar</h1>
+          <p className="mt-1 truncate text-[0.8125rem] text-mut">{[profile.name, label].filter(Boolean).join(" · ")}</p>
         </div>
-        <ProfilePhoto orgId={profile.orgId} uid={profile.uid} name={profile.name} photo={profile.photo} photoPath={profile.photoPath} size="size-10" text="text-[0.9375rem]" tone="bg-acc text-white" />
+        <ProfilePhoto orgId={profile.orgId} uid={profile.uid} name={profile.name} photo={profile.photo} photoPath={profile.photoPath} size="size-10" text="text-[0.9375rem]" tone="bg-acc text-[#111]" />
       </header>
     </section>
   );
 }
 
-// Açık alan ve bölüm: başlık listenin dışında (ListHead), satırlar ince çizgili beyaz kartta (yeni tasarım, 2026-11-03)
+// Gövde ve bölüm: başlık listenin dışında (ListHead), satırlar ince çizgili koyu kartta
 function Body({ children }) {
-  return <div className="wide-body wide-cols relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">{children}</div>;
+  return <div className="wide-body wide-cols space-y-6">{children}</div>;
 }
 function Sec({ title, children }) {
   return (
@@ -77,7 +78,7 @@ function PersonSettings({ profile, n }) {
   // sürüm ve Android satırı yok (gizli, silinmedi). Sporcu tarafı eskisi gibi.
   if (isPlain(kind))
     return (
-      <main className="wide mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
+      <main className={`sahne-pg ${liveHead.variable} wide mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]`}>
         <Top profile={profile} label={isCoach(profile) ? "Antrenör" : KIND_LABEL[kind] || "Kişi"} />
         <Body>
           <Sec title="Ayarlar">
@@ -96,7 +97,7 @@ function PersonSettings({ profile, n }) {
       </main>
     );
   return (
-    <main className="wide mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
+    <main className={`sahne-pg ${liveHead.variable} wide mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]`}>
       <Top profile={profile} label={KIND_LABEL[kind] || "Kişi"} />
       <Body>
         <Sec title="Ayarlar">
@@ -152,7 +153,7 @@ export default function SettingsPage() {
   // (yarışlar artık hep görünür), ayrı Yapay zeka kullanımı, Açılış süresi, Telefondaki veriler ve Yayın satırları (kartlara taşındı).
   const ver = buildLine().split(" · ").slice(0, 2).join(" · ");
   return (
-    <main className="wide mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
+    <main className={`sahne-pg ${liveHead.variable} wide mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]`}>
       <Top profile={profile} label="Ana hesap" />
       <Body>
         <Durum />

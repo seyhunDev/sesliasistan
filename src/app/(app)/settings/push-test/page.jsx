@@ -175,7 +175,7 @@ export default function PushTestPage() {
   const send = (kind) => call("POST", { kind, tz: tz() }).then((j) => j && toast(kind === "remind" ? "Deneme planı oluşturuldu" : `${TEST_DELAY} sn sonra gelecek`));
 
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
+    <main className="sahne-pg mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
       <PageHeader title="Bildirim testi" back="/settings/tests" />
 
       <Group>

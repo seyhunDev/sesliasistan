@@ -198,7 +198,7 @@ function RaceDetail({ r, onBack }) {
     }
   };
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
+    <main className="sahne-pg mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
       <div className="sticky top-0 z-10 -mx-5 flex items-center gap-2.5 bg-bg/90 px-4 pb-2.5 pt-[calc(0.75rem+env(safe-area-inset-top))] backdrop-blur">
         <BackButton onClick={onBack} className="-my-0.5" />
         <h1 className="min-w-0 flex-1 truncate text-[1.375rem] font-semibold leading-tight tracking-tight">{r.name}</h1>
@@ -273,7 +273,7 @@ export function BroadcastStats() {
   const past = morePast ? g.past : g.past.slice(0, 5);
   const home = stat("_");
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
+    <main className="sahne-pg mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]">
       <PageHeader title="Yayın" back="/settings" />
       <Seg className="mb-3" value={days} onChange={setDays} options={[[1, "Bugün"], [7, "7 gün"], [30, "30 gün"]]} />
       {err && !data && <p className="px-4 py-3 text-[0.9375rem] text-rec">{err}</p>}
