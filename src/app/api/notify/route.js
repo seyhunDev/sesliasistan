@@ -247,7 +247,9 @@ export async function POST(request) {
       const side = me.role === "staff" && isAthleteSide(kindOf(me));
       if (!side && (r.endDate || r.date || "") >= today) {
         const ath = trainees((await org.collection("members").get()).docs.map((d) => ({ uid: d.id, ...d.data() })));
-        for (const u of ath) if (u !== au.uid && !r.notified?.[u] && !to.includes(u)) to.push(u);
+        // Kimler (lib/kimler.js): yalnız bir takıma/sınıfa olan antrenman yalnız onlara
+        const only = r.aud && Array.isArray(r.audUids) ? new Set(r.audUids) : null;
+        for (const u of ath) if (u !== au.uid && (!only || only.has(u)) && !r.notified?.[u] && !to.includes(u)) to.push(u);
       }
     }
     if (!to.length) return NextResponse.json({ ok: true, sent: 0 });

@@ -19,6 +19,7 @@ import { useBirthday } from "@/features/birthdays/BirthdayProvider";
 import { isTraining } from "@/lib/trainingLog";
 import { todayStr } from "@/lib/utils/format";
 import { holidayOn } from "@/lib/tatiller";
+import { audLabel } from "@/lib/kimler";
 import { TopluAntrenman } from "./TopluAntrenman";
 import { VeliTakvimi } from "./VeliTakvimi";
 import { onCalendarSheet, takeCalendarSheet } from "./bulkOpen";
@@ -288,7 +289,7 @@ export function CalendarView({ initial }) {
                       <b className={p.status === "cancelled" ? "cal-sh-off" : ""}>{p.title}</b>
                       <small>
                         {imp && <ImpTag />}
-                        {[left, planTag(p), multi && `${dm(p.date)} – ${dm(p.endDate)}`, p.place].filter(Boolean).join(" · ")}
+                        {[left, planTag(p), p.aud && audLabel(p.aud), multi && `${dm(p.date)} – ${dm(p.endDate)}`, p.place].filter(Boolean).join(" · ")}
                       </small>
                       {pillOf(p) && <span className="cal-sh-who">{pillOf(p)}</span>}
                     </span>

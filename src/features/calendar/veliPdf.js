@@ -2,7 +2,8 @@
 // (3 sütun), her ay küçük takvim: mavi gün antrenman, kırmızı çerçeve bayram/resmi tatil, alt yarısı boyalı arife. Altta saatler ve not.
 // pdf-lib yalnız çıktı alınırken yüklenir; yazı tipleri ve logo raceDocs.loadFonts'tan. Veri lib/veliTakvimi.js.
 import { CLUB } from "@/features/athletes/raceDocs";
-import { fileName, hoursLines, monthOf, parentTrainings, periodTitle } from "@/lib/veliTakvimi";
+import { fileName, hoursLines, monthOf, parentRaces, parentTrainings, periodTitle } from "@/lib/veliTakvimi";
+import { audLabel } from "@/lib/kimler";
 
 const W = 595.28;
 const H = 841.89;
@@ -10,13 +11,14 @@ const L = 36;
 const R = W - 36;
 const WK = ["Pt", "Sa", "Ça", "Pe", "Cu", "Ct", "Pz"];
 
-// opts: { plans, months, filter, title, note }
-export async function buildParentPdf({ plans, months, filter = "", title = "", note = "" }, fonts) {
+// opts: { plans, months, aud (kimler; yoksa herkes), title, note }
+export async function buildParentPdf({ plans, months, aud = null, title = "", note = "" }, fonts) {
   const [{ PDFDocument, rgb }, { default: fontkit }] = await Promise.all([import("pdf-lib"), import("@pdf-lib/fontkit")]);
   const INK = rgb(0.09, 0.09, 0.11);
   const MUT = rgb(0.42, 0.42, 0.45);
   const SOFT = rgb(0.25, 0.25, 0.28);
   const TR = rgb(0.11, 0.37, 0.84);
+  const RACE = rgb(0.96, 0.55, 0.07);
   const HOL = rgb(0.84, 0.2, 0.23);
   const HOLBG = rgb(0.99, 0.91, 0.91);
   const LINE = rgb(0.83, 0.83, 0.85);
@@ -29,7 +31,9 @@ export async function buildParentPdf({ plans, months, filter = "", title = "", n
   pdf.setCreator("Velora");
   const f = { r: await pdf.embedFont(fonts.sans, { subset: true }), b: await pdf.embedFont(fonts.sansB, { subset: true }) };
   const logo = fonts.logo ? await pdf.embedPng(fonts.logo).catch(() => null) : null;
-  const trainings = parentTrainings(plans, sorted, filter);
+  const trainings = parentTrainings(plans, sorted, aud);
+  const races = parentRaces(plans, sorted, aud);
+  const sub = [title, aud && audLabel(aud)].filter(Boolean).join(" · ");
   const hours = hoursLines(trainings);
 
   let page;
@@ -50,7 +54,7 @@ export async function buildParentPdf({ plans, months, filter = "", title = "", n
     text(CLUB.name, hx, 50, f.b, 10, { color: MUT });
     text("Antrenman Takvimi", hx, 72, f.b, 20);
     text(period, R, 72, f.b, 13, { align: "right" });
-    if (title) text(title, R, 52, f.r, 10, { align: "right", color: MUT, max: 200 });
+    if (sub) text(sub, R, 52, f.r, 10, { align: "right", color: MUT, max: 220 });
     page.drawLine({ start: { x: L, y: H - 88 }, end: { x: R, y: H - 88 }, thickness: 1.4, color: INK });
     // Renk açıklaması
     let x = L;
@@ -60,6 +64,7 @@ export async function buildParentPdf({ plans, months, filter = "", title = "", n
       x += 14 + w(label, f.r, 8) + 16;
     };
     leg((lx, t) => box(lx, t, 10, 10, { color: TR }), "Antrenman");
+    leg((lx, t) => box(lx, t, 10, 10, { color: RACE }), "Yarış");
     leg((lx, t) => box(lx, t, 10, 10, { color: HOLBG, borderColor: HOL, borderWidth: 0.8 }), "Bayram / resmi tatil");
     leg((lx, t) => box(lx, t, 10, 10, { color: TR, borderColor: HOL, borderWidth: 1.6 }), "Tatilde antrenman var");
     leg((lx, t) => {
@@ -72,7 +77,7 @@ export async function buildParentPdf({ plans, months, filter = "", title = "", n
   const drawMonth = (mo, x, top, bw) => {
     const c = (bw - 6 * 2) / 7;
     text(mo.title.toLocaleUpperCase("tr-TR"), x, top + 11, f.b, 11);
-    text(`${mo.count} antrenman`, x + bw, top + 11, f.r, 8, { align: "right", color: MUT });
+    text([`${mo.count} antrenman`, mo.races && `${mo.races} yarış`].filter(Boolean).join(" · "), x + bw, top + 11, f.r, 8, { align: "right", color: MUT });
     let y = top + 22;
     WK.forEach((d, i) => text(d, x + i * (c + 2) + c / 2, y + 7, f.b, 6.5, { align: "center", color: MUT }));
     y += 11;
@@ -82,16 +87,18 @@ export async function buildParentPdf({ plans, months, filter = "", title = "", n
       const cy = y + Math.floor(i / 7) * (c + 2);
       const tr = cell.train.length > 0;
       const full = cell.hol && !cell.hol.half;
-      if (tr) box(cx, cy, c, c, { color: TR, ...(full ? { borderColor: HOL, borderWidth: 1.8 } : {}) });
+      const race = cell.race.length > 0;
+      if (race) box(cx, cy, c, c, { color: RACE, ...(full ? { borderColor: HOL, borderWidth: 1.8 } : {}) });
+      else if (tr) box(cx, cy, c, c, { color: TR, ...(full ? { borderColor: HOL, borderWidth: 1.8 } : {}) });
       else if (full) box(cx, cy, c, c, { color: HOLBG, borderColor: HOL, borderWidth: 0.8 });
       else if (cell.hol?.half) box(cx, cy + c / 2, c, c / 2, { color: HOLBG });
-      text(cell.day, cx + c / 2, cy + c / 2 + 3, f.b, Math.min(9, c * 0.42), { align: "center", color: tr ? WHITE : full ? HOL : SOFT });
+      text(cell.day, cx + c / 2, cy + c / 2 + 3, f.b, Math.min(9, c * 0.42), { align: "center", color: tr || race ? WHITE : full ? HOL : SOFT });
       if (cell.train.length > 1) text(`×${cell.train.length}`, cx + c - 1.5, cy + 6.5, f.b, 5, { align: "right", color: WHITE });
     });
     y += 6 * (c + 2) + 4;
     const lines = mo.notes.length ? mo.notes : [{ label: "Tatil yok", none: true }];
-    lines.slice(0, 5).forEach((n) => {
-      text(n.label, x, y + 8, n.none ? f.r : f.b, 7.5, { color: n.none ? MUT : n.train ? TR : HOL, max: bw });
+    lines.slice(0, 6).forEach((n) => {
+      text(n.label, x, y + 8, n.none ? f.r : f.b, 7.5, { color: n.none ? MUT : n.race ? RACE : n.train ? TR : HOL, max: bw });
       y += 10;
     });
     return y - top;
@@ -110,7 +117,7 @@ export async function buildParentPdf({ plans, months, filter = "", title = "", n
     for (let i = 0; i < chunk.length; i += cols) {
       let rowH = 0;
       chunk.slice(i, i + cols).forEach((ym, j) => {
-        rowH = Math.max(rowH, drawMonth(monthOf(ym, trainings), L + j * (bwUse + gap), top, bwUse));
+        rowH = Math.max(rowH, drawMonth(monthOf(ym, trainings, races), L + j * (bwUse + gap), top, bwUse));
       });
       top += rowH + 22;
     }

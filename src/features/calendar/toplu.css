@@ -24,3 +24,7 @@
 .tb-row input::placeholder, .tb-row textarea::placeholder { color: #71717a; font-weight: 500; }
 /* Takvimde bayram ve resmi tatil (CalendarView: gün listesi satırı, nokta, iPad hücre adı) */
 .cal-sh [data-c="hol"] { --tfg: #ff6b6b; }
+.tb-list { display: flex; flex-direction: column; gap: .4rem; }
+.tb-li { display: flex; flex-direction: column; gap: .5rem; }
+.tb-li > .tb-row b { font-weight: 700; color: var(--tb-lime); white-space: nowrap; }
+.tb-row > .tb-rn { min-width: 0; flex: 1; color: #fff !important; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 1 !important; }

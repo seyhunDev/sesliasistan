@@ -2,6 +2,7 @@
 // Saf işlevler (test edilir); PDF çizimi features/calendar/veliPdf.js, pencere VeliTakvimi.jsx.
 import { holidayOn, holidaysIn } from "./tatiller.js";
 import { isTraining } from "./notifyRules.js";
+import { audLabel, cleanAud } from "./kimler.js";
 
 const MONTHS = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
 const DAYS = ["Pazar", "Pazartesi", "Salı", "Çarşamba", "Perşembe", "Cuma", "Cumartesi"];
@@ -17,17 +18,35 @@ export const periodTitle = (months) => {
   return a.slice(0, 4) === b.slice(0, 4) ? `${MONTHS[+a.slice(5) - 1]} – ${monthTitle(b)}` : `${monthTitle(a)} – ${monthTitle(b)}`;
 };
 
-// Velilere gidecek antrenmanlar: iptal edilmemiş, antrenman türünde; title verilirse adında o geçenler (ör. "Optimist")
-export function parentTrainings(plans = [], months = [], filter = "") {
-  const f = filter.trim().toLocaleLowerCase("tr-TR");
+// Seçilen kitle (sel) bu planın kitlesini kapsıyor mu: kitlesiz plan herkese; planın belirttiği takım/sınıf, seçimde o boyut
+// varsa aynı olmalı ("A takım" PDF'ine Herkes, A takım ve sınıf antrenmanları girer, B takım girmez)
+export function audIncludes(sel, aud) {
+  const s = cleanAud(sel);
+  const a = cleanAud(aud);
+  if (!s || !a) return true;
+  return (!a.team || !s.team || a.team === s.team) && (!a.cls || !s.cls || a.cls === s.cls);
+}
+
+// Velilere gidecek antrenmanlar: iptal edilmemiş, antrenman türünde, seçilen kitleye uyan
+export function parentTrainings(plans = [], months = [], sel = null) {
   return plans
-    .filter((p) => isTraining(p) && p.status !== "cancelled" && months.includes((p.date || "").slice(0, 7)) && (!f || (p.title || "").toLocaleLowerCase("tr-TR").includes(f)))
+    .filter((p) => isTraining(p) && p.status !== "cancelled" && months.includes((p.date || "").slice(0, 7)) && audIncludes(sel, p.aud))
     .sort((a, b) => (a.date + hm(a.time)).localeCompare(b.date + hm(b.time)));
+}
+
+// Yarışlar (tür "Yarış", yarış sayfasından eklenen plan): seçilen aylara değen, iptal edilmemiş, kitleye uyan
+export const isRacePlan = (p) => (p?.cat || p?.category) === "Yarış" && p.status !== "cancelled";
+export function parentRaces(plans = [], months = [], sel = null) {
+  const s = [...months].sort();
+  if (!s.length) return [];
+  const from = `${s[0]}-01`;
+  const to = `${s.at(-1)}-31`;
+  return plans.filter((p) => isRacePlan(p) && p.date && p.date <= to && (p.endDate || p.date) >= from && audIncludes(sel, p.aud)).sort((a, b) => a.date.localeCompare(b.date));
 }
 
 // Bir ay: { ym, title, lead (Pazartesi'den önceki boş hücre), cells [{ date, day, train, hol }], count, notes }
 // notes: tatiller (çok günlü bayram tek satır "9–11 Ramazan Bayramı") ve tatildeki antrenman işareti
-export function monthOf(ym, trainings = []) {
+export function monthOf(ym, trainings = [], races = []) {
   const [y, m] = ym.split("-").map(Number);
   const n = new Date(y, m, 0).getDate();
   const lead = (new Date(y, m - 1, 1).getDay() + 6) % 7;
@@ -36,9 +55,18 @@ export function monthOf(ym, trainings = []) {
   const cells = [];
   for (let d = 1; d <= n; d++) {
     const date = `${ym}-${String(d).padStart(2, "0")}`;
-    cells.push({ date, day: d, train: byDay.get(date) || [], hol: holidayOn(date) });
+    cells.push({ date, day: d, train: byDay.get(date) || [], hol: holidayOn(date), race: races.filter((r) => r.date <= date && (r.endDate || r.date) >= date) });
   }
   const notes = [];
+  // Yarış satırları önce: "12–14 İzmir Kupası · A takım · Optimist"
+  const last = `${ym}-${String(n).padStart(2, "0")}`;
+  const raceNotes = races
+    .filter((r) => r.date <= last && (r.endDate || r.date) >= `${ym}-01`)
+    .map((r) => {
+      const a = r.date < `${ym}-01` ? 1 : +r.date.slice(8);
+      const b = (r.endDate || r.date) > last ? n : +(r.endDate || r.date).slice(8);
+      return { label: `${a === b ? a : `${a}–${b}`} ${r.title}${r.aud ? ` · ${audLabel(r.aud)}` : ""}`, race: true };
+    });
   for (const h of holidaysIn(`${ym}-01`, `${ym}-${String(n).padStart(2, "0")}`)) {
     const last = notes.at(-1);
     const train = byDay.has(h.date);
@@ -46,7 +74,7 @@ export function monthOf(ym, trainings = []) {
     if (last && last.name === name && last.to === +h.date.slice(8) - 1 && last.train === train) last.to++;
     else notes.push({ from: +h.date.slice(8), to: +h.date.slice(8), name, train, half: !!h.half });
   }
-  return { ym, title: monthTitle(ym), lead, cells, count: [...byDay.values()].reduce((a, x) => a + x.length, 0), notes: notes.map((x) => ({ ...x, label: `${x.from === x.to ? x.from : `${x.from}–${x.to}`} ${x.name}${x.train ? " · antrenman" : ""}` })) };
+  return { ym, title: monthTitle(ym), lead, cells, count: [...byDay.values()].reduce((a, x) => a + x.length, 0), races: raceNotes.length, notes: [...raceNotes, ...notes.map((x) => ({ ...x, label: `${x.from === x.to ? x.from : `${x.from}–${x.to}`} ${x.name}${x.train ? " · antrenman" : ""}` }))] };
 }
 
 // Saatler: aynı gün ve saatte tekrar eden antrenmanlar tek satır ("Cumartesi, Pazar 10:30–13:00"); en çok 4 satır

@@ -7,6 +7,7 @@
 // Saf işlevler (test: scripts/asistan-test/yerel/asistan.mjs). Ekran features/calendar/TopluAntrenman.jsx, ses isler/topluAntrenman.js.
 import { holidayOn, holidaysIn, isHoliday } from "./tatiller.js";
 import { isTraining } from "./notifyRules.js";
+import { audLabel, cleanAud } from "./kimler.js";
 
 export const MAX_BULK = 200; // tek seferde en çok
 const MONTHS = ["ocak", "şubat", "mart", "nisan", "mayıs", "haziran", "temmuz", "ağustos", "eylül", "ekim", "kasım", "aralık"];
@@ -57,10 +58,12 @@ export function bulkDates({ months = [], mode = "weekend", days = [], holidays =
   return { dates: [...set].sort(), offHol };
 }
 
-// Var olan antrenmanla çakışan günler atlanır: aynı gün, iptal edilmemiş antrenman, saatler aynı ya da biri saatsiz
+// Var olan antrenmanla çakışan günler atlanır: aynı gün, iptal edilmemiş antrenman, saatler aynı ya da biri saatsiz, kimler aynı
 const hm = (t) => (/^\d{1,2}:\d{2}/.test(t || "") ? t.slice(0, 5).padStart(5, "0") : "");
-export function clashOf(date, time, plans = []) {
-  return plans.find((p) => p.date === date && p.status !== "cancelled" && isTraining(p) && (!hm(p.time) || !hm(time) || hm(p.time) === hm(time))) || null;
+// Kimler farklıysa (A takım varken B takım) çakışma sayılmaz; biri "Herkes" ise sayılır
+const sameAud = (a, b) => !cleanAud(a) || !cleanAud(b) || audLabel(a) === audLabel(b);
+export function clashOf(date, time, plans = [], aud = null) {
+  return plans.find((p) => p.date === date && p.status !== "cancelled" && isTraining(p) && (!hm(p.time) || !hm(time) || hm(p.time) === hm(time)) && sameAud(p.aud, aud)) || null;
 }
 
 // Önizleme: { add: [tarih], skip: [tarih] (zaten antrenman var), offHol, holidays: [{date,name}] (eklenenler arasındaki tatiller), over }
@@ -68,14 +71,15 @@ export function bulkPlan(opts, plans = []) {
   const { dates, offHol } = bulkDates(opts);
   const add = [];
   const skip = [];
-  for (const d of dates) (clashOf(d, opts.time, plans) ? skip : add).push(d);
+  for (const d of dates) (clashOf(d, opts.time, plans, opts.aud) ? skip : add).push(d);
   const over = add.length > MAX_BULK;
   return { add: add.slice(0, MAX_BULK), skip, offHol, over, holidays: add.map(holidayOn).filter((h) => h && !h.half) };
 }
 
 // Kayıt taslakları (DataProvider.saveDrafts; bulk: hepsi tek seri, Geri al hepsini siler)
-export function bulkDrafts(dates, { title, time, endTime, place, assignees = [] }) {
-  return [{ type: "plan", cat: "Antrenman", title: (title || "").trim() || "Antrenman", date: dates[0], dates, time: hm(time), endTime: hm(endTime), place: place || "", assignees }];
+export function bulkDrafts(dates, { title, time, endTime, place, assignees = [], aud = null, audUids = null }) {
+  const k = cleanAud(aud);
+  return [{ type: "plan", cat: "Antrenman", title: (title || "").trim() || "Antrenman", date: dates[0], dates, time: hm(time), endTime: hm(endTime), place: place || "", assignees, ...(k ? { aud: k, audUids: audUids || [] } : {}) }];
 }
 
 // "26 antrenman eklenecek" + "2 gün zaten antrenman var, atlanır · 15 Temmuz tatil, atlanır"
@@ -132,12 +136,18 @@ export function bulkCommand(text, today) {
   // Saat: "10:30", "10.30", "saat 10", "10'da"; aralık "10:30-13:00", "10:30'dan 13:00'e"
   const times = [...t.matchAll(/(?<!\d)([01]?\d|2[0-3])(?:[:.]([0-5]\d))?(?:'?(?:da|de|ta|te|dan|den|tan|ten|a|e|ye|ya))?(?!\d)/gu)].filter((m) => m[2] || /saat\s*$/.test(t.slice(0, m.index)) || /'?(da|de|ta|te|dan|den)$/.test(m[0]));
   const fmt = (m) => `${m[1].padStart(2, "0")}:${m[2] || "00"}`;
-  return { months, mode: mode || "days", days: [...days], holidays, time: times[0] ? fmt(times[0]) : "", endTime: times[1] ? fmt(times[1]) : "" };
+  return { months, mode: mode || "days", days: [...days], holidays, time: times[0] ? fmt(times[0]) : "", endTime: times[1] ? fmt(times[1]) : "", aud: teamIn(t) };
 }
+
+// "A takımı", "b takım için" → { team } (sınıf seçimi pencerede)
+const teamIn = (t) => {
+  const m = /(?<![\p{L}])([ab])\s*takım/u.exec(t);
+  return m ? { team: m[1].toUpperCase(), cls: "", clsName: "" } : null;
+};
 
 // "velilere antrenman takvimi hazırla", "Aralık–Mart veli takvimi PDF'i çıkar": veli takvimi penceresi o aylarla açılır
 export function parentsCommand(text, today) {
   const t = low(text);
   if (!/veli/u.test(t) || !/(takvim|program|plan|pdf)/u.test(t) || !/(hazırla|oluştur|çıkar|yap|gönder|aç)/u.test(t)) return null;
-  return { months: monthsIn(t, today) };
+  return { months: monthsIn(t, today), aud: teamIn(t) };
 }

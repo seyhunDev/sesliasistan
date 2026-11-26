@@ -7,6 +7,8 @@ import { useData } from "@/features/data/DataProvider";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { todayStr } from "@/lib/utils/format";
+import { KimlerPick, useKimler } from "./Kimler";
+import { audLabel } from "@/lib/kimler";
 import { WEEKDAYS, bulkDrafts, bulkPlan, bulkSummary, monthLabel, monthsAhead } from "@/lib/topluAntrenman";
 
 // Toplu antrenman penceresi (Seyhun 2026-11-26; örnek project-files/toplu-antrenman/ornek.html):
@@ -32,7 +34,9 @@ export function TopluAntrenman({ open, onClose, prefill, month }) {
     endTime: prefill?.endTime || "",
     title: prefill?.title || "Antrenman",
     place: prefill?.place || "",
+    aud: prefill?.aud || null,
   }));
+  const kim = useKimler();
   const put = (p) => setF((x) => ({ ...x, ...p }));
   const flip = (arr, v) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
   const r = useMemo(() => bulkPlan({ ...f, from: today }, plans), [f, plans, today]);
@@ -41,12 +45,12 @@ export function TopluAntrenman({ open, onClose, prefill, month }) {
 
   const save = async () => {
     if (!n) return;
-    const res = await saveDrafts(bulkDrafts(r.add, f), { source: "manual", by: { name: profile?.name ?? "Kullanıcı" } });
+    const res = await saveDrafts(bulkDrafts(r.add, { ...f, audUids: f.aud ? kim.uidsOf(f.aud) : null }), { source: "manual", by: { name: profile?.name ?? "Kullanıcı" } });
     if (res.error) return;
     onClose();
     const sid = res.seriesId;
     navigator.vibrate?.(10);
-    toast(`${n} antrenman eklendi`, sid ? { duration: 8000, action: { label: "Geri al", onClick: () => deleteSeries(sid, "").then((k) => k && toast("Geri alındı")) } } : undefined);
+    toast(`${n} antrenman eklendi${f.aud ? ` · ${audLabel(f.aud)}` : ""}`, sid ? { duration: 8000, action: { label: "Geri al", onClick: () => deleteSeries(sid, "").then((k) => k && toast("Geri alındı")) } } : undefined);
   };
 
   return (
@@ -82,6 +86,7 @@ export function TopluAntrenman({ open, onClose, prefill, month }) {
               </div>
             )}
           </div>
+          <KimlerPick value={f.aud} onChange={(aud) => put({ aud })} classes={kim.classes} />
           <button type="button" role="switch" aria-checked={f.holidays} className="tb-row" onClick={() => put({ holidays: !f.holidays })}>
             <span>Bayram ve resmi tatiller de</span>
             <i className="tb-tg" />

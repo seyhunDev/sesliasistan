@@ -24,6 +24,7 @@ import { trainingShares } from "@/lib/sporcuPaylas";
 import { isAthleteSide, kindOf } from "@/lib/kinds";
 import { isTraining } from "@/lib/trainingLog";
 import { todayStr } from "@/lib/utils/format";
+import { seesPlan } from "@/lib/kimler";
 
 // Bu alanlardan biri değişince kayıttaki kişilere "değişti" bildirimi gider
 const CHANGE_KEYS = ["title", "date", "endDate", "time", "allDay", "place", "due", "body", "status"];
@@ -312,7 +313,7 @@ export function DataProvider({ children }) {
       };
       const rows = (snap) => snap.docs.map((d) => ({ ...d.data(), id: d.id }));
       const a = onSnapshot(query(col, where("people", "array-contains", uid)), (snap) => ((parts.mine = rows(snap)), show(snap), done("plans")), bad("plans"));
-      const b = onSnapshot(query(col, where("cat", "==", "Antrenman")), (snap) => ((parts.club = rows(snap).filter((p) => !p.fit)), show(snap)), () => {});
+      const b = onSnapshot(query(col, where("cat", "==", "Antrenman")), (snap) => ((parts.club = rows(snap).filter((p) => !p.fit && seesPlan(p, uid))), show(snap)), () => {});
       return () => {
         a();
         b();
@@ -417,6 +418,7 @@ export function DataProvider({ children }) {
             ...(d.alarm != null ? { alarm: d.alarm } : {}), // iPhone alarmı (lib/planAlarm.js)
             ...(d.log ? { log: d.log } : {}), // antrenman günlüğüyle açılan plan
             ...(d.important ? { important: true } : {}), // Önemli (elle ya da sesle; lib/planImportant.js)
+            ...(d.aud ? { aud: d.aud, audUids: d.audUids || [] } : {}), // Kimler: yalnız bir takım/sınıf (lib/kimler.js)
             ...(d.raceId ? { raceId: d.raceId } : {}), // yarıştan eklenen plan: dokununca yarış sayfası (features/athletes/raceLinks.js)
             ...(d.fromMsg ? { fromMsg: String(d.fromMsg).slice(0, 120) } : {}), // mesajdaki dosyadan eklenen plan (lib/chatPlan.js): "sohbet/mesaj"
           };

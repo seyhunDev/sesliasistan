@@ -11,3 +11,15 @@
 
 ## Asistan
 - Toplu antrenman ve veli takvimi sesle yalnız pencereyi dolu açar (toplu iş, kullanıcı Ekle'ye basar); `assistRoute` `bulkTrain`/`parentsCal` erken adaylar.
+
+## Nerede kaldım
+- Kimler: takım ve sınıf (Seyhun 2026-11-26 "sadece A takım ya da sadece B takım… İkisi de"; "yarışmaları da… PDF'te… kimlerin katılabileceği"; telefonda denenmedi):
+  Sporcu sayfası › Bilgiler › Takım (Yok · A · B), liste `orgs/{org}/takim/liste` (`features/athletes/takimlar.js`; kulüp sitesinin sporcu kaydına yazılmaz).
+  Toplu antrenman ve Veli takvimi pencerelerinde "Kimler": Herkes · A takım · B takım · sporcuların sınıfları (takım + sınıf birlikte olur). Plan `aud` {team, cls, clsName} + `audUids` (yazarken eşleşen sporcu/öğrenci hesapları + velileri; `lib/kimler.js`). Sporcu tarafı kitleli antrenmanı yalnız listedeyse görür (DataProvider sidePlans `seesPlan`), yeni antrenman bildirimi de yalnız onlara (`api/notify`). Farklı takımın aynı saatteki antrenmanı çakışma sayılmaz.
+  Veli takvimi: yarışlar (tür "Yarış" planları) turuncu gün + ay altında "12–14 İzmir Kupası · A takım · Optimist"; pencerede "Yarışlar · kimler katılır" listesi (yarış planına `aud` yazar). PDF kitlesi seçilirse B takım antrenmanı A takım PDF'ine girmez. Takvim gün listesinde plan alt satırında kitle.
+  Test elle.mjs "Kimler: takım ve sınıf" (9).
+
+## Sıradaki işler
+0. Telefonda dene: sporcu sayfasında Takım seç; A takım toplu antrenman ekle; sporcu hesabında yalnız A takımda görünsün.
+1. Sonradan takıma eklenen sporcu eski kitleli antrenmanları görmez (audUids yazarken hesaplanır); gerekirse "kitleyi yeniden hesapla".
+2. Tek tek eklenen antrenmanda (Plan penceresi) "Kimler" henüz yok.
