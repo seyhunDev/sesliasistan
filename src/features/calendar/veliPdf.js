@@ -145,7 +145,7 @@ export async function buildParentPdf({ plans, months, title = "", note = "", ext
     page.drawLine({ start: { x: L, y: H - (H - 112) }, end: { x: R, y: H - (H - 112) }, thickness: 0.6, color: LINE });
     let fy = H - 96;
     text("Saatler", L, fy, f.b, 9);
-    (hours.length ? hours : ["Saatler uygulamada her antrenmanın üstünde yazar"]).forEach((h, k) => text(h, L, fy + 13 + k * 12, f.r, 8.5, { color: SOFT, max: (R - L) / 2 - 10 }));
+    (hours.length ? hours : ["Saatler uygulamada her antrenmanın üstünde yazar"]).forEach((h, k) => text(h, L, fy + 13 + k * 12, f.r, 8.5, { color: SOFT, max: note ? (R - L) / 2 - 10 : R - L }));
     const nx = L + (R - L) / 2 + 10;
     if (note) {
       text("Not", nx, fy, f.b, 9);

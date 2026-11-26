@@ -3542,6 +3542,13 @@ group("Toplu eklemeler listesi")([
 ]);
 
 group("Veli takvimi: yalnız yarış ve antrenman")([
+  ["saatler dönemle", F("okulda 15:30, tatilde 10:00: satırda tarih aralığı", () => {
+    const sch = ["2026-12-01", "2026-12-02", "2026-12-08", "2026-12-09", "2027-01-12", "2027-01-13"].map((date) => ({ date, time: "15:30", cat: "Antrenman" }));
+    const hol = ["2027-01-26", "2027-01-27", "2027-02-02", "2027-02-03"].map((date) => ({ date, time: "10:00", cat: "Antrenman" }));
+    const h = TBV.hoursLines([...sch, ...hol]);
+    const one = TBV.hoursLines([{ date: "2027-03-06", time: "10:30", cat: "Antrenman" }, { date: "2027-03-13", time: "10:30", cat: "Antrenman" }]);
+    return h[0] === "Sal, Çar 15:30 · 1–9 Ara, 12–13 Oca" && h[1] === "Sal, Çar 10:00 · 26 Oca – 3 Şub" && one[0] === "Cumartesi 10:30";
+  })],
   ["son tarih girmez", F("'İzmir Kupası: Kayıt son günü' ve kişisel plan PDF'te yok", () => {
     const pl = [{ id: "r", raceId: "x", title: "İzmir Kupası", date: "2027-03-12", endDate: "2027-03-14", cat: "Yarış" }, { id: "d", raceId: "x", title: "İzmir Kupası: Kayıt son günü", date: "2027-03-01", cat: "Yarış" }, { id: "k", title: "Kira son günü", date: "2027-03-05", cat: "Ev" }, { id: "t", title: "Antrenman", date: "2027-03-06", cat: "Antrenman" }];
     const r = TBV.parentRaces(pl, ["2027-03"]);
