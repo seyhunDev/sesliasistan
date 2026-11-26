@@ -354,6 +354,57 @@ export async function run(server, log = () => {}) {
     await ip.setOffline(false);
     await check(G, "bağlantı gelince", "Limon sunucuda", () => until(async () => (await serverItems(ids.owner)).includes("Limon"), 30000));
     await ip.close();
+
+    // 6b) Yeni sürüm uygulama arkadayken kendiliğinden yenilendi: iPhone arkadaki sayfanın bağlantısını keser, Firestore asılı
+    // kalır. Uygulama öne gelince bağlantı kendiliğinden yenilenmeli (Seyhun 2026-11-26 "güncellemeden sonra internet gidiyor")
+    G = "Arkada güncellenince";
+    let hang = false;
+    const bg = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "tr-TR", timezoneId: "Europe/Istanbul", serviceWorkers: "block" });
+    await bg.addInitScript(INIT({ sha }));
+    // Görünürlük taklidi: sayfa "arkada" açılır (window.__vis), test öne getirir
+    await bg.addInitScript(`(() => {
+      if (sessionStorage.getItem("t-bg") === "1") window.__vis = "hidden";
+      const get = () => window.__vis || "visible";
+      Object.defineProperty(Document.prototype, "visibilityState", { configurable: true, get });
+      Object.defineProperty(Document.prototype, "hidden", { configurable: true, get: () => get() === "hidden" });
+    })();`);
+    await bg.route("**/*", async (route) => {
+      const u = new URL(route.request().url());
+      if (u.hostname !== "localhost" && u.hostname !== "127.0.0.1") return route.abort();
+      if (hang && /google\.firestore\.v1\.Firestore\//.test(u.pathname)) {
+        await sleep(90000);
+        return route.abort().catch(() => {});
+      }
+      if (u.pathname.startsWith("/api/") && u.pathname !== "/api/version") return route.fulfill({ status: 200, contentType: "application/json", body: "{}" });
+      return route.continue();
+    });
+    const bp = await bg.newPage();
+    await bp.goto(`${server.url}/login`, { waitUntil: "load", timeout: 120000 });
+    const bi = bp.locator("input[name=username]:not([readonly])");
+    await bi.waitFor({ timeout: 30000 });
+    await bi.fill(OWNER);
+    await bi.press("Enter");
+    await bp.locator("input[name=password]").fill(PASS);
+    await bp.locator("input[name=password]").press("Enter");
+    await bp.waitForURL((x) => !x.pathname.startsWith("/login"), { timeout: 60000 });
+    await bp.goto(`${server.url}/shopping`, { waitUntil: "load" });
+    await input(bp).waitFor({ timeout: 30000 });
+    // Yeni sürüm: sayfa arkadayken yeniden yüklenir, bu sırada bağlantı asılı kalır
+    await bp.evaluate(() => sessionStorage.setItem("t-bg", "1"));
+    hang = true;
+    await bp.reload({ waitUntil: "load" });
+    await input(bp).waitFor({ timeout: 30000 });
+    await bp.evaluate(() => sessionStorage.removeItem("t-bg"));
+    await addItem(bp, "Kahve");
+    await sleep(20000);
+    await check(G, "arkadayken", "kayıt henüz sunucuda yok (bağlantı asılı)", async () => !(await serverItems(ids.owner)).includes("Kahve"));
+    hang = false; // öne gelince ağ açık, ama arkadayken açılan istekler asılı kalır
+    await bp.evaluate(() => {
+      window.__vis = "visible";
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await check(G, "öne gelince bağlantı kendiliğinden yenilenir", "Kahve 8 sn içinde sunucuda", () => until(async () => (await serverItems(ids.owner)).includes("Kahve"), 8000));
+    await bg.close();
   } catch (e) {
     push("Akış", "senaryo", "biter", false, String(e.message).split("\n")[0].slice(0, 300));
   } finally {
