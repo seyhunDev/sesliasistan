@@ -32,3 +32,4 @@
 ## Veli PDF yalnız antrenman, tatil, yarış (2026-11-26, üçüncü PR)
 - Seyhun: kişisel ve diğer planlar ("… son günü") PDF'e girmez. Yarış = tür "Yarış" planının kendisi; talimattan yazılan son tarihler ("İzmir Kupası: Kayıt son günü") ve kayıt/ödeme/başvuru/toplantı satırları çıkar (`isRacePlan(p, plans)`).
 - Yarış günleri plandaki başlangıç/bitişten. Veli takvimi penceresinde yarışa dokun: Önce / Sonra en çok 3 ekstra gün (`ext`, `raceDays`, `cleanExt`); yalnız PDF'e uygulanır, yarış planı değişmez; bu cihazda hatırlanır (sa-veli-takvim).
+- Yarış ve antrenman aynı gün: PDF hücresinin üst yarısı turuncu (yarış), alt yarısı antrenman rengi (kitle şeritleri). Önceden yarış tüm hücreyi kaplıyor, antrenman görünmüyordu (veliPdf.js).

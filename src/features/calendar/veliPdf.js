@@ -100,11 +100,14 @@ export async function buildParentPdf({ plans, months, title = "", note = "", ext
       const tr = cell.train.length > 0;
       const full = cell.hol && !cell.hol.half;
       const race = cell.race.length > 0;
-      if (race) box(cx, cy, c, c, { color: RACE, ...(full ? { borderColor: HOL, borderWidth: 1.8 } : {}) });
-      else if (tr) {
+      if (race || tr) {
+        // Yarış ve antrenman aynı gün (Seyhun 2026-11-26): üst yarı turuncu yarış, alt yarı antrenman rengi
+        const ty = race ? cy + c / 2 : cy;
+        const th = race ? c / 2 : c;
+        if (race) box(cx, cy, c, tr ? c / 2 : c, { color: RACE });
         // Günün kitleleri: tek renk ya da yan yana şeritler
         const gs = [...new Set(cell.train.map(audKey))];
-        gs.forEach((g, k) => box(cx + (k * c) / gs.length, cy, c / gs.length, c, { color: colorOf(g) }));
+        gs.forEach((g, k) => box(cx + (k * c) / gs.length, ty, c / gs.length, th, { color: colorOf(g) }));
         if (full) box(cx, cy, c, c, { borderColor: HOL, borderWidth: 1.8 });
       }
       else if (full) box(cx, cy, c, c, { color: HOLBG, borderColor: HOL, borderWidth: 0.8 });
