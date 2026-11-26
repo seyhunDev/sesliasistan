@@ -5,12 +5,13 @@ import { useEffect, useState } from "react";
 import { Sheet } from "@/components/ui/Sheet";
 import { authFetch } from "@/lib/authFetch";
 import { spendOf } from "@/lib/aiPrice";
+import { servicesOf } from "@/lib/aiUsage";
 import { readOpens } from "@/lib/openTime";
 import { DeviceDataRow } from "./DeviceData";
-import { UsageRow, readBudget } from "./Usage";
-import { Group } from "./ui";
+import { SpendList } from "./Spend";
+import { readBudget } from "./Usage";
 
-// Ayarlar › Durum (ana hesap; örnek velora-tarama/ayarlar.html, 2026-11-25): yapay zeka harcaması (gün gün çubuk), açılış süresi,
+// Ayarlar › Durum (ana hesap; örnek velora-tarama/ayarlar.html, 2026-11-25): tüm servislerin harcaması (Gemini gün gün çubuk; pencere Spend.jsx), açılış süresi,
 // telefondaki veri ve canlı yayın ziyaretleri dört kartta. Eski ayrı satırlar (Yapay zeka kullanımı, Açılış süresi, Telefondaki veriler,
 // Yayın) kartlara taşındı; karta dokununca ayrıntı penceresi (yayında Yayın sayfası) açılır. Sayfa açılınca bir kez okunur.
 const sec = (ms) => (ms / 1000).toLocaleString("tr-TR", { maximumFractionDigits: 1 });
@@ -73,7 +74,7 @@ export function Durum() {
     let on = true;
     authFetch("/api/usage?ai=1")
       .then((r) => (r.ok ? r.json() : null))
-      .then((j) => on && j && setAi({ ...spendOf(j.ai?.month, j.today || "", j.rate), today: j.today || "", raw: j }))
+      .then((j) => on && j && setAi({ ...spendOf(j.ai?.month, j.today || "", j.rate), total: servicesOf(j).total, today: j.today || "", raw: j }))
       .catch(() => {});
     authFetch("/api/canli-iz?days=30")
       .then((r) => (r.ok ? r.json() : null))
@@ -87,22 +88,20 @@ export function Durum() {
       on = false;
     };
   }, []);
-  const pct = ai && budget > 0 ? Math.round((ai.month / budget) * 100) : null;
+  const pct = ai && budget > 0 ? Math.round((ai.total / budget) * 100) : null;
   const avg = opens.length ? opens.reduce((a, x) => a + x.ms, 0) / opens.length : 0;
   return (
     <section aria-label="Durum">
       <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
-        <Tile label="Yapay zeka · bu ay" value={ai ? n0(ai.month) : null} unit="TL" sub={pct != null ? `%${pct} · bütçe ${n0(budget)}` : ""} onClick={() => setSheet("ai")}>
+        <Tile label="Harcama · bu ay" value={ai ? n0(ai.total) : null} unit="TL" sub={pct != null ? `%${pct} · bütçe ${n0(budget)}` : ""} onClick={() => setSheet("ai")}>
           {ai && <Bars days={ai.days} today={ai.today} budget={budget} />}
         </Tile>
         <Tile label="Açılış" value={opens.length ? sec(opens[0].ms) : null} unit="sn" sub={opens.length > 1 ? `Ortalama ${sec(avg)} sn` : ""} />
         <Tile label="Telefonda" value={mb != null ? n0(mb) : null} unit="MB" onClick={() => setSheet("veri")} />
         <Tile label="Canlı yayın · 30 gün" value={yayin ? n0(yayin.people) : null} unit="kişi" sub={yayin?.live ? `Şu an ${yayin.live} kişi izliyor` : ""} href="/settings/yayin" />
       </div>
-      <Sheet open={sheet === "ai"} onClose={() => setSheet("")} title="Yapay zeka">
-        <Group>
-          <UsageRow data={ai?.raw || null} />
-        </Group>
+      <Sheet open={sheet === "ai"} onClose={() => setSheet("")} title="Harcamalar">
+        <SpendList data={ai?.raw || null} />
       </Sheet>
       <DeviceDataRow sheetOpen={sheet === "veri"} onClose={() => setSheet("")} />
     </section>
