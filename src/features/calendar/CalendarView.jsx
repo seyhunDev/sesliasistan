@@ -149,7 +149,6 @@ export function CalendarView({ initial }) {
                   ? []
                   : [
                       ["Toplu antrenman", () => setSheet({ kind: "bulk", n: Date.now() })],
-                      ["Veli takvimi", () => setSheet({ kind: "parents", n: Date.now() })],
                     ]),
               ].map(([l, f]) => (
                 <button key={l} type="button" role="menuitem" data-press="row" onClick={() => (setAddMenu(false), f())}>
@@ -350,6 +349,11 @@ export function CalendarView({ initial }) {
               <Icon name="cake" className="size-5" />
             </button>
           </div>
+          {!isStaff && (
+            <button type="button" onClick={() => setSheet({ kind: "parents", n: Date.now() })} data-press className="cal-sh-bt cal-sh-pdf">
+              PDF hazırla
+            </button>
+          )}
         </section>
       </div>
       {sheet?.kind === "bulk" && <TopluAntrenman key={sheet.n} open onClose={() => setSheet(null)} prefill={sheet.prefill} month={month} />}

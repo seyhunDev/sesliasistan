@@ -148,7 +148,10 @@ const teamIn = (t) => {
 // "velilere antrenman takvimi hazırla", "Aralık–Mart veli takvimi PDF'i çıkar": veli takvimi penceresi o aylarla açılır
 export function parentsCommand(text, today) {
   const t = low(text);
-  if (!/veli/u.test(t) || !/(takvim|program|plan|pdf)/u.test(t) || !/(hazırla|oluştur|çıkar|yap|gönder|aç)/u.test(t)) return null;
+  // "velilere takvim hazırla" ya da "takvimin PDF'ini hazırla" (Seyhun 2026-11-26: takvimdeki antrenman ve yarışlar)
+  const veli = /veli/u.test(t) && /(takvim|program|plan|pdf)/u.test(t);
+  const pdf = /pdf/u.test(t) && /(takvim|antrenman|yarış|plan)/u.test(t);
+  if (!(veli || pdf) || !/(hazırla|oluştur|çıkar|yap|gönder|aç)/u.test(t)) return null;
   return { months: monthsIn(t, today), aud: teamIn(t) };
 }
 
