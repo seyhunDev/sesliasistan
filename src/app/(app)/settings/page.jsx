@@ -26,6 +26,8 @@ import { setGibiGor, useHesap } from "@/features/auth/useHesap";
 import { useRouter } from "next/navigation";
 import { ProfilePhoto } from "@/features/people/ProfilePhoto";
 import { liveHead } from "@/features/liveScreen/fonts";
+import { AdminRow } from "@/features/admin/AdminPage";
+import { KullanimRow } from "@/features/kullanim/KullanimKaydi";
 
 // Sahne üst (2026-11-26, uygulamanın koyu dili): geri, dar büyük AYARLAR, altında ad · hesap türü, sağda fotoğraf
 function Top({ profile, label }) {
@@ -91,6 +93,7 @@ function PersonSettings({ profile, n }) {
           <Sec title="Hesap">
             <PasswordRow />
             <FaceIdRow />
+            <KullanimRow />
             <Row title="Çıkış yap" danger onClick={() => logout()} />
           </Sec>
         </Body>
@@ -113,6 +116,7 @@ function PersonSettings({ profile, n }) {
         <Sec title="Hesap">
           <PasswordRow />
           <FaceIdRow />
+          <KullanimRow />
           <VersionRow />
           <AndroidApkRow />
           <Row title="Çıkış yap" danger onClick={() => logout()} />
@@ -180,6 +184,7 @@ export default function SettingsPage() {
 
         {/* Üç hesap görünümü (Seyhun 2026-11-25 "ben her şeye hakim olmalıyım"): ötekilerin ana sayfası, alt çubuğu, menüsü; veri yine senin */}
         <Sec title="Kişiler ve hesaplar">
+          <AdminRow org={profile.orgId} />
           <Row title="Kişiler" sub={members.length ? `${members.length} kişi` : ""} href="/staff" />
           <Row title="Normal kullanıcı gibi gör" onClick={() => (setGibiGor("normal"), router.push("/"))} chevron />
           <Row title="Sporcu gibi gör" onClick={() => (setGibiGor("sporcu"), router.push("/"))} chevron />
@@ -199,6 +204,7 @@ export default function SettingsPage() {
         <Sec title="Hesap">
           <PasswordRow />
           <FaceIdRow />
+          <KullanimRow />
           <Row title="Çıkış yap" danger onClick={() => logout()} />
         </Sec>
 
