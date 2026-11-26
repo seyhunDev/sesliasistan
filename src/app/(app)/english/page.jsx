@@ -315,7 +315,7 @@ export default function EnglishPage() {
   const q = quiz && !quiz.done ? quiz : null;
 
   return (
-    <main data-theme="dark" className="navy fit-dark relative mx-auto flex min-h-dvh max-w-[30rem] flex-col px-6 pb-[calc(var(--dome-h,var(--stage-h,6rem))+1rem)]">
+    <main data-theme="dark" className="navy fit-dark relative mx-auto flex min-h-dvh max-w-[30rem] flex-col px-6 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
       {isChunk ? <Glow /> : <Photo />}
       {isChunk ? (
         !deck ? (
