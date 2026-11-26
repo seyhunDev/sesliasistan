@@ -77,7 +77,7 @@ function Post({ orgId, uid }) {
 
   const head = id === "new" ? "Yeni gönderi" : "Gönderi";
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
+    <main className="sahne-pg mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
       {(missing || !state) && <PageHeader title={head} back="/posts" />}
       {missing ? (
         <p className="mt-6 text-center text-[0.875rem] text-mut">Gönderi bulunamadı.</p>
