@@ -11,6 +11,7 @@ import { wantsEvent } from "@/features/events/eventWords";
 import { wantsInventory } from "@/features/inventory/invWords";
 import { athleteIn, fitLocal, guideWord, wantsFitness } from "@/lib/fitness/words";
 import { seaAsk } from "@/lib/sea";
+import { bulkCommand, parentsCommand } from "@/lib/topluAntrenman";
 import { camsAsk } from "@/lib/cams";
 import { fold } from "@/lib/fitness/exercises";
 import { wantsFood } from "@/lib/fitness/food";
@@ -137,6 +138,11 @@ export function routesOf(s, c = {}) {
   if (scr) add("more", { kind: "liveScreen" });
   // Bilgi ekranı (isler/bilgi.js): "bilgi ekranına yaz: …" Mesajlar'a değil ekrana gider
   if (owner && bilgiCommand(s)) add("more", { kind: "bilgi" });
+  // Toplu antrenman ve veli takvimi (yalnız ana hesap): "Aralık ve Ocak hafta sonlarına 10:30'da antrenman ekle" (isler/topluAntrenman.js)
+  const bc = !mf && owner && !isStaff && !c.drafts ? bulkCommand(s, today || todayStr()) : null;
+  if (bc) add("bulkTrain", { bc });
+  const pc = !mf && owner && !isStaff && !bc ? parentsCommand(s, today || todayStr()) : null;
+  if (pc) add("parentsCal", { pc });
   // Adım adım antrenman ekranı açık: "tamam", "sonraki", "bu hareketi atla" ekrandaki antrenmanı yürütür
   if (c.guide && guideWord(s)) add("guide");
   if ((isEnd(s) && !mf) || (c.askedMore && isNoMore(s))) add("close");

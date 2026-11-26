@@ -3478,3 +3478,55 @@ group("Ortak düğmeler")([
     ["özet", F("3 plan ve fazlası", () => CP.planSummary([...out.items, ...out.items], 2).endsWith("ve 4 plan daha"))],
   ]);
 }
+
+// Toplu antrenman ve veli takvimi (lib/topluAntrenman.js, lib/tatiller.js, lib/veliTakvimi.js; Seyhun 2026-11-26)
+const TBA = await import("@/lib/topluAntrenman");
+const TBT = await import("@/lib/tatiller");
+const TBV = await import("@/lib/veliTakvimi");
+const TBP = [{ date: "2026-12-05", time: "10:30", cat: "Antrenman", title: "Antrenman" }];
+group("Toplu antrenman")([
+  ["2027 bayramları", F("Ramazan 9–11 Mart, Kurban 16–19 Mayıs, arifeler yarım", () => TBT.isHoliday("2027-03-09") && TBT.isHoliday("2027-03-11") && TBT.holidayOn("2027-03-08")?.half && TBT.isHoliday("2027-05-16") && TBT.isHoliday("2027-05-19") && !TBT.isHoliday("2027-05-15"))],
+  ["aynı güne iki ad", F("19 Mayıs 2027: Gençlik ve Spor + Kurban tek gün", () => TBT.holidaysOf(2027).filter((h) => h.date === "2027-05-19").length === 1 && /Kurban/.test(TBT.holidayOn("2027-05-19").name))],
+  ["hafta sonları + tatil", F("Ara–Şub 26 gün, 1 Ocak dahil, var olan 5 Aralık atlanır", () => { const r = TBA.bulkPlan({ months: ["2026-12", "2027-01", "2027-02"], mode: "weekend", holidays: true, from: "2026-11-26", time: "10:30" }, TBP); return r.add.length === 26 && r.skip[0] === "2026-12-05" && r.add.includes("2027-01-01"); })],
+  ["hafta içi bayram tek", F("Mayıs 2027 hafta içi + bayramlar: aynı gün bir kez", () => { const r = TBA.bulkPlan({ months: ["2027-05"], mode: "weekday", holidays: true, from: "2026-11-26" }, []); return new Set(r.add).size === r.add.length && r.add.includes("2027-05-17") && r.add.includes("2027-05-16"); })],
+  ["tatil seçilmedi", F("Temmuz Pzt–Per: 15 Temmuz atlanır", () => { const r = TBA.bulkPlan({ months: ["2027-07"], mode: "days", days: [1, 2, 3, 4], from: "2026-11-26" }, []); return !r.add.includes("2027-07-15") && r.offHol.includes("2027-07-15") && r.add.length === 16; })],
+  ["geçmiş gün yok", F("Kasım'da bugünden öncesi eklenmez", () => TBA.bulkPlan({ months: ["2026-11"], mode: "weekend", from: "2026-11-26" }, []).add.every((d) => d >= "2026-11-26"))],
+  ["başka saatteki antrenman", F("aynı gün 16:00 varken 10:30 eklenir", () => !TBA.clashOf("2026-12-05", "16:00", TBP) && !!TBA.clashOf("2026-12-05", "", TBP))],
+  ["sesle: hafta sonları", F("Aralık ve Ocak, 10:30", () => { const c = TBA.bulkCommand("Aralık ve Ocak'ın hafta sonlarına 10:30'da antrenman ekle", "2026-11-26"); return c.mode === "weekend" && c.months.join() === "2026-12,2027-01" && c.time === "10:30"; })],
+  ["sesle: aralık", F("Kasım'dan Ocak'a perşembeler 16:00", () => { const c = TBA.bulkCommand("Kasım'dan Ocak'a kadar bütün perşembelere saat 16 antrenman ekle", "2026-11-26"); return c.months.length === 3 && c.days.join() === "4" && c.time === "16:00"; })],
+  ["sesle: tek antrenman değil", F("'yarın 10'da antrenman ekle' toplu değil", () => TBA.bulkCommand("yarın 10'da antrenman ekle", "2026-11-26") === null && TBA.bulkCommand("her salı 16:00 antrenman", "2026-11-26") === null)],
+  ["veli takvimi sesle", F("Aralık–Mart", () => TBA.parentsCommand("velilere aralıktan marta kadar antrenman takvimi hazırla", "2026-11-26")?.months.length === 4)],
+  ["veli takvimi ay", F("Mart 2027: bayram tek satır, saatler", () => { const tr = ["2027-03-06", "2027-03-13", "2027-03-20"].map((date) => ({ date, time: "10:30", endTime: "13:00", cat: "Antrenman" })); const m = TBV.monthOf("2027-03", tr); return m.count === 3 && m.notes.some((n) => n.label === "9–11 Ramazan Bayramı") && TBV.hoursLines(tr)[0] === "Cumartesi 10:30–13:00"; })],
+]);
+
+// Kimler: takım ve sınıf (lib/kimler.js; Seyhun 2026-11-26)
+const KM = await import("@/lib/kimler");
+const KMM = [
+  { uid: "u1", kind: "athlete", athleteId: "a1" }, { uid: "u2", kind: "athlete", athleteId: "a2" }, { uid: "u3", kind: "student", athleteId: "a3" },
+  { uid: "v1", kind: "parent", children: ["u1"] }, { uid: "v2", kind: "parent", children: ["u2"] },
+];
+const KMA = [{ id: "a1", currentClassId: "opt" }, { id: "a2", currentClassId: "opt" }, { id: "a3", currentClassId: "ilca" }];
+const KMT = { a1: "A", a2: "B", a3: "A" };
+group("Kimler: takım ve sınıf")([
+  ["A takım", F("A takımdaki sporcular ve velisi", () => KM.audUids({ team: "A" }, { members: KMM, athletes: KMA, teams: KMT }).sort().join() === "u1,u3,v1")],
+  ["A takım · Optimist", F("yalnız u1 ve velisi", () => KM.audUids({ team: "A", cls: "opt" }, { members: KMM, athletes: KMA, teams: KMT }).sort().join() === "u1,v1")],
+  ["sporcu listesi yok", F("takım listesinden", () => KM.audUids({ team: "B" }, { members: KMM, athletes: [], teams: KMT }).sort().join() === "u2,v2")],
+  ["sporcu görür mü", F("kitlesiz herkese, kitleli yalnız listedekine", () => KM.seesPlan({}, "u2") && KM.seesPlan({ aud: { team: "A" }, audUids: ["u1"] }, "u1") && !KM.seesPlan({ aud: { team: "A" }, audUids: ["u1"] }, "u2"))],
+  ["etiket", F("A takım · Optimist / Herkes", () => KM.audLabel({ team: "A", cls: "opt", clsName: "Optimist" }) === "A takım · Optimist" && KM.audLabel(null) === "Herkes")],
+  ["farklı takım çakışmaz", F("B takım varken A takım eklenir, Herkes varken eklenmez", () => {
+    const pl = [{ date: "2026-12-05", time: "10:30", cat: "Antrenman", aud: { team: "B" } }];
+    const r = TBA.bulkPlan({ months: ["2026-12"], mode: "weekend", from: "2026-11-26", time: "10:30", aud: { team: "A" } }, pl);
+    const r2 = TBA.bulkPlan({ months: ["2026-12"], mode: "weekend", from: "2026-11-26", time: "10:30", aud: { team: "A" } }, [{ ...pl[0], aud: null }]);
+    return r.add.includes("2026-12-05") && r2.skip.includes("2026-12-05");
+  })],
+  ["sesle takım", F("'A takımı' → team A", () => TBA.bulkCommand("Aralık hafta sonlarına A takımı için 10:30 antrenman ekle", "2026-11-26")?.aud?.team === "A")],
+  ["veli PDF tek program", F("bütün takımlar bir arada, saatler kitleyle", () => {
+    const pl = ["2027-03-06", "2027-03-13"].flatMap((date) => [{ date, time: "10:30", cat: "Antrenman", aud: { team: "B" } }, { date, time: "14:00", cat: "Antrenman" }]);
+    const h = TBV.hoursLines(pl);
+    return TBV.parentTrainings(pl, ["2027-03"]).length === 4 && TBV.audGroups(pl).join() === "Herkes,B takım" && h[0] === "Herkes: Cumartesi 14:00" && h[1] === "B takım: Cumartesi 10:30";
+  })],
+  ["veli PDF yarışı", F("yarış ay altında kimleriyle", () => {
+    const m = TBV.monthOf("2027-03", [], [{ date: "2027-03-12", endDate: "2027-03-14", title: "İzmir Kupası", cat: "Yarış", aud: { team: "A", cls: "opt", clsName: "Optimist" } }]);
+    return m.races === 1 && m.notes[0].label === "12–14 İzmir Kupası · A takım · Optimist" && m.cells[12].race.length === 1;
+  })],
+]);

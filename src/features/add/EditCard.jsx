@@ -326,7 +326,7 @@ export function EditCard({ d, meta, planTitle, done, noteState, cancelled, repea
             {meta && <span>{meta}</span>}
           </p>
         )}
-        {repeat && <p className="mt-1 px-1 text-[0.75rem] text-mut">Değişiklik yalnız bu haftaya uygulanır.</p>}
+        {repeat && <p className="mt-1 px-1 text-[0.75rem] text-mut">Değişiklik yalnız bu plana uygulanır.</p>}
         {((assign && assign.length > 0) || (assign && onAddStaff) || planTitle) && (
           <ul className="mt-4 overflow-hidden rounded-2xl bg-card shadow-[0_1px_3px_rgba(38,40,44,.05)] [&>li:last-child]:border-b-0">
             {who}

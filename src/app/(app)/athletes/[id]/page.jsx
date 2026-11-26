@@ -24,6 +24,8 @@ import { Loading } from "@/components/ui/Loader";
 import { athleteDues, lastMonths } from "@/lib/dues";
 import { loadDuesRange } from "@/features/dues/duesData";
 import { saveBody } from "@/features/athletes/data";
+import { setTeam, useTeams } from "@/features/athletes/takimlar";
+import { TEAMS } from "@/lib/kimler";
 import { bodyText, cleanBody, heightOf, lastBody, weightOf } from "@/lib/athleteBody";
 
 const MONTHS = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
@@ -54,6 +56,25 @@ function Card({ title, children }) {
       {title && <ListHead title={title} />}
       <RowList className="py-1">{children}</RowList>
     </section>
+  );
+}
+
+// Takım (A, B; Seyhun 2026-11-26): antrenmanda "Kimler" seçimi için (features/athletes/takimlar.js, lib/kimler.js)
+function TeamRow({ id }) {
+  const { myUid } = useData();
+  const teams = useTeams(myUid);
+  const cur = teams[id] || "";
+  return (
+    <div className="flex min-h-[2.75rem] items-center justify-between gap-4 border-t border-line py-2">
+      <span className="shrink-0 text-[0.8125rem] text-mut">Takım</span>
+      <span className="flex gap-1">
+        {["", ...TEAMS].map((t) => (
+          <button key={t || "yok"} type="button" data-press aria-pressed={cur === t} onClick={() => cur !== t && setTeam(myUid, id, t).catch(() => {})} className={`h-8 min-w-10 rounded-full px-3 text-[0.875rem] font-semibold ${cur === t ? "bg-acc text-white" : "bg-bg text-mut"}`}>
+            {t || "Yok"}
+          </button>
+        ))}
+      </span>
+    </div>
   );
 }
 
@@ -303,6 +324,7 @@ function Detail() {
         <Row label="Kan grubu" value={a.studentBloodType} />
         <Row label="Yelken sınıfı" value={cls || "Atanmamış"} />
         <Row label="Antrenör" value={coach || "Atanmamış"} />
+        <TeamRow id={a.id} />
       </Card>
 
       <AppLogin athlete={a} />

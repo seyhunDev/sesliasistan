@@ -1,0 +1,30 @@
+/* Toplu antrenman ve veli takvimi pencereleri (koyu Sahne penceresi; TopluAntrenman.jsx, VeliTakvimi.jsx) */
+.tb { --tb-lime: #d4ff3a; --tb-box: #1c1c1f; --tb-line: #2e2e33; display: flex; flex-direction: column; gap: .8rem; color: #fff; }
+.tb-k { font-size: .6875rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: #a1a1aa; margin-bottom: .4rem; }
+.tb-chips { display: flex; flex-wrap: wrap; gap: .4rem; }
+.tb-chip { min-height: 2.25rem; padding: 0 .8rem; border-radius: 999px; border: 1px solid var(--tb-line); background: var(--tb-box); font-size: .875rem; font-weight: 600; color: #d4d4d8; }
+.tb-chip[aria-pressed="true"] { background: var(--tb-lime); border-color: var(--tb-lime); color: #111; }
+.tb-seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); background: var(--tb-box); border: 1px solid var(--tb-line); border-radius: .9rem; padding: 3px; }
+.tb-seg button { min-height: 2.25rem; border-radius: .7rem; font-size: .875rem; font-weight: 700; color: #a1a1aa; }
+.tb-seg button[aria-checked="true"] { background: #fff; color: #111; }
+.tb-row { display: flex; align-items: center; justify-content: space-between; gap: .75rem; min-height: 3rem; padding: 0 .85rem; background: var(--tb-box); border: 1px solid var(--tb-line); border-radius: .9rem; font-size: .9375rem; text-align: left; width: 100%; }
+.tb-row > span:first-child { color: #d4d4d8; flex-shrink: 0; }
+.tb-row input { min-width: 0; flex: 1; background: transparent; border: 0; outline: 0; color: #fff; font-weight: 700; text-align: right; font-size: 1rem; }
+.tb-tm { display: flex; align-items: center; gap: .3rem; min-width: 0; }
+.tb-tm input { width: 5.5rem; flex: none; color-scheme: dark; }
+.tb-tg { width: 2.6rem; height: 1.55rem; border-radius: 1rem; background: #3a3a40; position: relative; flex-shrink: 0; transition: background .15s; }
+.tb-tg::after { content: ""; position: absolute; left: 3px; top: 3px; width: 1.15rem; height: 1.15rem; border-radius: 50%; background: #fff; transition: left .15s; }
+[aria-checked="true"] > .tb-tg { background: var(--tb-lime); }
+[aria-checked="true"] > .tb-tg::after { left: calc(100% - 1.15rem - 3px); background: #111; }
+.tb-sum { padding: .75rem .85rem; border-radius: 1rem; background: var(--tb-box); border: 1px solid var(--tb-line); }
+.tb-sum b { display: block; font-size: 1.05rem; color: var(--tb-lime); }
+.tb-sum small { display: block; margin-top: .2rem; font-size: .8125rem; color: #a1a1aa; line-height: 1.4; }
+.tb-note { align-items: flex-start; padding-block: .75rem; }
+.tb-row textarea { min-width: 0; flex: 1; background: transparent; border: 0; outline: 0; color: #fff; font-size: 1rem; resize: none; line-height: 1.4; }
+.tb-row input::placeholder, .tb-row textarea::placeholder { color: #71717a; font-weight: 500; }
+/* Takvimde bayram ve resmi tatil (CalendarView: gün listesi satırı, nokta, iPad hücre adı) */
+.cal-sh [data-c="hol"] { --tfg: #ff6b6b; }
+.tb-list { display: flex; flex-direction: column; gap: .4rem; }
+.tb-li { display: flex; flex-direction: column; gap: .5rem; }
+.tb-li > .tb-row b { font-weight: 700; color: var(--tb-lime); white-space: nowrap; }
+.tb-row > .tb-rn { min-width: 0; flex: 1; color: #fff !important; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 1 !important; }

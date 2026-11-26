@@ -375,7 +375,7 @@ export function AddSheet({ open, onClose, seed }) {
                 done={!!rec?.done}
                 noteState={edit.kind === "note" && rec && (rec.done || rec.archived) ? `${rec.done ? "Yapıldı" : "Arşivde"}${rec.doneAt || rec.archivedAt ? ` ${relLow(rec.doneAt || rec.archivedAt)}` : ""}` : ""}
                 cancelled={edit.kind === "plan" && rec?.status === "cancelled"}
-                repeat={edit.kind === "plan" && rec?.seriesId ? repeatLabel(rec.repeat?.until) : ""}
+                repeat={edit.kind === "plan" && rec?.seriesId ? (rec.repeat?.every === "bulk" ? "Toplu antrenman" : repeatLabel(rec.repeat?.until)) : ""}
                 onToggleDone={() => {
                   toggleTask(edit.id);
                   toast(rec?.done ? "Görev yeniden açıldı" : "Görev yapıldı");
@@ -430,7 +430,7 @@ export function AddSheet({ open, onClose, seed }) {
                     ? async () => {
                       const n = await deleteSeries(rec.seriesId, rec.date);
                       if (n) {
-                        toast(`${n} haftalık plan silindi`);
+                        toast(`${n} ${rec.repeat?.every === "bulk" ? "" : "haftalık "}plan silindi`);
                         onClose();
                       }
                     }
