@@ -28,3 +28,7 @@
 - Toplu antrenman penceresinde "Yeni | Eklenenler · N": her toplu ekleme bir satır (tarih aralığı, sayı, saat, kimler).
 - Satıra dokun: saat/bitiş/ad/yer → "Hepsine kaydet" (DataProvider.updateSeries, serinin tüm planları); "Hepsini sil" iki dokunuşla (deleteSeries).
 - Sesle: "toplu eklenen antrenmanları göster / sil / saatini düzelt" → pencere Eklenenler sekmesinde açılır (bulkList, isler/topluAntrenman.js runBulkList).
+
+## Veli PDF yalnız antrenman, tatil, yarış (2026-11-26, üçüncü PR)
+- Seyhun: kişisel ve diğer planlar ("… son günü") PDF'e girmez. Yarış = tür "Yarış" planının kendisi; talimattan yazılan son tarihler ("İzmir Kupası: Kayıt son günü") ve kayıt/ödeme/başvuru/toplantı satırları çıkar (`isRacePlan(p, plans)`).
+- Yarış günleri plandaki başlangıç/bitişten. Veli takvimi penceresinde yarışa dokun: Önce / Sonra en çok 3 ekstra gün (`ext`, `raceDays`, `cleanExt`); yalnız PDF'e uygulanır, yarış planı değişmez; bu cihazda hatırlanır (sa-veli-takvim).

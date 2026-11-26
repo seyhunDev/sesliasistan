@@ -7,7 +7,7 @@ import { PdfViewer } from "@/components/ui/PdfViewer";
 import { useData } from "@/features/data/DataProvider";
 import { todayStr } from "@/lib/utils/format";
 import { monthLabel, monthsAhead } from "@/lib/topluAntrenman";
-import { monthOf, parentRaces, parentTrainings, periodTitle } from "@/lib/veliTakvimi";
+import { cleanExt, monthOf, parentRaces, parentTrainings, periodTitle } from "@/lib/veliTakvimi";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { audLabel } from "@/lib/kimler";
 import { KimlerPick, useKimler } from "./Kimler";
@@ -23,6 +23,8 @@ const saved = () => {
     return {};
   }
 };
+const short = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
+const range = (a, b) => (!b || a === b ? short(a) : `${short(a)} – ${short(b)}`);
 export function VeliTakvimi({ open, onClose, month, prefill }) {
   const { plans, updateRecord } = useData();
   const { profile } = useAuth();
@@ -34,14 +36,16 @@ export function VeliTakvimi({ open, onClose, month, prefill }) {
     const s = saved();
     const start = month && all.includes(month) ? month : today.slice(0, 7);
     const i = all.indexOf(start);
-    return { months: prefill?.months?.length ? prefill.months.filter((m) => all.includes(m)) : all.slice(i, i + 3), title: s.title || "", note: s.note || "" };
+    return { months: prefill?.months?.length ? prefill.months.filter((m) => all.includes(m)) : all.slice(i, i + 3), title: s.title || "", note: s.note || "", ext: s.ext && typeof s.ext === "object" ? s.ext : {} };
   });
   const [view, setView] = useState(false);
   const put = (p) => setF((x) => ({ ...x, ...p }));
   const flip = (m) => put({ months: f.months.includes(m) ? f.months.filter((x) => x !== m) : [...f.months, m] });
   const months = useMemo(() => [...f.months].sort(), [f.months]);
   const n = useMemo(() => parentTrainings(plans, months).length, [plans, months]);
-  const races = useMemo(() => parentRaces(plans, months), [plans, months]);
+  const races = useMemo(() => parentRaces(plans, months, null, f.ext), [plans, months, f.ext]);
+  // Ekstra gün yalnız PDF içindir, yarış planı değişmez
+  const bump = (id, k, d) => put({ ext: { ...f.ext, [id]: { ...cleanExt(f.ext[id]), [k]: cleanExt({ [k]: cleanExt(f.ext[id])[k] + d })[k] } } });
   const nRace = races.length;
   // Yarışın kimleri yarış planına yazılır (Takvim, PDF); yarışa katılacak hesaplar audUids (sporcu tarafında yalnız görünürlük)
   const setRaceAud = (r, aud) => updateRecord("plan", r.id, aud ? { aud, audUids: kim.uidsOf(aud) } : { aud: null, audUids: null }, { name: profile?.name ?? "Kullanıcı" });
@@ -49,13 +53,13 @@ export function VeliTakvimi({ open, onClose, month, prefill }) {
 
   const make = () => {
     try {
-      localStorage.setItem(KEY, JSON.stringify({ title: f.title, note: f.note }));
+      localStorage.setItem(KEY, JSON.stringify({ title: f.title, note: f.note, ext: f.ext }));
     } catch {}
     setView(true);
   };
   const load = useCallback(async () => {
     const [{ buildParentPdf }, { loadFonts }] = await Promise.all([import("./veliPdf"), import("@/features/athletes/raceDocs")]);
-    return buildParentPdf({ plans, months, title: f.title.trim(), note: f.note.trim() }, await loadFonts());
+    return buildParentPdf({ plans, months, title: f.title.trim(), note: f.note.trim(), ext: f.ext }, await loadFonts());
     // PDF bir kez hazırlanır (açıkken veri değişse de yeniden çizilmez)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view]);
@@ -82,10 +86,25 @@ export function VeliTakvimi({ open, onClose, month, prefill }) {
                   {races.map((r) => (
                     <div key={r.id} className="tb-li">
                       <button type="button" data-press="row" className="tb-row" aria-expanded={raceOpen === r.id} onClick={() => setRaceOpen(raceOpen === r.id ? "" : r.id)}>
-                        <span className="tb-rn">{r.title}</span>
+                        <span className="tb-rn">
+                          {r.title}
+                          <small>{range(r.date, r.endDate)}</small>
+                        </span>
                         <b>{audLabel(r.aud)}</b>
                       </button>
-                      {raceOpen === r.id && <KimlerPick value={r.aud} onChange={(aud) => setRaceAud(r, aud)} classes={kim.classes} />}
+                      {raceOpen === r.id && (
+                        <>
+                          <KimlerPick value={r.aud} onChange={(aud) => setRaceAud(r, aud)} classes={kim.classes} />
+                          {[["pre", "Önce"], ["post", "Sonra"]].map(([k, l]) => (
+                            <div key={k} className="tb-row tb-step">
+                              <span>{l}</span>
+                              <button type="button" data-press aria-label={`${l} bir gün az`} disabled={!cleanExt(f.ext[r.id])[k]} onClick={() => bump(r.id, k, -1)}>−</button>
+                              <b>{cleanExt(f.ext[r.id])[k] ? `${cleanExt(f.ext[r.id])[k]} gün` : "Yok"}</b>
+                              <button type="button" data-press aria-label={`${l} bir gün ekle`} disabled={cleanExt(f.ext[r.id])[k] >= 3} onClick={() => bump(r.id, k, 1)}>+</button>
+                            </div>
+                          ))}
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>
