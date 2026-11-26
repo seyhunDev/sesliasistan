@@ -17,6 +17,7 @@ import { Switch } from "@/features/settings/ui";
 import { MsgList } from "./BilgiMesaj";
 import {
   closeKanal,
+  arsivKanal,
   deleteKanal,
   noteStart,
   ensureKanal,
@@ -813,6 +814,11 @@ export function BilgiAdmin() {
     await fn().catch(() => toast(err));
     setKbusy(false);
   };
+  const arcK = (k, on = true) =>
+    arsivKanal(org, k.id, on).then(
+      () => toast(on ? `"${k.name}" arşive atıldı` : `"${k.name}" arşivden çıktı`, on ? { action: { label: "Geri al", onClick: () => arsivKanal(org, k.id, false).catch(() => {}) } } : {}),
+      () => toast("Olmadı, tekrar dene."),
+    );
   const delK = (k) => {
     let undone = false;
     const wasOpen = !!kanal?.open && kanal.id === k.id;
@@ -1019,13 +1025,14 @@ export function BilgiAdmin() {
           <Wave />
         </div>
       )}
-      {!izK && !open && (
+      {/* Ekran belgesi gelmeden Günü başlat gösterilmez (gün açıkken bir an görünüp kaybolmasın, Seyhun 2026-11-26) */}
+      {!izK && !open && b !== undefined && (
         <>
           <Link href="/" className="btn btn-round bzy-fab bzy-back" aria-label="Geri" data-press>
             <Ic n="back" />
           </Link>
           <div className="bzy-veil" />
-          <DayStart key={kanal?.id || "yok"} org={org} kanal={kanal} kanallar={kanallar} names={names} onList={() => setSheet("kanallar")} onIz={(k) => setIzK(k)} />
+          <DayStart key={kanal?.id || "yok"} org={org} kanal={kanal} kanallar={kanallar} names={names} onList={() => setSheet("kanallar")} onIz={(k) => setIzK(k)} hidden={hidden} onDel={delK} onArc={arcK} />
         </>
       )}
       {!izK && open && (
@@ -1219,6 +1226,7 @@ export function BilgiAdmin() {
           onOpen={(k) => kRun(() => reopenKanal(org, k, kanal), "Açılamadı")}
           onClose={(k) => kRun(() => closeKanal(org, k.id), "Kapatılamadı")}
           onDel={delK}
+          onArc={arcK}
         />
       </Sheet>
       <YarisSheets yaris={yaris} now={now} sheet={sheet} onClose={() => setSheet("")} onResult={addRes} resMsg={resMsg} />
