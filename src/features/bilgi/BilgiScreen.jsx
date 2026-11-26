@@ -12,6 +12,7 @@ import { sayDevice, sayWith } from "@/lib/speech/ttsClient";
 import { PttCancel, Wave } from "./Wave";
 import { mineOf, useCanliRace } from "@/features/liveScreen/sonuclar";
 import { groupColor } from "@/lib/roundScore";
+import { liveHead } from "@/features/liveScreen/fonts";
 import "./bilgi.css";
 
 // Sporcu bilgi ekranı (Seyhun 2026-11-15, örnek 4): başlıksız tek ekran, dokunulmaz. Üstte en büyük pusula derecesi (telefonun
@@ -411,16 +412,16 @@ function StartCard({ onGo, onClose, kanal, why = "", acct = null, uid = "" }) {
       </svg>
     </button>
   ) : null;
-  if (raw === null || kanal === undefined || (acct && !acct.ready)) return <div className="bz-go navy">{x}</div>;
+  if (raw === null || kanal === undefined || (acct && !acct.ready)) return <div className="bz-go navy sahne">{x}</div>;
   if (!kanal?.open)
     return (
-      <div className="bz-go navy">
+      <div className="bz-go navy sahne">
         {x}
         <div className="bz-card bz-none">{WHY[why] || "Kanal açık değil"}</div>
       </div>
     );
   return (
-    <div className="bz-go navy">
+    <div className="bz-go navy sahne">
       {x}
       <form
         className="bz-card"
@@ -1056,7 +1057,7 @@ export function BilgiScreen({ pub = "" }) {
     ) : null;
 
   return (
-    <main className={`bz${kor ? ` bz-kor bz-kor-${kor}` : ""}${active ? " bz-pton" : ""}${showMap ? " bz-mapon" : ""}${night ? "" : " bz-day"} bz-m-${mode}${mode === "pre" && sv.phase !== "none" ? " bz-cnt" : ""}`} data-bilgi>
+    <main className={`bz ${liveHead.variable}${kor ? ` bz-kor bz-kor-${kor}` : ""}${active ? " bz-pton" : ""}${showMap ? " bz-mapon" : ""}${night ? "" : " bz-day"} bz-m-${mode}${mode === "pre" && sv.phase !== "none" ? " bz-cnt" : ""}`} data-bilgi>
       {active && (
         <button type="button" className="bz-out" data-ask={bye ? "1" : undefined} onClick={exit} disabled={bye === 2} data-press>
           {bye === 2 ? "Çıkılıyor…" : bye ? "Çıkılsın mı?" : "Çıkış"}
