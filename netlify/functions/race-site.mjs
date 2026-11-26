@@ -9,7 +9,11 @@ import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import { cleanEmail, cleanKey } from "../../src/lib/pemKey.js";
 import { ackSig } from "../../src/lib/server/ackSign.js";
+import webpush from "web-push";
 import { KNOWN, dueNow } from "../../src/lib/server/raceSiteSync.js";
+import { watch, watchTime } from "../../src/lib/server/watchdog.js";
+import { recordInbox } from "../../src/lib/inbox.js";
+import { sendDevice } from "../../src/lib/server/sendDevice.js";
 
 export const config = { schedule: "*/10 * * * *" };
 
@@ -22,6 +26,16 @@ export default async function raceSite() {
   if (!getApps().length)
     initializeApp({ credential: cert({ projectId: env.NEXT_PUBLIC_FIREBASE_PROJECT_ID, clientEmail: cleanEmail(env.FIREBASE_CLIENT_EMAIL), privateKey: cleanKey(env.FIREBASE_PRIVATE_KEY) }) });
   const db = getFirestore();
+  // Nöbet (lib/server/watchdog.js): çalıştığını yazar, yarım saatte bir bildirim zamanlayıcısına bakar
+  await db.collection("system").doc("raceSite").set({ at: new Date().toISOString() }, { merge: true }).catch(() => {});
+  if (watchTime(10) && env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY) {
+    try {
+      webpush.setVapidDetails(env.VAPID_SUBJECT || "mailto:bildirim@sesliasistan.app", env.NEXT_PUBLIC_VAPID_PUBLIC_KEY, env.VAPID_PRIVATE_KEY);
+      await watch(db, "scheduler", { recordInbox, sendDevice });
+    } catch (e) {
+      console.warn("[nöbet]", e.message);
+    }
+  }
   const snap = await db.collection("raceSite").where("on", "==", true).get();
   const ids = [];
   for (const d of snap.docs) {
