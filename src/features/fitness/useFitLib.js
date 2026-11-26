@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
-import { libAttach, libDrop, libEntry, libMerge, libRename, libSetMedia } from "@/lib/fitness/library";
+import { libAttach, libDrop, libEntry, libMerge, libRename, libSetHow, libSetMedia } from "@/lib/fitness/library";
 import { FIT_LIB, loadLib, peekLib, saveLib, spreadLib } from "./fitnessData";
 
 // Hareket kütüphanesi (yalnız ana hesap okur/yazar): { lib, setMedia(item, { yt, media } ya da güncel kayıt => { yt, media }), merge(keep, keys), attach(key, künyeler), rename(key, ad), drop(key) }
@@ -117,6 +117,17 @@ export function useFitLib() {
     },
     [orgId],
   );
+  // Açıklamayı yazar ve programlara/sporculara taşır (boş: programlardaki anlatım kalır)
+  const setHow = useCallback(
+    async (key, how) => {
+      if (!orgId) return null;
+      const cur = await loadLib(orgId, { force: true });
+      const saved = await saveLib(orgId, libSetHow(cur, key, how));
+      spreadLib(orgId, all.current).catch((e) => console.warn("[fitness] açıklama sporculara aktarılamadı", e));
+      return saved;
+    },
+    [orgId],
+  );
   const drop = useCallback(
     async (key) => {
       if (!orgId) return null;
@@ -125,5 +136,5 @@ export function useFitLib() {
     },
     [orgId],
   );
-  return { lib, setMedia, addMany, addMale, setModel, merge, attach, rename, drop };
+  return { lib, setMedia, addMany, addMale, setModel, merge, attach, rename, setHow, drop };
 }

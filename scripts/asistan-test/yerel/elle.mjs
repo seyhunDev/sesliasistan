@@ -2539,6 +2539,24 @@ group("Fitness hareket kütüphanesi")([
     return !err && a.name === "Sırt çantalı split squat" && b.media?.[0]?.id === "a" && !added.length && LB.libNo(lib, b) === 1 &&
       LB.withLib({ ex: "plank", name: "Plank" }, p).name === "Kale" && !!busy.err;
   })],
+  ["hareketin açıklaması", F("Hareketler'de yazılan açıklama programdaki hareketin anlatımının yerine geçer; boşaltılınca programınki kalır", async () => {
+    const cur = LB.cleanLib({ next: 2, items: { plank: { no: 1, name: "Plank" } } });
+    const lib = LB.cleanLib(LB.libSetHow(cur, "plank", "Dirsekler omuz altında, karın sıkı."));
+    const it = LB.withLib({ ex: "plank", name: "Plank", how: "Eski anlatım" }, lib);
+    const back = LB.withLib({ ex: "plank", name: "Plank", how: "Eski anlatım" }, LB.cleanLib(LB.libSetHow(lib, "plank", "")));
+    const AP = await import("@/lib/fitness/animPrompt");
+    const txt = AP.animShareText({ name: "Plank", how: it.how });
+    return it.how === "Dirsekler omuz altında, karın sıkı." && back.how === "Eski anlatım" && !LB.sameMedia([{ name: "Plank", how: "Eski anlatım" }], [it]) &&
+      txt.startsWith("Plank\nDirsekler") && /"Plank"/.test(AP.animPrompt({ name: "Plank" }));
+  })],
+  ["hareketin animasyonu", F("animasyon (a) kütüphanede kalır, kız da erkek de görür, fotoğraflardan önce gelir", () => {
+    const M = (id, x = {}) => ({ id, kind: "photo", type: "image/jpeg", size: 1000, parts: 1, ...x });
+    const lib = LB.cleanLib({ next: 2, items: { plank: { no: 1, name: "Plank", m: true, media: [M("k"), M("e", { g: "m" }), M("v", { kind: "video", type: "video/mp4", a: true })] } } });
+    const media = lib.items.plank.media;
+    const f = LB.forSex(media, "k").map((m) => m.id).join();
+    const e = LB.forSex(media, "e").map((m) => m.id).join();
+    return media.find((m) => m.id === "v")?.a === true && f === "v,k" && e === "v,e" && LB.forSex([M("k")], "e")[0].id === "k";
+  })],
   ["hareket silinir", F("listeden çıkar, fotoğraf künyesi kütüphanede kalmaz (dosya Storage'da durur)", () => {
     const cur = LB.cleanLib({ next: 3, items: { plank: { no: 1, name: "Plank" }, dips: { no: 2, name: "Dips" } }, alias: { "c:dips": "dips" } });
     const lib = LB.cleanLib(LB.libDrop(cur, "dips"));

@@ -65,6 +65,8 @@ export function cleanLib(v = {}) {
     if (spare.length) o.spare = spare;
     if (e.m || yt || media.length) o.m = true;
     if (e.renamed) o.renamed = true;
+    const how = S(e.how, 500);
+    if (how) o.how = how; // elle yazılan açıklama (Hareketler › hareket › Açıklama); programlardaki anlatımın yerine geçer
     items[k] = o;
     next = Math.max(next, no + 1);
   }
@@ -158,7 +160,8 @@ export function withLib(it, lib) {
   // Başka adla yazılmış aynı hareket (birleştirilmiş ya da eşleştirilmiş) kütüphanedeki adı alır: her programda ve sporcuda tek ad
   // (listedeki hareket, adı elle değiştirilmediyse kendi adıyla kalır: "Diz üstü şınav")
   const k = libKey(lib, it);
-  const named = e.name && e.name !== it.name && (k !== exKey(it) || isCustomKey(k) || e.renamed) ? { ...it, name: e.name } : it;
+  const renamed = e.name && e.name !== it.name && (k !== exKey(it) || isCustomKey(k) || e.renamed) ? { ...it, name: e.name } : it;
+  const named = e.how && e.how !== renamed.how ? { ...renamed, how: e.how } : renamed;
   if (!e.m) return named;
   const o = { ...named };
   delete o.yt;
@@ -169,18 +172,21 @@ export function withLib(it, lib) {
 }
 // Cinsiyete göre fotoğraf (Seyhun 2026-11-25): erkek ("e") kullanıcı, varsa g:"m" işaretli erkek fotoğrafını görür;
 // diğerleri (kız, bilinmeyen) işaretsizleri. Hareketin yalnız erkek fotoğrafı varsa herkes onu görür.
+// Animasyon (a: true) herkese ve en önde gösterilir.
 export function forSex(media, sex) {
-  const m = media || [];
+  const all = media || [];
+  const anim = all.filter((x) => x?.a);
+  const m = all.filter((x) => !x?.a);
   const male = m.filter((x) => x?.g === "m");
-  if (!male.length) return m;
+  if (!male.length) return [...anim, ...m];
   const rest = m.filter((x) => x?.g !== "m");
-  return sex === "e" || !rest.length ? male : rest;
+  return [...anim, ...(sex === "e" || !rest.length ? male : rest)];
 }
 export const itemsWithLib = (items = [], lib) => (items || []).map((it) => withLib(it, lib));
 export const progWithLib = (prog, lib) => ({ ...prog, days: (prog?.days || []).map((d) => ({ ...d, items: itemsWithLib(d.items, lib) })) });
 
 // Aynı mı (gereksiz yazma olmasın)
-const sig = (items = []) => JSON.stringify((items || []).map((it) => [it.name || "", it.yt?.id || "", it.yt?.start || 0, (it.media || []).map((m) => m.id).join(",")]));
+const sig = (items = []) => JSON.stringify((items || []).map((it) => [it.name || "", it.how || "", it.yt?.id || "", it.yt?.start || 0, (it.media || []).map((m) => m.id).join(",")]));
 export const sameMedia = (a, b) => sig(a) === sig(b);
 
 // Kütüphanedeki sıralı liste (numaraya göre), arama Türkçe harfsiz
@@ -298,6 +304,17 @@ export function libRename(lib, key, name) {
   const alias = { ...(lib.alias || {}) };
   if (k2 && k2 !== key) alias[k2] = key;
   return { lib: { ...lib, alias, items: { ...lib.items, [key]: { ...e, name: n, renamed: true } } } };
+}
+
+// Hareketin açıklaması (Hareketler'de elle yazılır; boşsa programlardaki anlatım kalır)
+export function libSetHow(lib, key, how) {
+  const e = lib?.items?.[key];
+  if (!e) return lib;
+  const h = S(how, 500);
+  const o = { ...e };
+  if (h) o.how = h;
+  else delete o.how;
+  return { ...lib, items: { ...lib.items, [key]: o } };
 }
 
 // Hareketi listeden siler (fotoğraf/video dosyaları silinmez; "Hareketsiz kalan dosyalar"da durur). Programda geçen silinmez.

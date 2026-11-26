@@ -11,13 +11,14 @@ import { ytThumb } from "@/lib/fitness/youtube";
 import { Big, Thumb, Viewer } from "./ExerciseMedia";
 import { MEDIA_MAX, prepMedia, saveMedia } from "./fitMedia";
 import { YtEdit } from "./YtVideo";
+import { AnimTools, HowEdit } from "./ExerciseAnim";
 
 // Hareketlerim'de bir hareket: tam ekran. Üstte büyük önizleme, altında 3 kutu (dosya, yükleniyor %, yüklenemedi, boş),
 // Fotoğraf · Video · Bağlantı. Her dosya yüklenir yüklenmez tek başına kaydedilir (güncel kayda eklenir, arada eklenen
 // ezilmez); sayfadan çıkılsa da yükleme sürer ve kaydedilir. "Kaldır" yalnız hareketten çıkarır, dosya silinmez.
 // put(fn): fn(güncel kayıt) => { yt, media } kaydeder (useFitLib.setMedia).
 let seq = 0;
-export function ExerciseScreen({ e, uses = 0, put, onBack, children }) {
+export function ExerciseScreen({ e, uses = 0, how = "", onHow, put, onBack, children }) {
   const confirmAsk = useConfirm();
   const { profile } = useAuth();
   const orgId = profile?.orgId;
@@ -92,7 +93,7 @@ export function ExerciseScreen({ e, uses = 0, put, onBack, children }) {
         </div>
         <h1 className="mt-2 text-[1.625rem] font-semibold leading-tight">{e.name}</h1>
         <p className="mt-0.5 text-[0.8125rem] text-mut">{[uses ? `${uses} programda` : "", "sporcular da görür"].filter(Boolean).join(" · ")}</p>
-        {exById(e.ex)?.how && <p className="mt-2 rounded-xl bg-card px-3 py-2 text-[0.8125rem] leading-snug text-mut ring-1 ring-line">{exById(e.ex).how}</p>}
+        <HowEdit how={e.how || how || exById(e.ex)?.how || ""} own={!!e.how} onSave={onHow} />
 
         <div className="relative mt-3">
           {shown ? (
@@ -170,6 +171,7 @@ export function ExerciseScreen({ e, uses = 0, put, onBack, children }) {
             className="mt-3 rounded-2xl border border-line bg-card p-3"
           />
         )}
+        <AnimTools e={e} how={e.how || how || exById(e.ex)?.how || ""} media={media} full={free < 1} orgId={orgId} put={put} />
         {children}
       </div>
       {open && <Viewer orgId={orgId} m={open} onClose={() => setOpen(null)} />}

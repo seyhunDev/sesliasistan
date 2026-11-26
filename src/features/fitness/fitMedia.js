@@ -254,3 +254,23 @@ export async function dropAllMedia(orgId) {
   } catch {}
   return n;
 }
+
+// Animasyon dosyası (Hareketler › Animasyon yükle): GIF olduğu gibi kalır (JPEG'e çevrilirse oynamaz), video prepMedia'dan geçer
+const GIF_MAX = 30 * 1024 * 1024;
+export async function prepAnim(file, onProg) {
+  if (/^image\/gif$/.test(file?.type || "") || /\.gif$/i.test(file?.name || "")) {
+    if (file.size > GIF_MAX) throw new Error("GIF çok büyük (en çok 30 MB).");
+    return { blob: file, type: "image/gif", kind: "photo" };
+  }
+  if (!isVideoFile(file)) throw new Error("Video ya da GIF seç.");
+  return prepMedia(file, onProg);
+}
+
+// Hareketin fotoğrafı JPEG base64 olarak (yapay zekaya gönderilir); blob: paylaşım için dosya
+export async function photoFile(orgId, m, side = 1280) {
+  const { src, blob } = await loadMedia(orgId, m);
+  const b = blob || (await (await fetch(src)).blob());
+  const img = await compressImage(b, side, 0.85);
+  const file = new Blob([Uint8Array.from(atob(img.base64), (ch) => ch.charCodeAt(0))], { type: "image/jpeg" });
+  return { base64: img.base64, file };
+}
