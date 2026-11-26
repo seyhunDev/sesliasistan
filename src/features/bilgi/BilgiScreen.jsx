@@ -663,6 +663,45 @@ function useVoice(on, msg, ses, loadKalip) {
 
 // Ceza uyarısı (Seyhun 2026-11-25): Yönet ceza verince ilk 10 sn tam ekran (arkası bulanık, geri sayım), asistan sesiyle okunur;
 // sonra üstte şerit olarak kalır, Yönet kaldırana kadar. Tam ekrana dokununca hemen şeride iner.
+// Konuş kutusu (Seyhun 2026-11-26 "Yönet'teki gibi kare, hissedilsin"): haritayla aynı boyda kare; dokun başla, tekrar dokun gönder.
+// Durumlar yazıyla ve renkle: Dokun, konuş · Mikrofon açılıyor · Konuşuyor 0:05 (ses çubukları) · Gönderiliyor · Gönderildi ✓
+function TalkTile({ ptt, now }) {
+  const rec = ptt.rec;
+  const sec = rec ? Math.max(0, Math.floor((now - rec.t0) / 1000)) : 0;
+  const ok = !rec && ptt.done && now - ptt.done.at < 2500;
+  const st = rec ? "rec" : ptt.arm ? "arm" : ptt.sending ? "send" : ok ? "ok" : "";
+  const left = ptt.max - sec;
+  const label = { rec: `Konuşuyor · ${Math.floor(sec / 60)}:${pad(sec % 60)}`, arm: "Mikrofon açılıyor", send: "Gönderiliyor", ok: "Gönderildi" }[st] || "Dokun, konuş";
+  return (
+    <button
+      type="button"
+      className="bz-ptt bz-tt"
+      data-st={st || undefined}
+      aria-label={rec ? "Bitir ve gönder" : "Konuş"}
+      aria-pressed={!!rec}
+      onPointerDown={(e) => ptt.flip(e, "y", null)}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      <small aria-live="polite">{label}</small>
+      {rec ? (
+        <span className="bz-tkl" aria-hidden="true">
+          {[0.5, 0.85, 1, 0.75, 0.55].map((f, i) => (
+            <i key={i} style={{ height: `${0.375 + Math.min(1, ptt.lvl * f * 1.6) * 1.5}rem` }} />
+          ))}
+        </span>
+      ) : st === "ok" ? (
+        <b>✓</b>
+      ) : (
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+          <rect x="9" y="3" width="6" height="11" rx="3" />
+          <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+        </svg>
+      )}
+      <em>{rec ? (left <= 10 ? `${left} sn kaldı · dokun, gönder` : "Dokun, gönder") : "Antrenöre"}</em>
+    </button>
+  );
+}
+
 function PenAlert({ pen, now }) {
   const [seen, setSeen] = useState(null);
   if (pen?.at && seen?.at !== pen.at) setSeen({ at: pen.at, until: now + PEN_BIG_MS });
@@ -939,7 +978,6 @@ export function BilgiScreen({ pub = "" }) {
   // Sporcudan Yönet'e bas-konuş (Seyhun 2026-11-17, örnek C): altta ortada mikrofon; basılı tut, konuş, bırakınca Yönet'e gider
   // Yönet'teki gibi aç/kapa (Seyhun 2026-11-26): dokun başlasın, tekrar dokun gönder; en çok 60 sn
   const ptt = usePtt({ send: (blob, sec) => sendGelen(dev, { org: pub ? porg : org, k: pub, ch: kanal?.id || "", sail: who?.sail, name: who?.name, uid: profile?.uid }, blob, sec), max: 60 });
-  const recSec = ptt.rec ? Math.max(0, Math.floor((now - ptt.rec.t0) / 1000)) : 0;
 
   // Tek dokunuş: pusula izni (iPhone), sesin açılması ve ekranın açık kalması tarayıcının dokunuş istediği işler
   const start = async (w) => {
@@ -1071,28 +1109,7 @@ export function BilgiScreen({ pub = "" }) {
           <Wave />
         </span>
       )}
-      {active && (
-        <button
-          type="button"
-          className="bz-ptt"
-          data-rec={ptt.rec ? "1" : undefined}
-          data-cancel={ptt.rec?.cancel ? "1" : undefined}
-          data-ok={ptt.done && now - ptt.done.at < 2000 ? "1" : undefined}
-          aria-label={ptt.rec ? "Bitir ve gönder" : "Konuş"}
-          aria-pressed={!!ptt.rec}
-          onPointerDown={(e) => ptt.flip(e, "y", null)}
-          onContextMenu={(e) => e.preventDefault()}
-        >
-          {ptt.rec ? (
-            <b className="num">{recSec}</b>
-          ) : (
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
-              <rect x="9" y="3" width="6" height="11" rx="3" />
-              <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
-            </svg>
-          )}
-        </button>
-      )}
+      {active && <TalkTile ptt={ptt} now={now} />}
       {mode === "last" && (
         <div className="bz-last">
           <div className="bz-lm num">{sv.txt}</div>

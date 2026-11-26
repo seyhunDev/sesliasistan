@@ -27,6 +27,7 @@ export function usePtt({ send, onSent, live = null, max = SES_MAX_SEC }) {
   const [arm, setArm] = useState(null); // { key }
   const [tap, setTap] = useState(null); // { key, at } kısa dokunuş (kayıt olmadı)
   const [lvl, setLvl] = useState(0); // kayıt sırasında sesin seviyesi 0–1
+  const [sending, setSending] = useState(null); // { key } kayıt bitti, gidiyor (düğmede "Gönderiliyor")
   const st = useRef(null);
   const stop = () => {
     const s = st.current;
@@ -94,6 +95,7 @@ export function usePtt({ send, onSent, live = null, max = SES_MAX_SEC }) {
         return toast("Ses iptal edildi");
       }
       const blob = new Blob(parts, { type: mr.mimeType || type || "audio/mp4" });
+      setSending({ key });
       onSent?.({ kind: "ses", dur: Math.round(dur), blob, to, at: Date.now(), ok: null });
       if (s.live) await Promise.race([s.segDone, new Promise((ok) => setTimeout(ok, 1500))]);
       // Parça gitmediyse (ikinci kaydedici açılmadı ya da bir parça yazılamadı) tam ses eski yolla bir kez gider
@@ -102,6 +104,7 @@ export function usePtt({ send, onSent, live = null, max = SES_MAX_SEC }) {
         s.live && all.length && all.every(Boolean)
           ? await s.live.finish(s.id, dur, to).catch(() => ({ ok: false }))
           : await send(blob, dur, to).catch(() => ({ ok: false }));
+      setSending(null);
       onSent?.({ kind: "ses", dur: Math.round(dur), blob, to, ...r, ok: !!r.ok });
       if (r.ok) {
         haptic("success");
@@ -170,7 +173,7 @@ export function usePtt({ send, onSent, live = null, max = SES_MAX_SEC }) {
     else s.up = true;
   };
   useEffect(() => () => stop(), []);
-  return { rec, done, arm, tap, lvl, begin, end, move, flip, max };
+  return { rec, done, arm, tap, lvl, sending, begin, end, move, flip, max };
 }
 
 // Mikrofonun ses seviyesi (kayıt düğmesindeki çubuklar): saniyede ~12 kez 0–1 arası; durdurma işlevi döner. Açılamazsa çubuklar kendiliğinden oynar.
