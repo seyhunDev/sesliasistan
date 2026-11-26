@@ -267,9 +267,17 @@ export async function prepAnim(file, onProg) {
 }
 
 // Hareketin fotoğrafı JPEG base64 olarak (yapay zekaya gönderilir); blob: paylaşım için dosya
+// Storage'daki dosya sunucudan alınır (Storage tarayıcıya CORS izni vermiyor; doğrudan fetch Safari'de "Load failed")
 export async function photoFile(orgId, m, side = 1280) {
   const { src, blob } = await loadMedia(orgId, m);
-  const b = blob || (await (await fetch(src)).blob());
+  let b = blob;
+  if (!b && m.link) b = await (await fetch(src)).blob();
+  if (!b) {
+    const { authFetch } = await import("@/lib/authFetch");
+    const r = await authFetch(`/api/fitness-anim?orgId=${encodeURIComponent(orgId)}&photo=${encodeURIComponent(m.id)}`);
+    if (!r.ok) throw new Error((await r.json().catch(() => ({})))?.error || "Fotoğraf alınamadı");
+    b = await r.blob();
+  }
   const img = await compressImage(b, side, 0.85);
   const file = new Blob([Uint8Array.from(atob(img.base64), (ch) => ch.charCodeAt(0))], { type: "image/jpeg" });
   return { base64: img.base64, file };

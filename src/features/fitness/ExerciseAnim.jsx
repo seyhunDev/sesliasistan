@@ -103,7 +103,7 @@ export function AnimTools({ e, how, media, full, orgId, put }) {
       }
       throw new Error("Animasyon çok uzun sürdü, sonra tekrar dene");
     } catch (x) {
-      toast(x.message || "Animasyon yapılamadı");
+      toast(x instanceof TypeError ? "Bağlantı kurulamadı, tekrar dene" : x.message || "Animasyon yapılamadı");
     } finally {
       setBusy("");
     }

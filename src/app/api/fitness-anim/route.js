@@ -88,12 +88,29 @@ function videoOf(j) {
   return all.filter((c) => c?.type === "video" && (c.data || c.uri)).at(-1) || null;
 }
 
+// GET ?photo=<dosya>: hareketin fotoğrafı aynı adresten (Storage tarayıcıdan okumaya izin vermiyor, CORS: telefon doğrudan
+// indiremiyor, Safari "Load failed" diyordu; 2026-11-26). Animasyon, Kopyala ve Paylaş fotoğrafı buradan alır.
+async function photo(orgId, mid) {
+  if (!/^[\w-]{1,80}$/.test(mid)) return bad("Geçersiz istek");
+  try {
+    const { getStorage } = await import("firebase-admin/storage");
+    const f = getStorage().bucket(process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET).file(`orgs/${orgId}/fitMedia/${mid}`);
+    const [[buf], [md]] = await Promise.all([f.download(), f.getMetadata()]);
+    if (buf.length > 5_500_000) return bad("Fotoğraf çok büyük.", 413);
+    return new NextResponse(buf, { headers: { "content-type": md?.contentType || "image/jpeg", "cache-control": "private, max-age=3600" } });
+  } catch (err) {
+    console.warn("[fitness-anim] fotoğraf okunamadı", mid, err?.message?.slice(0, 120));
+    return bad("Fotoğraf bulunamadı.", 404);
+  }
+}
+
 export async function GET(request) {
   const q = new URL(request.url).searchParams;
   const orgId = q.get("orgId") || "";
   const id = q.get("id") || "";
   const g = await gate(request, orgId);
   if (g.res) return g.res;
+  if (q.get("photo")) return photo(orgId, q.get("photo"));
   if (!/^[\w./-]{1,200}$/.test(id)) return bad("Geçersiz istek");
   try {
     const res = await fetch(`${API}/interactions/${encodeURIComponent(id)}`, { headers: hdr(), signal: AbortSignal.timeout(15000) });
