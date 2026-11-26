@@ -61,7 +61,7 @@ export default function ReportPage() {
     }
   };
   return (
-    <div className="pb-28">
+    <main className="sahne-pg pb-28">
       <PageHeader title="Asistan raporu" sub={sel ? `Konuşma · ${dayText(new Date(sel.at).toLocaleDateString("en-CA"))} ${hm(sel.at)}` : "Bugün, bu cihaz"} back="/settings/tests" />
       <div className="mt-2 flex gap-2">
         <Button full onClick={share}>Paylaş</Button>
@@ -94,6 +94,6 @@ export default function ReportPage() {
           ))
         )}
       </div>
-    </div>
+    </main>
   );
 }

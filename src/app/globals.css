@@ -587,15 +587,15 @@ html[data-warm] .boot:not([data-phase="out"]) { animation: bootwarm .3s ease-out
   animation: bootin .7s cubic-bezier(.2, .9, .3, 1) .75s both; }
 .boot-sub { margin-top: .7rem; font-size: .75rem; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; color: rgba(230, 240, 250, .5);
   animation: bootin .7s cubic-bezier(.2, .9, .3, 1) .9s both, bootpulse 1.8s ease-in-out 1.6s infinite; }
-/* Açık açılış (Seyhun 2026-11-23 "uygulama ilk açılırken ana sayfa renklerini kullansın"): Apple beyazı zemin, koyu daire içinde V, koyu gri yazı */
-.boot { color: #1d1d1f; }
-.boot-bg { background: #f5f5f7; }
+/* Koyu Sahne açılış (Seyhun 2026-11-26 "eski Velora kalmasın, şu anki uygulama arka planı"): Sahne siyahı zemin, limon daire içinde oyulmuş V, beyaz yazı */
+.boot { color: #f4f4f5; }
+.boot-bg { background: #0b0b0c; }
 .boot::before { display: none; }
-.boot-disc { fill: #0f0f11; }
-.boot-disc.boot-under { fill: #d4ff3a; }
+.boot-disc { fill: #d4ff3a; }
+.boot-disc.boot-under { fill: #0b0b0c; }
 .boot-disc-glow { display: none; }
-.boot-word { color: #1d1d1f; }
-.boot-sub { color: #6e6e73; }
+.boot-word { color: #f4f4f5; }
+.boot-sub { color: #a1a1aa; }
 .boot[data-phase="out"] { pointer-events: none; animation: bootout .55s cubic-bezier(.4, 0, .2, 1) forwards; }
 .boot[data-phase="out"] .boot-mark { animation: bootzoom .55s cubic-bezier(.4, 0, .2, 1) forwards; }
 /* Giriş ekranına uçuş (BootSplash flyTo): logo giriş ekranındaki yerine kayıp küçülür, zemin ve yazılar solar, alttaki (açık) giriş ekranı görünür */
@@ -1876,3 +1876,21 @@ html[data-theme="dark"] .it-step { background: rgba(11, 26, 51, .7); color: #dbe
 .sahne :is(.bg-bg, .bg-card) { background-color: #1f1f22; }
 .sahne :is(.bg-white) { background-color: #1f1f22; color: #f4f4f5; }
 .sahne :is(input, select, textarea) { color: #f4f4f5; }
+
+/* SAHNE SAYFA (Seyhun 2026-11-26 "eski tasarımda kalan sayfaları yenileyelim"): eski açık/lacivert sayfaları ana sayfanın koyu Sahne diline
+   tek sınıfla geçirir. <main className="sahne-pg …">: renk değişkenleri koyu + limon (Fitness'taki main.fs ile aynı), body'de de değişir
+   (alttan açılan pencereler ve alt çubuk koyu olur); eski lacivert kokpit (.ck) şeridi zemine karışır; başlık .sahne-t dar büyük harf. */
+main.sahne-pg, body:has(main.sahne-pg) {
+  color-scheme: dark;
+  --bg: #0b0b0c; --card: #17171a; --fg: #fff; --fg2: #e4e4e7; --mut: #a1a1aa; --mut2: #71717a; --line: #26262b; --fill: #1f1f22;
+  --acc: #d4ff3a; --acc2: #d4ff3a; --on-acc: #111; --accbg: rgba(212, 255, 58, .12); --deep: #17171a;
+  --rec: #ff6b6b; --ok: #d4ff3a; --warn: #fbbf5c; --warnbg: rgba(251, 191, 92, .12);
+}
+html:has(main.sahne-pg), body:has(main.sahne-pg) { background: #0b0b0c !important; }
+main.sahne-pg { background: #0b0b0c; color: #fff; }
+body:has(main.sahne-pg) .btn { --btn-gray: #1f1f22; }
+main.sahne-pg .ck { background: transparent; color: #fff; }
+main.sahne-pg .ck .btn-text { color: #d4ff3a; }
+main.sahne-pg .ck .ring-bg, main.sahne-pg .ck .btn-round .ring-bg { --tw-ring-color: #0b0b0c; }
+main.sahne-pg .ck-plan { background: #17171a; box-shadow: none; border: 1px solid var(--sh-lime, #d4ff3a); }
+.sahne-t { font-family: var(--lv-font-c), var(--font-num), system-ui, sans-serif; font-weight: 800; text-transform: uppercase; line-height: .9; letter-spacing: .01em; }
