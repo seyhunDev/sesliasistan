@@ -34,14 +34,43 @@ export function parentTrainings(plans = [], months = [], sel = null) {
     .sort((a, b) => (a.date + hm(a.time)).localeCompare(b.date + hm(b.time)));
 }
 
-// Yarışlar (tür "Yarış", yarış sayfasından eklenen plan): seçilen aylara değen, iptal edilmemiş, kitleye uyan
-export const isRacePlan = (p) => (p?.cat || p?.category) === "Yarış" && p.status !== "cancelled";
-export function parentRaces(plans = [], months = [], sel = null) {
+// Yarışlar: yalnız yarışın kendisi (tür "Yarış"). Talimattan yazılan son tarihler ("İzmir Kupası: Kayıt son günü") ve
+// diğer planlar PDF'e girmez (Seyhun 2026-11-26). Tarihler plandan; ext {id: {pre, post}} yalnız PDF'te gün ekler.
+const DEADLINE = /son\s*g[üu]n|kay[ıi]t|ba[şs]vuru|[öo]deme|teslim|bildirim|toplant[ıi]|kapan[ıi][şs]/i;
+export function isRacePlan(p, plans = []) {
+  if ((p?.cat || p?.category) !== "Yarış" || p.status === "cancelled" || !p.date) return false;
+  const t = String(p.title || "");
+  const i = t.indexOf(": ");
+  if (i > 0) {
+    const head = t.slice(0, i);
+    // Aynı yarışın asıl planı varsa "<yarış>: …" satırı bir son tarihtir
+    if (plans.some((q) => q !== p && (q.cat || q.category) === "Yarış" && ((p.raceId && q.raceId === p.raceId && !q.title?.includes(": ")) || q.title === head))) return false;
+    if (DEADLINE.test(t.slice(i + 2))) return false;
+  }
+  return !DEADLINE.test(t);
+}
+export const shiftDay = (d, n) => {
+  const x = new Date(`${d}T12:00:00`);
+  x.setDate(x.getDate() + n);
+  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
+};
+// Ekstra günler: önce/sonra en çok 3
+export const cleanExt = (e) => ({ pre: Math.max(0, Math.min(3, +e?.pre || 0)), post: Math.max(0, Math.min(3, +e?.post || 0)) });
+export function raceDays(p, e) {
+  const { pre, post } = cleanExt(e);
+  const end = p.endDate && p.endDate >= p.date ? p.endDate : p.date;
+  return { date: shiftDay(p.date, -pre), endDate: shiftDay(end, post) };
+}
+export function parentRaces(plans = [], months = [], sel = null, ext = {}) {
   const s = [...months].sort();
   if (!s.length) return [];
   const from = `${s[0]}-01`;
   const to = `${s.at(-1)}-31`;
-  return plans.filter((p) => isRacePlan(p) && p.date && p.date <= to && (p.endDate || p.date) >= from && audIncludes(sel, p.aud)).sort((a, b) => a.date.localeCompare(b.date));
+  return plans
+    .filter((p) => isRacePlan(p, plans) && audIncludes(sel, p.aud))
+    .map((p) => ({ ...p, ...raceDays(p, ext?.[p.id]), plan: { date: p.date, endDate: p.endDate || p.date } }))
+    .filter((p) => p.date <= to && p.endDate >= from)
+    .sort((a, b) => a.date.localeCompare(b.date));
 }
 
 // Bir ay: { ym, title, lead (Pazartesi'den önceki boş hücre), cells [{ date, day, train, hol }], count, notes }

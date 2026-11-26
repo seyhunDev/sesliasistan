@@ -12,7 +12,7 @@ const WK = ["Pt", "Sa", "Ça", "Pe", "Cu", "Ct", "Pz"];
 
 // opts: { plans, months, title, note }. Tek program bütün takımlar için (Seyhun 2026-11-26): her "Kimler" ayrı renk,
 // açıklamada adı ("Herkes", "A takım", "B takım · Optimist"); aynı günde iki kitle varsa hücre renklere bölünür.
-export async function buildParentPdf({ plans, months, title = "", note = "" }, fonts) {
+export async function buildParentPdf({ plans, months, title = "", note = "", ext = {} }, fonts) {
   const [{ PDFDocument, rgb }, { default: fontkit }] = await Promise.all([import("pdf-lib"), import("@pdf-lib/fontkit")]);
   const INK = rgb(0.09, 0.09, 0.11);
   const MUT = rgb(0.42, 0.42, 0.45);
@@ -32,7 +32,7 @@ export async function buildParentPdf({ plans, months, title = "", note = "" }, f
   const f = { r: await pdf.embedFont(fonts.sans, { subset: true }), b: await pdf.embedFont(fonts.sansB, { subset: true }) };
   const logo = fonts.logo ? await pdf.embedPng(fonts.logo).catch(() => null) : null;
   const trainings = parentTrainings(plans, sorted);
-  const races = parentRaces(plans, sorted);
+  const races = parentRaces(plans, sorted, null, ext);
   const sub = title;
   const PAL = [TR, rgb(0.06, 0.6, 0.38), rgb(0.52, 0.27, 0.82), rgb(0.05, 0.6, 0.66), rgb(0.86, 0.24, 0.55), rgb(0.45, 0.35, 0.22)];
   const groups = audGroups(trainings);

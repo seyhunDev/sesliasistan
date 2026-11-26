@@ -3540,6 +3540,20 @@ group("Toplu eklemeler listesi")([
   ["sesle", F("'toplu eklenen antrenmanların saatini düzelt' → liste", () => TBA.bulkListCommand("toplu eklenen antrenmanların saatini düzelt")?.tab === "list" && !TBA.bulkListCommand("antrenman ekle"))],
 ]);
 
+group("Veli takvimi: yalnız yarış ve antrenman")([
+  ["son tarih girmez", F("'İzmir Kupası: Kayıt son günü' ve kişisel plan PDF'te yok", () => {
+    const pl = [{ id: "r", raceId: "x", title: "İzmir Kupası", date: "2027-03-12", endDate: "2027-03-14", cat: "Yarış" }, { id: "d", raceId: "x", title: "İzmir Kupası: Kayıt son günü", date: "2027-03-01", cat: "Yarış" }, { id: "k", title: "Kira son günü", date: "2027-03-05", cat: "Ev" }, { id: "t", title: "Antrenman", date: "2027-03-06", cat: "Antrenman" }];
+    const r = TBV.parentRaces(pl, ["2027-03"]);
+    return r.length === 1 && r[0].id === "r" && TBV.parentTrainings(pl, ["2027-03"]).length === 1;
+  })],
+  ["ekstra gün", F("plan tarihleri, önce 1 sonra 1 gün yalnız PDF'te", () => {
+    const p = { id: "r", title: "İzmir Kupası", date: "2027-03-12", endDate: "2027-03-14", cat: "Yarış" };
+    const a = TBV.parentRaces([p], ["2027-03"])[0];
+    const b = TBV.parentRaces([p], ["2027-03"], null, { r: { pre: 1, post: 1 } })[0];
+    return a.date === "2027-03-12" && a.endDate === "2027-03-14" && b.date === "2027-03-11" && b.endDate === "2027-03-15" && p.date === "2027-03-12" && TBV.cleanExt({ pre: 9 }).pre === 3;
+  })],
+]);
+
 // Gün kaydı (Yönet › Günler › ⋯ › Gün kaydı): günlük + gün belgesi → özet, sporcu tablosu, olaylar
 const GK = await import("@/lib/gunKaydi");
 group("Gün kaydı")([
