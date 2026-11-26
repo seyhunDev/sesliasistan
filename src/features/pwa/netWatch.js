@@ -49,7 +49,10 @@ function kick() {
 // yalnız aradaki değişiklikler gelir (fazladan tam okuma yok).
 export function watchReconnect() {
   if (typeof window === "undefined") return () => {};
-  let hiddenAt = 0;
+  // Sayfa arkadayken yüklendiyse (yeni sürüm uygulama arkadayken kendiliğinden yenilendi, lib/newVersion.js): iPhone arkadaki sayfanın
+  // bağlantısını açılırken keser, Firestore hiç bağlanamadan bekler (Seyhun 2026-11-26 "güncellemeden sonra internet gidiyor, kapatıp
+  // açmak zorunda kalıyorum"). Böyle yüklenen sayfa ilk öne gelişte bağlantıyı yeniler.
+  let hiddenAt = document.visibilityState === "hidden" ? Date.now() - RESUME_KICK_MS - 1 : 0;
   const vis = () => {
     if (document.visibilityState === "hidden") return void (hiddenAt = Date.now());
     const away = hiddenAt ? Date.now() - hiddenAt : 0;

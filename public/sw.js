@@ -1,6 +1,6 @@
 // Sesli Asistan service worker: çevrimdışı açılış + plan hatırlatma bildirimleri.
 // Önbellek yalnızca yayında açık (?dev=1 ile kaydedilirse kapalı; geliştirmede eski dosya sorunu olmasın).
-const VERSION = "sa-v17";
+const VERSION = "sa-v18"; // v18: eski sürümün (lacivert açılışlı) kayıtlı sayfa ve dosya kopyaları silinsin
 const PAGES_CACHE = `${VERSION}-pages`;
 const STATIC_CACHE = `${VERSION}-static`;
 const PAGES = ["/", "/plans", "/tasks", "/notes", "/receipts", "/calendar", "/schedule", "/staff", "/login"];
@@ -86,7 +86,7 @@ self.addEventListener("fetch", (e) => {
           const late = await net.catch(() => null);
           if (late) return late.clone();
           return new Response(
-            '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Çevrimdışı</title><body style="font-family:system-ui;background:#f4f3ef;color:#26282c;display:grid;place-items:center;min-height:100vh;margin:0;text-align:center;padding:24px"><div><h1 style="font-size:20px">İnternet bağlantısı yok</h1><p style="color:#74777d">Bu sayfa henüz telefona kaydedilmedi. Bağlantı gelince kendiliğinden açılır.</p></div><script>addEventListener("online",()=>location.reload())</script>',
+            '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Çevrimdışı</title><body style="font-family:system-ui;background:#0b0b0c;color:#f4f4f5;display:grid;place-items:center;min-height:100vh;margin:0;text-align:center;padding:24px"><div><h1 style="font-size:20px">İnternet bağlantısı yok</h1><p style="color:#a1a1aa">Bu sayfa henüz telefona kaydedilmedi. Bağlantı gelince kendiliğinden açılır.</p></div><script>addEventListener("online",()=>location.reload())</script>',
             { headers: { "content-type": "text/html; charset=utf-8" } },
           );
         }
