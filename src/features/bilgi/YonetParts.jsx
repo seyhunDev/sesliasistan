@@ -152,10 +152,9 @@ export function DayStart({ org, kanal, kanallar, names, onList, onIz, hidden = [
 export function VideoTile({ app, onDone }) {
   if (!app) return null;
   return (
-    <RecPick onFile={onDone} className="bzy-vid" aria-label="Video çek">
-      <small>Video</small>
-      <span className="bzy-rec" aria-hidden="true" />
-      <b>Çek</b>
+    <RecPick onFile={onDone} className="bzy-sqb" aria-label="Video çek">
+      <span className="bzy-sqdot" aria-hidden="true" />
+      <b>Video</b>
     </RecPick>
   );
 }
@@ -272,12 +271,13 @@ export function useRepeat(org, list, ctx, onSent) {
 export const kalipEntry = (k) => (k.text ? { kind: "msg", text: k.text, kalip: k.name } : { kind: "ses", dur: k.dur, kalip: k.name });
 
 // Son 3 kalıp: dokun = seçilenlere bir kez; basılı tut = Tekrarla; tekrar sürerken dokun = Durdur
-export function KalipRow({ list, rep, now, onSend, onHold, onStop, onAll }) {
+// Kare düzen (Seyhun 2026-11-26 örnek A): ilk kare "Kalıp" kapatır, sonra en çok 8 kalıp karesi (yatay kayar), son kare "Tümü"
+export function KalipRow({ list, rep, now, onSend, onHold, onStop, onAll, onClose }) {
   const t = useRef(null);
   const held = useRef(false);
   // Liste boşken ya da yüklenirken hazır yazılı kalıplar gösterilir (satır hep görünür; Seyhun 2026-11-25 "hazır komutlar gösterilmiyor")
   const src = list?.length ? list : KALIP_HAZIR.map((x, i) => ({ id: `h${i}`, name: x, text: x, used: -i }));
-  const top = [...src].sort((a, b) => (b.used || 0) - (a.used || 0)).slice(0, 3);
+  const top = [...src].sort((a, b) => (b.used || 0) - (a.used || 0)).slice(0, 8);
   const down = (k) => {
     held.current = false;
     clearTimeout(t.current);
@@ -294,6 +294,10 @@ export function KalipRow({ list, rep, now, onSend, onHold, onStop, onAll }) {
   };
   return (
     <div className="bzy-kp">
+      <button type="button" className="bzy-sqb on" onClick={onClose} aria-expanded="true" data-press>
+        <small>Kapat</small>
+        <b>Kalıp</b>
+      </button>
       {top.map((k) => {
         const on = rep?.kid === k.id;
         const left = on ? Math.max(0, Math.ceil((rep.next - now) / 1000)) : 0;
@@ -301,7 +305,7 @@ export function KalipRow({ list, rep, now, onSend, onHold, onStop, onAll }) {
           <button
             key={k.id}
             type="button"
-            className="bzy-kb"
+            className="bzy-kb bzy-sqb"
             data-rep={on ? "1" : undefined}
             style={on ? { "--p": `${(rep.n / rep.times) * 100}%` } : undefined}
             onPointerDown={() => down(k)}
@@ -311,13 +315,14 @@ export function KalipRow({ list, rep, now, onSend, onHold, onStop, onAll }) {
             onContextMenu={(e) => e.preventDefault()}
             aria-label={on ? `${k.name}: durdur` : `${k.name}: gönder`}
           >
+            <small className="num">{on ? `${rep.n}/${rep.times} · 0:${pad(left)}` : k.text ? "Yazı" : `Ses · ${k.dur} sn`}</small>
             <b>{k.name}</b>
-            <small className="num">{on ? `${rep.n}/${rep.times} · 0:${pad(left)}` : k.text ? <i className="bzy-ktag">YAZI</i> : `${k.dur} sn`}</small>
           </button>
         );
       })}
-      <button type="button" className="bzy-kmore" onClick={onAll} aria-label="Kalıplar" data-press>
-        <I n="more" />
+      <button type="button" className="bzy-sqb bzy-kall" onClick={onAll} aria-label="Bütün kalıplar" data-press>
+        <small />
+        <b>Tümü</b>
       </button>
     </div>
   );
