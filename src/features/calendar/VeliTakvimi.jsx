@@ -67,7 +67,7 @@ export function VeliTakvimi({ open, onClose, month, prefill }) {
   return (
     <>
       <SheetTone.Provider value="sahne">
-        <Sheet open={open && !view} onClose={onClose} title="Veli takvimi" footer={<SheetActions onCancel={onClose} yes="PDF hazırla" onYes={make} disabled={!months.length} />}>
+        <Sheet open={open && !view} onClose={onClose} title="PDF hazırla" footer={<SheetActions onCancel={onClose} yes="PDF hazırla" onYes={make} disabled={!months.length} />}>
           <div className="tb">
             <div>
               <div className="tb-k">Aylar</div>

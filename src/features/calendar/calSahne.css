@@ -65,6 +65,7 @@ li[data-c="late"] .cal-sh-ck { border-color: var(--cs-late); }
 .cal-sh-acts { display: flex; gap: .5rem; }
 .cal-sh-bt { flex: 1; min-height: 2.75rem; border-radius: 999px; padding: 0 1rem; font-size: .875rem; font-weight: 800; background: #1f1f22; border: 1px solid #2e2e33; color: #fff; }
 .cal-sh-bt:active { transform: scale(.97); }
+.cal-sh-pdf { width: 100%; margin-top: .5rem; }
 .cal-sh-p { background: var(--sh-lime); border-color: var(--sh-lime); color: #111; }
 .cal-sh-r { flex: 0 0 2.75rem; padding: 0; display: grid; place-items: center; }
 
