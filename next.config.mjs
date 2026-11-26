@@ -37,6 +37,10 @@ const nextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: [{ key: "Permissions-Policy", value: "camera=(self), microphone=(self)" }] },
+      // Başka site Velora'yı kendi sayfasının içinde gösterip tıklatamasın (sistem taraması 2026-11-26, madde 5).
+      // Herkese açık sayfalar (canlı yayın, bilgi ekranı linki, tekne takibi, tanıtım) kulüp sitesine gömülebilir kalır.
+      { source: "/((?!canli|ekran|takip|tanitim).*)", headers: [{ key: "Content-Security-Policy", value: "frame-ancestors 'self'" }] },
+      { source: "/api/:path*", headers: [{ key: "X-Content-Type-Options", value: "nosniff" }] },
       // Service worker her açılışta güncel sürümü alsın (tarayıcı eski sw.js'i önbellekte tutmasın)
       { source: "/sw.js", headers: [{ key: "Cache-Control", value: "no-cache, no-store, must-revalidate" }] },
     ];

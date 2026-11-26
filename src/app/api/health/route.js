@@ -7,7 +7,10 @@ export const runtime = "nodejs";
 // Sunucu sağlık kontrolü (girişsiz): yalnızca var/yok ve çalışıyor/çalışmıyor bilgisi. Gizli değer yok.
 // Veritabanı için tek bir boş okuma denenir (hiç veri döndürmez): yönetici anahtarı gerçekten çalışıyor mu.
 // Tarayıcıda aç: /api/health
+// Girişsiz olduğu için sonuç 5 dakika bellekte tutulur: sürekli açılsa da okuma limitini yemez (sistem taraması 2026-11-26)
+const memo = globalThis.__health || (globalThis.__health = { at: 0, out: null });
 export async function GET() {
+  if (memo.out && Date.now() - memo.at < 5 * 60e3) return NextResponse.json({ ...memo.out, onbellek: true }, { headers: { "cache-control": "no-store" } });
   const env = process.env;
   const has = (k) => !!env[k];
   const out = {
@@ -43,5 +46,6 @@ export async function GET() {
   } catch (e) {
     out.firebaseKutuphanesi = `yüklenemedi: ${String(e.message).slice(0, 160)}`;
   }
+  Object.assign(memo, { at: Date.now(), out });
   return NextResponse.json(out, { headers: { "cache-control": "no-store" } });
 }
