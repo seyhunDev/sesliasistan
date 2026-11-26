@@ -277,10 +277,28 @@ export function useTekneler(org) {
 // Gönderilen her mesaj ve ses kaydı ayrıca günlüğe yazılır (Seyhun 2026-11-15 "mesajlar kaydedilsin, ne zaman, ne için"):
 // orgs/{org}/bilgiLog { kind: "msg" | "ses", text, dur, at, label (start yazısı), state (parkur durumu), course }
 function logSent(org, item, ctx = {}) {
-  return addDoc(collection(db, "orgs", org, "bilgiLog"), { ...item, at: Date.now(), ch: ctx.ch || "", label: ctx.label || "", state: ctx.state || "", course: ctx.course || "" }).then(
+  return addDoc(collection(db, "orgs", org, "bilgiLog"), { ...item, at: Date.now(), ch: ctx.ch || "", label: ctx.label || "", state: ctx.state || "", course: ctx.course || "", by: ctx.by || "" }).then(
     (r) => r.id,
     () => "",
   );
+}
+// Gün kaydı (Seyhun 2026-11-26 "kimin ne yaptığını oradan çıkaracağız… PDF olarak çıktısını alacağım"): Yönet'te yapılan diğer işler de
+// aynı günlüğe yazılır. kind: "ceza" { k, to, dev } | "ceza-off" { k, to, dev, auto (5 sn'de kendiliğinden), back (Geri al) } |
+// "not" { dur, to, dev } | "video" { tags }. Gönderilenler listesinde görünmez (LOG_KINDS), yalnız gün kaydında.
+export const logEv = (org, item, ctx) => (org ? logSent(org, item, ctx) : Promise.resolve(""));
+// Bir günün bütün kaydı: günlük (ch == gün) + gün belgesi (başlangıç, bitiş, startlar) + katılan sporcular (iz)
+export async function loadGunKaydi(org, id) {
+  const [log, k, iz] = await Promise.all([
+    getDocs(query(collection(db, "orgs", org, "bilgiLog"), where("ch", "==", id))).then((s) => s.docs.map((d) => ({ ...d.data(), logId: d.id }))),
+    getDoc(kanalRef(org, id)).then((s) => (s.exists() ? { id, ...s.data() } : { id })),
+    loadIz(org, id).catch(() => []),
+  ]);
+  const who = new Map();
+  for (const d of iz) {
+    const key = d.dev || `${d.sail}-${d.name}`;
+    if (!who.has(key)) who.set(key, { dev: d.dev || "", sail: d.sail || "", name: d.name || "" });
+  }
+  return { kanal: k, log: log.sort((a, b) => (a.at || 0) - (b.at || 0)), boats: [...who.values()] };
 }
 // Gönderim sonucu (Görüldü 3/3, Ulaşmadı…) günlüğe sonradan yazılır
 export const markLog = (org, id, patch) => (id ? updateDoc(doc(db, "orgs", org, "bilgiLog", id), patch).catch(() => {}) : Promise.resolve());
@@ -468,9 +486,13 @@ async function packIz(org, ch, docs, rawDocs) {
 
 // Son gönderilenler (yönetimde açılınca bir kez okunur)
 // id: mesaj/ses kimliği (kayıtta varsa; yoksa belge kimliği), logId: günlük belgesinin kimliği (silme, gizleme)
+const LOG_KINDS = new Set(["msg", "ses", "gelen", undefined, ""]);
 export async function loadLog(org, n = 30) {
-  const s = await getDocs(query(collection(db, "orgs", org, "bilgiLog"), orderBy("at", "desc"), limit(n)));
-  return s.docs.map((d) => ({ id: d.id, ...d.data(), logId: d.id }));
+  const s = await getDocs(query(collection(db, "orgs", org, "bilgiLog"), orderBy("at", "desc"), limit(n + 40)));
+  return s.docs
+    .map((d) => ({ id: d.id, ...d.data(), logId: d.id }))
+    .filter((r) => LOG_KINDS.has(r.kind))
+    .slice(0, n);
 }
 
 // Pusula kaydı: ekran açıkken telefonun yönü ve yatışı saniyede bir alınır, dakikada bir tek belge olarak yazılır

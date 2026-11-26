@@ -51,7 +51,7 @@ const shift = (key, n) => {
 export const dayLabel = (key) => (key ? dayDate(key).toLocaleDateString("tr-TR", { day: "numeric", month: "short" }) : "");
 
 // Günü başlat (kanal kapalıyken): link aynı; tarih bugün (oklarla değişir), ad antrenman ya da günün yarışı. O tarih varsa o gün sürer.
-export function DayStart({ org, kanal, kanallar, names, onList, onIz, hidden = [], onDel, onArc }) {
+export function DayStart({ org, kanal, kanallar, names, onList, onIz, hidden = [], onDel, onArc, onLog }) {
   const toast = useToast();
   const [today] = useState(() => dayKey(Date.now()));
   const [day, setDay] = useState(today);
@@ -124,6 +124,11 @@ export function DayStart({ org, kanal, kanallar, names, onList, onIz, hidden = [
               </div>
               {menu === k.id && (
                 <div className="bzy-kmenu">
+                  {onLog && (
+                    <button type="button" onClick={() => (setMenu(""), onLog(k))} data-press>
+                      Gün kaydı
+                    </button>
+                  )}
                   <button type="button" onClick={() => (setMenu(""), onArc?.(k))} data-press>
                     Arşive at
                   </button>
@@ -158,13 +163,18 @@ export const videoDone = (toast) => (f) => (setShooting(null), toast(f?.asset ? 
 
 // Video etiketleri (Seyhun 2026-11-25): çekimden sonra açılır; seçili sporcu(lar) hazır etiketli, Orsa/Pupa/Start… dokunarak, yenisi yazılarak.
 // Kaydet ya da pencereyi kapatmak videoyu o günün galerisine (Medya › Antrenman › Yönet) gönderir; video kaybolmaz.
-export function VideoTags({ job, onSave }) {
+// people: sporcu adları (Seyhun 2026-11-26 "sporcu da seçebiliyor olmam gerekiyor ama sporcular gösterilmedi"): önce bugün kanala
+// katılanlar, sonra kulübün etkin sporcuları (kanal boşsa da seçilebilir); ayrı satırda
+export function VideoTags({ job, onSave, people = [] }) {
   const [tags, setTags] = useState(null);
   const [add, setAdd] = useState("");
+  const [more, setMore] = useState(false);
   const cur = tags || job?.tags || [];
-  const pool = [...new Set([...(job?.tags || []), ...myTags(), ...VTAGS])];
+  const ppl = [...new Set([...(job?.tags || []).filter((t) => people.includes(t)), ...people])];
+  const shown = more ? ppl : ppl.slice(0, 12);
+  const pool = [...new Set([...(job?.tags || []).filter((t) => !people.includes(t)), ...myTags(), ...VTAGS])];
   const flip = (t) => setTags(cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]);
-  const done = (list = cur) => (setTags(null), setAdd(""), onSave(list));
+  const done = (list = cur) => (setTags(null), setAdd(""), setMore(false), onSave(list));
   const plus = () => {
     const t = add.trim();
     if (!t) return;
@@ -175,6 +185,24 @@ export function VideoTags({ job, onSave }) {
   return (
     <Sheet open={!!job} onClose={() => done()} title="Video etiketleri">
       <div className="flex flex-col gap-3 pb-2">
+        {ppl.length > 0 && (
+          <>
+            <h3 className="bzy-h">Sporcu</h3>
+            <div className="bzy-chips">
+              {shown.map((t) => (
+                <button key={t} type="button" aria-pressed={cur.includes(t)} onClick={() => flip(t)} data-press>
+                  {t}
+                </button>
+              ))}
+              {ppl.length > shown.length && (
+                <button type="button" onClick={() => setMore(true)} data-press>
+                  +{ppl.length - shown.length}
+                </button>
+              )}
+            </div>
+            <h3 className="bzy-h">Etiket</h3>
+          </>
+        )}
         <div className="bzy-chips">
           {pool.map((t) => (
             <button key={t} type="button" aria-pressed={cur.includes(t)} onClick={() => flip(t)} data-press>

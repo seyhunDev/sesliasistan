@@ -124,7 +124,7 @@ export function IzPanel({ k, iz, onClose }) {
 }
 
 // Kanallar listesi (Kanal penceresi). onDel: silme (Geri al'lı) yukarıda yapılır, liste o kanalı hemen gizler
-export function KanalList({ org, list, cur, hidden, busy, onIz, onOpen, onClose, onDel, onArc }) {
+export function KanalList({ org, list, cur, hidden, busy, onIz, onOpen, onClose, onDel, onArc, onLog }) {
   const toast = useToast();
   const [menu, setMenu] = useState("");
   const [edit, setEdit] = useState(null);
@@ -191,6 +191,11 @@ export function KanalList({ org, list, cur, hidden, busy, onIz, onOpen, onClose,
                 <button type="button" onClick={() => (setMenu(""), onIz(k))} data-press>
                   İzi izle
                 </button>
+                {onLog && (
+                  <button type="button" onClick={() => (setMenu(""), onLog(k))} data-press>
+                    Gün kaydı
+                  </button>
+                )}
                 {open ? (
                   <button type="button" disabled={busy} onClick={() => (setMenu(""), onClose(k))} data-press>
                     Kapat
