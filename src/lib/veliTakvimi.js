@@ -77,25 +77,37 @@ export function monthOf(ym, trainings = [], races = []) {
   return { ym, title: monthTitle(ym), lead, cells, count: [...byDay.values()].reduce((a, x) => a + x.length, 0), races: raceNotes.length, notes: [...raceNotes, ...notes.map((x) => ({ ...x, label: `${x.from === x.to ? x.from : `${x.from}–${x.to}`} ${x.name}${x.train ? " · antrenman" : ""}` }))] };
 }
 
-// Saatler: aynı gün ve saatte tekrar eden antrenmanlar tek satır ("Cumartesi, Pazar 10:30–13:00"); en çok 4 satır
+// Kimler grupları (PDF'te her biri ayrı renk): "Herkes" önce, sonra adına göre
+export const audKey = (p) => audLabel(p?.aud);
+export function audGroups(trainings = []) {
+  const set = [...new Set(trainings.map(audKey))];
+  return [...set.filter((x) => x === "Herkes"), ...set.filter((x) => x !== "Herkes").sort((a, b) => a.localeCompare(b, "tr"))];
+}
+
+// Saatler: aynı gün ve saatte tekrar eden antrenmanlar tek satır ("Cumartesi, Pazar 10:30–13:00"); birden çok kitle varsa
+// başında kitle ("A takım: Cumartesi 10:30–13:00"); en çok 6 satır
 export function hoursLines(trainings = []) {
-  const key = new Map(); // "10:30–13:00" -> Map(gün -> sayı)
-  trainings.forEach((p) => {
-    const t = hm(p.time);
-    if (!t) return;
-    const k = hm(p.endTime) ? `${t}–${hm(p.endTime)}` : t;
-    const m = key.get(k) || new Map();
-    const wd = D(p.date).getDay();
-    m.set(wd, (m.get(wd) || 0) + 1);
-    key.set(k, m);
-  });
-  const order = [1, 2, 3, 4, 5, 6, 0];
-  return [...key.entries()]
-    .map(([t, m]) => ({ t, days: order.filter((d) => (m.get(d) || 0) >= 2), n: [...m.values()].reduce((a, b) => a + b, 0) }))
-    .filter((x) => x.days.length)
-    .sort((a, b) => b.n - a.n)
-    .slice(0, 4)
-    .map((x) => `${x.days.map((d) => DAYS[d]).join(", ")} ${x.t}`);
+  const groups = audGroups(trainings);
+  const out = [];
+  for (const g of groups) {
+    const key = new Map(); // "10:30–13:00" -> Map(gün -> sayı)
+    trainings.forEach((p) => {
+      const t = hm(p.time);
+      if (!t || audKey(p) !== g) return;
+      const k = hm(p.endTime) ? `${t}–${hm(p.endTime)}` : t;
+      const m = key.get(k) || new Map();
+      const wd = D(p.date).getDay();
+      m.set(wd, (m.get(wd) || 0) + 1);
+      key.set(k, m);
+    });
+    const order = [1, 2, 3, 4, 5, 6, 0];
+    [...key.entries()]
+      .map(([t, m]) => ({ t, days: order.filter((d) => (m.get(d) || 0) >= 2), n: [...m.values()].reduce((a, b) => a + b, 0) }))
+      .filter((x) => x.days.length)
+      .sort((a, b) => b.n - a.n)
+      .forEach((x) => out.push(`${groups.length > 1 ? `${g}: ` : ""}${x.days.map((d) => DAYS[d]).join(", ")} ${x.t}`));
+  }
+  return out.slice(0, 6);
 }
 
 export const fileName = (months) => `Antrenman takvimi ${periodTitle(months)}.pdf`.replace(/[–]/g, "-");

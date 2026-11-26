@@ -2,8 +2,7 @@
 // (3 sütun), her ay küçük takvim: mavi gün antrenman, kırmızı çerçeve bayram/resmi tatil, alt yarısı boyalı arife. Altta saatler ve not.
 // pdf-lib yalnız çıktı alınırken yüklenir; yazı tipleri ve logo raceDocs.loadFonts'tan. Veri lib/veliTakvimi.js.
 import { CLUB } from "@/features/athletes/raceDocs";
-import { fileName, hoursLines, monthOf, parentRaces, parentTrainings, periodTitle } from "@/lib/veliTakvimi";
-import { audLabel } from "@/lib/kimler";
+import { audGroups, audKey, fileName, hoursLines, monthOf, parentRaces, parentTrainings, periodTitle } from "@/lib/veliTakvimi";
 
 const W = 595.28;
 const H = 841.89;
@@ -11,8 +10,9 @@ const L = 36;
 const R = W - 36;
 const WK = ["Pt", "Sa", "Ça", "Pe", "Cu", "Ct", "Pz"];
 
-// opts: { plans, months, aud (kimler; yoksa herkes), title, note }
-export async function buildParentPdf({ plans, months, aud = null, title = "", note = "" }, fonts) {
+// opts: { plans, months, title, note }. Tek program bütün takımlar için (Seyhun 2026-11-26): her "Kimler" ayrı renk,
+// açıklamada adı ("Herkes", "A takım", "B takım · Optimist"); aynı günde iki kitle varsa hücre renklere bölünür.
+export async function buildParentPdf({ plans, months, title = "", note = "" }, fonts) {
   const [{ PDFDocument, rgb }, { default: fontkit }] = await Promise.all([import("pdf-lib"), import("@pdf-lib/fontkit")]);
   const INK = rgb(0.09, 0.09, 0.11);
   const MUT = rgb(0.42, 0.42, 0.45);
@@ -31,9 +31,13 @@ export async function buildParentPdf({ plans, months, aud = null, title = "", no
   pdf.setCreator("Velora");
   const f = { r: await pdf.embedFont(fonts.sans, { subset: true }), b: await pdf.embedFont(fonts.sansB, { subset: true }) };
   const logo = fonts.logo ? await pdf.embedPng(fonts.logo).catch(() => null) : null;
-  const trainings = parentTrainings(plans, sorted, aud);
-  const races = parentRaces(plans, sorted, aud);
-  const sub = [title, aud && audLabel(aud)].filter(Boolean).join(" · ");
+  const trainings = parentTrainings(plans, sorted);
+  const races = parentRaces(plans, sorted);
+  const sub = title;
+  const PAL = [TR, rgb(0.06, 0.6, 0.38), rgb(0.52, 0.27, 0.82), rgb(0.05, 0.6, 0.66), rgb(0.86, 0.24, 0.55), rgb(0.45, 0.35, 0.22)];
+  const groups = audGroups(trainings);
+  const colorOf = (g) => PAL[Math.max(0, groups.indexOf(g)) % PAL.length];
+  let gridTop = 132;
   const hours = hoursLines(trainings);
 
   let page;
@@ -58,12 +62,19 @@ export async function buildParentPdf({ plans, months, aud = null, title = "", no
     page.drawLine({ start: { x: L, y: H - 88 }, end: { x: R, y: H - 88 }, thickness: 1.4, color: INK });
     // Renk açıklaması
     let x = L;
+    let ly = 100;
     const leg = (draw, label) => {
-      draw(x, 100);
-      text(label, x + 14, 108, f.r, 8, { color: SOFT });
-      x += 14 + w(label, f.r, 8) + 16;
+      const iw = 14 + w(label, f.r, 8) + 16;
+      if (x + iw > R + 16) {
+        x = L;
+        ly += 15;
+      }
+      draw(x, ly);
+      text(label, x + 14, ly + 8, f.r, 8, { color: SOFT });
+      x += iw;
     };
-    leg((lx, t) => box(lx, t, 10, 10, { color: TR }), "Antrenman");
+    const gl = groups.length ? groups : ["Herkes"];
+    gl.forEach((g) => leg((lx, t) => box(lx, t, 10, 10, { color: colorOf(g) }), gl.length > 1 ? `Antrenman · ${g}` : "Antrenman"));
     leg((lx, t) => box(lx, t, 10, 10, { color: RACE }), "Yarış");
     leg((lx, t) => box(lx, t, 10, 10, { color: HOLBG, borderColor: HOL, borderWidth: 0.8 }), "Bayram / resmi tatil");
     leg((lx, t) => box(lx, t, 10, 10, { color: TR, borderColor: HOL, borderWidth: 1.6 }), "Tatilde antrenman var");
@@ -71,6 +82,7 @@ export async function buildParentPdf({ plans, months, aud = null, title = "", no
       box(lx, t, 10, 10, { color: WHITE, borderColor: LINE, borderWidth: 0.6 });
       box(lx, t + 5, 10, 5, { color: HOLBG });
     }, "Arife (yarım gün)");
+    gridTop = ly + 32;
   };
 
   // Ay kutusu: genişlik bw, hücre boyu c
@@ -89,11 +101,16 @@ export async function buildParentPdf({ plans, months, aud = null, title = "", no
       const full = cell.hol && !cell.hol.half;
       const race = cell.race.length > 0;
       if (race) box(cx, cy, c, c, { color: RACE, ...(full ? { borderColor: HOL, borderWidth: 1.8 } : {}) });
-      else if (tr) box(cx, cy, c, c, { color: TR, ...(full ? { borderColor: HOL, borderWidth: 1.8 } : {}) });
+      else if (tr) {
+        // Günün kitleleri: tek renk ya da yan yana şeritler
+        const gs = [...new Set(cell.train.map(audKey))];
+        gs.forEach((g, k) => box(cx + (k * c) / gs.length, cy, c / gs.length, c, { color: colorOf(g) }));
+        if (full) box(cx, cy, c, c, { borderColor: HOL, borderWidth: 1.8 });
+      }
       else if (full) box(cx, cy, c, c, { color: HOLBG, borderColor: HOL, borderWidth: 0.8 });
       else if (cell.hol?.half) box(cx, cy + c / 2, c, c / 2, { color: HOLBG });
       text(cell.day, cx + c / 2, cy + c / 2 + 3, f.b, Math.min(9, c * 0.42), { align: "center", color: tr || race ? WHITE : full ? HOL : SOFT });
-      if (cell.train.length > 1) text(`×${cell.train.length}`, cx + c - 1.5, cy + 6.5, f.b, 5, { align: "right", color: WHITE });
+      if (cell.train.length > 1 && new Set(cell.train.map(audKey)).size === 1) text(`×${cell.train.length}`, cx + c - 1.5, cy + 6.5, f.b, 5, { align: "right", color: WHITE });
     });
     y += 6 * (c + 2) + 4;
     const lines = mo.notes.length ? mo.notes : [{ label: "Tatil yok", none: true }];
@@ -113,7 +130,7 @@ export async function buildParentPdf({ plans, months, aud = null, title = "", no
     const bw = (R - L - gap * (cols - 1)) / cols;
     // tek ay: kutu çok büyümesin
     const bwUse = Math.min(bw, 260);
-    let top = 132;
+    let top = gridTop;
     for (let i = 0; i < chunk.length; i += cols) {
       let rowH = 0;
       chunk.slice(i, i + cols).forEach((ym, j) => {

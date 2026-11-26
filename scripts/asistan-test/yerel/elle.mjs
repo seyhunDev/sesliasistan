@@ -3520,9 +3520,10 @@ group("Kimler: takım ve sınıf")([
     return r.add.includes("2026-12-05") && r2.skip.includes("2026-12-05");
   })],
   ["sesle takım", F("'A takımı' → team A", () => TBA.bulkCommand("Aralık hafta sonlarına A takımı için 10:30 antrenman ekle", "2026-11-26")?.aud?.team === "A")],
-  ["veli PDF kitlesi", F("A takım PDF'ine B takım antrenmanı girmez", () => {
-    const pl = [{ date: "2027-03-06", cat: "Antrenman", aud: { team: "B" } }, { date: "2027-03-07", cat: "Antrenman" }, { date: "2027-03-13", cat: "Antrenman", aud: { team: "A" } }];
-    return TBV.parentTrainings(pl, ["2027-03"], { team: "A" }).length === 2;
+  ["veli PDF tek program", F("bütün takımlar bir arada, saatler kitleyle", () => {
+    const pl = ["2027-03-06", "2027-03-13"].flatMap((date) => [{ date, time: "10:30", cat: "Antrenman", aud: { team: "B" } }, { date, time: "14:00", cat: "Antrenman" }]);
+    const h = TBV.hoursLines(pl);
+    return TBV.parentTrainings(pl, ["2027-03"]).length === 4 && TBV.audGroups(pl).join() === "Herkes,B takım" && h[0] === "Herkes: Cumartesi 14:00" && h[1] === "B takım: Cumartesi 10:30";
   })],
   ["veli PDF yarışı", F("yarış ay altında kimleriyle", () => {
     const m = TBV.monthOf("2027-03", [], [{ date: "2027-03-12", endDate: "2027-03-14", title: "İzmir Kupası", cat: "Yarış", aud: { team: "A", cls: "opt", clsName: "Optimist" } }]);
