@@ -3539,3 +3539,27 @@ group("Toplu eklemeler listesi")([
   })],
   ["sesle", F("'toplu eklenen antrenmanların saatini düzelt' → liste", () => TBA.bulkListCommand("toplu eklenen antrenmanların saatini düzelt")?.tab === "list" && !TBA.bulkListCommand("antrenman ekle"))],
 ]);
+
+// Gün kaydı (Yönet › Günler › ⋯ › Gün kaydı): günlük + gün belgesi → özet, sporcu tablosu, olaylar
+const GK = await import("@/lib/gunKaydi");
+group("Gün kaydı")([
+  ["özet ve olaylar", F("ceza, FD, kendiliğinden kalkma tek satır, Geri al sayılmaz, video sporcuya", () => {
+    const t0 = new Date("2026-11-26T14:00:00").getTime();
+    const g = GK.gunRows({
+      kanal: { id: "k", name: "Antrenman", at: t0, end: t0 + 130 * 60e3, day: "2026-11-26", starts: [t0 + 14 * 60e3] },
+      boats: [{ dev: "a", sail: "TUR 7", name: "Ada" }, { dev: "e", sail: "TUR 12", name: "Efe" }],
+      log: [
+        { kind: "ceza", k: "fd", to: "TUR 12 · Efe", dev: "e", at: t0 + 1e5, by: "Seyhun" },
+        { kind: "ceza-off", k: "fd", dev: "e", at: t0 + 1.05e5, auto: true },
+        { kind: "ceza-off", k: "fd", dev: "e", at: t0 + 1.06e5, auto: true },
+        { kind: "ceza", k: "2", to: "TUR 7 · Ada", dev: "a", at: t0 + 2e5, by: "Seyhun" },
+        { kind: "ceza", k: "2", to: "TUR 7 · Ada", dev: "a", at: t0 + 3e5, back: true, by: "Seyhun" },
+        { kind: "msg", text: "Tüylere bak", dev: "a", to: "Ada", at: t0 + 4e5 },
+        { kind: "video", tags: ["Ada", "Orsa"], at: t0 + 5e5 },
+      ],
+    });
+    const n = Object.fromEntries(g.sum.map((s) => [s.t, s.n]));
+    const ada = g.athletes.find((a) => a.label === "TUR 7 · Ada");
+    return n.Sporcu === 2 && n.Ceza === 1 && n.FD === 1 && n.Start === 1 && n.Video === 1 && g.events.filter((e) => e.what === "Ceza kalktı").length === 1 && ada.pen.length === 1 && ada.sana === 1 && ada.vid === "1 (Orsa)" && /2 sa 10 dk/.test(g.sub) && g.file === "gun-kaydi-2026-11-26.pdf";
+  })],
+]);

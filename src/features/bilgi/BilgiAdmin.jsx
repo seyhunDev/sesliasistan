@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { PdfViewer } from "@/components/ui/PdfViewer";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -43,6 +44,8 @@ import {
   useTekneler,
   setCeza,
   sendNot,
+  logEv,
+  loadGunKaydi,
 } from "./bilgiStore";
 import { DayStart, KalipKayit, KalipRow, KalipSheets, kalipEntry, ToolsSheet, VideoTags, VideoTile, dayKey, dayLabel, kanalDay, useRepeat } from "./YonetParts";
 import { saveYonetVideo } from "./yonetVideo";
@@ -536,7 +539,8 @@ function PttTile({ to, ptt, now }) {
 }
 // Sporcu penceresi (Seyhun 2026-11-25 örnek "Yönet Ceza Uyarısı"): adına basılı tutunca açılır. Ceza: 360° / 720° / FD (faux départ);
 // sporcunun ekranında 10 sn tam ekran, sonra şerit; buradan "Cezayı kaldır" ile kalkar. Haritada noktası renkli, adının yanında rozet.
-function SporcuSheet({ org, id, boat, cur, onClose, onVideo, onNot }) {
+const sailName = (bt) => [bt?.sail, bt?.name].filter(Boolean).join(" · ");
+function SporcuSheet({ org, id, boat, cur, ctx, onClose, onVideo, onNot }) {
   const toast = useToast();
   const [pick, setPick] = useState("");
   const [busy, setBusy] = useState(false);
@@ -546,6 +550,7 @@ function SporcuSheet({ org, id, boat, cur, onClose, onVideo, onNot }) {
     setBusy(true);
     try {
       await setCeza(org, id, v);
+      if (v || cur?.k) logEv(org, v ? { kind: "ceza", k: v, to: sailName(boat), dev: id } : { kind: "ceza-off", k: cur.k, to: sailName(boat), dev: id }, ctx);
       toast(v ? `${PEN[v].big} gönderildi` : "Ceza kaldırıldı");
       setPick("");
       onClose();
@@ -798,11 +803,23 @@ export function BilgiAdmin() {
 
   const kanal = b?.kanal || null;
   const ch = kanal?.open ? kanal.id : "";
-  const ctx = { label: b?.label || "", state: b?.state || "", course: b?.course || "", ch };
+  const ctx = { label: b?.label || "", state: b?.state || "", course: b?.course || "", ch, by: profile?.name || "" };
   // Kanallar (Seyhun 2026-11-17): liste, tekrar aç, sil (Geri al'lı, verisiyle), izi geri oynat
   const kanallar = useKanallar(org);
   const [hidden, setHidden] = useState([]);
   const [izK, setIzK] = useState(null);
+  // Gün kaydı (Seyhun 2026-11-26): Günler › ⋯ › Gün kaydı; belge PDF olarak açılır, Paylaş ile kaydedilir/gönderilir
+  const [gunK, setGunK] = useState(null);
+  const gunId = gunK?.id || "";
+  const loadGun = useCallback(async () => {
+    const [{ gunRows }, { buildGunKaydiPdf }, { loadFonts }] = await Promise.all([
+      import("@/lib/gunKaydi"),
+      import("./gunKaydiPdf"),
+      import("@/features/athletes/raceDocs"),
+    ]);
+    const [d, fonts] = await Promise.all([loadGunKaydi(org, gunId), loadFonts()]);
+    return buildGunKaydiPdf(gunRows(d), fonts);
+  }, [org, gunId]);
   const [kbusy, setKbusy] = useState(false);
   const [antK, setAntK] = useState(null); // kapanınca kaydetme özeti için kapanan kanal
   const [antUsed, setAntUsed] = useState(false);
@@ -930,7 +947,7 @@ export function BilgiAdmin() {
     if (!job) return;
     toast("Video galeriye ekleniyor…");
     saveYonetVideo(org, kday || dayKey(now), job.file, tags).then(
-      () => toast(`Video galeride · ${dayLabel(kday || dayKey(now))}`),
+      (m) => (logEv(org, { kind: "video", tags: tags || [], dur: Math.round(m?.dur || 0) }, ctx), toast(`Video galeride · ${dayLabel(kday || dayKey(now))}`)),
       (e) => toast(e?.message ? `Video galeriye eklenemedi: ${e.message}` : "Video galeriye eklenemedi. Fotoğraflar'da duruyor."),
     );
   };
@@ -947,12 +964,18 @@ export function BilgiAdmin() {
   };
   const holdOff = () => clearTimeout(holdT.current.t);
   // Cezayı tek dokunuşla kaldır (Seyhun 2026-11-25 "2-3 adımda kaldırabiliyorum"): panel düğmesi ya da haritadaki rozet; 5 sn Geri al
-  const unPen = (id) => {
+  const unPen = (id, auto = false) => {
     const c = ceza[id];
     if (!c) return;
     const bt = chBoats.find((x) => x.id === id);
+    const ev = { k: c.k, to: sailName(bt), dev: id };
     setCeza(org, id, null).then(
-      () => toast(`${athTag(bt) || "Sporcu"} · ${PEN[c.k].big} kaldırıldı`, { action: { label: "Geri al", onClick: () => setCeza(org, id, c.k, true).catch(() => {}) } }),
+      () => (
+        logEv(org, { kind: "ceza-off", ...ev, ...(auto ? { auto: true } : {}) }, ctx),
+        toast(`${athTag(bt) || "Sporcu"} · ${PEN[c.k].big} kaldırıldı`, {
+          action: { label: "Geri al", onClick: () => setCeza(org, id, c.k, true).then(() => logEv(org, { kind: "ceza", ...ev, back: true }, ctx), () => {}) },
+        })
+      ),
       () => toast("Kaldırılamadı, tekrar dene."),
     );
   };
@@ -967,7 +990,7 @@ export function BilgiAdmin() {
       const key = `${id}:${c?.at}`;
       if (!PEN[c?.k] || c.keep || now - c.at < 5e3 || penGone.current.has(key)) continue;
       penGone.current.add(key);
-      unPen(id);
+      unPen(id, true);
     }
   }, [now]); // eslint-disable-line react-hooks/exhaustive-deps
   // Hazır kalıplar kapalı durur (Seyhun 2026-11-26 "el dokunabiliyor, bir anda gidilebiliyor"): "Kalıplar" ile açılır,
@@ -988,6 +1011,16 @@ export function BilgiAdmin() {
   const pnl = useRef(null);
   // Yönet videosu (Seyhun 2026-11-25): çekilince etiket penceresi; seçili sporcular hazır etiket; kaydedince o günün galerisine yüklenir
   const [vid, setVid] = useState(null); // { file, tags }
+  // Video etiketinde sporcular: bugün kanala katılanlar + kulübün etkin sporcuları (video ekranı açılınca bir kez yüklenir)
+  const [clubAth, setClubAth] = useState(null);
+  useEffect(() => {
+    if (!vid || clubAth) return;
+    loadAthletes().then(
+      ({ athletes }) => setClubAth((athletes || []).filter((a) => a.status === "active" && a.studentName).map((a) => a.studentName.trim())),
+      () => setClubAth([]),
+    );
+  }, [vid, clubAth]);
+  const vidPeople = [...new Set([...chBoats.map(athTag), ...(clubAth || []).sort((a, b) => a.localeCompare(b, "tr"))].filter(Boolean))];
   // Sporcu adına basılı tutunca (550 ms) o sporcunun penceresi (ceza); kısa dokunuş yalnız seçer
   const holdT = useRef({ t: 0, fired: false });
   useEffect(() => {
@@ -1063,7 +1096,7 @@ export function BilgiAdmin() {
             <Ic n="back" />
           </Link>
           <div className="bzy-veil" />
-          <DayStart key={kanal?.id || "yok"} org={org} kanal={kanal} kanallar={kanallar} names={names} onList={() => setSheet("kanallar")} onIz={(k) => setIzK(k)} hidden={hidden} onDel={delK} onArc={arcK} />
+          <DayStart key={kanal?.id || "yok"} org={org} kanal={kanal} kanallar={kanallar} names={names} onList={() => setSheet("kanallar")} onIz={(k) => setIzK(k)} hidden={hidden} onDel={delK} onArc={arcK} onLog={setGunK} />
         </>
       )}
       {!izK && open && (
@@ -1222,7 +1255,7 @@ export function BilgiAdmin() {
       />
       <KalipSheets org={org} list={kaliplar} view={sheet} onView={setSheet} src={canKalip || sheet === "kyap" ? last : null} to={to} members={members.length} onSend={sendK} repeat={repeat} onSaved={() => setLast((o) => (o ? { ...o, kalip: "saved" } : o))} />
       {antUsed && club && <AntrenmanSheets org={org} view={sheet} onView={setSheet} k={antDoc} boats={boats} ant={ant} />}
-      <SporcuSheet org={org} id={sheet.startsWith("sp:") ? sheet.slice(3) : ""} boat={chBoats.find((x) => `sp:${x.id}` === sheet)} cur={ceza[sheet.slice(3)]} onClose={() => setSheet("")} onVideo={(bt) => shot([athTag(bt)])} onNot={(i) => setSheet(`not:${i}`)} />
+      <SporcuSheet org={org} id={sheet.startsWith("sp:") ? sheet.slice(3) : ""} boat={chBoats.find((x) => `sp:${x.id}` === sheet)} cur={ceza[sheet.slice(3)]} ctx={ctx} onClose={() => setSheet("")} onVideo={(bt) => shot([athTag(bt)])} onNot={(i) => setSheet(`not:${i}`)} />
       {/* Görünür giriş (Seyhun 2026-11-25 "ceza çalışmıyor"): basılı tutmayı bilmeyen için; tek sporcu seçiliyse doğrudan onun penceresi */}
       <Sheet open={sheet === "ceza"} onClose={() => setSheet("")} title="Ceza · sporcu seç">
         <div className="bzy-cezal">
@@ -1239,12 +1272,15 @@ export function BilgiAdmin() {
           <KalipKayit
             org={org}
             max={60}
-            save={(blob, dur) => sendNot(org, chBoats.find((x) => `not:${x.id}` === sheet), blob, dur, kday || dayKey(now))}
+            save={(blob, dur) => {
+              const bt = chBoats.find((x) => `not:${x.id}` === sheet);
+              return sendNot(org, bt, blob, dur, kday || dayKey(now)).then((r) => (logEv(org, { kind: "not", dur: Math.round(dur), to: sailName(bt), dev: bt?.id || "" }, ctx), r));
+            }}
             onDone={() => (setSheet(""), toast("Not gönderildi"))}
           />
         )}
       </Sheet>
-      <VideoTags job={vid} onSave={saveVid} />
+      <VideoTags job={vid} onSave={saveVid} people={vidPeople} />
       <Sheet open={sheet === "kanal"} onClose={() => setSheet("")} title={kanal?.name || "Kanal"}>
         <KanalInfo kanal={kanal} link={b?.link || ""} count={members.length} onList={() => setSheet("kanallar")} />
       </Sheet>
@@ -1260,8 +1296,10 @@ export function BilgiAdmin() {
           onClose={(k) => kRun(() => closeKanal(org, k.id), "Kapatılamadı")}
           onDel={delK}
           onArc={arcK}
+          onLog={(k) => (setSheet(""), setGunK(k))}
         />
       </Sheet>
+      {gunK && <PdfViewer title="Gün kaydı" load={loadGun} onClose={() => setGunK(null)} />}
       <YarisSheets yaris={yaris} now={now} sheet={sheet} onClose={() => setSheet("")} onResult={addRes} resMsg={resMsg} />
       <Sheet big open={sheet === "hava"} onClose={() => setSheet("")} title="Hava">
         {sheet === "hava" && <RaceAtWx org={org} id={yaris.id} />}
