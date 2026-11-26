@@ -69,7 +69,7 @@ export async function moreWord(w) {
 // Dönüş { heard, ok, fix, next: { e, t }, hint: { e, t }, done }
 // audio (Blob): sesli cevap; yapay zeka duyduğunu da döndürür (heard)
 export async function talkWord(w, turns, audio = null) {
-  const data0 = { talk: true, en: w.en, tr: w.tr, kind: w.kind, turns };
+  const data0 = { talk: true, en: w.en, tr: w.tr, kind: w.kind, role: w.role || "", turns };
   let init = { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(data0) };
   if (audio) {
     const fd = new FormData();

@@ -104,7 +104,8 @@ async function talk(au, body, audio = null) {
     const last = turns.at(-1)?.me ? turns.at(-1).e : "";
     const done = answers >= TURNS;
     const log = turns.map((x) => `${x.me ? "Kişi" : "Sen"}: ${x.e}`).join("\n");
-    const user = `${body?.kind === "phrase" ? "Kalıp" : "Kelime"}: """${en}""" (${S(body?.tr, 120)})
+    const role = S(body?.role, 200); // Günlük durumlar: yapay zekanın o yerdeki rolü (garson, doktor…)
+    const user = `${role ? `Rolün: ${role} Konuşma bu yerde geçer; kalıbı da kullan.\n` : ""}${body?.kind === "phrase" ? "Kalıp" : "Kelime"}: """${en}""" (${S(body?.tr, 120)})
 Tur: ${Math.min(answers + 1, TURNS)} / ${TURNS}${done ? " (kişi 5. cevabını verdi: kapanış cümlesi yaz)" : ""}
 ${log ? `Konuşma:\n${log}` : "Konuşma yeni başlıyor: ilk cümleni yaz."}${last ? `\nKişinin son cevabı: """${last}"""` : ""}`;
     const raw = await callGemini({ model: process.env.GEMINI_MODEL, system: TALK, user, schema: TALK_SCHEMA, maxTokens: 800, timeoutMs: audio ? 10000 : 12000 });

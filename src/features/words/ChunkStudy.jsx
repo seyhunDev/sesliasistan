@@ -7,6 +7,8 @@ import { Icon } from "@/components/ui/Icon";
 import { buildTasks, chunkState, chunkStats, dueChunks, fillText, markTr, patternText, taskRight } from "@/lib/englishChunkStudy";
 import { primeEn, sayEn } from "./WordView";
 import { WordTalk } from "./WordTalk";
+import { roleOf } from "@/lib/englishPaths";
+import { picScene } from "@/lib/englishPics";
 import { hearSay } from "./wordData";
 import { useEnMic } from "./useEnMic";
 import { cachedPic, drawing, loadPic, makePic } from "./chunkPics";
@@ -66,7 +68,9 @@ function TrLine({ text, part, className = "" }) {
 export function usePic(orgId, id) {
   const [img, setImg] = useState(() => cachedPic(id));
   const [fail, setFail] = useState(false);
+  const has = !!picScene(id); // yalnız sahnesi yazılmış kalıplar çizilir (yeni bölümlerde resim yok)
   useEffect(() => {
+    if (!has) return;
     let live = true;
     const on = (e) => e.detail === id && setImg(cachedPic(id));
     window.addEventListener("sa-en-pic", on);
@@ -80,8 +84,8 @@ export function usePic(orgId, id) {
       live = false;
       window.removeEventListener("sa-en-pic", on);
     };
-  }, [orgId, id]);
-  return { img, wait: !!orgId && !img && !fail };
+  }, [orgId, id, has]);
+  return { img: has ? img : null, wait: has && !!orgId && !img && !fail };
 }
 
 export function Pic({ pic, className = "" }) {
@@ -101,7 +105,8 @@ function dueSay(due, today) {
 // c: kalıp; deck; today; topic: üstte görünen konu; onSave(fn) → Promise; onNext(): sıradaki kalıp; onOpen(id): başka kalıp;
 // onMenu(): ⋯; onSkip(): Geç. Kur bitince sonuç kaydedilir (sayfa kalıbı sabitler, sıradaki kalıba kendiliğinden geçmez) ve
 // dördüncü adım Konuş açılır (Atla ile doğrudan sonuç); konuşma kapanınca sonuç ekranı.
-export function ChunkStudy({ c, deck, today, topic, orgId, onSave, onNext, onOpen, onMenu, onSkip }) {
+// onBack(): bölüm sayfasına (yoksa ana sayfa); title: bölümün adı (2026-11-26 bölümler)
+export function ChunkStudy({ c, deck, today, topic, orgId, onSave, onNext, onOpen, onMenu, onSkip, onBack, title = "Kalıplar" }) {
   const [fi, setFi] = useState(0);
   const [tried, setTried] = useState(() => new Set([0]));
   const [phase, setPhase] = useState("learn");
@@ -222,6 +227,7 @@ export function ChunkStudy({ c, deck, today, topic, orgId, onSave, onNext, onOpe
       {right}
     </header>
   );
+  const back = onBack ? <BackButton onClick={onBack} className="opacity-60" /> : <BackButton href="/" className="opacity-60" />;
   const menuBtn = (
     <Button variant="icon" size="sm" aria-label="Konular ve listeler" onClick={onMenu} className="!text-white/50">
       <Icon name="more" className="size-5" />
@@ -310,13 +316,13 @@ export function ChunkStudy({ c, deck, today, topic, orgId, onSave, onNext, onOpe
     return <Altyazi {...{ pic, say0, tr: c.fills[0][2], heard, answered, wrong, st, lvRef, onMic: wrong ? again : tapMic, onClose: close, onShow: show, onSkip: skip, onTalk: talk }} />;
   }
 
-  if (phase === "talk") return <WordTalk w={{ en: patternText(c), tr: c.tr, kind: "phrase" }} onClose={() => setPhase(saved ? "done" : "learn")} />;
+  if (phase === "talk") return <WordTalk w={{ en: patternText(c), tr: c.tr, kind: "phrase", role: roleOf(c) }} onClose={() => setPhase(saved ? "done" : "learn")} />;
 
   if (phase === "done" && saved) {
     const st = chunkState(deck, c.id);
     return (
       <>
-        {top(<BackButton href="/" className="opacity-60" />, <b className="font-semibold text-white/88">Kalıplar</b>, menuBtn)}
+        {top(back, <b className="font-semibold text-white/88">{title}</b>, menuBtn)}
         <Steps at={3} />
         <section aria-label="Sonuç" className="relative flex flex-1 flex-col justify-center py-6">
           <b className={`bg-clip-text text-[3.25rem] font-extrabold leading-none tracking-[-.03em] text-transparent ${GRAD}`}>{saved.right ? "Kalıp tamam" : "Az kaldı"}</b>
@@ -368,9 +374,9 @@ export function ChunkStudy({ c, deck, today, topic, orgId, onSave, onNext, onOpe
   return (
     <>
       {top(
-        <BackButton href="/" className="opacity-60" />,
+        back,
         <>
-          <b className="font-semibold text-white/88">Kalıplar</b>
+          <b className="font-semibold text-white/88">{title}</b>
           {topic ? ` · ${topic}` : ""}
         </>,
         menuBtn,

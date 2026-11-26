@@ -15,6 +15,8 @@ import { primeEn, sayEn } from "@/features/words/WordView";
 import { WordTalk } from "@/features/words/WordTalk";
 import { ChunkStudy } from "@/features/words/ChunkStudy";
 import { ChunkPics } from "@/features/words/ChunkPics";
+import { EnHome, PathPage, rememberChunk } from "@/features/words/EnHome";
+import { pathById } from "@/lib/englishPaths";
 import { chunkById, chunkState, chunkTopics, finishChunk, knowChunk, knownChunkRows, nextChunk, patternText, resetChunk, studyChunkRows } from "@/lib/englishChunkStudy";
 import { cachedDeck, findWord, hasMore, knowWord, knownList, missWord, pageCard, quizFor, reviewWord, sentencesOf, setMore, studyRows, studyWord, topicStats } from "@/lib/englishWords";
 import { todayStr } from "@/lib/utils/format";
@@ -181,6 +183,10 @@ export default function EnglishPage() {
   const [cTopic, setCTopic] = useState("");
   const [cSkip, setCSkip] = useState([]);
   const [cPin, setCPin] = useState("");
+  // Bölüm (2026-11-26): "" = açılış; inStudy = kalıp çalışması açık (değilse bölüm sayfası); fromStart = Baştan çalış
+  const [path, setPath] = useState("");
+  const [inStudy, setInStudy] = useState(false);
+  const [fromStart, setFromStart] = useState(false);
   const [topic, setTopic] = useState("");
   const [skip, setSkip] = useState([]);
   const [pin, setPin] = useState("");
@@ -208,13 +214,30 @@ export default function EnglishPage() {
     };
   }, [orgId]);
 
-  const chunk = useMemo(() => (deck && kind === "chunk" ? (cPin && chunkById(cPin)) || nextChunk(deck, { today, topic: cTopic, skip: cSkip }) : null), [deck, kind, cPin, today, cTopic, cSkip]);
+  const chunk = useMemo(
+    () => (deck && kind === "chunk" && path && inStudy ? (cPin && chunkById(cPin)) || nextChunk(deck, { today, topic: cTopic, path, skip: cSkip, fromStart }) : null),
+    [deck, kind, path, inStudy, cPin, today, cTopic, cSkip, fromStart],
+  );
+  const chunkId = chunk?.id || "";
+  useEffect(() => {
+    if (chunkId) rememberChunk(chunkId);
+  }, [chunkId]);
+  // Çalışmayı aç: topic grubu (""=hepsi), pin = belirli kalıp, again = baştan
+  const study = (p, { topic: t = "", pin: pn = "", again = false } = {}) => {
+    setPath(p);
+    setCTopic(t);
+    setCSkip([]);
+    setCPin(pn);
+    setFromStart(again);
+    setInStudy(true);
+  };
   const nextC = () => {
     if (chunk) setCSkip((s) => [...s, chunk.id]);
     setCPin("");
   };
   const openC = (id) => {
-    setCPin(id);
+    const c = chunkById(id);
+    if (c) study(c.path, { pin: id });
     setMenu(false);
   };
   const cur = useMemo(() => (deck && kind !== "chunk" ? (pin && findWord(deck, pin)) || pageCard(deck, { kind, today, topic, skip }) : null), [deck, pin, kind, today, topic, skip]);
@@ -255,6 +278,10 @@ export default function EnglishPage() {
   };
   const pickKind = (k) => {
     setKind(k);
+    if (k === "chunk") {
+      setPath("");
+      setInStudy(false);
+    }
     setTopic("");
     setSkip([]);
     setPin("");
@@ -305,7 +332,9 @@ export default function EnglishPage() {
   };
 
   const isChunk = kind === "chunk";
-  const cTopics = deck && isChunk ? chunkTopics(deck) : [];
+  const cPath = path ? pathById(path) : null;
+  const cTopics = deck && isChunk && path ? chunkTopics(deck, path) : [];
+  const wide = isChunk && (!path || !inStudy);
   const cStudy = deck && isChunk ? studyChunkRows(deck) : [];
   const cKnown = deck && isChunk ? knownChunkRows(deck) : [];
   const studying = deck ? studyRows(deck, kind) : [];
@@ -315,13 +344,17 @@ export default function EnglishPage() {
   const q = quiz && !quiz.done ? quiz : null;
 
   return (
-    <main data-theme="dark" className="sahne-pg navy fit-dark relative mx-auto flex min-h-dvh max-w-[30rem] flex-col px-6 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
+    <main data-theme="dark" className={`sahne-pg navy fit-dark relative mx-auto flex min-h-dvh ${wide ? "max-w-[64rem] md:px-10" : "max-w-[30rem]"} flex-col px-6 pb-[calc(env(safe-area-inset-bottom)+1rem)]`}>
       {isChunk ? <Glow /> : <Photo />}
       {isChunk ? (
         !deck ? (
           <section className="relative flex flex-1 items-center justify-center">
             <Loading label="Yükleniyor" />
           </section>
+        ) : !path ? (
+          <EnHome deck={deck} today={today} onPath={(id) => (setPath(id), setInStudy(false))} onResume={(c) => study(c.path, { pin: c.id })} onAgain={(id) => study(id, { again: true })} onWords={() => pickKind("word")} />
+        ) : !inStudy ? (
+          <PathPage pathId={path} deck={deck} onBack={() => setPath("")} onTopic={(t) => study(path, { topic: t })} onStart={() => study(path)} onAgain={() => study(path, { again: true })} />
         ) : chunk ? (
           <ChunkStudy
             key={chunk.id}
@@ -335,17 +368,19 @@ export default function EnglishPage() {
             onSkip={nextC}
             onOpen={openC}
             onMenu={() => setMenu(true)}
+            onBack={() => (setInStudy(false), setCPin(""))}
+            title={cPath?.name}
           />
         ) : (
           <>
             <header className="relative flex items-center justify-between pt-[calc(0.75rem+env(safe-area-inset-top))]">
-              <BackButton href="/" className="opacity-60" />
+              <BackButton onClick={() => setInStudy(false)} className="opacity-60" />
               <Button variant="icon" size="sm" aria-label="Konular ve listeler" onClick={() => setMenu(true)} className="!text-white/50">
                 <Icon name="more" className="size-5" />
               </Button>
             </header>
             <section className="relative flex flex-1 items-center">
-              <p className="text-[1.25rem] font-semibold">{cTopic ? "Bu konunun bütün kalıplarını öğrendin." : "Bütün kalıpları öğrendin."}</p>
+              <p className="text-[1.25rem] font-semibold">{cTopic ? "Bu grubun hepsini çalıştın." : fromStart ? "Bölümü baştan bitirdin." : "Bu bölümün hepsini öğrendin."}</p>
             </section>
           </>
         )
@@ -442,14 +477,14 @@ export default function EnglishPage() {
       </>
       )}
 
-      <Sheet open={menu && isChunk} onClose={() => setMenu(false)} navy title="Kalıplar">
+      <Sheet open={menu && isChunk && !!path} onClose={() => setMenu(false)} navy title={cPath?.name || "Kalıplar"}>
         <div className="space-y-6 pb-1">
           <section>
             <ListHead title="Konular" />
             <RowList>
-              <Row title="Hepsi" right={<span className={!cTopic ? "text-acc" : "text-mut"}>{`${cTopics.reduce((n, t) => n + t.done, 0)}/${cTopics.reduce((n, t) => n + t.total, 0)}`}</span>} onClick={() => (setCTopic(""), setCSkip([]), setCPin(""), setMenu(false))} chev={false} />
+              <Row title="Hepsi" right={<span className={!cTopic ? "text-acc" : "text-mut"}>{`${cTopics.reduce((n, t) => n + t.done, 0)}/${cTopics.reduce((n, t) => n + t.total, 0)}`}</span>} onClick={() => (study(path), setMenu(false))} chev={false} />
               {cTopics.map((t) => (
-                <Row key={t.topic} title={t.topic} right={<span className={cTopic === t.topic ? "text-acc" : "text-mut"}>{`${t.done}/${t.total}`}</span>} onClick={() => (setCTopic(t.topic), setCSkip([]), setCPin(""), setMenu(false))} chev={false} />
+                <Row key={t.topic} title={t.topic} right={<span className={cTopic === t.topic ? "text-acc" : "text-mut"}>{`${t.done}/${t.total}`}</span>} onClick={() => (study(path, { topic: t.topic }), setMenu(false))} chev={false} />
               ))}
             </RowList>
           </section>
@@ -483,7 +518,7 @@ export default function EnglishPage() {
               Bu kalıbı yeniden çalış
             </Button>
           )}
-          {orgId && (
+          {orgId && path === "kalip" && (
             <Button variant="secondary" onClick={() => (setMenu(false), setPics(true))}>
               Resimler
             </Button>
