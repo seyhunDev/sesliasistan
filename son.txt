@@ -1,8 +1,8 @@
-Commit: 69df72f · Sporcu ekranı: sıra/grup/start satırı anında görünsün (#1588)
-Zaman: 2026-11-26-1546 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/45819518412
+Commit: 034d2f9 · Ceza 5 sn sonra kalkar; konuş kayıtta kırmızı, Gönder ve Vazgeç (#1591)
+Zaman: 2026-11-26-1631 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/45826551322
 
-TAM TEST · 26.11.2026 15:26:06
+TAM TEST · 26.11.2026 16:11:09
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,14 +30,14 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1399/1433 geçti · 34 kalan · 1250 sn
+SONUÇ: 1399/1433 geçti · 34 kalan · 1234 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
   ✗ Birim testleri: 0/1
       ✗ “4611 test”
           beklenen: hepsi geçer
-          olan:     4555/4611 geçti
+          olan:     4554/4611 geçti
       ✗ “istem” → - Senin işlerin: Plan / takvime ekleme ("yarın 10'da antrenman ekle"); Tekrarlayan plan ("her salı 16:00 antrenman"); Görev ekleme (birine atama) ("Ali'ye motoru kontrol etmesini hatırlat"); Not alma (yalnız istenince) ("not al: malzeme odası dolu"); Görevi tamamlama ("motor yağı görevini tamamla"); Görevi yeniden açma ("motor yağı görevini yeniden aç"); Notu yapıldı yapma (Arşiv'e gider, silinmez) ya da geri alma ("malzeme odası notu yapıldı"); Planı bitirme (Arşiv'e) ("antrenman planını bitir"); Değiştirme / erteleme ("antrenmanı 11'e al"); Silme ("yarınki toplantıyı sil"); Plan iptali ve haber verme ("yarınki antrenmanı iptal et"); Tek cümlede sıralı işler ("Gökhan'a yarın bakım var diye yaz, takvime ekle ve not al"); Uygulama içi mesaj (kişi ya da grup) ("Ali'ye yaz, yarın 9'da iskelede olsun"); Gruba mesaj (Ekip, Sporcular, kurulan gruplar) ("sporculara söyle antrenman iptal"); WhatsApp mesajı ("Ali'ye WhatsApp'tan yaz, yarın gelsin"); Plan, görev, not, fiş soruları ve özet ("bu hafta neler var"); Hava ve rüzgâr ("yarın rüzgâr kaç knot")
       ✗ “bugünün antrenmanı Yönet'te” → false (beklenen: bugünkü plan Bilgi Yönet (kanal adı, ant), başka gün günlük listesi; Yönet'te Antrenman penceresi, eski sayfa Yönet'e gider (Seyhun 2026-11-17, 2026-11-23))
       ✗ “yarışta açıldı › geri › geri” → {"races":true,"roll":true,"live":false} (beklenen: Yarışlar, sonra ana sayfa (Sporcular değil); Yoklama da ana sayfaya; Yayın yarışın üstüne açılır)
@@ -55,6 +55,7 @@ SONUÇ: 1399/1433 geçti · 34 kalan · 1250 sn
       ✗ “açık market siparişi” → HATA: shop is not defined (beklenen: teslim / iptal açık sayılmaz)
       ✗ “sağ uçta büyük” → false (beklenen: dört sekme solda, küre sağda 4.75rem)
       ✗ “kısa dokunuş sınırı” → false (beklenen: SHORT_MS 200 (tek kelimelik cevap atılmasın, 2026-11-04), AWAY_PX 90)
+      ✗ “Resimler listesi” → false (beklenen: ⋯ içinde yalnız ana hesapta Resimler)
       ✗ “yayın: bugünün startları tek liste” → [true,false,true,false] (beklenen: Seyhun 2026-11-01: sınıf/grup/bayrak seçimi ile start sırası tek listede (plan.order [{cls,grp,prep}]); ilk bekleyen Sıradaki, Başlat onu rounds[start]'a yazıp listeden düşer; satıra dokununca çipler + Yukarı/Aşağı/Çıkar; herkese açık ekran plan.order'ı olduğu gibi sıradaki gösterir)
       ✗ “yayın sıralaması: ilk 5 sabit, kızlar ayrı” → [true,false,true,true] (beklenen: Seyhun 2026-11-04: sol alt grup listesinde ilk 5 sabit, altı sayfa sayfa akar; ortadaki genel sıralama yalnız ilk 10 (Seyhun 2026-11-04 'genel sıralamada ilk 10'); kızlar kendi içinde ayrı sayfa (catsOf/onlyCat, yarış sayfasıyla aynı), listede K işareti; hepsi Junior ise yazılmaz; tablo Canlı rozetinin altında başlar; /api/canli sonuç satırında cinsiyet/kategori)
       ✗ “telefon izleyici şeridi: grubun kamerası, Sıralama, Sonuçlar, Rüzgâr, Parkur; süre boşsa Start bekleniyor” → [true,true,true,true,false] (beklenen: Seyhun 2026-11-05: /canli telefonda izleyici kendisi seçer (gruba bağlı kamera/drone, Sıralama, Sonuçlar, Rüzgâr, Parkur), seçmezse yayın odasının gösterdiği; sayaç yokken boş süre yerine 'Start bekleniyor'; telefonda sıralama tek sütun)
@@ -301,10 +302,10 @@ SONUÇ: 1399/1433 geçti · 34 kalan · 1250 sn
           olan:     sütun 48 · gün düğmesi 0 · 5,5 true
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 16 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+          olan:     ölçülen sütun 17 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
       ✗ “radar ve nokta”
           beklenen: ölçülen sütunlar tabloda; Bölge başlığı, istasyon adı ve bölge haritası
-          olan:     yağan çubuk 16 · açıklama 16 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
+          olan:     yağan çubuk 17 · açıklama 17 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
   ✗ Senaryolar: 0/1
       ✗ “çalıştırma”
           beklenen: tamamlanır
