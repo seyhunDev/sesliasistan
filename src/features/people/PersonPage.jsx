@@ -132,7 +132,7 @@ export function PersonPage({ uid }) {
 
   if (!m) {
     return (
-      <main className="calm mx-auto max-w-[30rem] px-4 pt-[calc(1rem+env(safe-area-inset-top))]">
+      <main className="sahne-pg calm mx-auto max-w-[30rem] px-4 pt-[calc(1rem+env(safe-area-inset-top))]">
         <BackButton href="/people/staff" />
         <p className="mt-10 text-center text-mut">{members.length ? "Kişi bulunamadı." : "Yükleniyor…"}</p>
       </main>
@@ -155,7 +155,7 @@ export function PersonPage({ uid }) {
   const plain = `${btn} border border-line bg-card text-fg`;
 
   return (
-    <main className="calm mx-auto max-w-[30rem] px-4 pb-32 pt-[calc(1rem+env(safe-area-inset-top))]">
+    <main className="sahne-pg calm mx-auto max-w-[30rem] px-4 pb-32 pt-[calc(1rem+env(safe-area-inset-top))]">
       <BackButton href={`/people/${groupOfKind(kindOf(m))}`} />
 
       <header className="mt-2 flex flex-col items-center text-center">

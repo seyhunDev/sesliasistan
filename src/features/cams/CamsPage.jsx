@@ -187,8 +187,8 @@ function BigCam({ c, onOpen }) {
   return (
     <button type="button" data-press onClick={onOpen} className="relative block w-full overflow-hidden rounded-[1.125rem] border border-[#24375a] text-left">
       <Img src={c.preview} className="aspect-video" />
-      {c.live && <span className="absolute left-2.5 top-2.5 rounded-full bg-[#0b1a33]/80 px-2 py-0.5 text-[0.75rem] font-semibold text-[#8fb3ff]">Canlı</span>}
-      <span className="absolute inset-x-0 bottom-0 flex items-baseline gap-2 bg-[#0b1a33]/80 px-3 py-2">
+      {c.live && <span className="absolute left-2.5 top-2.5 rounded-full bg-black/70 px-2 py-0.5 text-[0.75rem] font-semibold text-[#d4ff3a]">Canlı</span>}
+      <span className="absolute inset-x-0 bottom-0 flex items-baseline gap-2 bg-black/70 px-3 py-2">
         <b className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">{c.title}</b>
         <small className="shrink-0 text-[0.8125rem] font-semibold text-white/65 tabular-nums">
           {meta(c)}

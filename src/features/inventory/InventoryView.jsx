@@ -345,7 +345,7 @@ export function InventoryView({ orgId, id, by }) {
 // Lacivert üst (diğer yeni sayfalar gibi): geri, ad, sağda ⋯ ve "+ Ürün"; altında özet, arama ve kategori çipleri
 function Wrap({ title, sub, right, top, children }) {
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
+    <main className="sahne-pg mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label={title}>
         <header className="flex items-center gap-2.5">
           <BackButton href="/inventory" />

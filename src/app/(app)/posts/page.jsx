@@ -68,7 +68,7 @@ function Posts({ orgId }) {
   const pill0 = "flex h-9 shrink-0 items-center rounded-full border px-3.5 text-[0.8125rem] font-semibold";
   const shown = tab === "old" ? old : live;
   return (
-    <main className="split mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
+    <main className="sahne-pg split mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Instagram">
         <header className="flex items-center gap-2.5">
           <BackButton href="/" />

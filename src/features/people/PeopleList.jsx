@@ -90,7 +90,7 @@ export function PeopleList({ group }) {
     );
 
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(6rem+env(safe-area-inset-bottom))]">
+    <main className="sahne-pg mx-auto max-w-[30rem] px-5 pb-[calc(6rem+env(safe-area-inset-bottom))]">
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label={g.title}>
         <header className="flex items-center gap-2.5">
           <BackButton href="/staff" />
