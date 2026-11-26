@@ -19,6 +19,7 @@ import { ownerText, pastDue, unpaidRoster } from "../../src/lib/duesRemind.js";
 import { cleanEmail, cleanKey } from "../../src/lib/pemKey.js";
 import { recordInbox } from "../../src/lib/inbox.js";
 import { sendDevice } from "../../src/lib/server/sendDevice.js";
+import { watch, watchTime } from "../../src/lib/server/watchdog.js";
 import { testDue } from "../../src/lib/pushTest.js";
 import { missTest, sendTest } from "../../src/lib/server/pushTestSend.js";
 import { attRemindDue, attRemindText, sunsetHM } from "../../src/lib/attRemind.js";
@@ -84,6 +85,8 @@ async function sendDueReminders() {
   // Çalıştığı görünsün (Ayarlar › Testler › Bildirim testi): başlangıç ve bitiş zamanı; bitiş yoksa yarıda kalmıştır
   const beat = db.collection("system").doc("scheduler");
   await beat.set({ start: new Date().toISOString() }, { merge: true }).catch(() => {});
+  // Nöbet (lib/server/watchdog.js): yarım saatte bir yarış sitesi taramasına bakar
+  if (watchTime(5)) await watch(db, "raceSite", { recordInbox, sendDevice }).catch((e) => console.warn("[nöbet]", e.message));
   const all = await notifyUsers(db);
   const q = shared();
   let sent = 0;

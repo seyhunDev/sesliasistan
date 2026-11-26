@@ -14,6 +14,7 @@ import { liveHead } from "@/features/liveScreen/fonts";
 import { Row } from "@/features/settings/ui";
 import { telGoster } from "@/lib/basvuru";
 import { gunEkle, gunOf, gunlukKisi, sonGunlerde, sureYaz } from "@/lib/kullanim";
+import { Hatalar } from "./Hatalar";
 
 // Ayarlar › Admin (yalnız ana hesap; Seyhun 2026-11-26 "yap", örnek project-files/admin-sayfasi/ornek.html):
 // Başvurular (tanıtımdaki "Velora'ya katıl" formu, /api/basvuru) ve Kullanım (izin veren hesaplar; lib/kullanim.js).
@@ -82,7 +83,7 @@ export function AdminPage() {
           <BackButton href="/settings" />
           <div className="min-w-0 flex-1 leading-tight">
             <h1 className="sahne-t truncate text-[2rem]">Admin</h1>
-            <p className="mt-1 truncate text-[0.8125rem] text-mut">Başvurular ve kullanım</p>
+            <p className="mt-1 truncate text-[0.8125rem] text-mut">Başvurular, kullanım ve hatalar</p>
           </div>
         </header>
       </section>
@@ -97,17 +98,24 @@ export function AdminPage() {
             <Kutu ad="Bugün giren" n={izinli.filter((h) => sonGunlerde(h, bugun, 1)).length} />
             <Kutu ad="7 gün" n={izinli.filter((h) => sonGunlerde(h, bugun, 7)).length} />
           </div>
-          <div className="grid grid-cols-2 gap-1 rounded-2xl border border-line bg-card p-1" role="tablist">
+          <div className="grid grid-cols-3 gap-1 rounded-2xl border border-line bg-card p-1" role="tablist">
             {[
               ["b", "Başvurular"],
               ["k", "Kullanım"],
+              ["h", "Hatalar"],
             ].map(([k, l]) => (
               <button key={k} type="button" role="tab" aria-selected={sek === k} onClick={() => setSek(k)} className={`rounded-xl py-2 text-[0.875rem] font-semibold transition ${sek === k ? "bg-acc text-[#111]" : "text-mut"}`}>
                 {l}
               </button>
             ))}
           </div>
-          {sek === "b" ? <Basvurular org={org} list={veri.basvuru} setList={(f) => setVeri((v) => ({ ...v, basvuru: f(v.basvuru) }))} /> : <Kullanim org={org} hesaplar={veri.hesap} bugun={bugun} />}
+          {sek === "b" ? (
+            <Basvurular org={org} list={veri.basvuru} setList={(f) => setVeri((v) => ({ ...v, basvuru: f(v.basvuru) }))} />
+          ) : sek === "h" ? (
+            <Hatalar org={org} />
+          ) : (
+            <Kullanim org={org} hesaplar={veri.hesap} bugun={bugun} />
+          )}
         </div>
       )}
     </main>

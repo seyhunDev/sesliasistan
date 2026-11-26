@@ -49,7 +49,16 @@ export function logCrash(e, where = "") {
     const msg = String(e?.message || e || "Bilinmeyen hata").slice(0, 300);
     list.unshift({ at: new Date().toISOString(), path: location.pathname, where, msg, digest: e?.digest || "" });
     localStorage.setItem(KEY, JSON.stringify(list.slice(0, 10)));
+    sendCrash({ msg, path: location.pathname, where, ver: process.env.NEXT_PUBLIC_BUILD_SHA || "", ua: navigator.userAgent.replace(/^Mozilla\/5\.0 /, "") });
   } catch {}
+}
+
+// Merkezî hata kaydı (api/hata; Ayarlar › Admin › Hatalar): yükleme hatası (yeni sürüm) gönderilmez, giriş yoksa sunucu reddeder
+function sendCrash(h) {
+  if (isChunkError(h.msg)) return;
+  import("@/lib/authFetch")
+    .then(({ authFetch }) => authFetch("/api/hata", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(h) }))
+    .catch(() => {});
 }
 
 export function readCrashes() {
