@@ -22,7 +22,7 @@ const hasMedia = (x) => !!(x.yt?.id || (x.media || []).length);
 
 export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
   const confirmAsk = useConfirm();
-  const { lib, setMedia, addMale, setModel, merge, attach, rename, drop } = useFitLib();
+  const { lib, setMedia, addMale, setModel, merge, attach, rename, setHow, drop } = useFitLib();
   const [models, setModels] = useState(false); // Modeller: kız/erkek model, erkek fotoğrafları
   const toast = useToast();
   const [join, setJoin] = useState(false);
@@ -50,6 +50,12 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
       for (const d of pr.days || []) for (const it of d.items || []) keys.add(libKey(lib, it));
       for (const k of keys) m[k] = (m[k] || 0) + 1;
     }
+    return m;
+  }, [progs, lib]);
+  // Programlardaki anlatım (hareketin elle yazılmış açıklaması yoksa gösterilir)
+  const progHow = useMemo(() => {
+    const m = {};
+    for (const pr of progs) for (const d of pr.days || []) for (const it of d.items || []) if (it.how && !m[libKey(lib, it)]) m[libKey(lib, it)] = it.how;
     return m;
   }, [progs, lib]);
   const dupes = libDupes(lib);
@@ -113,7 +119,7 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
   return createPortal(
     <div role="dialog" aria-label="Hareketler" className="fixed inset-0 z-[45] overflow-y-auto overscroll-contain bg-bg">
       {e && (
-        <ExerciseScreen e={e} uses={uses[e.key] || 0} put={(fn) => setMedia(it, fn)} onBack={back}>
+        <ExerciseScreen e={e} uses={uses[e.key] || 0} how={progHow[e.key] || ""} onHow={(h) => setHow(e.key, h)} put={(fn) => setMedia(it, fn)} onBack={back}>
           {join ? (
             <Choose lib={lib} not={e.key} title="Hangi hareketle aynı?" onPick={joinWith} onCancel={() => setJoin(false)} />
           ) : naming !== null ? (

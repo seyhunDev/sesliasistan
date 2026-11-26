@@ -5,7 +5,8 @@ export const IMAGE_MODEL = () => process.env.GEMINI_IMAGE_MODEL || "gemini-2.5-f
 export const IMAGE_DAY = () => Number(process.env.GEMINI_IMAGE_DAY) || 10; // günlük sınır (kendi koyduğumuz)
 // İngilizce kalıp resimleri ayrı sayılır (kind "engpic"; 37 kalıp bir günde çizilebilsin diye sınır 60)
 // Fitness hareket fotoğrafları ayrı (kind "fitpic"; hazır programdaki fotoğrafsız hareketler ve erkek fotoğrafları, günde 60)
-const LIMIT = { postimg: () => IMAGE_DAY(), engpic: () => Number(process.env.ENGLISH_PIC_DAY) || 60, fitpic: () => Number(process.env.FIT_PIC_DAY) || 60 };
+// Fitness hareket animasyonu (kind "fitanim", video; günde 5, fiyatı FIT_ANIM_PRICE ile)
+const LIMIT = { postimg: () => IMAGE_DAY(), engpic: () => Number(process.env.ENGLISH_PIC_DAY) || 60, fitpic: () => Number(process.env.FIT_PIC_DAY) || 60, fitanim: () => Number(process.env.FIT_ANIM_DAY) || 5 };
 export const IMAGE_PRICE = () => Number(process.env.GEMINI_IMAGE_PRICE) || 0.039; // görsel başı yaklaşık $ (gemini-2.5-flash-image)
 
 const TZ = "Europe/Istanbul";
@@ -22,7 +23,8 @@ function shape(d = {}, kind = "postimg") {
   const dayN = d.day === day ? d.dayN || 0 : 0;
   const monthN = d.month === day.slice(0, 7) ? d.monthN || 0 : 0;
   const limit = (LIMIT[kind] || LIMIT.postimg)();
-  return { model: IMAGE_MODEL(), today: dayN, limit, left: Math.max(0, limit - dayN), month: monthN, cost: Math.round(monthN * IMAGE_PRICE() * 100) / 100, price: IMAGE_PRICE(), resetAt: resetAt() };
+  const price = kind === "fitanim" ? Number(process.env.FIT_ANIM_PRICE) || 0 : IMAGE_PRICE();
+  return { model: IMAGE_MODEL(), today: dayN, limit, left: Math.max(0, limit - dayN), month: monthN, cost: Math.round(monthN * price * 100) / 100, price, resetAt: resetAt() };
 }
 
 async function ref(uid, kind) {

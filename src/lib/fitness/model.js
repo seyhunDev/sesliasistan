@@ -165,6 +165,7 @@ export function cleanMedia(list, max = 3) {
       // Storage'daki dosya: indirme adresi (https, firebasestorage) künyede durur, video oradan akarak oynar
       if (typeof m.url === "string" && /^https:\/\/firebasestorage\.googleapis\.com\//.test(m.url) && m.url.length < 1200) o.url = m.url;
       if (m.g === "m") o.g = "m"; // erkek fotoğrafı (hazır program, 2026-11-25): erkek kullanıcıya bu gösterilir
+      if (m.a === true) o.a = true; // hareketin animasyonu (video ya da GIF, 2026-11-26): fotoğraftan önce oynar, herkese
       return o;
     })
     .filter(Boolean);
