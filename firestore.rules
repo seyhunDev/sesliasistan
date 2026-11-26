@@ -13,7 +13,13 @@ service cloud.firestore {
                     && request.resource.data.role == resource.data.role
                     && request.resource.data.orgId == resource.data.orgId
                     && request.resource.data.get("kind", null) == resource.data.get("kind", null)
-                    && request.resource.data.get("courierOf", null) == resource.data.get("courierOf", null);
+                    && request.resource.data.get("courierOf", null) == resource.data.get("courierOf", null)
+                    // Yetki alanlarını yalnız sunucu yazar (sistem taraması 2026-11-26, madde 2): Sailing kaydı (via), Velora Food
+                    // restoran hesabı (restaurantOf, placeId), antrenör işareti (coach == true; ana hesabın antrenör bilgisi nesnesi serbest)
+                    && request.resource.data.get("via", null) == resource.data.get("via", null)
+                    && request.resource.data.get("restaurantOf", null) == resource.data.get("restaurantOf", null)
+                    && request.resource.data.get("placeId", null) == resource.data.get("placeId", null)
+                    && (request.resource.data.get("coach", null) != true || resource.data.get("coach", null) == true);
       allow delete: if false;
     }
 

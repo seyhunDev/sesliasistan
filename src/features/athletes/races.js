@@ -122,15 +122,8 @@ export const cleanRaceFiles = (l) =>
 
 // Yarış öncesi yapılacaklar: tek düz liste. Her iş: { key, label, date?, detail?, group }.
 // İşaretleme yok: yapılan ya da gerekmeyen iş × ile listeden çıkarılır (skips; elle eklenen iş silinir).
-// Eski yarışlarda işaretlenmiş işler (checks[key]) de çıkarılmış sayılır; "Evrakları hazırla" belgeler hazırlanınca kendiliğinden çıkar.
-// Evrak işleri (kulüp tarafı) her yarışta aynı. Kayıt/ödeme/konaklama işleri talimattan gelir (talimat yüklenince);
-// her yarışa elle iş de eklenir (todos). Hazır standart liste yok.
-export const DOC_STEPS = [
-  ["docs", "Evrakları hazırla"],
-  ["parents", "Velilere imzalat"],
-  ["schools", "Okullara ver"],
-  ["gsim", "GSİM'e ver (il dışı çıkış oluru)"],
-];
+// Eski yarışlarda işaretlenmiş işler (checks[key]) de çıkarılmış sayılır.
+// Kayıt/ödeme/konaklama işleri talimattan gelir (talimat yüklenince); her yarışa elle iş de eklenir (todos). Hazır standart liste yok.
 // Yurt dışı yarışta Türkiye'de yapılacaklar (hazır liste; gerekmeyen × ile çıkarılır, skips). Talimattaki ve elle işler ayrıca eklenir.
 export const ABROAD_STEPS = [
   ["a:pasaport", "Pasaportları kontrol et", "Dönüşten sonra en az 6 ay geçerli olmalı; yoksa erkenden randevu al"],
@@ -184,8 +177,9 @@ function allSteps(r) {
     .map((t) => ({ key: todoKey(t.title), label: t.title, date: t.date, detail: "", group: "own" }))
     .filter((t) => t.key.length > 2 && !seen.has(t.key) && seen.add(t.key));
   const abroad = r?.abroad ? ABROAD_STEPS.map(([key, label, detail]) => ({ key, label, detail, date: "", group: "abroad" })) : [];
-  const docs = DOC_STEPS.filter(([key]) => !(r?.abroad && key === "gsim")).map(([key, label]) => ({ key, label, group: "docs" }));
-  return [...noticeTasks(r?.notice), ...own, ...abroad, ...docs];
+  // Her yarışa kendiliğinden eklenen evrak işleri (Velilere imzalat, Okullara ver, GSİM'e ver, Evrakları hazırla) kalktı (Seyhun 2026-11-26
+  // "gereksiz şeyler var, en önemlileri kalsın"): Yapılacaklar'da yalnız talimattan gelen, yurt dışı ve elle eklenen işler
+  return [...noticeTasks(r?.notice), ...own, ...abroad];
 }
 const gone = (r, s) => !!r?.checks?.[s.key] || cleanSkips(r?.skips).includes(s.key);
 // Yapıldı işaretlenen işler (Seyhun: "bir tanesini yaptım, yapıldı olarak gösterilebilir mi", 2026-10-12): listede soluk ✓ kalır
