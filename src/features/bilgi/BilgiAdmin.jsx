@@ -942,9 +942,17 @@ export function BilgiAdmin() {
       () => toast("Kaldırılamadı, tekrar dene."),
     );
   };
-  const penList = Object.entries(ceza || {}).filter(([id, c]) => PEN[c?.k] && chBoats.some((x) => x.id === id));
+  // Yeni ceza bildirimi (Seyhun 2026-11-26): haritanın sağ üstünde büyük kare, 5 sn geri sayıp kapanır, dokununca hemen kapanır.
+  // Yalnız bildirim kapanır; ceza sporcuda kalır (kaldırmak: haritadaki rozet ✕ ya da sporcu penceresi)
+  const [penSeen, setPenSeen] = useState(0);
+  const penNew = Object.entries(ceza).reduce((a, [id, c]) => (PEN[c?.k] && c.at > (a?.c.at || 0) ? { id, c } : a), null);
+  const penLeft = penNew && penNew.c.at > penSeen ? Math.ceil((penNew.c.at + 5e3 - now) / 1000) : 0;
+  // Hazır kalıplar kapalı durur (Seyhun 2026-11-26 "el dokunabiliyor, bir anda gidilebiliyor"): "Kalıplar" ile açılır,
+  // birini gönderince ya da 10 sn dokunulmazsa kapanır (tekrar sürüyorsa açık kalır)
+  const [kOpen, setKOpen] = useState(0);
 
   const repeat = useRepeat(org, kaliplar, ctx, got);
+  const kShow = !!repeat.rep || (kOpen > 0 && now - kOpen < 10e3);
   const sendK = async (k) => {
     const at = clock();
     got({ ...kalipEntry(k), to, at, ok: null });
@@ -1052,6 +1060,14 @@ export function BilgiAdmin() {
               <Ic n="more" />
             </button>
           </div>
+          {penLeft > 0 && (
+            <button type="button" className="bzy-penc" data-k={penNew.c.k} onClick={() => setPenSeen(penNew.c.at)} aria-label="Ceza bildirimini kapat" data-press>
+              <small>Ceza verildi</small>
+              <b>{PEN[penNew.c.k].big}</b>
+              <span>{athTag(chBoats.find((x) => x.id === penNew.id)) || "Sporcu"}</span>
+              <em className="num">{penLeft}</em>
+            </button>
+          )}
           <div className="bzy-rr">
             <div className="bzy-zm">
               <button type="button" className="btn btn-icon" aria-label="Yakınlaştır" onClick={() => mapApi.current?.zoom(1)} data-press>
@@ -1092,6 +1108,11 @@ export function BilgiAdmin() {
                     Kalıp yap
                   </button>
                 )}
+                {!mini && (
+                  <button type="button" className="bzy-kalb" aria-expanded={kShow} onClick={() => setKOpen(kShow ? 0 : clock())} data-press>
+                    Kalıplar
+                  </button>
+                )}
                 {!mini && members.length > 0 && (
                   <button type="button" className="bzy-cezab" onClick={() => setSheet(sel.length === 1 ? `sp:${sel[0].id}` : "ceza")} data-press>
                     Ceza
@@ -1103,17 +1124,6 @@ export function BilgiAdmin() {
                   </button>
                 )}
               </div>
-              {penList.length > 0 && (
-                <div className="bzy-penl" aria-label="Cezalar">
-                  {penList.map(([id, c]) => (
-                    <button key={id} type="button" data-k={c.k} onClick={() => unPen(id)} aria-label={`${athTag(chBoats.find((x) => x.id === id)) || "Sporcu"}: cezayı kaldır`} data-press>
-                      <b>{PEN[c.k].big}</b>
-                      <span>{athTag(chBoats.find((x) => x.id === id)) || "Sporcu"}</span>
-                      <i aria-hidden="true">✕</i>
-                    </button>
-                  ))}
-                </div>
-              )}
               {!mini && (
                 <div className="bzy-who" aria-label="Kime">
                   {[{ id: "", label: "Hepsi", st: !last?.to ? allSt(dl0, last) : null }, ...members.map((m) => ({ id: m.id, no: m.sail || "", label: m.name || m.sail || "Sporcu", st: rowSt(last, m, now) }))].map((m) => (
@@ -1141,8 +1151,8 @@ export function BilgiAdmin() {
                   ))}
                 </div>
               )}
-              {!mini && (
-                <KalipRow list={kaliplar} rep={repeat.rep} now={now} onSend={sendK} onHold={(k) => setSheet(`ktek:${k.id}`)} onStop={repeat.stop} onAll={() => setSheet("kaliplar")} />
+              {!mini && kShow && (
+                <KalipRow list={kaliplar} rep={repeat.rep} now={now} onSend={(k) => (setKOpen(0), sendK(k))} onHold={(k) => setSheet(`ktek:${k.id}`)} onStop={repeat.stop} onAll={() => (setKOpen(0), setSheet("kaliplar"))} />
               )}
               {!mini && typing && (
                 <form

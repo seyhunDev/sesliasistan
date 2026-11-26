@@ -884,3 +884,20 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 }
 .bz-rt:not(.big) { width: var(--bz-tw); height: var(--bz-tw); }
 .bz.bz-mapon { padding-bottom: calc(var(--bz-sb) + var(--bz-tw) + 1.75rem); }
+
+/* Yönet (2026-11-26): Kalıplar düğmesi (satır kapalı durur) ve yeni ceza bildirimi haritanın sağ üstünde büyük kare */
+.bzy-kalb { flex: none; height: 2.25rem; padding: 0 0.875rem; border: 1px solid #2e2e33; border-radius: 999px; background: #1f1f22; color: #fff; font-size: 0.875rem; font-weight: 700; }
+.bzy-kalb[aria-expanded="true"] { background: #fff; border-color: #fff; color: #111; }
+.bzy-tst + .bzy-kalb { margin-left: 0; }
+.bzy-penc { position: absolute; z-index: 4; top: calc(var(--top) + 3.5rem); right: calc(var(--edge-r) + 4.25rem); width: 10rem; height: 10rem; border: 0; border-radius: 1.5rem;
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; padding: 0.875rem 1rem; text-align: left;
+  background: var(--pen, #ff5a3c); color: #fff; box-shadow: 0 10px 30px rgba(0, 0, 0, .45); animation: bz-penin .25s ease-out; }
+.bzy-penc[data-k="fd"] { background: var(--pen-fd, #ffd60a); color: #111; }
+.bzy-penc small { font-size: 0.6875rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; opacity: .85; }
+.bzy-penc b { font: 800 3.5rem/.85 var(--lv-font-c, "Barlow Condensed"), var(--font-num, system-ui), system-ui, sans-serif; }
+.bzy-penc span { font: 800 1.25rem/1 var(--lv-font-c, "Barlow Condensed"), var(--font-num, system-ui), system-ui, sans-serif; text-transform: uppercase; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bzy-penc em { position: absolute; right: 0.75rem; top: 0.75rem; width: 1.75rem; height: 1.75rem; display: grid; place-items: center; border-radius: 50%; border: 2px solid currentColor; font-style: normal; font-size: 0.875rem; font-weight: 800; opacity: .9; }
+@media (orientation: landscape), (min-width: 48rem) {
+  .bzy-app[data-open] .bzy-penc { right: calc(var(--edge-r) + min(24rem, 44vw) + 5rem); }
+}
+@media (prefers-reduced-motion: reduce) { .bzy-penc { animation: none; } }
