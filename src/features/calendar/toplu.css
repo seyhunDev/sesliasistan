@@ -28,3 +28,13 @@
 .tb-li { display: flex; flex-direction: column; gap: .5rem; }
 .tb-li > .tb-row b { font-weight: 700; color: var(--tb-lime); white-space: nowrap; }
 .tb-row > .tb-rn { min-width: 0; flex: 1; color: #fff !important; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex-shrink: 1 !important; }
+/* Eklenenler (toplu eklemeler listesi) */
+.tb-seg2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.tb-grp { min-height: 3.5rem; padding-block: .55rem; }
+.tb-grp .tb-rn small { display: block; margin-top: .15rem; font-size: .78rem; font-weight: 500; color: #a1a1aa; white-space: normal; }
+.tb-ge { padding: .6rem; border: 1px solid var(--tb-line, #2e2e33); border-radius: 1rem; background: #141416; }
+.tb-acts { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.tb-btn { min-height: 2.75rem; border-radius: 999px; font-weight: 800; font-size: .9rem; }
+.tb-ok { background: #d4ff3a; color: #111; }
+.tb-ok:disabled { opacity: .4; }
+.tb-del { background: #2a1416; color: #ff6b6b; border: 1px solid #4a1f23; }

@@ -11,6 +11,7 @@ export const TASKS = [
   { id: "plan", group: "Kayıtlar", name: "Plan / takvime ekleme", say: "yarın 10'da antrenman ekle", who: "herkes", by: "yz", doing: "Tamam, planı hazırlıyorum.", work: "Plan hazırlanıyor" },
   { id: "repeat", group: "Kayıtlar", name: "Tekrarlayan plan", say: "her salı 16:00 antrenman", who: "herkes", by: "yz", doing: "Tamam, tekrarlayan planı hazırlıyorum.", work: "Tekrarlayan plan hazırlanıyor" },
   { id: "bulkTrain", group: "Kayıtlar", name: "Toplu antrenman (ay seçip hafta sonu/hafta içi/gün; bayramlar tek; pencere açılır, Ekle ile kaydedilir)", say: "Aralık ve Ocak hafta sonlarına 10:30'da antrenman ekle", who: "ana", by: "yerel" },
+  { id: "bulkList", group: "Kayıtlar", name: "Toplu eklemeleri düzeltme/silme (Eklenenler listesi açılır; saat, ad, yer hepsinde; Hepsini sil onaylı)", say: "toplu eklenen antrenmanların saatini düzelt", who: "ana", by: "yerel" },
   { id: "parentsCal", group: "Kayıtlar", name: "Veli takvimi PDF'i (antrenmanlar + bayram ve resmi tatiller; Paylaş ile mail/WhatsApp)", say: "velilere Aralık–Mart antrenman takvimi hazırla", who: "ana", by: "yerel" },
   { id: "task", group: "Kayıtlar", name: "Görev ekleme (birine atama)", say: "Ali'ye motoru kontrol etmesini hatırlat", who: "herkes", by: "yz", doing: "Tamam, görevi hazırlıyorum.", work: "Görev hazırlanıyor" },
   { id: "note", group: "Kayıtlar", name: "Not alma (yalnız istenince)", say: "not al: malzeme odası dolu", who: "herkes", by: "yz", doing: "Tamam, notu alıyorum.", work: "Not alınıyor" },

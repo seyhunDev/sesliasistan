@@ -26,3 +26,11 @@ export function runParents(ctx, pc, viaVoice) {
   if (path !== "/calendar") router.push("/calendar");
   reply(`Veli takvimini açtım${pc.months.length ? ` (${periodTitle(pc.months)})` : ""}. PDF hazırla'ya basınca Paylaş'tan mail ya da WhatsApp ile gönderebilirsin.`, L, viaVoice);
 }
+
+// "toplu eklenen antrenmanları sil / saatini düzelt": Takvim'de Toplu antrenman › Eklenenler açılır
+export function runBulkList(ctx, viaVoice) {
+  const { path, reply, router } = ctx;
+  openCalendarSheet("bulk", { tab: "list" });
+  if (path !== "/calendar") router.push("/calendar");
+  reply("Toplu eklemeleri açtım. Birine dokun; saati hepsinde birden değiştirebilir ya da hepsini silebilirsin.", L, viaVoice);
+}

@@ -619,6 +619,36 @@ export function DataProvider({ children }) {
     [getOrgId, fail],
   );
 
+  // Serinin bütün planlarını birden değiştir (toplu antrenmanda saat, ad, yer; yalnız ana hesap). Kaç plan değişti döner.
+  const updateSeries = useCallback(
+    async (seriesId, patch, from = "") => {
+      if (!seriesId || me.current.staff) return 0;
+      const ids = cur.current.plans.filter((p) => p.seriesId === seriesId && (p.date || "") >= from).map((p) => p.id);
+      if (!ids.length) return 0;
+      const full = { ...patch, updatedAt: new Date().toISOString() };
+      if ("time" in patch) {
+        full.allDay = !patch.time;
+        full.timeSource = patch.time ? "user" : "none";
+        full.durationMin = patch.time ? durOf(patch.time, patch.endTime) : null;
+        full.endTime = patch.time && patch.endTime > patch.time ? patch.endTime : "";
+      }
+      setData((p) => ({ ...p, plans: p.plans.map((x) => (ids.includes(x.id) ? { ...x, ...full } : x)) }));
+      try {
+        const ownerId = getOrgId();
+        for (let i = 0; i < ids.length; i += 400) {
+          const batch = writeBatch(db);
+          ids.slice(i, i + 400).forEach((id) => batch.update(doc(db, "orgs", ownerId, "plans", id), full));
+          await batch.commit();
+        }
+        return ids.length;
+      } catch (e) {
+        fail(e, "Kaydetme");
+        return 0;
+      }
+    },
+    [getOrgId, fail],
+  );
+
   const deleteRecord = useCallback(
     async (kind, id) => {
       if (me.current.staff && !PERSONAL.includes(kind)) return requestDelete(kind, id, false); // çalışan: ana hesabın onayına (doğum günü ve ders kişiye özel, kendisi siler)
@@ -1150,7 +1180,7 @@ export function DataProvider({ children }) {
     <Ctx.Provider
       value={{
         ...view, loading: !ready, members: staff ? [] : activeMembers, allMembers: staff ? [] : members, nameOf, isStaff: staff, myUid: uid,
-        saveDrafts, toggleTask, updateRecord, deleteRecord, deleteSeries, removeWithUndo, requestDelete, rejectDelete, saveReceipt, updateReceipt, markPaid, setReceiptScope, setReceiptChecked, markPaySeen, loadReceiptImage,
+        saveDrafts, toggleTask, updateRecord, deleteRecord, deleteSeries, updateSeries, removeWithUndo, requestDelete, rejectDelete, saveReceipt, updateReceipt, markPaid, setReceiptScope, setReceiptChecked, markPaySeen, loadReceiptImage,
         saveBirthday, saveLessons, updateLesson, clearLessons, markSeen, setViewing, setMyDone, isLocked, resendAssign, resendRemind,
       }}
     >
