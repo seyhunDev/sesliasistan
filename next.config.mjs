@@ -26,6 +26,14 @@ const nextConfig = {
   // Telefondan HTTPS tünel adresiyle erişirken geliştirme sunucusu engellemesin
   allowedDevOrigins: ["*.trycloudflare.com", "*.ngrok-free.app", "*.ngrok-free.dev"],
   // Kamera (fiş) ve mikrofon (konuşma) bu sitede kullanılabilsin
+  // Tanıtım sayfaları (Seyhun 2026-11-26 "Hepsini yap"): herkese açık, girişsiz düz HTML (public/tanitim). Sonda "Velora'ya katıl"
+  // formu /api/basvuru'ya gönderir (Ayarlar › Admin › Başvurular).
+  async rewrites() {
+    return [
+      { source: "/tanitim", destination: "/tanitim/index.html" },
+      { source: "/tanitim/simulator", destination: "/tanitim/simulator/index.html" },
+    ];
+  },
   async headers() {
     return [
       { source: "/:path*", headers: [{ key: "Permissions-Policy", value: "camera=(self), microphone=(self)" }] },
