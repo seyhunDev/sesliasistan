@@ -176,7 +176,7 @@ export function CamsPage() {
 function Img({ src, className = "" }) {
   const [bad, setBad] = useState(false);
   return (
-    <span className={`block overflow-hidden bg-[#13243f] ${className}`}>
+    <span className={`block overflow-hidden bg-[#17171a] ${className}`}>
       {/* eslint-disable-next-line @next/next/no-img-element -- dış bağlantı (Windy), Next görüntü sunucusu yok */}
       {!bad && <img src={src} alt="" loading="lazy" decoding="async" onError={() => setBad(true)} className="size-full object-cover" />}
     </span>
@@ -218,7 +218,7 @@ function CamSheet({ c, onClose }) {
     <Sheet open={!!c} onClose={onClose} title={c?.title || ""}>
       {c && (
         <div className="space-y-3 px-5">
-          <div className="aspect-video overflow-hidden rounded-2xl bg-[#13243f]">
+          <div className="aspect-video overflow-hidden rounded-2xl bg-[#17171a]">
             {c.player ? <iframe src={c.player} title={c.title} allow="autoplay; fullscreen" allowFullScreen className="block size-full border-0" /> : <Img src={c.preview} className="size-full" />}
           </div>
           <p className="px-1 text-[0.8125rem] font-semibold text-mut tabular-nums">

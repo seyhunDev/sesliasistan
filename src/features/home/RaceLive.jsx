@@ -108,7 +108,7 @@ function Line({ id, orgId, title }) {
   const sub = race ? raceLine({ r: race, today, now: clock, starts: live.starts, athletes: kids, timer }) : timer || cache?.base || "";
   const upd = race && first != null && base !== first;
   return (
-    <Link href={`/athletes/races/${id}`} data-press aria-label="Süren yarış" className="mt-3 grid gap-0.5 rounded-[1.125rem] bg-[#0b1a33] px-3.5 py-3 text-white">
+    <Link href={`/athletes/races/${id}`} data-press aria-label="Süren yarış" className="mt-3 grid gap-0.5 rounded-[1.125rem] bg-[#17171a] px-3.5 py-3 text-white">
       <span className="flex items-center gap-2 text-[0.75rem] font-bold tracking-[.04em] text-[#ff8f8f]">
         <i className="size-2 rounded-full bg-[#ff5252] shadow-[0_0_0_4px_rgba(255,82,82,.25)]" />
         SÜREN YARIŞ

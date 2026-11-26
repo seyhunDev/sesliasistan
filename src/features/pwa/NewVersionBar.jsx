@@ -21,7 +21,7 @@ export function NewVersionBar({ className = "bottom-[calc(var(--dome-h,var(--sta
   const sub = [buildWhen(v.at), mine && `şu an #${mine}`].filter(Boolean).join(" · ");
   return (
     <div role="status" className={`fade-in pointer-events-none fixed inset-x-0 z-[47] flex justify-center px-4 ${className}`}>
-      <div className="pointer-events-auto flex w-full max-w-[26.25rem] items-center gap-3 rounded-2xl bg-[#2563eb] py-2.5 pl-4 pr-2 text-white shadow-[0_8px_28px_rgba(37,99,235,.45)]">
+      <div className="pointer-events-auto flex w-full max-w-[26.25rem] items-center gap-3 rounded-2xl border border-[#2e2e33] bg-[#17171a] py-2.5 pl-4 pr-2 text-white shadow-[0_8px_28px_rgba(0,0,0,.55)]">
         <span className="min-w-0 flex-1 leading-snug">
           <span className="block text-[0.9375rem] font-semibold">Yeni sürüm var{no && ` · #${no}`}</span>
           {sub && <span className="block text-[0.8125rem] text-white/80">{sub}</span>}
@@ -31,7 +31,7 @@ export function NewVersionBar({ className = "bottom-[calc(var(--dome-h,var(--sta
           disabled={busy}
           onClick={() => (setBusy(true), applyUpdate())}
           data-press
-          className="h-10 shrink-0 rounded-xl bg-white px-4 text-[0.9375rem] font-semibold text-[#2563eb] active:translate-y-px"
+          className="h-10 shrink-0 rounded-xl bg-[#d4ff3a] px-4 text-[0.9375rem] font-semibold text-[#111] active:translate-y-px"
         >
           {busy ? "Güncelleniyor…" : "Güncelle"}
         </button>

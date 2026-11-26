@@ -39,7 +39,7 @@ export default function Sailing() {
     return () => window.removeEventListener("message", onMsg);
   }, [router]);
   return (
-    <main className="fixed inset-0 z-30 bg-[#0b1a33]">
+    <main className="fixed inset-0 z-30 bg-[#17171a]">
       <div className="absolute inset-0 pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] pt-[env(safe-area-inset-top)]">
         {src && (
           <iframe
