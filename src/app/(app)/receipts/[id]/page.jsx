@@ -52,7 +52,7 @@ export default function ReceiptDetailPage() {
 
   if (!r) {
     return (
-      <main className="mx-auto max-w-[30rem] px-5 pt-4">
+      <main className="sahne-pg mx-auto max-w-[30rem] px-5 pt-4">
         <BackButton href="/receipts" label="Fişler" />
         {loading ? <Loading /> : <p className="mt-12 text-center text-mut">Fiş bulunamadı.</p>}
       </main>
@@ -66,7 +66,7 @@ export default function ReceiptDetailPage() {
   const conf = r.conf;
 
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(2.5rem+env(safe-area-inset-bottom))] pt-[calc(0.75rem+env(safe-area-inset-top))]">
+    <main className="sahne-pg mx-auto max-w-[30rem] px-5 pb-[calc(2.5rem+env(safe-area-inset-bottom))] pt-[calc(0.75rem+env(safe-area-inset-top))]">
       <div className="flex items-center justify-between py-1.5">
         <BackButton href="/receipts" label="Fişler" />
         <button onClick={() => openReceipt({ edit: r.id })} data-press className={btn}><Icon name="edit" className="size-[1.125rem]" /> Düzenle</button>

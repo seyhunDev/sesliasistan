@@ -118,7 +118,7 @@ function Payments() {
 
   // Yeni tasarım (velora-tasarim, 2026-11-03): lacivert üstte ad, Yenile ve ayar düğmeleri, büyük tutarlar, Excel; altta ay ay ödemeler
   return (
-    <main className="split mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
+    <main className="sahne-pg split mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label={title}>
         <header className="flex items-center gap-2.5">
           <BackButton href="/mail" />
