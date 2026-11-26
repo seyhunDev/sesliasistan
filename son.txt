@@ -1,8 +1,8 @@
-Commit: b2aafe8 · Fitness Hareketler: açıklama düzenle, animasyon oluştur/yükle, kopyala/paylaş (#1602)
-Zaman: 2026-11-26-2016 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/45863010069
+Commit: 821c2e2 · Kalıp sayfası: kısa düğmeler (#1604)
+Zaman: 2026-11-26-2149 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/45875870961
 
-TAM TEST · 26.11.2026 19:54:45
+TAM TEST · 26.11.2026 21:26:45
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,7 +30,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1401/1435 geçti · 34 kalan · 1333 sn
+SONUÇ: 1401/1435 geçti · 34 kalan · 1335 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
@@ -302,10 +302,10 @@ SONUÇ: 1401/1435 geçti · 34 kalan · 1333 sn
           olan:     sütun 48 · gün düğmesi 0 · 5,5 true
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 21 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+          olan:     ölçülen sütun 22 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
       ✗ “radar ve nokta”
           beklenen: ölçülen sütunlar tabloda; Bölge başlığı, istasyon adı ve bölge haritası
-          olan:     yağan çubuk 21 · açıklama 21 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
+          olan:     yağan çubuk 22 · açıklama 22 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
   ✗ Senaryolar: 0/1
       ✗ “çalıştırma”
           beklenen: tamamlanır
