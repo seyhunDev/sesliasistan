@@ -550,19 +550,26 @@ function tone(at, len) {
 }
 function beep(kind) {
   if (!ACTX) return;
-  if (ACTX.state === "suspended") ACTX.resume().catch(() => {});
+  // iPhone sessiz düğmesi açıkken de duyulsun: bip anında ses oturumu "playback" (mikrofon açılırken micReset "auto"ya döndürür)
+  try {
+    const s = navigator.audioSession;
+    if (s && s.type === "auto") s.type = "playback";
+  } catch {}
+  if (ACTX.state !== "running") ACTX.resume().catch(() => {});
   const t = ACTX.currentTime + 0.02;
   if (kind === "long") tone(t, 1);
   else if (kind === "two") (tone(t, 0.12), tone(t + 0.2, 0.12));
+  else if (kind === "go") (tone(t, 0.12), tone(t + 0.18, 0.12), tone(t + 0.36, 0.3));
   else tone(t, 0.15);
 }
-function useBeeps(on, left) {
+// Süre başlayınca (Seyhun 2026-11-26 "sporcu anlasın süre başladığını"): geri sayım ilk 3 sn içinde görülürse üç kısa bip
+function useBeeps(on, left, dur) {
   const prev = useRef(null);
   useEffect(() => {
-    const k = beepOf(prev.current, left);
+    const k = prev.current == null && left != null && dur && left >= dur - 3 ? "go" : beepOf(prev.current, left);
     prev.current = left;
     if (on && k) beep(k);
-  }, [on, left]);
+  }, [on, left, dur]);
 }
 
 // Ses öğesi tek: ekran tek, dokunuşla açılan öğe sonra gelen kayıtları çalar
@@ -1083,7 +1090,7 @@ export function BilgiScreen({ pub = "" }) {
   const msg = (myMsg && now - myMsg.at < FRESH_MS && myMsg.id !== myPin?.id ? myMsg : null) || myPin;
   const mode = screenMode(sv);
   const show = b?.show || SHOW_DEF;
-  useBeeps(on, sv.phase === "down" || sv.phase === "up" ? sv.left : null);
+  useBeeps(on, sv.phase === "down" || sv.phase === "up" ? sv.left : null, sv.phase === "down" ? dur : 0);
   const compass = (
     <div className="bz-cmp">
       <div className="bz-hd num">{h == null ? "---" : h}°</div>
