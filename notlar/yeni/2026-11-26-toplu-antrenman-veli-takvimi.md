@@ -23,3 +23,8 @@
 0. Telefonda dene: sporcu sayfasında Takım seç; A takım toplu antrenman ekle; sporcu hesabında yalnız A takımda görünsün.
 1. Sonradan takıma eklenen sporcu eski kitleli antrenmanları görmez (audUids yazarken hesaplanır); gerekirse "kitleyi yeniden hesapla".
 2. Tek tek eklenen antrenmanda (Plan penceresi) "Kimler" henüz yok.
+
+## Eklenenler listesi (2026-11-26, ikinci PR)
+- Toplu antrenman penceresinde "Yeni | Eklenenler · N": her toplu ekleme bir satır (tarih aralığı, sayı, saat, kimler).
+- Satıra dokun: saat/bitiş/ad/yer → "Hepsine kaydet" (DataProvider.updateSeries, serinin tüm planları); "Hepsini sil" iki dokunuşla (deleteSeries).
+- Sesle: "toplu eklenen antrenmanları göster / sil / saatini düzelt" → pencere Eklenenler sekmesinde açılır (bulkList, isler/topluAntrenman.js runBulkList).

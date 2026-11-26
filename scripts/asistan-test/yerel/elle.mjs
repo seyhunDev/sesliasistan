@@ -3530,3 +3530,12 @@ group("Kimler: takım ve sınıf")([
     return m.races === 1 && m.notes[0].label === "12–14 İzmir Kupası · A takım · Optimist" && m.cells[12].race.length === 1;
   })],
 ]);
+
+group("Toplu eklemeler listesi")([
+  ["seriler", F("iki toplu ekleme, haftalık seri sayılmaz", () => {
+    const pl = [{ seriesId: "s1", repeat: { every: "bulk" }, date: "2026-12-05", time: "10:30", title: "Antrenman", createdAt: "2026-11-26T08:00" }, { seriesId: "s1", repeat: { every: "bulk" }, date: "2026-12-06", time: "10:30", title: "Antrenman", createdAt: "2026-11-26T08:00" }, { seriesId: "s2", repeat: { every: "bulk" }, date: "2027-07-01", title: "Yaz", createdAt: "2026-11-26T09:00" }, { seriesId: "w", repeat: { every: "week" }, date: "2026-12-01" }];
+    const g = TBA.bulkGroups(pl);
+    return g.length === 2 && g[0].id === "s2" && g[1].n === 2 && /2 antrenman · 10:30/.test(TBA.groupLine(g[1]));
+  })],
+  ["sesle", F("'toplu eklenen antrenmanların saatini düzelt' → liste", () => TBA.bulkListCommand("toplu eklenen antrenmanların saatini düzelt")?.tab === "list" && !TBA.bulkListCommand("antrenman ekle"))],
+]);

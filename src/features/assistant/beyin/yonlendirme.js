@@ -24,7 +24,7 @@ import { listsFor } from "@/features/shop/shop";
 import { routesOf, EARLY } from "@/lib/assistRoute";
 import { foodOrderCmd, foodRecent } from "../isler/yemek";
 import { runSea } from "../isler/deniz";
-import { runBulk, runParents } from "../isler/topluAntrenman";
+import { runBulk, runBulkList, runParents } from "../isler/topluAntrenman";
 import { runCams } from "../isler/kamera";
 import { runMsgPlan } from "../isler/mesajPlan";
 import { courseJust } from "../isler/yarisMedya";
@@ -462,6 +462,9 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
       case "bulkTrain":
         record(s, "nav:calendar", "local");
         return runBulk(ctx, r.bc, viaVoice), true;
+      case "bulkList":
+        record(s, "nav:calendar", "local");
+        return runBulkList(ctx, viaVoice), true;
       case "parentsCal":
         record(s, "nav:calendar", "local");
         return runParents(ctx, r.pc, viaVoice), true;

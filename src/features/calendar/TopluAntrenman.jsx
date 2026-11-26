@@ -9,7 +9,7 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { todayStr } from "@/lib/utils/format";
 import { KimlerPick, useKimler } from "./Kimler";
 import { audLabel } from "@/lib/kimler";
-import { WEEKDAYS, bulkDrafts, bulkPlan, bulkSummary, monthLabel, monthsAhead } from "@/lib/topluAntrenman";
+import { WEEKDAYS, bulkGroups, groupLine, bulkDrafts, bulkPlan, bulkSummary, monthLabel, monthsAhead } from "@/lib/topluAntrenman";
 
 // Toplu antrenman penceresi (Seyhun 2026-11-26; örnek project-files/toplu-antrenman/ornek.html):
 // aylar · Hafta sonu / Hafta içi / Gün seç · "Bayram ve resmi tatiller de" · saat · ad · yer → "N antrenman ekle".
@@ -21,6 +21,8 @@ const MODES = [
 ];
 export function TopluAntrenman({ open, onClose, prefill, month }) {
   const { plans, saveDrafts, deleteSeries } = useData();
+  const groups = useMemo(() => bulkGroups(plans), [plans]);
+  const [tab, setTab] = useState(prefill?.tab === "list" ? "list" : "new");
   const toast = useToast();
   const { profile } = useAuth();
   const today = todayStr();
@@ -55,7 +57,24 @@ export function TopluAntrenman({ open, onClose, prefill, month }) {
 
   return (
     <SheetTone.Provider value="sahne">
-      <Sheet open={open} onClose={onClose} title="Toplu antrenman" footer={<SheetActions onCancel={onClose} yes={n ? `${n} antrenman ekle` : "Ekle"} onYes={save} disabled={!n} />}>
+      <Sheet open={open} onClose={onClose} title="Toplu antrenman" footer={tab === "new" ? <SheetActions onCancel={onClose} yes={n ? `${n} antrenman ekle` : "Ekle"} onYes={save} disabled={!n} /> : null}>
+        {groups.length > 0 && (
+          <div className="tb mb-3">
+            <div className="tb-seg tb-seg2" role="radiogroup">
+              {[
+                ["new", "Yeni"],
+                ["list", `Eklenenler · ${groups.length}`],
+              ].map(([k, l]) => (
+                <button key={k} type="button" role="radio" aria-checked={tab === k} onClick={() => setTab(k)}>
+                  {l}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+        {tab === "list" ? (
+          <Eklenenler groups={groups} />
+        ) : (
         <div className="tb">
           <div>
             <div className="tb-k">Aylar</div>
@@ -112,7 +131,79 @@ export function TopluAntrenman({ open, onClose, prefill, month }) {
             {sum.sub && <small>{sum.sub}</small>}
           </div>
         </div>
+        )}
       </Sheet>
     </SheetTone.Provider>
+  );
+}
+
+// Eklenenler (Seyhun 2026-11-26 "50 antrenman ekledim ama saatleri yanlış oldu… hepsini birlikte silebilir miyim"):
+// her toplu ekleme bir satır; dokununca saat, ad, yer hepsinde birden değişir; "Hepsini sil" iki dokunuşla (toplu iş, onaylı).
+function Eklenenler({ groups }) {
+  const [open, setOpen] = useState("");
+  return (
+    <div className="tb">
+      <div className="tb-list">
+        {groups.map((g) => (
+          <div key={g.id} className="tb-li">
+            <button type="button" data-press="row" className="tb-row tb-grp" aria-expanded={open === g.id} onClick={() => setOpen(open === g.id ? "" : g.id)}>
+              <span className="tb-rn">
+                {g.title}
+                <small>{[groupLine(g), g.aud && audLabel(g.aud)].filter(Boolean).join(" · ")}</small>
+              </span>
+            </button>
+            {open === g.id && <GroupEdit key={g.id} g={g} onDone={() => setOpen("")} />}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function GroupEdit({ g, onDone }) {
+  const { updateSeries, deleteSeries } = useData();
+  const toast = useToast();
+  const [f, setF] = useState({ time: g.time, endTime: g.endTime, title: g.title, place: g.place });
+  const [ask, setAsk] = useState(false);
+  const put = (p) => setF((x) => ({ ...x, ...p }));
+  const changed = f.time !== g.time || f.endTime !== g.endTime || f.title.trim() !== g.title || f.place.trim() !== g.place;
+  const save = async () => {
+    const k = await updateSeries(g.id, { time: f.time, endTime: f.endTime, title: f.title.trim() || g.title, place: f.place.trim() });
+    if (k) toast(`${k} antrenman güncellendi`);
+    onDone();
+  };
+  const drop = async () => {
+    if (!ask) return setAsk(true);
+    const k = await deleteSeries(g.id, "");
+    if (k) toast(`${k} antrenman silindi`);
+    onDone();
+  };
+  return (
+    <div className="tb tb-ge">
+      <div className="tb-row">
+        <span>Saat</span>
+        <span className="tb-tm">
+          <input type="time" aria-label="Başlama saati" value={f.time} onChange={(e) => put({ time: e.target.value })} />
+          <span>–</span>
+          <input type="time" aria-label="Bitiş saati" value={f.endTime} onChange={(e) => put({ endTime: e.target.value })} />
+        </span>
+      </div>
+      <label className="tb-row">
+        <span>Ad</span>
+        <input value={f.title} onChange={(e) => put({ title: e.target.value })} maxLength={80} />
+      </label>
+      <label className="tb-row">
+        <span>Yer</span>
+        <input value={f.place} onChange={(e) => put({ place: e.target.value })} maxLength={80} />
+      </label>
+      <div className="tb-acts">
+        <button type="button" data-press className="tb-btn tb-del" onClick={drop}>
+          {ask ? `Emin misin? ${g.n} antrenmanı sil` : "Hepsini sil"}
+        </button>
+        <button type="button" data-press className="tb-btn tb-ok" disabled={!changed} onClick={save}>
+          Hepsine kaydet
+        </button>
+      </div>
+    </div>
   );
 }

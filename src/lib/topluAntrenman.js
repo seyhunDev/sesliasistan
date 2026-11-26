@@ -151,3 +151,25 @@ export function parentsCommand(text, today) {
   if (!/veli/u.test(t) || !/(takvim|program|plan|pdf)/u.test(t) || !/(hazırla|oluştur|çıkar|yap|gönder|aç)/u.test(t)) return null;
   return { months: monthsIn(t, today), aud: teamIn(t) };
 }
+
+// Eklenenler: toplu eklemeler (seri) satır satır, en yenisi önce. { id, n, from, to, time, endTime, title, place, aud, at }
+export function bulkGroups(plans = []) {
+  const m = new Map();
+  for (const p of plans) {
+    if (p.repeat?.every !== "bulk" || !p.seriesId) continue;
+    const g = m.get(p.seriesId) || { id: p.seriesId, n: 0, from: p.date, to: p.date, time: p.time || "", endTime: p.endTime || "", title: p.title, place: p.place || "", aud: p.aud || null, at: p.createdAt || "" };
+    g.n++;
+    if (p.date < g.from) g.from = p.date;
+    if (p.date > g.to) g.to = p.date;
+    m.set(p.seriesId, g);
+  }
+  return [...m.values()].sort((a, b) => b.at.localeCompare(a.at));
+}
+const sd = (s) => D(s).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
+export const groupLine = (g) => `${sd(g.from)} – ${sd(g.to)} · ${g.n} antrenman${g.time ? ` · ${g.time}${g.endTime ? `–${g.endTime}` : ""}` : ""}`;
+
+// "toplu eklenen antrenmanları sil", "son toplu antrenmanın saatini düzelt": Eklenenler listesi açılır (değiştirme ve silme orada, onaylı)
+export function bulkListCommand(text) {
+  const t = low(text);
+  return /toplu/u.test(t) && /(antre?nman|idman|ekleme|eklenen)/u.test(t) && /(sil|düzelt|değiştir|güncelle|liste|göster|aç|saat)/u.test(t) ? { tab: "list" } : null;
+}
