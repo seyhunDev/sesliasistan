@@ -6,7 +6,7 @@ import { kindOf } from "./kinds.js";
 
 // Bildirim türleri (payload.cat): training (antrenman planı: yeni, değişti, iptal, hatırlatma), fitness, chat, absent
 // (devamsızlık), dues (aidat), plan (diğer planlar), task, note, receipt, summary (günlük özetler), extra (rüzgâr, doğum günü,
-// haftalık), calls, race, mail, test
+// haftalık), calls, race, mail, test, basvuru (tanıtımdan gelen başvuru; yalnız ana hesap)
 // Sporcu ve öğrenci: yalnız antrenman ve fitness. Veli: çocuğunun devamsızlığı ve aidat. Mesaj (chat) sporcu tarafına gitmez:
 // Mesajlar sporcu tarafında gizli (Seyhun 2026-11-25 "mesajları şimdilik sporculara göstermeyelim").
 export const ALLOW = {

@@ -212,6 +212,14 @@ service cloud.firestore {
         // Antrenörün kendi Yönet alanı (orgs/k-{uid}): yalnız bilgi ekranı belgeleri (ekran, ses, kanallar, kayıtlar, pusula)
         allow read, write: if col in ["bilgi", "bilgiKanal", "bilgiLog", "bilgiPusula"] && isCoachSpace(orgId);
       }
+      // Kullanım kaydı (Ayarlar › Admin, Seyhun 2026-11-26): izin veren kişi yalnız kendi kullanım belgesini ve gün kayıtlarını
+      // yazar, okur, siler (izni geri alınca). Ana hesap hepsini okur (yukarıdaki kural). Başvurular (basvurular) yalnız sunucudan yazılır.
+      match /kullanim/{uid} {
+        allow read, write: if isStaff(orgId) && request.auth.uid == uid;
+        match /gun/{gun} {
+          allow read, write: if isStaff(orgId) && request.auth.uid == uid;
+        }
+      }
       // Kurye: bugünün siparişleri ve yemek ayarı (kurye listesi), yalnız okuma
       match /yemekSiparisler/{id} {
         allow read: if isCourier(orgId);

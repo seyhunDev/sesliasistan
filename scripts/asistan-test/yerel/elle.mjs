@@ -3612,3 +3612,32 @@ const SC = await import("@/lib/serverClock");
 group("Anlık ses geçerliliği")([
   ["20 sn", F("az önceki çalar, 25 sn önceki ve boş çalmaz", () => SC.isLive(SC.serverNow() - 3000) && !SC.isLive(SC.serverNow() - 25e3) && !SC.isLive(0) && SC.isLive(SC.serverNow() - 25e3, 30e3))],
 ]);
+
+// Admin (Seyhun 2026-11-26): tanıtım başvurusu kontrolleri (lib/basvuru) ve kullanım kaydı (lib/kullanim)
+const BV = await import("@/lib/basvuru");
+const KU = await import("@/lib/kullanim");
+const iyi = { ad: "Elif Kaya", tel: "532 418 27 90", mail: "Elif.Kaya@gmail.com", kulup: "Foça Yelken, İzmir", rol: "Antrenör" };
+group("Başvuru ve kullanım kaydı")([
+  ["geçerli başvuru", F("+90 ile kaydedilir, e-posta küçük harf", () => { const r = BV.basvuruTemizle(iyi); return r.ok && r.veri.tel === "+905324182790" && r.veri.mail === "elif.kaya@gmail.com"; })],
+  ["başında 0", F("0 olmadan yaz uyarısı", () => /0 olmadan/.test(BV.telHata("0532 418 27 90")))],
+  ["+90 yazılmış", F("+90 zaten var", () => /\+90 zaten/.test(BV.telHata("+90 532 418 27 90")) && /\+90 zaten/.test(BV.telHata("905324182790")))],
+  ["sabit hat", F("5 ile başlar", () => /5 ile/.test(BV.telHata("232 123 45 67")))],
+  ["eksik hane", F("10 hane olmalı", () => /10 hane/.test(BV.telHata("532 418")))],
+  ["uydurma numara", F("555 555 55 55 kabul edilmez", () => /Gerçek/.test(BV.telHata("555 555 55 55")))],
+  ["e-posta biçimi", F("boşluk ve @ yok", () => /boşluk/.test(BV.mailHata("a b@c.com")) && /ornek@/.test(BV.mailHata("ali.gmail.com")))],
+  ["e-posta yazım hatası", F("gmial.com -> Düzelt önerisi, sunucuda engel değil", () => BV.mailHata("ali@gmial.com").fix === "ali@gmail.com" && BV.basvuruTemizle({ ...iyi, mail: "ali@gmial.com" }).ok)],
+  ["tek kelime ad", F("ad ve soyad birlikte", () => /birlikte/.test(BV.adHata("Elif")) && BV.adHata("Ayşe Nur Öztürk") === "")],
+  ["rol yok", F("rol seçilmeli", () => !BV.basvuruTemizle({ ...iyi, rol: "Hacker" }).ok)],
+  ["telefon gösterimi", F("+90 532 418 27 90", () => BV.telGoster("+905324182790") === "+90 532 418 27 90")],
+  ["sayfa adı", F("adresteki kimlik tutulmaz", () => KU.sayfaAdi("/athletes/abc123?x=1") === "Sporcular" && KU.sayfaAdi("/athletes/races/r9") === "Yarışlar" && KU.sayfaAdi("/") === "Ana sayfa" && KU.sayfaAdi("/settings/admin") === "Admin")],
+  ["cihaz", F("iPhone · iOS 18.2, iPad masaüstü kipinde", () => KU.cihazOf("Mozilla/5.0 (iPhone; CPU iPhone OS 18_2 like Mac OS X)") === "iPhone · iOS 18.2" && KU.cihazOf("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)", { touch: 5 }).startsWith("iPad"))],
+  ["süre birikimi", F("kısa görüntüleme sayılmaz, uzun 1 saatle sınırlı", () => {
+    let b = KU.sureEkle({}, { gun: "2026-11-26", sayfa: "Ana sayfa", sn: 1 });
+    b = KU.sureEkle(b, { gun: "2026-11-26", sayfa: "Ana sayfa", sn: 90 });
+    b = KU.sureEkle(b, { gun: "2026-11-26", sayfa: "Antrenman", sn: 9000 });
+    return b["2026-11-26"].sn === 3690 && b["2026-11-26"].sayfa["Ana sayfa"] === 90;
+  })],
+  ["90 gün", F("silinecek günler 90-96 gün önce", () => { const e = KU.eskiGunler("2026-11-26"); return e.length === 7 && e[0] === "2026-08-28"; })],
+  ["günlük kişi", F("bugün giren 1", () => { const g = KU.gunlukKisi([{ gunler: { "2026-11-26": 60 } }, { gunler: { "2026-11-25": 30 } }], "2026-11-26", 3); return g[2].kisi === 1 && g[1].kisi === 1 && g[0].kisi === 0; })],
+  ["süre yazımı", F("49 dk, 2 sa 10 dk", () => KU.sureYaz(2940) === "49 dk" && KU.sureYaz(7800) === "2 sa 10 dk")],
+]);

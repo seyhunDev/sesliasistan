@@ -39,6 +39,7 @@ import { NavProgress } from "@/components/ui/NavProgress";
 import { OpenTimer } from "@/components/ui/OpenTimer";
 import { SyncLine } from "@/components/ui/SyncLine";
 import { SwipeBack } from "@/components/ui/SwipeBack";
+import { KullanimKaydi } from "@/features/kullanim/KullanimKaydi";
 
 export default function AppLayout({ children }) {
   const { user, profile, loading, error } = useAuth();
@@ -117,6 +118,7 @@ export default function AppLayout({ children }) {
                   <AntTemizle />
                   <IosBridge />
                   <AppLock />
+                  <KullanimKaydi />
                  </DockProvider>
                 </AssistantProvider>
               </MeetingProvider>
