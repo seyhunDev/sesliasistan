@@ -3563,3 +3563,9 @@ group("Gün kaydı")([
     return n.Sporcu === 2 && n.Ceza === 1 && n.FD === 1 && n.Start === 1 && n.Video === 1 && g.events.filter((e) => e.what === "Ceza kalktı").length === 1 && ada.pen.length === 1 && ada.sana === 1 && ada.vid === "1 (Orsa)" && /2 sa 10 dk/.test(g.sub) && g.file === "gun-kaydi-2026-11-26.pdf";
   })],
 ]);
+
+// Anlık ses/mesaj yalnız gönderildiği an çalar (Seyhun 2026-11-26 "iPad açınca eski deneme sesi çaldı")
+const SC = await import("@/lib/serverClock");
+group("Anlık ses geçerliliği")([
+  ["20 sn", F("az önceki çalar, 25 sn önceki ve boş çalmaz", () => SC.isLive(SC.serverNow() - 3000) && !SC.isLive(SC.serverNow() - 25e3) && !SC.isLive(0) && SC.isLive(SC.serverNow() - 25e3, 30e3))],
+]);

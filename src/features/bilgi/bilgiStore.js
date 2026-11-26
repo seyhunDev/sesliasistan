@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { arrayUnion, collection, deleteField, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, waitForPendingWrites, where } from "firebase/firestore";
 import { addDoc, deleteDoc, setDoc, updateDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
+import { serverNow } from "@/lib/serverClock";
 import { LIVE_MS, cleanBilgi, MSG_MAX } from "@/lib/bilgi";
 
 // Bilgi ekranı verisi: orgs/{org}/bilgi/ekran (sayaç, parkur, mesaj) ve orgs/{org}/bilgi/ses (son bas-konuş kaydı).
@@ -321,7 +322,7 @@ export async function sendMsg(org, text, ctx, to = null) {
     .slice(0, MSG_MAX);
   if (!t) return { ok: false };
   const id = newId();
-  await saveBilgi(org, { msg: { id, text: t, at: Date.now(), to: to?.dev || "" } });
+  await saveBilgi(org, { msg: { id, text: t, at: serverNow(), to: to?.dev || "" } });
   const logId = await logSent(org, { kind: "msg", text: t, id, to: to?.name || "", dev: to?.dev || "" }, ctx);
   return { id, ok: await confirmed(), logId };
 }
@@ -515,7 +516,7 @@ const b64 = (blob) =>
 export async function sendSes(org, blob, dur, ctx, to = null) {
   const data = await b64(blob);
   if (!data || data.length > 700000) return { ok: false };
-  const d = { id: newId(), at: Date.now(), type: (blob.type || "audio/mp4").split(";")[0], dur: Math.round(dur), data, to: to?.dev || "" };
+  const d = { id: newId(), at: serverNow(), type: (blob.type || "audio/mp4").split(";")[0], dur: Math.round(dur), data, to: to?.dev || "" };
   mirror(org, d, "ses", "son");
   await setDoc(ref(org, "ses"), d);
   const logId = await logSent(org, { kind: "ses", dur: Math.round(dur), id: d.id, to: to?.name || "" }, ctx);
@@ -530,7 +531,7 @@ export async function sendSesPart(org, { id, seq, end, blob, dur, to }) {
   const data = await b64(blob);
   if (!data || data.length > 300000) return false;
   const prev = LAST_PART.get(id);
-  const d = { id, at: Date.now(), type: (blob.type || "audio/mp4").split(";")[0], seq, end: !!end, data, to: to?.dev || "" };
+  const d = { id, at: serverNow(), type: (blob.type || "audio/mp4").split(";")[0], seq, end: !!end, data, to: to?.dev || "" };
   if (end) d.dur = Math.round(dur || 0);
   if (prev && prev.seq === seq - 1) Object.assign(d, { prevSeq: prev.seq, prevData: prev.data });
   if (end) LAST_PART.delete(id);
@@ -565,7 +566,7 @@ export async function sendGelen(dev, who, blob, dur) {
     name: String(who.name || "").slice(0, 30),
     uid: who.uid || "",
     id: newId(),
-    at: Date.now(),
+    at: serverNow(),
     type: (blob.type || "audio/mp4").split(";")[0],
     dur: Math.round(dur),
     data,
@@ -685,7 +686,7 @@ export async function sendKalip(org, list, k, ctx, to = null) {
       .then((s) => s.exists() && mirror(org, s.data(), "ses", `k-${k.id}`))
       .catch(() => {});
   }
-  const d = { id: newId(), at: Date.now(), type: k.type || "audio/mp4", dur: k.dur || 0, kalip: k.id, to: to?.dev || "" };
+  const d = { id: newId(), at: serverNow(), type: k.type || "audio/mp4", dur: k.dur || 0, kalip: k.id, to: to?.dev || "" };
   mirror(org, d, "ses", "son");
   await setDoc(ref(org, "ses"), d);
   const logId = await logSent(org, { kind: "ses", dur: d.dur, id: d.id, to: to?.name || "", kalip: k.name || "" }, ctx);
