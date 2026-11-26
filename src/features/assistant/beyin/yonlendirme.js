@@ -24,6 +24,7 @@ import { listsFor } from "@/features/shop/shop";
 import { routesOf, EARLY } from "@/lib/assistRoute";
 import { foodOrderCmd, foodRecent } from "../isler/yemek";
 import { runSea } from "../isler/deniz";
+import { runBulk, runParents } from "../isler/topluAntrenman";
 import { runCams } from "../isler/kamera";
 import { runMsgPlan } from "../isler/mesajPlan";
 import { courseJust } from "../isler/yarisMedya";
@@ -457,6 +458,13 @@ export async function run(ctx, t, viaVoice = false, fresh = false) {
       // Deniz trafiği: yanaşan/limandaki/demirdeki gemiler, Sahil Güvenlik, acil numara (isler/deniz.js)
       case "sea":
         return runSea(ctx, r.sq, viaVoice), true;
+      // Toplu antrenman / veli takvimi: Takvim'de pencere dolu açılır, ekleme ve PDF orada (isler/topluAntrenman.js)
+      case "bulkTrain":
+        record(s, "nav:calendar", "local");
+        return runBulk(ctx, r.bc, viaVoice), true;
+      case "parentsCal":
+        record(s, "nav:calendar", "local");
+        return runParents(ctx, r.pc, viaVoice), true;
       // Halka açık kameralar: sayfa, söylenen yerle (isler/kamera.js)
       case "cams":
         record(s, "nav:cams", "local");

@@ -126,7 +126,7 @@ export function PlanActions({ rec, by, cancelStart = false, onDone, onDelete, on
             className={`flex items-center gap-1.5 rounded-full px-4 py-2 text-[0.8125rem] font-medium transition active:scale-95 ${seriesAsk ? "bg-rec text-white" : "text-rec/80 active:bg-rec/10"}`}
           >
             <Icon name="repeat" className="size-4" />
-            {seriesAsk ? "Emin misin? Hepsini sil" : "Bu ve sonraki haftaları sil"}
+            {seriesAsk ? "Emin misin? Hepsini sil" : rec.repeat?.every === "bulk" ? "Bu ve sonrakileri sil" : "Bu ve sonraki haftaları sil"}
           </button>
         )}
       </div>

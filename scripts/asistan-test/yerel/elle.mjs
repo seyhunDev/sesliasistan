@@ -3478,3 +3478,23 @@ group("Ortak düğmeler")([
     ["özet", F("3 plan ve fazlası", () => CP.planSummary([...out.items, ...out.items], 2).endsWith("ve 4 plan daha"))],
   ]);
 }
+
+// Toplu antrenman ve veli takvimi (lib/topluAntrenman.js, lib/tatiller.js, lib/veliTakvimi.js; Seyhun 2026-11-26)
+const TBA = await import("@/lib/topluAntrenman");
+const TBT = await import("@/lib/tatiller");
+const TBV = await import("@/lib/veliTakvimi");
+const TBP = [{ date: "2026-12-05", time: "10:30", cat: "Antrenman", title: "Antrenman" }];
+group("Toplu antrenman")([
+  ["2027 bayramları", F("Ramazan 9–11 Mart, Kurban 16–19 Mayıs, arifeler yarım", () => TBT.isHoliday("2027-03-09") && TBT.isHoliday("2027-03-11") && TBT.holidayOn("2027-03-08")?.half && TBT.isHoliday("2027-05-16") && TBT.isHoliday("2027-05-19") && !TBT.isHoliday("2027-05-15"))],
+  ["aynı güne iki ad", F("19 Mayıs 2027: Gençlik ve Spor + Kurban tek gün", () => TBT.holidaysOf(2027).filter((h) => h.date === "2027-05-19").length === 1 && /Kurban/.test(TBT.holidayOn("2027-05-19").name))],
+  ["hafta sonları + tatil", F("Ara–Şub 26 gün, 1 Ocak dahil, var olan 5 Aralık atlanır", () => { const r = TBA.bulkPlan({ months: ["2026-12", "2027-01", "2027-02"], mode: "weekend", holidays: true, from: "2026-11-26", time: "10:30" }, TBP); return r.add.length === 26 && r.skip[0] === "2026-12-05" && r.add.includes("2027-01-01"); })],
+  ["hafta içi bayram tek", F("Mayıs 2027 hafta içi + bayramlar: aynı gün bir kez", () => { const r = TBA.bulkPlan({ months: ["2027-05"], mode: "weekday", holidays: true, from: "2026-11-26" }, []); return new Set(r.add).size === r.add.length && r.add.includes("2027-05-17") && r.add.includes("2027-05-16"); })],
+  ["tatil seçilmedi", F("Temmuz Pzt–Per: 15 Temmuz atlanır", () => { const r = TBA.bulkPlan({ months: ["2027-07"], mode: "days", days: [1, 2, 3, 4], from: "2026-11-26" }, []); return !r.add.includes("2027-07-15") && r.offHol.includes("2027-07-15") && r.add.length === 16; })],
+  ["geçmiş gün yok", F("Kasım'da bugünden öncesi eklenmez", () => TBA.bulkPlan({ months: ["2026-11"], mode: "weekend", from: "2026-11-26" }, []).add.every((d) => d >= "2026-11-26"))],
+  ["başka saatteki antrenman", F("aynı gün 16:00 varken 10:30 eklenir", () => !TBA.clashOf("2026-12-05", "16:00", TBP) && !!TBA.clashOf("2026-12-05", "", TBP))],
+  ["sesle: hafta sonları", F("Aralık ve Ocak, 10:30", () => { const c = TBA.bulkCommand("Aralık ve Ocak'ın hafta sonlarına 10:30'da antrenman ekle", "2026-11-26"); return c.mode === "weekend" && c.months.join() === "2026-12,2027-01" && c.time === "10:30"; })],
+  ["sesle: aralık", F("Kasım'dan Ocak'a perşembeler 16:00", () => { const c = TBA.bulkCommand("Kasım'dan Ocak'a kadar bütün perşembelere saat 16 antrenman ekle", "2026-11-26"); return c.months.length === 3 && c.days.join() === "4" && c.time === "16:00"; })],
+  ["sesle: tek antrenman değil", F("'yarın 10'da antrenman ekle' toplu değil", () => TBA.bulkCommand("yarın 10'da antrenman ekle", "2026-11-26") === null && TBA.bulkCommand("her salı 16:00 antrenman", "2026-11-26") === null)],
+  ["veli takvimi sesle", F("Aralık–Mart", () => TBA.parentsCommand("velilere aralıktan marta kadar antrenman takvimi hazırla", "2026-11-26")?.months.length === 4)],
+  ["veli takvimi ay", F("Mart 2027: bayram tek satır, saatler", () => { const tr = ["2027-03-06", "2027-03-13", "2027-03-20"].map((date) => ({ date, time: "10:30", endTime: "13:00", cat: "Antrenman" })); const m = TBV.monthOf("2027-03", tr); return m.count === 3 && m.notes.some((n) => n.label === "9–11 Ramazan Bayramı") && TBV.hoursLines(tr)[0] === "Cumartesi 10:30–13:00"; })],
+]);

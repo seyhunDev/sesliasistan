@@ -18,6 +18,10 @@ import { isFit, statusOf } from "@/lib/fitness/model";
 import { useBirthday } from "@/features/birthdays/BirthdayProvider";
 import { isTraining } from "@/lib/trainingLog";
 import { todayStr } from "@/lib/utils/format";
+import { holidayOn } from "@/lib/tatiller";
+import { TopluAntrenman } from "./TopluAntrenman";
+import { VeliTakvimi } from "./VeliTakvimi";
+import { onCalendarSheet, takeCalendarSheet } from "./bulkOpen";
 
 const WEEK = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 const shift = (ym, n) => {
@@ -40,7 +44,7 @@ const monthName = (ym) => D(`${ym}-01`).toLocaleDateString("tr-TR", { month: "lo
 // saat · tür rengi çizgi · ad ve alt satır · durum; süren plan limon zeminli. iPad yatayda (64rem+) solda ay, sağda gün.
 // Fitness: kendi ve sporcuların antrenmanları (fitDays; fitOthers zaten yüklü, ek okuma yok).
 export function CalendarView({ initial }) {
-  const { plans: all, fitOthers, members, myUid, tasks, toggleTask, birthdays, lessons } = useData();
+  const { plans: all, fitOthers, members, myUid, tasks, toggleTask, birthdays, lessons, isStaff } = useData();
   const plans = useMemo(() => all.filter((p) => !isFit(p)), [all]);
   const fit = useMemo(() => fitDays(all, fitOthers || [], members, myUid), [all, fitOthers, members, myUid]);
   const fitDates = useMemo(() => new Set(fit.map((f) => f.date)), [fit]);
@@ -64,6 +68,16 @@ export function CalendarView({ initial }) {
     return () => document.body.classList.remove("sh-body");
   }, []);
 
+  // Toplu antrenman ve veli takvimi (yalnız ana hesap; Seyhun 2026-11-26). Sesli asistan bulkOpen.js ile açar.
+  const [sheet, setSheet] = useState(null); // { kind: "bulk" | "parents", prefill, n }
+  useEffect(() => {
+    const take = () => {
+      const w = takeCalendarSheet();
+      if (w) setSheet({ ...w, n: Date.now() });
+    };
+    take();
+    return onCalendarSheet(take);
+  }, []);
   const [addMenu, setAddMenu] = useState(false);
   const addRef = useRef(null);
   useEffect(() => {
@@ -80,14 +94,16 @@ export function CalendarView({ initial }) {
     const late = day < today && open.length > 0;
     const b = birthdaysOn(birthdays, day);
     const f = fitOn(fit, day);
+    const h = holidayOn(day);
     // iPad'de hücrede görünen adlar (telefonda yalnız noktalar)
     const evs = [
+      ...(h ? [{ k: "h", t: h.name, c: "hol" }] : []),
       ...b.map((x) => ({ k: `b${x.id}`, t: x.name, c: "bday" })),
       ...p.map((x) => ({ k: `p${x.id}`, h: x.time && (x.endDate || x.date) === x.date ? x.time : "", t: x.title, c: `tone-${planTone(x)}` })),
       ...f.map((x) => ({ k: `f${x.id}`, h: x.plan.time || "", t: x.mine ? x.plan.fit?.name || x.plan.title || "Fitness" : x.name, c: "tone-fit" })),
       ...open.map((x) => ({ k: `t${x.id}`, t: x.title, c: day < today ? "late" : "task" })),
     ];
-    const dots = [p.length && "plan", fitDates.has(day) && "fit", open.length && (late ? "late" : "task"), b.length && "bday"].filter(Boolean);
+    const dots = [h && !h.half && "hol", p.length && "plan", fitDates.has(day) && "fit", open.length && (late ? "late" : "task"), b.length && "bday"].filter(Boolean);
     return { evs, dots, n: p.length + f.length + open.length + b.length };
   };
 
@@ -95,6 +111,7 @@ export function CalendarView({ initial }) {
   const bdays = birthdaysOn(birthdays, sel);
   const dayLessons = lessonsOn(lessons, sel);
   const dayFit = fitOn(fit, sel);
+  const dayHol = holidayOn(sel);
   const count = items.plans.length + dayFit.length + items.tasks.length + bdays.length + dayLessons.length;
   const when = sel === today ? "Bugün" : sel > today ? leftLabel(sel, today) : "";
   // Süren plan (ana sayfadaki kural): bugün, başlama saati geçmiş, bitişi (yoksa süre, antrenmanda 2 saat, diğerlerinde 1 saat) gelmemiş
@@ -127,6 +144,12 @@ export function CalendarView({ initial }) {
                 ["Plan", () => openAdd({ type: "plan", date: sel })],
                 ["Görev", () => openAdd({ type: "task", date: sel })],
                 ["Doğum günü", () => openBirthday({ date: sel })],
+                ...(isStaff
+                  ? []
+                  : [
+                      ["Toplu antrenman", () => setSheet({ kind: "bulk", n: Date.now() })],
+                      ["Veli takvimi", () => setSheet({ kind: "parents", n: Date.now() })],
+                    ]),
               ].map(([l, f]) => (
                 <button key={l} type="button" role="menuitem" data-press="row" onClick={() => (setAddMenu(false), f())}>
                   {l}
@@ -211,7 +234,17 @@ export function CalendarView({ initial }) {
             </small>
           </div>
           <ul className="cal-sh-ls">
-            {count === 0 && <li className="cal-sh-none">Kayıt yok</li>}
+            {dayHol && (
+              <li className="cal-sh-it" data-c="hol">
+                <span className="num cal-sh-t">Gün</span>
+                <i />
+                <span className="cal-sh-x">
+                  <b>{dayHol.name}</b>
+                  <small>{dayHol.half ? "Yarım gün tatil" : "Resmi tatil"}</small>
+                </span>
+              </li>
+            )}
+            {count === 0 && !dayHol && <li className="cal-sh-none">Kayıt yok</li>}
             {bdays.map((b) => {
               const age = nextBirthday(b, sel).age;
               return (
@@ -318,6 +351,8 @@ export function CalendarView({ initial }) {
           </div>
         </section>
       </div>
+      {sheet?.kind === "bulk" && <TopluAntrenman key={sheet.n} open onClose={() => setSheet(null)} prefill={sheet.prefill} month={month} />}
+      {sheet?.kind === "parents" && <VeliTakvimi key={sheet.n} open onClose={() => setSheet(null)} prefill={sheet.prefill} month={month} />}
     </main>
   );
 }

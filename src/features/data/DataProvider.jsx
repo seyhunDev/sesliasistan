@@ -68,6 +68,11 @@ const tzName = () => {
 };
 
 // Fiş taslağını kaydedilecek biçime çevirir (toplamlar her zaman kalemlerden yeniden hesaplanır)
+// Plan süresi (dk): bitiş saati varsa aradaki süre, yoksa 60
+const durOf = (a, b) => {
+  const m = (t) => (/^\d{2}:\d{2}$/.test(t || "") ? +t.slice(0, 2) * 60 + +t.slice(3) : null);
+  return m(a) != null && m(b) != null && m(b) > m(a) ? m(b) - m(a) : 60;
+};
 function receiptBody(d) {
   const items = (d.items || []).map((i) => ({ n: String(i.n || "").trim() || "Kalem", q: Number(i.q) || 1, u: Math.round(i.u || 0), r: Number(i.r) || 0 }));
   const body = {
@@ -401,7 +406,8 @@ export function DataProvider({ children }) {
             endDate: d.endDate && d.endDate !== d.date ? d.endDate : "", // dahil (son gün)
             time: timed ? d.time : "",
             allDay: !timed,
-            durationMin: timed ? 60 : null,
+            durationMin: timed ? durOf(d.time, d.endTime) : null,
+            ...(timed && d.endTime > d.time ? { endTime: d.endTime } : {}), // bitiş saati (toplu antrenman)
             tz: tzName(),
             timeSource: timed ? "user" : "none",
             place: (d.place || "").trim(),
@@ -418,14 +424,17 @@ export function DataProvider({ children }) {
           if (!side && isTraining(rec) && !toNotify.some(([, x]) => x === planIds[i])) toNotify.push(["plan", planIds[i]]);
           ids.push(["plan", planIds[i]]);
           // Haftalık tekrar: her hafta için ayrı plan (seriesId ortak); bildirim yalnız ilki için
-          const dates = d.repeat === "week" && !rec.endDate ? seriesDates(d.date, d.repeatUntil) : [];
+          // Toplu antrenman (lib/topluAntrenman.js): verilen günlerin hepsi tek seri (every "bulk"); Geri al seriyi siler
+          const bulk = Array.isArray(d.dates) && d.dates.length > 1 && !rec.endDate;
+          const dates = bulk ? d.dates : d.repeat === "week" && !rec.endDate ? seriesDates(d.date, d.repeatUntil) : [];
           if (dates.length > 1) {
-            const repeat = { every: "week", until: dates.at(-1) };
+            const repeat = { every: bulk ? "bulk" : "week", until: dates.at(-1) };
             dates.forEach((date, k) => {
               const id = k ? newId("plans") : planIds[i];
               batch.set(doc(db, "orgs", ownerId, "plans", id), { ...rec, date, seriesId: planIds[i], repeat });
             });
-            count.weeks = dates.length;
+            count[bulk ? "bulk" : "weeks"] = dates.length;
+            if (bulk) count.seriesId = planIds[i];
           } else batch.set(doc(db, "orgs", ownerId, "plans", planIds[i]), rec);
           count.plans++;
         } else {
