@@ -16,7 +16,7 @@
   --acc: #2563eb;
   --acc2: #2563eb; /* gradyan kullanan eski dosyalar düz renk görünsün */
   --on-acc: #fff; /* mavi zemin üstündeki yazı: açık temada beyaz, koyu temada ve lacivertte koyu lacivert (açık mavinde beyaz okunmuyor) */
-  --deep: #0b1a33;
+  --deep: #17171a;
   --brand: linear-gradient(140deg, #2f6bff 0%, #6b9bff 100%);
   --rec: #c8574f;
   --ok: #4a8a64;
@@ -400,9 +400,9 @@ html[data-nav="none"]::view-transition-new(.vt-in) { animation: none; }
    zeminleriyle), en altta asistan düğmesi ve iki yan düğme. Bulanıklık yarıçapı canlandırılmaz, yalnız örtünün opaklığı
    değişir (iPhone'da akıcı). Boşta hiçbir şey oynamaz. */
 .afull { color-scheme: dark; color: var(--fg);
-  --bg: #081429; --card: #11223c; --fg: #f1f4f9; --mut: #a7b5cc; --line: #24375a; --acc: #3d7bff; --acc2: #3d7bff; --rec: #e0675e;
-  --ok: #55a374; --fg2: #c5c8de; --accbg: #16264a; --warn: #d0a25e; --warnbg: #2e281f;
-  --ab-panel: rgba(11, 26, 51, .9); }
+  --bg: #0b0b0c; --card: #17171a; --fg: #f4f4f5; --mut: #a1a1aa; --line: #26262b; --acc: #d4ff3a; --acc2: #d4ff3a; --rec: #ff6b6b;
+  --ok: #d4ff3a; --fg2: #d4d4d8; --accbg: rgba(212, 255, 58, .12); --warn: #fbbf5c; --warnbg: rgba(251, 191, 92, .12);
+  --ab-panel: rgba(23, 23, 26, .92); }
 .abg { position: absolute; inset: 0; overflow: hidden; pointer-events: none;
   background: rgba(10, 13, 34, .62); -webkit-backdrop-filter: blur(20px) saturate(1.15); backdrop-filter: blur(20px) saturate(1.15); }
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .abg { background: rgba(10, 13, 34, .9); } }
@@ -572,7 +572,7 @@ html[data-nav="none"]::view-transition-new(.vt-in) { animation: none; }
 html[data-warm] .boot:not([data-phase="out"]) { animation: bootwarm .3s ease-out .45s both; }
 @keyframes bootwarm { from { opacity: 0; } }
 .boot { position: fixed; inset: 0; z-index: 9999; display: grid; place-items: center; overflow: hidden; color: #e8ecff; }
-.boot-bg { position: absolute; inset: 0; background: radial-gradient(120% 75% at 50% 38%, #172a4d 0%, #0b1a33 55%, #08142a 100%); }
+.boot-bg { position: absolute; inset: 0; background: #0b0b0c; }
 .boot::before { content: ""; position: absolute; left: 50%; top: 42%; width: 26rem; height: 26rem; transform: translate(-50%, -50%); border-radius: 9999px;
   background: radial-gradient(closest-side, rgba(61, 123, 255, .2), rgba(61, 123, 255, .06) 60%, transparent); animation: bootglow 2.6s ease-in-out infinite; }
 .boot-mark { position: relative; display: flex; flex-direction: column; align-items: center; margin-top: -6vh; }
@@ -929,15 +929,12 @@ body:has([data-cam]) [data-toast] { top: calc(4.25rem + env(safe-area-inset-top)
 /* KOKPİT (ana sayfanın lacivert üst kısmı; Seyhun 2026-10-21 "C · Lacivert kokpit"; features/home/Cockpit.jsx): logonun gecesi, sağ üstte mavi,
    sol altta çivit hafif ışık; iki temada aynı. İçindeki yuvarlak düğmeler (zil, doğum günü) yarı saydam beyaz. */
 .ck {
-  color: #eef2f8;
-  background:
-    radial-gradient(120% 70% at 88% 0%, rgba(61, 123, 255, .24), transparent 62%),
-    radial-gradient(90% 60% at 0% 100%, rgba(99, 102, 241, .12), transparent 62%),
-    #0b1a33;
+  color: #f4f4f5;
+  background: #0b0b0c;
 }
-.ck .btn-round .ring-bg { --tw-ring-color: #0b1a33; }
+.ck .btn-round .ring-bg { --tw-ring-color: #0b0b0c; }
 /* Ana sayfa kokpiti: yalnız sağ üstteki ışık; altta düz lacivert, notların zeminiyle birleşir (Seyhun 2026-10-23) */
-.ck.ck-top { background: radial-gradient(120% 70% at 88% 0%, rgba(61, 123, 255, .24), transparent 62%), #0b1a33; }
+.ck.ck-top { background: #0b0b0c; }
 /* Ana sayfa hava manzarası (Seyhun 2026-11-04 "A · Hava manzarası", örnek yeni-ana-tam): üst alan havanın kendisi; gökyüzü rengi o günün gökyüzüne göre
    (data-sky: clear, part, cloud, rain, storm, snow, night), yağmurda ve fırtınada ince yağmur çizgileri akar. Altı açık zeminde (Apple gibi) günler, plan, çizelge. */
 .ck-hero { --sa: #2a3c54; --sb: #3f5671; --sc: #5b7590; background: linear-gradient(var(--sa), var(--sb) 55%, var(--sc)); position: relative; overflow: hidden; isolation: isolate; }
@@ -1010,29 +1007,30 @@ html:has(.auth-acik), body:has(.auth-acik) { background: #f5f5f7 !important; }
 .ck .raised.ck-tout { background: rgba(255, 255, 255, .1); color: #fff; border-color: #fff; }
 /* LACİVERT BÖLÜM (ana sayfanın alt kısmı, gün penceresi; Seyhun 2026-10-22): kokpitin devamı. Değişkenler lacivert tonlara çevrilir,
    içindeki kartlar ve listeler kendiliğinden uyar; data-theme="dark" ile dark: sınıfları da çalışır */
+/* 2026-11-26 (Seyhun "eski mavi zemin kalmasın"): .navy artık Sahne koyu grisi + limon; ad eski koddan kaldı */
 .navy {
   color-scheme: dark;
-  --bg: #0b1a33;
-  --card: #13243f;
-  --fg: #eef2f8;
-  --mut: #9fadc6;
-  --line: #24375a;
-  --acc: #8fb3ff;
-  --acc2: #8fb3ff;
-  --on-acc: #06283a;
-  --accbg: #16305e;
-  --fg2: #c6d0e0;
-  --ok: #5fbf86;
-  --rec: #f08178;
-  --warn: #e3b46c;
-  --warnbg: #3a3222;
+  --bg: #0b0b0c;
+  --card: #17171a;
+  --fg: #f4f4f5;
+  --mut: #a1a1aa;
+  --line: #26262b;
+  --acc: #d4ff3a;
+  --acc2: #d4ff3a;
+  --on-acc: #111;
+  --accbg: rgba(212, 255, 58, .12);
+  --fg2: #d4d4d8;
+  --ok: #d4ff3a;
+  --rec: #ff6b6b;
+  --warn: #fbbf5c;
+  --warnbg: rgba(251, 191, 92, .12);
   color: var(--fg);
-  background: #0b1a33;
+  background: #0b0b0c;
 }
 /* Hava/ana sayfa renk değişkenleri (--wx-*, rüzgâr --wc*): lacivertte (.navy) açık tonlar, açık temada (.acik) koyu gri tonlar.
    Hava kutusu, grafik ve gün kutuları (weather/WxPanel.jsx) renklerini buradan alır; aynı parça iki temada da çalışır */
-.navy { --wx-strong: #fff; --wx-t2: #cfdcf5; --wx-t3: #a9b8d6; --wx-mut: #7d90b5; --wx-faint: #4f6389; --wx-line: #1d3256; --wx-line2: #2a4472; --wx-acc: #8fb3ff;
-  --wx-fc: #8fb3ff; --wx-area: rgba(61, 123, 255, .5); --wx-gust: rgba(143, 179, 255, .55); --wx-obs: #fff; --wx-axis: #5d7099; --wx-grid: #1d3256;
+.navy { --wx-strong: #fff; --wx-t2: #d4d4d8; --wx-t3: #a1a1aa; --wx-mut: #8a8a93; --wx-faint: #52525b; --wx-line: #26262b; --wx-line2: #3f3f46; --wx-acc: #d4ff3a;
+  --wx-fc: #fff; --wx-area: rgba(212, 255, 58, .35); --wx-gust: rgba(255, 255, 255, .45); --wx-obs: #d4ff3a; --wx-axis: #71717a; --wx-grid: #26262b;
   --wx-rain: #7db4ff; --wx-raint: #9cc2ff; --wx-raindot: #cfe3ff; --wx-mm: #7fb0ff; }
 /* AÇIK TEMA (Seyhun 2026-11-22 "Apple beyazı… beyaz, gri, koyu gri tonları; sade, gözü yormayan"; örnek ana-sayfa/sade-2026-11/acik-ana-sayfa.html).
    Yeni tasarımın temeli: sayfanın <main>'ine "acik" sınıfı verilir, içindeki kartlar ve ortak düğmeler kendiliğinden uyar. Zemin #f5f5f7, kartlar beyaz
@@ -1075,15 +1073,15 @@ body:has(main.acik) .acenter { background: #fbfbfd; box-shadow: 0 -1px 0 #e5e5ea
 .navy :is(.text-rose-600, .text-rose-700, .text-red-600) { color: #fb8a9a; }
 /* Ana sayfa lacivertken sayfanın kalanı da lacivert (alt boşlukta ve aşağı çekince koyu şerit kalmasın). !important:
    koyu moddaki "html[data-theme=dark] body:has(main.grouped)" kuralı daha özgül, alt çubuğun üstünde siyah şerit bırakıyordu */
-html:has(:is(.home-navy, .page-navy)), body:has(:is(.home-navy, .page-navy)) { background: #0b1a33 !important; }
+html:has(:is(.home-navy, .page-navy)), body:has(:is(.home-navy, .page-navy)) { background: #0b0b0c !important; }
 /* Asistan kapanınca sekme çubuğu alttan kayarak gelir (TabBar rise) */
 @keyframes atabup { from { transform: translate3d(0, 100%, 0); } }
 .atab-up { animation: atabup .36s cubic-bezier(.22, .8, .24, 1) backwards; }
 @media (prefers-reduced-motion: reduce) { .atab-up { animation: none; } }
 /* FITNESS SPORCULAR (Seyhun 2026-10-23 "A · Koyu"): baştan sona koyu, üstte salon fotoğrafı koyulaşarak kaybolur (FitnessHome FitPhoto),
    zemin aşağı doğru daha da koyulaşır. Kartlar #11223c. Sayfanın kalanı da koyu (alt boşlukta açık şerit kalmasın) */
-.fit-dark { --bg: #081429; --card: #11223c; background: linear-gradient(#081429 0, #081429 55%, #050c18 100%); }
-html:has(.fit-dark), body:has(.fit-dark) { background: #050c18 !important; }
+.fit-dark { --bg: #0b0b0c; --card: #17171a; background: #0b0b0c; }
+html:has(.fit-dark), body:has(.fit-dark) { background: #0b0b0c !important; }
 
 /* Asistan tek kutusu (TabBar AssistBox, "A · Tek kapsül" 2026-10-23): alttan yumuşakça gelir */
 .afull .apill { background: var(--ab-panel); box-shadow: inset 0 0 0 1px var(--line), 0 12px 32px -16px rgba(0, 0, 0, .7); }
@@ -1194,7 +1192,7 @@ html:has(.fit-dark), body:has(.fit-dark) { background: #050c18 !important; }
 /* Koyu (lacivert) tam sayfalar (Yoklama, Fitness, İngilizce, Yoklamam): Mac ve yatay iPad'de sayfa bütün genişliği kaplar, yan boşluk yok */
 @media (min-width: 64rem) {
   body[data-side] main.navy.max-w-\[30rem\] { max-width: none; padding-left: 2rem; padding-right: 2rem; }
-  body[data-side]:has(main.navy) { background: #0b1a33; }
+  body[data-side]:has(main.navy) { background: #0b0b0c; }
 }
 
 /* SES SİMGESİ (features/speech/SpeakerGlyph.jsx, "B · Dolu daire" 2026-11-04): kapanınca dalgalar söner, çizgi çizilir */
@@ -1551,7 +1549,7 @@ main.acik .rzt :is(.text-white\/60, .text-white\/65, .text-white\/70) { color: v
 .num { font-family: var(--font-num), ui-monospace, "SF Mono", monospace; font-variant-numeric: tabular-nums; }
 main.iph {
   min-height: 100dvh; box-sizing: border-box; color: var(--fg);
-  background: radial-gradient(120% 70% at 70% 0%, #0e2347 0%, #0b1a33 45%, #060e1d 100%) fixed;
+  background: #0b0b0c;
   padding: calc(1rem + env(safe-area-inset-top)) 1.25rem calc(7rem + env(safe-area-inset-bottom));
   display: grid; gap: 1rem; grid-template-columns: minmax(0, 1fr); align-content: start;
 }
@@ -1799,7 +1797,7 @@ html[data-theme="dark"] .it-step { background: rgba(11, 26, 51, .7); color: #dbe
   transition: transform .34s cubic-bezier(.2, .9, .25, 1.15), opacity .22s ease-out; }
 .jb.jb-on { transform: translate(-50%, 0) scale(1); opacity: 1; pointer-events: auto; }
 .jb-pill { position: relative; display: flex; align-items: center; gap: .625rem; min-height: 2.5rem; max-width: 22rem; padding: .3rem .375rem .3rem .875rem;
-  border-radius: 9999px; background: #0b1a33; border: 1px solid #24375a; box-shadow: 0 6px 18px rgba(5, 12, 28, .32); overflow: hidden; cursor: pointer; }
+  border-radius: 9999px; background: #17171a; border: 1px solid #2e2e33; box-shadow: 0 6px 18px rgba(5, 12, 28, .32); overflow: hidden; cursor: pointer; }
 .jb-pill.jb-note { padding-left: 1.125rem; font-size: .875rem; }
 .jb-pill.jb-note:not(:has(.jb-act)) { padding-right: 1.125rem; }
 .jb-tx { display: grid; min-width: 0; line-height: 1.2; }
@@ -1821,7 +1819,7 @@ html[data-theme="dark"] .it-step { background: rgba(11, 26, 51, .7); color: #dbe
 .jb-pg { display: block; height: 2px; border-radius: 2px; background: rgba(143, 179, 255, .15); overflow: hidden; }
 .jb-pg i { display: block; height: 100%; background: #3d7bff; border-radius: 2px; transition: width .5s cubic-bezier(.3, .8, .3, 1); }
 .jb-pg.jb-flow i { width: 35%; animation: syncrun 1.3s ease-in-out infinite; }
-.jb-panel { width: min(22rem, calc(100vw - 2rem)); max-height: 60dvh; overflow-y: auto; padding: .375rem; border-radius: 1.25rem; background: #0b1a33; border: 1px solid #24375a;
+.jb-panel { width: min(22rem, calc(100vw - 2rem)); max-height: 60dvh; overflow-y: auto; padding: .375rem; border-radius: 1.25rem; background: #17171a; border: 1px solid #24375a;
   box-shadow: 0 14px 34px rgba(5, 12, 28, .45); animation: jbpan .3s cubic-bezier(.2, .9, .25, 1.05) both; transform-origin: top center; }
 @keyframes jbpan { from { opacity: 0; transform: scale(.7); } }
 .jb-row { display: grid; grid-template-columns: 1rem 1fr auto; align-items: center; gap: .25rem .75rem; padding: .7rem .75rem; font-size: .8125rem; }

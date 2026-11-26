@@ -1,6 +1,6 @@
 // Sesli Asistan service worker: çevrimdışı açılış + plan hatırlatma bildirimleri.
 // Önbellek yalnızca yayında açık (?dev=1 ile kaydedilirse kapalı; geliştirmede eski dosya sorunu olmasın).
-const VERSION = "sa-v17";
+const VERSION = "sa-v18";
 const PAGES_CACHE = `${VERSION}-pages`;
 const STATIC_CACHE = `${VERSION}-static`;
 const PAGES = ["/", "/plans", "/tasks", "/notes", "/receipts", "/calendar", "/schedule", "/staff", "/login"];
@@ -85,8 +85,19 @@ self.addEventListener("fetch", (e) => {
           // Kayıtlı kopya yok: ağ yavaşsa beklemeye devam edilir (eskiden 4 sn'de "İnternet bağlantısı yok" çıkıyordu)
           const late = await net.catch(() => null);
           if (late) return late.clone();
+          // Güncellemeden hemen sonra (Seyhun 2026-11-26 "güncelleme sonrası internet kaybı, otomatik bağlanmıyor"): sayfa kopyaları
+          // silinip yeniden açılırken ilk istek düşebiliyor. Önce iki kez daha denenir; olmazsa yazı çıkar ve sayfa birkaç saniyede bir
+          // siteyi yoklayıp ulaşınca kendiliğinden açılır ("online" olayı internet hiç gitmediyse gelmez, eskiden bekleyip kalıyordu).
+          for (const wait of [1200, 2500]) {
+            await new Promise((r) => setTimeout(r, wait));
+            const again = await fetch(req).catch(() => null);
+            if (again?.ok) {
+              if (!again.redirected) pages.put(path, again.clone());
+              return again;
+            }
+          }
           return new Response(
-            '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Çevrimdışı</title><body style="font-family:system-ui;background:#f4f3ef;color:#26282c;display:grid;place-items:center;min-height:100vh;margin:0;text-align:center;padding:24px"><div><h1 style="font-size:20px">İnternet bağlantısı yok</h1><p style="color:#74777d">Bu sayfa henüz telefona kaydedilmedi. Bağlantı gelince kendiliğinden açılır.</p></div><script>addEventListener("online",()=>location.reload())</script>',
+            '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Çevrimdışı</title><body style="font-family:system-ui;background:#0b0b0c;color:#f4f4f5;display:grid;place-items:center;min-height:100vh;margin:0;text-align:center;padding:24px"><div><h1 style="font-size:20px">İnternete bağlanılamadı</h1><p style="color:#a1a1aa">Bağlantı gelince kendiliğinden açılır.</p><button onclick="location.reload()" style="margin-top:12px;padding:12px 24px;border:0;border-radius:999px;background:#d4ff3a;color:#111;font-size:16px">Yeniden dene</button></div><script>var go=0;function t(){if(go||navigator.onLine===false)return;fetch("/manifest.webmanifest?t="+Date.now(),{cache:"no-store"}).then(function(r){if(r.ok){go=1;location.reload()}},function(){})}addEventListener("online",t);document.addEventListener("visibilitychange",function(){document.visibilityState==="visible"&&t()});setInterval(t,3000);setTimeout(t,1000)</script>',
             { headers: { "content-type": "text/html; charset=utf-8" } },
           );
         }
