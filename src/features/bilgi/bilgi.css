@@ -809,7 +809,6 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 .bz-ptt[data-rec]::after { inset: -8px; border: 4px solid transparent; border-top-color: var(--bz-acc); border-right-color: var(--bz-acc); animation: bz-spin .9s linear infinite; }
 @keyframes bz-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .bz-ptt[data-rec]::after { animation: none; } }
-.bz-clk { right: auto; left: var(--bz-px); }
 .bz:not(.bz-day) .bzm { background: #121214; border-color: #26262b; --m-grid: #1f1f22; --m-mark: #ffb020; --m-n: #e4e4e7; --m-line: #d4ff3a; --m-me: #fff; --m-trail: #d4ff3a; --m-sc: #a1a1aa; }
 .bz.bz-day .bzm { --m-line: #000; --m-boat: #000; --m-trail: #6b7280; }
 .bz-geo-b { background: var(--bz-acc); color: var(--bz-on-acc); font-weight: 700; }
@@ -845,3 +844,13 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 @keyframes bzy-skp { 50% { opacity: .45; } }
 @media (prefers-reduced-motion: reduce) { .bzy-sk i { animation: none; } }
 .bzy-arcb { align-self: flex-start; height: 2rem; padding: 0 0.875rem; margin-bottom: 0.25rem; border: 1px solid var(--line, #2e2e33); border-radius: 999px; background: transparent; color: var(--mut, #a1a1aa); font-size: 0.8125rem; font-weight: 700; }
+
+/* Harita sol altta, konuş sağ altta (Seyhun 2026-11-26 "haritayı sola al, sağa Yönet'teki gibi konuşma düğmesi"): aç/kapa */
+.bz-rt { right: auto; left: var(--bz-px); }
+.bz-rt.big { right: var(--bz-pr); }
+.bz.bz-mapon .bz-ptt, .bz.bz-mapon .bz-ptt:active, .bz.bz-mapon .bz-ptt[data-rec] { left: auto; right: var(--bz-pr); bottom: calc(var(--bz-sb) + 1rem + max(0rem, (var(--bz-mw) - 5rem) / 2)); }
+.bz-ptt b { font: 800 1.75rem/1 var(--bz-c); }
+@media (orientation: landscape) {
+  .bz.bz-mapon { padding-right: calc(var(--bz-pr) + 6rem); padding-left: calc(var(--bz-px) + var(--bz-mw) + 1rem); }
+  .bz.bz-mapon .bz-ptt, .bz.bz-mapon .bz-ptt:active, .bz.bz-mapon .bz-ptt[data-rec] { left: auto; right: var(--bz-pr); bottom: calc(var(--bz-sb) + 1rem); }
+}
