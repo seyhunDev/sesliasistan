@@ -300,6 +300,29 @@ function usePresence(on, who, org, k, uid, ch, seen) {
   return () => st.current.off?.() || Promise.resolve();
 }
 
+const dayKey = (ms) => new Date(ms).toDateString();
+function meRead(k) {
+  try {
+    return (k && localStorage.getItem(k)) || "";
+  } catch {
+    return "";
+  }
+}
+function meWrite(k, v) {
+  try {
+    if (v === "null") localStorage.removeItem(k);
+    else localStorage.setItem(k, v);
+  } catch {}
+}
+// Saklı satır yalnız aynı gün geçerli
+function meParse(v, ms) {
+  try {
+    const x = v ? JSON.parse(v) : null;
+    return x && x.d === dayKey(ms) ? x : null;
+  } catch {
+    return null;
+  }
+}
 const noSub = () => () => {};
 const whoRaw = () => {
   try {
@@ -1064,7 +1087,15 @@ export function BilgiScreen({ pub = "" }) {
   );
   const csLine = b?.state ? <div className="bz-cs">{b.state}</div> : null;
   // Kendi sırası, grubu, grubunun startı (Seyhun 2026-11-19 örnek onaylandı): o günün yarışından, yelken numarasıyla; yalnız start öncesi
-  const me = mine ? mineOf(mine, who?.sail, now) : null;
+  // Veri gelene kadar bu telefonda saklı son satır gösterilir; alan sonradan "tık" diye gelmez (Seyhun 2026-11-26)
+  const meKey = who?.sail ? `sa-bilgi-me-${who.sail}` : "";
+  const meSaved = useSyncExternalStore(noSub, () => meRead(meKey), () => "");
+  const meFresh = mine ? mineOf(mine, who?.sail, now) : null;
+  const meJson = mine ? JSON.stringify(meFresh && { ...meFresh, d: dayKey(now) }) : "";
+  useEffect(() => {
+    if (meKey && meJson) meWrite(meKey, meJson);
+  }, [meKey, meJson]);
+  const me = mine ? meFresh : meParse(meSaved, now);
   const meLine =
     me && (me.p !== "" || me.g || me.at) ? (
       <div className="bz-me num">
