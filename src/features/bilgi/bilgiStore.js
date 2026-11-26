@@ -372,18 +372,41 @@ export async function noteStart(org, at = Date.now()) {
 }
 // Kanal kaydedilen antrenmana bağlanır (plan: plan id); aynı kanal ikinci kez kaydedilince aynı plan güncellenir
 export const markKanalPlan = (org, id, plan) => updateDoc(kanalRef(org, id), { plan }).catch(() => {});
+// Günler listesi (Seyhun 2026-11-26 "her girdiğimde yeniden yükleniyor"): son liste bellekte ve telefonda saklı, sayfa açılınca hemen
+// gösterilir; sunucudan gelen tazesi arkadan yerine geçer (Günü başlat penceresi zıplamaz)
+const KCACHE = new Map();
+const kKey = (org) => `sa-kanallar-${org}`;
+function kCached(org) {
+  if (!org) return null;
+  if (KCACHE.has(org)) return KCACHE.get(org);
+  try {
+    const l = JSON.parse(localStorage.getItem(kKey(org)) || "null");
+    if (Array.isArray(l)) return KCACHE.set(org, l).get(org);
+  } catch {}
+  return null;
+}
 export function useKanallar(org) {
-  const [v, setV] = useState(null);
+  const [v, setV] = useState(() => ({ org, list: kCached(org) }));
   useEffect(() => {
     if (!org) return;
     return onSnapshot(
       query(collection(db, "orgs", org, "bilgiKanal"), orderBy("at", "desc"), limit(40)),
-      (s) => setV(s.docs.map((d) => ({ id: d.id, ...d.data() }))),
-      () => setV([]),
+      (s) => {
+        const l = s.docs.map((d) => ({ id: d.id, ...d.data() }));
+        KCACHE.set(org, l);
+        try {
+          localStorage.setItem(kKey(org), JSON.stringify(l.map(({ id, name, at, end, day, arsiv }) => ({ id, name, at, end, day, arsiv }))));
+        } catch {}
+        setV({ org, list: l });
+      },
+      () => setV((o) => (o.org === org && o.list ? o : { org, list: [] })),
     );
   }, [org]);
-  return org ? v : null;
+  if (!org) return null;
+  return v.org === org ? v.list : kCached(org);
 }
+// Arşiv (Seyhun 2026-11-26): kayıt silinmez, Günü başlat listesinden ve Günler'in üstünden kalkar; Günler › Arşiv'de durur
+export const arsivKanal = (org, id, on) => updateDoc(kanalRef(org, id), { arsiv: on ? true : deleteField() });
 // Kanalı verisiyle sil: izler (bilgiIz), son konumlar (bilgiTekne), gelen sesler (bilgiGelen), mesaj/ses günlüğü (bilgiLog, ch alanı olanlar)
 export async function deleteKanal(org, id) {
   const top = (c) =>

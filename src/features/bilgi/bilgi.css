@@ -832,3 +832,16 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 .bz-seg button { color: #a1a1aa; border-radius: 0.8125rem; }
 .bz-seg button[aria-pressed="true"] { background: #d4ff3a; color: #111; }
 .bz-out { border-color: var(--bz-line2); }
+
+/* Günü başlat: önceki günler ⋯ (Arşive at, Sil), yüklenirken aynı boyda iskelet; Günler › Arşiv (2026-11-26) */
+.bzy-dwrap { background: #1f1f22; }
+.bzy-dwrap + .bzy-dwrap { border-top: 1px solid #2e2e33; }
+.bzy-dwrap .bzy-kmenu { padding-top: 0.25rem; }
+.bzy-dmore { flex: none; width: 2rem; height: 2rem; display: grid; place-items: center; border: 0; border-radius: 50%; background: #26262b; color: #fff; }
+.bzy-dmore .bzy-i { width: 1rem; height: 1rem; }
+.bzy-sk { height: 3.25rem; }
+.bzy-sk .bzy-dt { width: 2.25rem; height: 2.25rem; border-radius: 0.625rem; background: #2a2a30; }
+.bzy-sk i { flex: 1; height: 0.875rem; max-width: 9rem; border-radius: 999px; background: #2a2a30; animation: bzy-skp 1.2s ease-in-out infinite; }
+@keyframes bzy-skp { 50% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) { .bzy-sk i { animation: none; } }
+.bzy-arcb { align-self: flex-start; height: 2rem; padding: 0 0.875rem; margin-bottom: 0.25rem; border: 1px solid var(--line, #2e2e33); border-radius: 999px; background: transparent; color: var(--mut, #a1a1aa); font-size: 0.8125rem; font-weight: 700; }

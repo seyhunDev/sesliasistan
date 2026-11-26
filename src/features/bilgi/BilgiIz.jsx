@@ -124,13 +124,16 @@ export function IzPanel({ k, iz, onClose }) {
 }
 
 // Kanallar listesi (Kanal penceresi). onDel: silme (Geri al'lı) yukarıda yapılır, liste o kanalı hemen gizler
-export function KanalList({ org, list, cur, hidden, busy, onIz, onOpen, onClose, onDel }) {
+export function KanalList({ org, list, cur, hidden, busy, onIz, onOpen, onClose, onDel, onArc }) {
   const toast = useToast();
   const [menu, setMenu] = useState("");
   const [edit, setEdit] = useState(null);
-  const rows = (list || []).filter((x) => !hidden.includes(x.id));
+  const [arc, setArc] = useState(false);
+  const all = (list || []).filter((x) => !hidden.includes(x.id));
+  const nArc = all.filter((x) => x.arsiv).length;
+  const rows = all.filter((x) => !!x.arsiv === arc);
   if (!list) return <p className="text-mut">Yükleniyor…</p>;
-  if (!rows.length) return <p className="text-mut">Kanal yok</p>;
+  if (!all.length) return <p className="text-mut">Kanal yok</p>;
   const save = async (k) => {
     const n = edit?.v ?? "";
     setEdit(null);
@@ -138,6 +141,12 @@ export function KanalList({ org, list, cur, hidden, busy, onIz, onOpen, onClose,
   };
   return (
     <div className="bzy-list">
+      {(arc || nArc > 0) && (
+        <button type="button" className="bzy-arcb" onClick={() => setArc((x) => !x)} aria-pressed={arc} data-press>
+          {arc ? "‹ Günler" : `Arşiv · ${nArc}`}
+        </button>
+      )}
+      {!rows.length && <p className="text-mut">{arc ? "Arşiv boş" : "Kanal yok"}</p>}
       {rows.map((k) => {
         const open = !!cur?.open && cur.id === k.id;
         return (
@@ -194,6 +203,11 @@ export function KanalList({ org, list, cur, hidden, busy, onIz, onOpen, onClose,
                 <button type="button" onClick={() => (setMenu(""), setEdit({ id: k.id, v: k.name }))} data-press>
                   Adını değiştir
                 </button>
+                {onArc && !open && (
+                  <button type="button" onClick={() => (setMenu(""), onArc(k, !k.arsiv))} data-press>
+                    {k.arsiv ? "Arşivden çıkar" : "Arşive at"}
+                  </button>
+                )}
                 <button type="button" className="del" onClick={() => (setMenu(""), onDel(k))} data-press>
                   Sil
                 </button>

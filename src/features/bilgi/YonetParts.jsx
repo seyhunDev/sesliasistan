@@ -51,7 +51,7 @@ const shift = (key, n) => {
 export const dayLabel = (key) => (key ? dayDate(key).toLocaleDateString("tr-TR", { day: "numeric", month: "short" }) : "");
 
 // Günü başlat (kanal kapalıyken): link aynı; tarih bugün (oklarla değişir), ad antrenman ya da günün yarışı. O tarih varsa o gün sürer.
-export function DayStart({ org, kanal, kanallar, names, onList, onIz }) {
+export function DayStart({ org, kanal, kanallar, names, onList, onIz, hidden = [], onDel, onArc }) {
   const toast = useToast();
   const [today] = useState(() => dayKey(Date.now()));
   const [day, setDay] = useState(today);
@@ -63,7 +63,8 @@ export function DayStart({ org, kanal, kanallar, names, onList, onIz }) {
     await (have ? reopenKanal(org, have, kanal) : openKanal(org, pick, kanal, day)).catch(() => toast("Başlatılamadı"));
     setBusy(false);
   };
-  const past = (kanallar || []).filter((k) => kanalDay(k) !== day).slice(0, 3);
+  const past = (kanallar || []).filter((k) => kanalDay(k) !== day && !k.arsiv && !hidden.includes(k.id)).slice(0, 3);
+  const [menu, setMenu] = useState("");
   return (
     <section className="bzy-start bzy-day">
       <h1>Günü başlat</h1>
@@ -93,18 +94,44 @@ export function DayStart({ org, kanal, kanallar, names, onList, onIz }) {
       <Button full loading={busy} className="bzy-open" onClick={go}>
         {have ? "Devam et" : "Başlat"}
       </Button>
+      {/* Liste gelene kadar aynı boyda iskelet (pencere zıplamasın) */}
+      {!kanallar && (
+        <div className="bzy-days" aria-hidden="true">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="bzy-drow bzy-sk">
+              <span className="bzy-dt" />
+              <i />
+            </div>
+          ))}
+        </div>
+      )}
       {past.length > 0 && (
         <div className="bzy-days">
           {past.map((k) => (
-            <div key={k.id} className="bzy-drow">
-              <span className="bzy-dt">
-                <b className="num">{dayDate(kanalDay(k)).getDate()}</b>
-                <small>{dayDate(kanalDay(k)).toLocaleDateString("tr-TR", { month: "short" })}</small>
-              </span>
-              <b className="flex-1 truncate">{k.name}</b>
-              <button type="button" className="bzy-izle" onClick={() => onIz(k)} data-press>
-                İzle
-              </button>
+            <div key={k.id} className="bzy-dwrap">
+              <div className="bzy-drow">
+                <span className="bzy-dt">
+                  <b className="num">{dayDate(kanalDay(k)).getDate()}</b>
+                  <small>{dayDate(kanalDay(k)).toLocaleDateString("tr-TR", { month: "short" })}</small>
+                </span>
+                <b className="flex-1 truncate">{k.name}</b>
+                <button type="button" className="bzy-izle" onClick={() => onIz(k)} data-press>
+                  İzle
+                </button>
+                <button type="button" className="bzy-dmore" onClick={() => setMenu((x) => (x === k.id ? "" : k.id))} aria-label="Ayarlar" aria-expanded={menu === k.id} data-press>
+                  <I n="more" />
+                </button>
+              </div>
+              {menu === k.id && (
+                <div className="bzy-kmenu">
+                  <button type="button" onClick={() => (setMenu(""), onArc?.(k))} data-press>
+                    Arşive at
+                  </button>
+                  <button type="button" className="del" onClick={() => (setMenu(""), onDel?.(k))} data-press>
+                    Sil
+                  </button>
+                </div>
+              )}
             </div>
           ))}
           <button type="button" className="bzy-dall" onClick={onList} data-press>
