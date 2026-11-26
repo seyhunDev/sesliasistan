@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { sunsetHM } from "@/lib/attRemind";
+import { isLive, syncClock } from "@/lib/serverClock";
 import { FRESH_MS, PEN, PEN_BIG_MS, SHOW_DEF, isFor, beepOf, buildCourse, dirName, normDeg, pFlag, screenMode, seqMarks, startView, declination, quatHeading, tiltHeading, windRel } from "@/lib/bilgi";
 import { CourseMap } from "./CourseMap";
 import { deviceId, kalipSes, notSes, useNotlar, offPos, readWho, savePusula, saveTekneKim, saveWho, sendGelen, sendIz, sendPos, useBilgi, useBilgiDoc, usePublic, useTekneKim } from "./bilgiStore";
@@ -588,8 +589,9 @@ function useVoice(on, msg, ses, loadKalip) {
     if (!msg?.id || seen.current.msg === msg.id) return;
     const first = seen.current.msg === null;
     seen.current.msg = msg.id;
-    if (first && Date.now() - msg.at > 5000) return;
-    if (!on || Date.now() - msg.at > FRESH_MS) return;
+    // Anlık: yalnız gönderildiği an (20 sn, sunucu saatiyle) sesli okunur; sayfa sonradan açılınca/bağlanınca eskisi okunmaz
+    if (first && !isLive(msg.at, 5000)) return;
+    if (!on || !isLive(msg.at)) return;
     // Doğal ses (Gemini, lib/speech/ttsClient.js); giriş yoksa ya da 5 sn'de gelmezse cihaz sesi
     const opts = { style: "asistan", timeoutMs: 5000, onStart: () => setTalk(true), onEnd: () => setTalk(false) };
     if (AUDIO) sayWith(AUDIO, msg.text, opts);
@@ -613,8 +615,8 @@ function useVoice(on, msg, ses, loadKalip) {
       }
       return;
     }
-    if (first && Date.now() - ses.at > 5000) return;
-    if (!on || !a || Date.now() - ses.at > FRESH_MS) return;
+    if (first && !isLive(ses.at, 5000)) return;
+    if (!on || !a || !isLive(ses.at)) return;
     if (ses.seq != null) {
       let c = q.current;
       if (c.id !== ses.id) {
@@ -998,6 +1000,13 @@ export function BilgiScreen({ pub = "" }) {
   const b = pub ? pb : own;
   const ses = pub ? pses : ownSes;
   const [on, setOn] = useState(false);
+  // Sunucu saati farkı (lib/serverClock): açılışta ve öne gelince ölçülür (anlık sesler yalnız gönderildiği an çalar)
+  useEffect(() => {
+    syncClock();
+    const v = () => document.visibilityState === "visible" && syncClock();
+    document.addEventListener("visibilitychange", v);
+    return () => document.removeEventListener("visibilitychange", v);
+  }, []);
   const [big, setBig] = useState(false);
   const kor = useKoruyucu();
   const now = useTick(250);

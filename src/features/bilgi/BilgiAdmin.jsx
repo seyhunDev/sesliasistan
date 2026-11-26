@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { PdfViewer } from "@/components/ui/PdfViewer";
+import { isLive, syncClock } from "@/lib/serverClock";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
@@ -724,7 +725,7 @@ function useGelenPlay(org, ctx, onLog) {
       logGelen(org, g, ctx).then(onLog);
     };
     if (!g0.ready) return;
-    // İlk cevaptaki eski sesler çalınmaz (yalnız 30 sn içinde gelen); sonra gelen her yeni ses çalınır (telefon saatleri farklı olabilir).
+    // Gelen ses yalnız 30 sn içindeyse çalınır (sunucu saatiyle; ilk cevapta da sonra bağlanınca da).
     // Çalınan/görülen sesler cihazda saklanır (Seyhun 2026-11-21 "güncellemeden sonra eski ses yeniden seslendirildi"): uygulama
     // yeniden açılınca ya da güncellenip yenilenince aynı ses bir daha çalınmaz; sporcu telefonunun saati ileri olsa da çalınmaz.
     const first = seen.current === null;
@@ -734,7 +735,8 @@ function useGelenPlay(org, ctx, onLog) {
       if (!g.id || seen.current.has(g.id)) continue;
       seen.current.add(g.id);
       added = true;
-      if (g.data && (first ? Math.abs(Date.now() - (g.at || 0)) < 30000 : true)) q.current.push(g);
+      // Yalnız gönderildiği an (30 sn, sunucu saatiyle) çalınır: iPad kapalıyken gelen ses açılınca ya da bağlantı dönünce çalmaz
+      if (g.data && isLive(g.at, 30e3)) q.current.push(g);
     }
     if (added) saveHeard(seen.current);
     q.current.sort((x, y) => x.at - y.at);
@@ -808,6 +810,13 @@ export function BilgiAdmin() {
   const kanallar = useKanallar(org);
   const [hidden, setHidden] = useState([]);
   const [izK, setIzK] = useState(null);
+  // Sunucu saati farkı (lib/serverClock): açılışta ve öne gelince ölçülür (anlık sesler yalnız gönderildiği an çalar)
+  useEffect(() => {
+    syncClock();
+    const v = () => document.visibilityState === "visible" && syncClock();
+    document.addEventListener("visibilitychange", v);
+    return () => document.removeEventListener("visibilitychange", v);
+  }, []);
   // Gün kaydı (Seyhun 2026-11-26): Günler › ⋯ › Gün kaydı; belge PDF olarak açılır, Paylaş ile kaydedilir/gönderilir
   const [gunK, setGunK] = useState(null);
   const gunId = gunK?.id || "";
