@@ -93,7 +93,7 @@ function Library({ orgId }) {
   };
 
   return (
-    <main className="split mx-auto max-w-[30rem] px-5 pb-[calc(var(--dome-h,var(--stage-h,6rem))+2rem)]">
+    <main className="sahne-pg split mx-auto max-w-[30rem] px-5 pb-[calc(var(--dome-h,var(--stage-h,6rem))+2rem)]">
       <section className="ck -mx-5 px-5 pb-9 pt-[calc(0.75rem+env(safe-area-inset-top))]" aria-label="Medya">
         <header className="flex items-center gap-2.5">
           <BackButton href="/" />

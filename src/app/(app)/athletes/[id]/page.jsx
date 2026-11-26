@@ -272,7 +272,7 @@ function Detail() {
 
   if (!a) {
     return (
-      <main className="mx-auto max-w-[30rem] px-5">
+      <main className="sahne-pg mx-auto max-w-[30rem] px-5">
         <Top title="Sporcu" />
         <div className={LIGHT}>
           {err?.code === "permission-denied" ? (
@@ -295,7 +295,7 @@ function Detail() {
   const tel = (p) => (p ? `tel:${String(p).replace(/[^\d+]/g, "")}` : undefined);
 
   return (
-    <main className="wide mx-auto max-w-[30rem] px-5 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
+    <main className="sahne-pg wide mx-auto max-w-[30rem] px-5 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
       <Top title={a.studentName} sub={[isActive(a) ? "Aktif" : "Arşivde", cls, coach].filter(Boolean).join(" · ")}>
         <button type="button" onClick={() => setMore(true)} aria-label="Diğer" data-press className="btn btn-round size-10">
           <Icon name="more" className="size-5" />
