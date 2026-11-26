@@ -333,6 +333,9 @@ group("Kullanım ekranı")([
   ["satırlar", F("çoktan aza, bilinmeyen ve by atılır", () => { const u = AU.usageRows({ month: "2026-10", org: "o", by: { u: 9 }, receipt: 2, assistant: 7, xyz: 5 }); return u.total === 9 && u.rows[0][0] === "Asistan" && u.rows[1][0] === "Fiş okuma"; })],
   ["boş ay", F("0 istek", () => AU.usageRows(undefined).total === 0)],
   ["para", F("$0,55", () => AU.usd(0.546) === "$0,55")],
+  ["harcamalar", F("Gemini = token + görsel + animasyon, TL", () => { const s = AU.servicesOf({ rate: 40, ai: { month: { usd: 1 } }, imgs: { postimg: { month: 2, cost: 0.08 }, fitanim: { month: 1, cost: 0.5 } }, keys: {} }); const g = s.rows[0]; return g.id === "gemini" && Math.abs(g.tl - 63.2) < 1e-6 && g.sub.includes("1 animasyon") && Math.abs(s.total - 63.2) < 1e-6; })],
+  ["harcama düğmeleri", F("her satırda adres; anahtarsız servis yok", () => { const s = AU.servicesOf({ rate: 40, keys: { anthropic: true } }); const ids = s.rows.map((r) => r.id).join(","); return ids === "gemini,firebase,netlify,anthropic" && s.rows.every((r) => r.href.startsWith("https://")); })],
+  ["seslendirme kotası", F("kota aşılınca ücret", () => { const s = AU.servicesOf({ rate: 40, ai: { month: { "tts-chr": 2000000 } }, keys: { googleTts: true } }); const t = s.rows.find((r) => r.id === "tts"); return Math.abs(t.tl - 1200) < 1e-6 && t.sub.includes("%200"); })],
 ]);
 
 // iPhone takvimi (ics.js)

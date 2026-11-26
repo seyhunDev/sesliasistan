@@ -64,3 +64,48 @@ export function ttsUsage(doc) {
 // Yaklaşık maliyet ($): metin istekleri × istek başı fiyat + görseller
 export const usd = (n) => `$${(Math.round(n * 100) / 100).toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 export const monthName = (ym) => (ym ? new Date(`${ym}-15T12:00:00`).toLocaleDateString("tr-TR", { month: "long", year: "numeric" }) : "");
+
+// Ayarlar › Harcamalar: kullanılan dış servisler, bu ayın tahmini tutarı (TL) ve servisin kendi fatura/kullanım sayfası.
+// j: /api/usage?ai=1 cevabı. Gemini = token harcaması (usd) + görsel ve animasyon sayaçları; Google seslendirme ücretsiz kotayı
+// aşarsa aşan harf ≈ 30 $ / 1 milyon (Chirp 3 HD). Firebase ve diğerlerini uygulama saymaz (tl null). Seyhun 2026-11-26.
+export const SERVICE_LINKS = {
+  gemini: "https://console.cloud.google.com/billing",
+  tts: "https://console.cloud.google.com/apis/api/texttospeech.googleapis.com/metrics?project=sesliasistan-3e95a",
+  firebase: "https://console.firebase.google.com/project/sesliasistan-3e95a/usage",
+  netlify: "https://app.netlify.com/",
+  anthropic: "https://console.anthropic.com/settings/billing",
+  openai: "https://platform.openai.com/settings/organization/billing/overview",
+  groq: "https://console.groq.com/settings/billing",
+};
+export const TTS_OVER_PRICE_CHR = 0.00003;
+const IMG_KINDS = [
+  ["postimg", "görsel"],
+  ["engpic", "kalıp resmi"],
+  ["fitpic", "hareket fotoğrafı"],
+  ["fitanim", "animasyon"],
+];
+export function servicesOf(j) {
+  const rate = Number(j?.rate) || 42;
+  const month = j?.ai?.month;
+  const textTl = (Number(month?.usd) || 0) * rate;
+  const imgs = j?.imgs || (j?.img ? { postimg: j.img } : {});
+  let imgTl = 0;
+  const parts = [];
+  for (const [k, label] of IMG_KINDS) {
+    const n = Number(imgs[k]?.month) || 0;
+    imgTl += (Number(imgs[k]?.cost) || 0) * rate;
+    if (n) parts.push(`${n} ${label}`);
+  }
+  const tts = ttsUsage(month);
+  const ttsTl = Math.max(0, tts.chars - TTS_FREE) * TTS_OVER_PRICE_CHR * rate;
+  const keys = j?.keys || {};
+  const rows = [{ id: "gemini", name: "Google Gemini", tl: textTl + imgTl, sub: ["yazı ve ses", ...parts].join(" · "), btn: "Fatura" }];
+  if (keys.googleTts || tts.chars > 0) rows.push({ id: "tts", name: "Google seslendirme", tl: ttsTl, sub: `ücretsiz kotanın %${tts.pct}'i`, btn: "Konsol" });
+  rows.push({ id: "firebase", name: "Firebase", tl: null, sub: "uygulama saymaz", btn: "Kullanım" });
+  rows.push({ id: "netlify", name: "Netlify", tl: 0, sub: "ücretsiz plan", btn: "Kullanım", free: true });
+  if (keys.anthropic) rows.push({ id: "anthropic", name: "Anthropic", tl: null, sub: "uygulama saymaz", btn: "Fatura" });
+  if (keys.openai) rows.push({ id: "openai", name: "OpenAI", tl: null, sub: "uygulama saymaz", btn: "Fatura" });
+  if (keys.groq) rows.push({ id: "groq", name: "Groq", tl: null, sub: "uygulama saymaz", btn: "Fatura" });
+  for (const r of rows) r.href = SERVICE_LINKS[r.id];
+  return { rows, total: rows.reduce((a, r) => a + (r.tl || 0), 0) };
+}
