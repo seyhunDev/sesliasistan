@@ -1,8 +1,8 @@
-Commit: f7f8ed4 · İngilizce: Konuş Altyazı görünümünde, doğru bilince Devam et, alt çubuk gizli (#1575)
-Zaman: 2026-11-26-1057 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/45776585265
+Commit: 6d7b890 · Sporcu ekranı konuş kutusu: Yönet gibi kare, durumlar (#1587)
+Zaman: 2026-11-26-1201 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/45785019163
 
-TAM TEST · 26.11.2026 10:36:53
+TAM TEST · 26.11.2026 11:40:12
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -30,14 +30,15 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1399/1433 geçti · 34 kalan · 1255 sn
+SONUÇ: 1399/1433 geçti · 34 kalan · 1304 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
   ✗ Birim testleri: 0/1
-      ✗ “4588 test”
+      ✗ “4611 test”
           beklenen: hepsi geçer
-          olan:     4533/4588 geçti
+          olan:     4555/4611 geçti
+      ✗ “istem” → - Senin işlerin: Plan / takvime ekleme ("yarın 10'da antrenman ekle"); Tekrarlayan plan ("her salı 16:00 antrenman"); Görev ekleme (birine atama) ("Ali'ye motoru kontrol etmesini hatırlat"); Not alma (yalnız istenince) ("not al: malzeme odası dolu"); Görevi tamamlama ("motor yağı görevini tamamla"); Görevi yeniden açma ("motor yağı görevini yeniden aç"); Notu yapıldı yapma (Arşiv'e gider, silinmez) ya da geri alma ("malzeme odası notu yapıldı"); Planı bitirme (Arşiv'e) ("antrenman planını bitir"); Değiştirme / erteleme ("antrenmanı 11'e al"); Silme ("yarınki toplantıyı sil"); Plan iptali ve haber verme ("yarınki antrenmanı iptal et"); Tek cümlede sıralı işler ("Gökhan'a yarın bakım var diye yaz, takvime ekle ve not al"); Uygulama içi mesaj (kişi ya da grup) ("Ali'ye yaz, yarın 9'da iskelede olsun"); Gruba mesaj (Ekip, Sporcular, kurulan gruplar) ("sporculara söyle antrenman iptal"); WhatsApp mesajı ("Ali'ye WhatsApp'tan yaz, yarın gelsin"); Plan, görev, not, fiş soruları ve özet ("bu hafta neler var"); Hava ve rüzgâr ("yarın rüzgâr kaç knot")
       ✗ “bugünün antrenmanı Yönet'te” → false (beklenen: bugünkü plan Bilgi Yönet (kanal adı, ant), başka gün günlük listesi; Yönet'te Antrenman penceresi, eski sayfa Yönet'e gider (Seyhun 2026-11-17, 2026-11-23))
       ✗ “yarışta açıldı › geri › geri” → {"races":true,"roll":true,"live":false} (beklenen: Yarışlar, sonra ana sayfa (Sporcular değil); Yoklama da ana sayfaya; Yayın yarışın üstüne açılır)
       ✗ “hazır programın anlatımı” → false (beklenen: her hareketin nasıl yapılır anlatımı var; fotoğrafsızlar çizilir (prova hariç))
@@ -300,10 +301,10 @@ SONUÇ: 1399/1433 geçti · 34 kalan · 1255 sn
           olan:     sütun 48 · gün düğmesi 0 · 5,5 true
       ✗ “ölçülen / beklenen yağmur”
           beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 11 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
+          olan:     ölçülen sütun 12 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
       ✗ “radar ve nokta”
           beklenen: ölçülen sütunlar tabloda; Bölge başlığı, istasyon adı ve bölge haritası
-          olan:     yağan çubuk 11 · açıklama 11 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
+          olan:     yağan çubuk 12 · açıklama 12 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
   ✗ Senaryolar: 0/1
       ✗ “çalıştırma”
           beklenen: tamamlanır
