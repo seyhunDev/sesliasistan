@@ -68,7 +68,7 @@ function Event({ orgId, uid, by }) {
   const onAiFill = async (e) => (await askPlan({ text: [e.title, e.note].filter(Boolean).join("\n"), event: e, general: true })).event;
 
   return (
-    <main className="mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
+    <main className="sahne-pg mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
       <PageHeader title={id === "new" ? "Yeni etkinlik" : ev?.title || "Etkinlik"} back="/events" />
       {missing ? (
         <p className="mt-6 text-center text-[0.875rem] text-mut">Etkinlik bulunamadı.</p>

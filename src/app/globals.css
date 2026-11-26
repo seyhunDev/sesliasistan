@@ -1894,3 +1894,6 @@ main.sahne-pg .ck .btn-text { color: #d4ff3a; }
 main.sahne-pg .ck .ring-bg, main.sahne-pg .ck .btn-round .ring-bg { --tw-ring-color: #0b0b0c; }
 main.sahne-pg .ck-plan { background: #17171a; box-shadow: none; border: 1px solid var(--sh-lime, #d4ff3a); }
 .sahne-t { font-family: var(--lv-font-c), var(--font-num), system-ui, sans-serif; font-weight: 800; text-transform: uppercase; line-height: .9; letter-spacing: .01em; }
+/* Sahne sayfada seçili süzgeç hapı (eski beyaz) limon; sohbette benim balonum kartlardan ayrılsın */
+main.sahne-pg [aria-pressed="true"].bg-white { background: #d4ff3a; border-color: #d4ff3a; color: #111; }
+main.sahne-pg.chat-view .bg-deep { background-color: #2e2e33; }
