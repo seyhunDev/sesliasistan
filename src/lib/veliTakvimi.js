@@ -114,27 +114,48 @@ export function audGroups(trainings = []) {
 }
 
 // Saatler: aynı gün ve saatte tekrar eden antrenmanlar tek satır ("Cumartesi, Pazar 10:30–13:00"); birden çok kitle varsa
-// başında kitle ("A takım: Cumartesi 10:30–13:00"); en çok 6 satır
+// başında kitle ("A takım: Cumartesi 10:30–13:00"); en çok 6 satır.
+// Aynı günler farklı saatteyse (okulda 15:30, tatilde 10:00; Seyhun 2026-11-26) satıra tarih aralığı eklenir, gün adları kısalır:
+// "Sal, Çar, Per 15:30 · 1 Ara – 16 Oca" / "Sal, Çar, Per 10:00 · 19 Oca – 30 Oca"
+const SHORT_D = ["Paz", "Pzt", "Sal", "Çar", "Per", "Cum", "Cmt"];
+const SHORT_M = ["Oca", "Şub", "Mar", "Nis", "May", "Haz", "Tem", "Ağu", "Eyl", "Eki", "Kas", "Ara"];
+const dm = (d) => `${+d.slice(8)} ${SHORT_M[+d.slice(5, 7) - 1]}`;
+export function rangesOf(dates = []) {
+  const s = [...new Set(dates)].sort();
+  const runs = [];
+  for (const d of s) {
+    const last = runs.at(-1);
+    if (last && (D(d) - D(last[1])) / 864e5 <= 10) last[1] = d;
+    else runs.push([d, d]);
+  }
+  const txt = runs.map(([a, b]) => (a === b ? dm(a) : a.slice(0, 7) === b.slice(0, 7) ? `${+a.slice(8)}–${dm(b)}` : `${dm(a)} – ${dm(b)}`));
+  return txt.length > 2 ? `${txt.slice(0, 2).join(", ")}…` : txt.join(", ");
+}
 export function hoursLines(trainings = []) {
   const groups = audGroups(trainings);
   const out = [];
   for (const g of groups) {
-    const key = new Map(); // "10:30–13:00" -> Map(gün -> sayı)
+    const key = new Map(); // "10:30–13:00" -> { m: Map(gün -> sayı), dates }
     trainings.forEach((p) => {
       const t = hm(p.time);
       if (!t || audKey(p) !== g) return;
       const k = hm(p.endTime) ? `${t}–${hm(p.endTime)}` : t;
-      const m = key.get(k) || new Map();
+      const e = key.get(k) || { m: new Map(), dates: [] };
       const wd = D(p.date).getDay();
-      m.set(wd, (m.get(wd) || 0) + 1);
-      key.set(k, m);
+      e.m.set(wd, (e.m.get(wd) || 0) + 1);
+      e.dates.push(p.date);
+      key.set(k, e);
     });
     const order = [1, 2, 3, 4, 5, 6, 0];
-    [...key.entries()]
-      .map(([t, m]) => ({ t, days: order.filter((d) => (m.get(d) || 0) >= 2), n: [...m.values()].reduce((a, b) => a + b, 0) }))
+    const rows = [...key.entries()]
+      .map(([t, e]) => ({ t, days: order.filter((d) => (e.m.get(d) || 0) >= 2), n: e.dates.length, dates: e.dates }))
       .filter((x) => x.days.length)
-      .sort((a, b) => b.n - a.n)
-      .forEach((x) => out.push(`${groups.length > 1 ? `${g}: ` : ""}${x.days.map((d) => DAYS[d]).join(", ")} ${x.t}`));
+      .sort((a, b) => b.n - a.n);
+    const pre = groups.length > 1 ? `${g}: ` : "";
+    rows.forEach((x) => {
+      const clash = rows.some((y) => y !== x && y.days.some((d) => x.days.includes(d)));
+      out.push(clash ? `${pre}${x.days.map((d) => SHORT_D[d]).join(", ")} ${x.t} · ${rangesOf(x.dates.filter((d) => x.days.includes(D(d).getDay())))}` : `${pre}${x.days.map((d) => DAYS[d]).join(", ")} ${x.t}`);
+    });
   }
   return out.slice(0, 6);
 }
