@@ -1173,21 +1173,6 @@ export function BilgiAdmin() {
                     Kalıp yap
                   </button>
                 )}
-                {!mini && (
-                  <button type="button" className="bzy-kalb" aria-expanded={kShow} onClick={() => setKOpen(kShow ? 0 : clock())} data-press>
-                    Kalıplar
-                  </button>
-                )}
-                {!mini && members.length > 0 && (
-                  <button type="button" className="bzy-cezab" onClick={() => setSheet(sel.length === 1 ? `sp:${sel[0].id}` : "ceza")} data-press>
-                    Ceza
-                  </button>
-                )}
-                {!mini && (
-                  <button type="button" className="bzy-kbb" onClick={() => setTyping((x) => !x)} aria-pressed={typing} aria-label="Yazarak mesaj" data-press>
-                    <Ic n="kb" />
-                  </button>
-                )}
               </div>
               {!mini && (
                 <div className="bzy-who" aria-label="Kime">
@@ -1216,9 +1201,6 @@ export function BilgiAdmin() {
                   ))}
                 </div>
               )}
-              {!mini && kShow && (
-                <KalipRow list={kaliplar} rep={repeat.rep} now={now} onSend={(k) => (setKOpen(0), sendK(k))} onHold={(k) => setSheet(`ktek:${k.id}`)} onStop={repeat.stop} onAll={() => (setKOpen(0), setSheet("kaliplar"))} />
-              )}
               {!mini && typing && (
                 <form
                   className="bzy-typ"
@@ -1245,11 +1227,32 @@ export function BilgiAdmin() {
                   </button>
                 </form>
               )}
-              <div className="bzy-two" data-n={app ? "3" : "2"}>
+              <div className="bzy-two" data-n="2">
                 <PanelClock org={org} />
-                <VideoTile app={app} onDone={shot(sel.map(athTag))} />
                 <PttTile to={to} ptt={ptt} now={now} />
               </div>
+              {/* Küçük kareler (Seyhun 2026-11-26 örnek A "konuş butonu tarzında, daha küçük, kare"): Ceza · Kalıp · Video · Yaz;
+                  Kalıp açıkken yerlerini kalıp kareleri alır; konuşurken soluklaşır */}
+              {!mini &&
+                (kShow ? (
+                  <KalipRow list={kaliplar} rep={repeat.rep} now={now} onSend={(k) => (setKOpen(0), sendK(k))} onHold={(k) => setSheet(`ktek:${k.id}`)} onStop={repeat.stop} onAll={() => (setKOpen(0), setSheet("kaliplar"))} onClose={() => setKOpen(0)} />
+                ) : (
+                  <div className="bzy-sq" data-n={app ? "4" : "3"} data-dim={ptt.rec ? "1" : undefined}>
+                    <button type="button" className="bzy-sqb pen" disabled={!members.length} onClick={() => setSheet(sel.length === 1 ? `sp:${sel[0].id}` : "ceza")} data-press>
+                      <small>Sporcu</small>
+                      <b>Ceza</b>
+                    </button>
+                    <button type="button" className="bzy-sqb" aria-expanded={false} onClick={() => setKOpen(clock())} data-press>
+                      <small>Hazır</small>
+                      <b>Kalıp</b>
+                    </button>
+                    <VideoTile app={app} onDone={shot(sel.map(athTag))} />
+                    <button type="button" className="bzy-sqb" aria-pressed={typing} onClick={() => setTyping((x) => !x)} aria-label="Yazarak mesaj" data-press>
+                      <Ic n="kb" />
+                      <b>Yaz</b>
+                    </button>
+                  </div>
+                ))}
             </section>
           </div>
         </>

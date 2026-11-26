@@ -914,3 +914,30 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 .bzy-pt[data-st="rec"] small { color: #fee2e2; }
 .bzy-pt[data-st="rec"] .bzy-tkl i { background: #fff; }
 @media (prefers-reduced-motion: reduce) { .bz .bz-tt[data-st="rec"] { animation: none; } }
+
+/* Küçük kareler (Seyhun 2026-11-26 örnek A): Konuş karesi tarzında; üstte küçük etiket, altta büyük kelime. Ceza · Kalıp · Video · Yaz;
+   Kalıp açıkken kalıp kareleri (yatay kayar). Konuşurken soluk. */
+.bzy-sq { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; transition: opacity .15s; }
+.bzy-sq[data-n="3"] { grid-template-columns: repeat(3, 1fr); }
+.bzy-sq[data-dim] { opacity: .35; pointer-events: none; }
+.bzy-sqb { position: relative; min-width: 0; aspect-ratio: 1; max-height: 5.5rem; width: 100%; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-start; gap: 0.125rem;
+  padding: 0.5625rem 0.625rem 0.625rem; border: 1px solid #2e2e33; border-radius: 1.125rem; background: var(--card); color: #fff; text-align: left; overflow: hidden;
+  touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; transition: transform .08s, background-color .15s; }
+.bzy-sq[data-n="3"] .bzy-sqb { aspect-ratio: auto; height: 5rem; }
+.bzy-sqb small { font-size: 0.625rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; min-height: 0.625rem; }
+.bzy-sqb b { max-width: 100%; font: 800 1.375rem/.95 var(--sc); text-transform: uppercase; letter-spacing: .01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bzy-sqb .bzy-i { width: 1.375rem; height: 1.375rem; color: var(--mut); }
+.bzy-sqb:active { transform: scale(.96); }
+.bzy-sqb:disabled { opacity: .4; }
+.bzy-sqb.pen { background: var(--pen, #ff5a3c); border-color: var(--pen, #ff5a3c); }
+.bzy-sqb.pen small { color: #ffe3dc; }
+.bzy-sqb.on, .bzy-sqb[aria-pressed="true"] { background: #fff; border-color: #fff; color: #111; }
+.bzy-sqb.on small, .bzy-sqb[aria-pressed="true"] small, .bzy-sqb[aria-pressed="true"] .bzy-i { color: #52525b; }
+.bzy-sqdot { width: 0.875rem; height: 0.875rem; border-radius: 50%; background: #ff4d4d; box-shadow: 0 0 0 3px rgba(255, 77, 77, .25); }
+.bzy-app .bzy-kp { display: flex; gap: 0.5rem; overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; }
+.bzy-app .bzy-kp::-webkit-scrollbar { display: none; }
+.bzy-app .bzy-kp .bzy-sqb { flex: none; width: 4.75rem; height: 4.75rem; aspect-ratio: auto; }
+.bzy-app .bzy-kp .bzy-kb b { font: 800 0.875rem/1.05 var(--sans, system-ui); text-transform: none; letter-spacing: -.01em; white-space: normal; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+.bzy-app .bzy-kp .bzy-kb small { color: var(--lime); }
+.bzy-app .bzy-kp .bzy-kb:active { background: #fff; color: #111; }
+.bzy-app .bzy-kp .bzy-kall { background: #1f1f22; }
