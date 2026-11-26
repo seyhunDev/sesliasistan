@@ -30,7 +30,7 @@ const noteFreed = (n, usage) => {
   freed += n;
 };
 
-async function measure() {
+export async function measureDevice() {
   const [races, meetings, est, appBytes, extras, kept, pending] = await Promise.all([
     listRaceFiles().catch(() => []),
     listMeetings().catch(() => []),
@@ -142,7 +142,7 @@ export function DeviceDataRow({ sheetOpen, onClose } = {}) {
   const [shown, setShown] = useState(""); // media | docs
   const [names, setNames] = useState({});
   const [busy, setBusy] = useState("");
-  const load = () => measure().then(setD, () => setD({ err: true }));
+  const load = () => measureDevice().then(setD, () => setD({ err: true }));
   const show = () => {
     load();
     setOpen(true);
@@ -195,12 +195,12 @@ export function DeviceDataRow({ sheetOpen, onClose } = {}) {
     } catch {
       toast("Silinemedi, internet bağlantısını kontrol et");
     }
-    const after = await measure().catch(() => ({ err: true }));
+    const after = await measureDevice().catch(() => ({ err: true }));
     if (!after.err && before && !before.err) {
       const gone = before.mediaBytes + before.docBytes + before.appBytes - (after.mediaBytes + after.docBytes + after.appBytes);
       if (gone > 0) noteFreed(gone, after.usage);
     }
-    setD(after.err ? after : await measure().catch(() => ({ err: true })));
+    setD(after.err ? after : await measureDevice().catch(() => ({ err: true })));
     setBusy("");
   };
   const mediaMsg = ({ gone, left }) => (left ? `${gone} dosya silindi; ${left} dosyanın bulut kaydı bulunamadı, telefonda kaldı` : `${gone} dosya telefondan silindi, bulutta duruyor`);
