@@ -272,12 +272,13 @@ export const kalipEntry = (k) => (k.text ? { kind: "msg", text: k.text, kalip: k
 
 // Son 3 kalıp: dokun = seçilenlere bir kez; basılı tut = Tekrarla; tekrar sürerken dokun = Durdur
 // Kare düzen (Seyhun 2026-11-26 örnek A): ilk kare "Kalıp" kapatır, sonra en çok 8 kalıp karesi (yatay kayar), son kare "Tümü"
-export function KalipRow({ list, rep, now, onSend, onHold, onStop, onAll, onClose }) {
+// page: Kalıp sayfası (Seyhun 2026-11-26): bütün kalıplar kare ızgarada, son kare "+ Yeni" (onAll), Kapat karesi yok
+export function KalipRow({ list, rep, now, onSend, onHold, onStop, onAll, onClose, page = false }) {
   const t = useRef(null);
   const held = useRef(false);
   // Liste boşken ya da yüklenirken hazır yazılı kalıplar gösterilir (satır hep görünür; Seyhun 2026-11-25 "hazır komutlar gösterilmiyor")
   const src = list?.length ? list : KALIP_HAZIR.map((x, i) => ({ id: `h${i}`, name: x, text: x, used: -i }));
-  const top = [...src].sort((a, b) => (b.used || 0) - (a.used || 0)).slice(0, 8);
+  const top = [...src].sort((a, b) => (b.used || 0) - (a.used || 0)).slice(0, page ? 60 : 8);
   const down = (k) => {
     held.current = false;
     clearTimeout(t.current);
@@ -293,11 +294,13 @@ export function KalipRow({ list, rep, now, onSend, onHold, onStop, onAll, onClos
     else onSend(k);
   };
   return (
-    <div className="bzy-kp">
-      <button type="button" className="bzy-sqb on" onClick={onClose} aria-expanded="true" data-press>
-        <small>Kapat</small>
-        <b>Kalıp</b>
-      </button>
+    <div className={page ? "bzy-kpg" : "bzy-kp"}>
+      {!page && (
+        <button type="button" className="bzy-sqb on" onClick={onClose} aria-expanded="true" data-press>
+          <small>Kapat</small>
+          <b>Kalıp</b>
+        </button>
+      )}
       {top.map((k) => {
         const on = rep?.kid === k.id;
         const left = on ? Math.max(0, Math.ceil((rep.next - now) / 1000)) : 0;
@@ -320,9 +323,9 @@ export function KalipRow({ list, rep, now, onSend, onHold, onStop, onAll, onClos
           </button>
         );
       })}
-      <button type="button" className="bzy-sqb bzy-kall" onClick={onAll} aria-label="Bütün kalıplar" data-press>
-        <small />
-        <b>Tümü</b>
+      <button type="button" className="bzy-sqb bzy-kall" onClick={onAll} aria-label={page ? "Yeni sesli kalıp" : "Bütün kalıplar"} data-press>
+        <small>{page ? "Kaydet" : ""}</small>
+        <b>{page ? "+ Yeni" : "Tümü"}</b>
       </button>
     </div>
   );
