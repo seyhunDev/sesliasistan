@@ -19,7 +19,7 @@ const area =
 
 function Check({ on, onClick, label }) {
   return (
-    <button type="button" onClick={onClick} aria-pressed={on} aria-label={label} className={`grid size-6 shrink-0 place-items-center rounded-full ring-2 transition active:scale-90 ${on ? "bg-ok text-white ring-ok" : "ring-line"}`}>
+    <button type="button" onClick={onClick} aria-pressed={on} aria-label={label} className={`grid size-6 shrink-0 place-items-center rounded-full ring-2 transition active:scale-90 ${on ? "bg-ok text-on-ok ring-ok" : "ring-line"}`}>
       {on && <Icon name="check" className="size-3.5" />}
     </button>
   );

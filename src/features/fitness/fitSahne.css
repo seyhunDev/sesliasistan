@@ -5,7 +5,7 @@
   color-scheme: dark;
   --bg: #0b0b0c; --card: #17171a; --fg: #fff; --fg2: #e4e4e7; --mut: #a1a1aa; --mut2: #71717a; --line: #26262b; --fill: #1f1f22;
   --acc: #d4ff3a; --acc2: #d4ff3a; --on-acc: #111; --accbg: rgba(212, 255, 58, .12); --deep: #17171a;
-  --rec: #ff6b6b; --ok: #d4ff3a; --warn: #fbbf5c; --warnbg: rgba(251, 191, 92, .12);
+  --rec: #ff6b6b; --ok: #d4ff3a; --on-ok: #111; --warn: #fbbf5c; --warnbg: rgba(251, 191, 92, .12);
   --fs-lime: #d4ff3a; --fs-fit: #ff7a1a; --fs-red: #ff6b6b;
 }
 html:has(main.fs), body:has(main.fs) { background: #0b0b0c !important; }

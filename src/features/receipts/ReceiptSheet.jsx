@@ -326,7 +326,7 @@ export function ReceiptSheet({ open, onClose, seed }) {
         {/* Kaydedildi: fiş numarası (kâğıt fişin üstüne yazılır) */}
         {stage === "done" && done && (
           <div className="fade-in flex min-h-full flex-col items-center justify-center py-6 text-center">
-            <span className="grid size-16 place-items-center rounded-full bg-ok text-white">
+            <span className="grid size-16 place-items-center rounded-full bg-ok text-on-ok">
               <Icon name="check" className="size-8" />
             </span>
             <p className="mt-4 text-[1.0625rem] font-semibold">Fiş kaydedildi</p>

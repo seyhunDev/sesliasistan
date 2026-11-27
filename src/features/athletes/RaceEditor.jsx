@@ -158,7 +158,7 @@ const Pair = ({ children }) => <div className="grid grid-cols-2 divide-x divide-
 
 function Check({ on, tone = "ok" }) {
   return (
-    <span className={`grid size-6 shrink-0 place-items-center rounded-full ring-2 transition ${on ? (tone === "ok" ? "bg-ok text-white ring-ok" : "bg-acc text-white ring-acc") : "ring-line"}`}>
+    <span className={`grid size-6 shrink-0 place-items-center rounded-full ring-2 transition ${on ? (tone === "ok" ? "bg-ok text-on-ok ring-ok" : "bg-acc text-white ring-acc") : "ring-line"}`}>
       {on && <Icon name="check" className="size-4 [stroke-width:3]" />}
     </span>
   );
@@ -932,7 +932,7 @@ export function RaceEditor({ sec = "", uid = "", head = null, title = "", alert 
   const doneRow = (s) => (
     <li key={s.key} className="flex items-center gap-1 pl-1 pr-4">
       <button type="button" onClick={() => markStep(s, false)} aria-label={`${s.label}: yapılmadı`} data-press className="btn btn-icon shrink-0">
-        <span className="grid size-[1.375rem] place-items-center rounded-full bg-ok text-white">
+        <span className="grid size-[1.375rem] place-items-center rounded-full bg-ok text-on-ok">
           <Icon name="check" className="size-3.5" />
         </span>
       </button>

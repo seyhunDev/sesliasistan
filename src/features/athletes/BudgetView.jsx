@@ -242,7 +242,7 @@ export function BudgetView({ r, athletes, onChange }) {
                     aria-pressed={on}
                     className="flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 pr-2 text-left active:bg-bg"
                   >
-                    <span className={`grid size-6 shrink-0 place-items-center rounded-full ring-2 ${on ? "bg-ok text-white ring-ok" : "ring-line"}`}>{on && <Icon name="check" className="size-4 [stroke-width:3]" />}</span>
+                    <span className={`grid size-6 shrink-0 place-items-center rounded-full ring-2 ${on ? "bg-ok text-on-ok ring-ok" : "ring-line"}`}>{on && <Icon name="check" className="size-4 [stroke-width:3]" />}</span>
                     <span className={`min-w-0 flex-1 truncate text-[0.9375rem] ${on ? "text-mut" : "font-medium"}`}>{a.studentName}</span>
                     <span className="shrink-0 text-[0.875rem] tabular-nums text-mut">{tl(forAthlete(t, a.id))}</span>
                   </button>
@@ -409,7 +409,7 @@ function ItemForm({ item, athletes, nights, hotels, onSave, onRemove }) {
         </div>
       )}
       <button type="button" onClick={() => put("club")(!x.club)} aria-pressed={x.club} className="flex w-full items-center gap-3 text-left">
-        <span className={`grid size-6 shrink-0 place-items-center rounded-full ring-2 ${x.club ? "bg-ok text-white ring-ok" : "ring-line"}`}>{x.club && <Icon name="check" className="size-4 [stroke-width:3]" />}</span>
+        <span className={`grid size-6 shrink-0 place-items-center rounded-full ring-2 ${x.club ? "bg-ok text-on-ok ring-ok" : "ring-line"}`}>{x.club && <Icon name="check" className="size-4 [stroke-width:3]" />}</span>
         <span className="text-[0.9375rem]">Kulüp karşılar (sporcu payına girmez)</span>
       </button>
       <div className="flex gap-2 pt-1">

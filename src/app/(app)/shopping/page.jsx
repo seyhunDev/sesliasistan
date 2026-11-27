@@ -89,7 +89,7 @@ function ListPage({ tabs }) {
   const row = (it) => (
     <li key={it.id} className="flex items-center gap-1">
       <button type="button" onClick={() => toggleItem(orgId, it, uid)} data-press="row" className="flex min-w-0 flex-1 items-center gap-3 py-3 pl-4 text-left">
-        <span className={`grid size-6 shrink-0 place-items-center rounded-full ring-2 transition ${it.done ? "bg-ok text-white ring-ok" : "ring-line"}`}>
+        <span className={`grid size-6 shrink-0 place-items-center rounded-full ring-2 transition ${it.done ? "bg-ok text-on-ok ring-ok" : "ring-line"}`}>
           {it.done && <Icon name="check" className="size-4 [stroke-width:3]" />}
         </span>
         <span className="min-w-0 flex-1">

@@ -241,7 +241,7 @@ export function Onboarding() {
           <span className="relative grid size-20 place-items-center rounded-[1.625rem] bg-acc/10 text-acc">
             <Icon name={s.icon} className="size-9" />
             {has && (
-              <span className="absolute -bottom-1 -right-1 grid size-7 place-items-center rounded-full bg-ok text-white ring-4 ring-bg">
+              <span className="absolute -bottom-1 -right-1 grid size-7 place-items-center rounded-full bg-ok text-on-ok ring-4 ring-bg">
                 <Icon name="check" className="size-4 [stroke-width:3]" />
               </span>
             )}

@@ -7,7 +7,7 @@ import { Icon } from "@/components/ui/Icon";
 // Yoklama ekranının görünümü (veri ve kayıt sayfada, attendance/page.jsx). Üstte yalnız gün satırı; sınıf seçimi kapalı
 // bir düğme (dokununca liste), toplu işaretlerle aynı satırda; sporcu listesi hemen başlar.
 export const ST = {
-  present: { label: "Geldi", short: "Geldi", on: "bg-ok text-white", dot: "bg-ok", tone: "text-ok" },
+  present: { label: "Geldi", short: "Geldi", on: "bg-ok text-on-ok", dot: "bg-ok", tone: "text-ok" },
   absent: { label: "Gelmedi", short: "Yok", on: "bg-rec text-white", dot: "bg-rec", tone: "text-rec" },
   excused: { label: "İzinli", short: "İzin", on: "bg-amber-500 text-white", dot: "bg-amber-500", tone: "text-amber-600 dark:text-amber-400" },
 };

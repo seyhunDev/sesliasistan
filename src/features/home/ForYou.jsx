@@ -61,7 +61,7 @@ const DoneBtn = ({ onClick }) => (
 
 // Sağdaki tek eylem: küçük yuvarlak düğme (işaret) ya da kısa yazılı düğme
 function Pill({ children, onClick, tone = "light", label }) {
-  const cls = { light: "bg-bg text-fg", rec: "bg-rec/10 text-rec", ok: "bg-ok text-white", acc: "bg-acc text-white" }[tone];
+  const cls = { light: "bg-bg text-fg", rec: "bg-rec/10 text-rec", ok: "bg-ok text-on-ok", acc: "bg-acc text-white" }[tone];
   return (
     <button
       type="button"

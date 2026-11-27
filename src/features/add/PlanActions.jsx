@@ -80,7 +80,7 @@ export function PlanActions({ rec, by, cancelStart = false, onDone, onDelete, on
     : cancelled
     ? [<Act key="u" icon="back" label="Geri al" onClick={uncancel} />]
     : [
-      <Act key="d" icon="check" label="Bitti" tone="bg-ok text-white" onClick={done} />,
+      <Act key="d" icon="check" label="Bitti" tone="bg-ok text-on-ok" onClick={done} />,
       rec.date && <Act key="p" icon="clock" label="Ertele" onClick={postpone} />,
       canCancel(rec, todayStr()) && <Act key="c" icon="x" label="İptal et" on={cancelOpen} tone={cancelOpen ? "bg-rec text-white" : "bg-rec/10 text-rec"} onClick={() => setCancelOpen((o) => !o)} />,
     ].filter(Boolean);
