@@ -6,6 +6,7 @@ import { applySize } from "@/lib/textSize";
 import { doc, onSnapshot, setDoc as setDocument } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase/clientApp";
 import { clearWarm, readWarmMe, saveWarmMe } from "@/lib/warmStart";
+import { setAthleteAccount } from "@/features/athletes/access";
 
 const Ctx = createContext(null);
 
@@ -146,6 +147,9 @@ export function AuthProvider({ children }) {
             localStorage.setItem("sa-ai-power", doc_?.aiPower === "strong" ? "strong" : "");
         } catch {}
     }, [doc_?.aiPower]);
+
+    // Sporcu işleri: profil belgesi okunmuş ana hesap kendi sporcularını yönetir (features/athletes/access.js)
+    setAthleteAccount(doc_ && profile?.role === "owner" ? profile.email : "");
 
     const value = {
         user,

@@ -27,6 +27,7 @@ import { ProfilePhoto } from "@/features/people/ProfilePhoto";
 import { liveHead } from "@/features/liveScreen/fonts";
 import { AdminRow } from "@/features/admin/AdminPage";
 import { ClubRow } from "@/features/clubs/ClubRow";
+import { isVeloraAdmin } from "@/lib/hesapGorunum";
 import { KullanimRow } from "@/features/kullanim/KullanimKaydi";
 
 // Sahne üst (2026-11-26, uygulamanın koyu dili): geri, dar büyük AYARLAR, altında ad · hesap türü, sağda fotoğraf
@@ -157,6 +158,7 @@ export default function SettingsPage() {
   // Geliştirici en altta, sürüm sayfanın sonunda tek satır. Kalkanlar (gizli, silinmedi): Ana sayfada yarışlar / yarış kısayolu
   // (yarışlar artık hep görünür), ayrı Yapay zeka kullanımı, Açılış süresi, Telefondaki veriler ve Yayın satırları (kartlara taşındı).
   const ver = buildLine().split(" · ").slice(0, 2).join(" · ");
+  const admin = isVeloraAdmin(profile.email);
   return (
     <main className={`sahne-pg ${liveHead.variable} wide mx-auto max-w-[30rem] px-5 md:max-w-[52rem] md:px-8 pb-[calc(3rem+env(safe-area-inset-bottom))]`}>
       <Top profile={profile} label="Ana hesap" />
@@ -186,7 +188,7 @@ export default function SettingsPage() {
 
         {/* Üç hesap görünümü (Seyhun 2026-11-25 "ben her şeye hakim olmalıyım"): ötekilerin ana sayfası, alt çubuğu, menüsü; veri yine senin */}
         <Sec title="Kişiler ve hesaplar">
-          <AdminRow org={profile.orgId} />
+          {admin && <AdminRow org={profile.orgId} />}
           <Row title="Kişiler" sub={members.length ? `${members.length} kişi` : ""} href="/staff" />
           <Row title="Normal kullanıcı gibi gör" onClick={() => (setGibiGor("normal"), router.push("/"))} chevron />
           <Row title="Sporcu gibi gör" onClick={() => (setGibiGor("sporcu"), router.push("/"))} chevron />
@@ -194,7 +196,7 @@ export default function SettingsPage() {
         </Sec>
 
         <Sec title="Bağlantılar ve yedek">
-          <Row title="Gmail ve banka mailleri" href="/mail/setup" />
+          {admin && <Row title="Gmail ve banka mailleri" href="/mail/setup" />}
           <CalendarFeedRow />
           <BackupRow />
         </Sec>

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { adminDb, adminReady } from "@/lib/server/admin";
-import { canSeeAthletes } from "@/features/athletes/access";
+import { ownsAthletes } from "@/lib/server/athleteAccess";
 import { fileUrl } from "@/lib/siteBoard";
 import { FieldValue } from "firebase-admin/firestore";
 import { getStorage } from "firebase-admin/storage";
@@ -25,7 +25,7 @@ const bad = (error, status = 400) => NextResponse.json({ error }, { status });
 async function who(request) {
   const au = await requireUser(request);
   if (!au.ok) return { res: unauthorized(au) };
-  if (au.staff || !canSeeAthletes(au.email)) return { res: bad("Bu ekran yalnız ana hesapta.", 403) };
+  if (au.staff || !(await ownsAthletes(au))) return { res: bad("Bu ekran yalnız ana hesapta.", 403) };
   return { au };
 }
 

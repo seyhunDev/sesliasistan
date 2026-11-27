@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { countAi } from "@/lib/server/aiUsage";
 import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { requireUser, unauthorized } from "@/lib/server/auth";
-import { canSeeAthletes } from "@/features/athletes/access";
+import { ownsAthletes } from "@/lib/server/athleteAccess";
 import { logAiError } from "@/lib/ai/errors";
 import { cleanOps, cleanRoute, sailOf } from "@/lib/roundSay";
 
@@ -46,7 +46,7 @@ async function handle(request) {
   const au = await requireUser(request);
   if (!au.ok) return unauthorized(au);
   countAi(au, "round-say");
-  if (!canSeeAthletes(au.email)) return bad("Sporcu yetkin yok.", 403);
+  if (!(await ownsAthletes(au))) return bad("Sporcu yetkin yok.", 403);
   const body = await request.json().catch(() => ({}));
   const text = String(body?.text || "").replace(/\s+/g, " ").trim().slice(0, 1500);
   if (!text) return bad("Söylenen boş.");

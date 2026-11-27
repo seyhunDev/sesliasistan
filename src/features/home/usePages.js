@@ -6,7 +6,7 @@ import { useRaceHome } from "@/features/athletes/raceHome";
 import { useMeeting } from "@/features/meeting/MeetingProvider";
 import { listsFor } from "@/features/shop/shop";
 import { myFit } from "@/lib/fitness/model";
-import { homeActions, seesMoney } from "@/lib/hesapGorunum";
+import { homeActions, isVeloraAdmin, seesMoney } from "@/lib/hesapGorunum";
 import { canReceipts } from "@/lib/kinds";
 
 // Tümü penceresi (HomeGrid) ve sol menü (SideNav) aynı sayfa listesini kullanır: hesap görünümüne göre (lib/hesapGorunum.js homeActions)
@@ -22,6 +22,7 @@ export function usePages() {
     side: h.side,
     parent: h.kind === "parent",
     athletes: h.athletes,
+    admin: !h.preview && isVeloraAdmin(h.profile?.email),
     races: race.on,
     training: plans.some((p) => (p.cat || p.category) === "Antrenman"),
     receipts: canReceipts(h.kind),

@@ -902,9 +902,12 @@ group("Ana sayfa kartları")([
     return t.big === "3 antrenman" && t.sub === "1 günlük yazılmadı" && t.warn;
   })],
   ["işlemler: ana hesap", F("6 grup + en sonda Gizli (Toplantı, Doğum günü, Gemiler, Kameralar, Instagram; Seyhun 2026-11-25), tek Yarışlar, Rüzgâr yerine Hava, Antrenman adı Yönet, tek tip", () => {
-    const g = HT.homeActions({ owner: true, money: true, athletes: true, races: true, training: true, receipts: true });
+    const g = HT.homeActions({ owner: true, admin: true, money: true, athletes: true, races: true, training: true, receipts: true });
     const a = g.flatMap((x) => x.items);
     const l = a.map((x) => x.label);
+    // Velora'yı kullanan başka ana hesapta (admin değil) Hesaplar ve Instagram yok (Seyhun 2026-11-27)
+    const o = HT.homeActions({ owner: true, money: true, athletes: true, receipts: true }).flatMap((x) => x.items).map((x) => x.label);
+    if (o.includes("Hesaplar") || o.includes("Instagram") || !o.includes("Sporcular") || !o.includes("Fiş / Fatura")) return false;
     return g.map((x) => x.title).join(",") === "Günlük,Kulüp,Para,Hava ve deniz,Kişisel,Kişiler ve sosyal,Gizli" && l[0] === "Planlar" && l.includes("Görevler") && l.includes("Envanter") && l.includes("Fiş / Fatura") && l.includes("Aidatlar") && l.includes("Hava") && a.find((x) => x.href === "/bilgi/yonet")?.label === "Yönet" && !a.some((x) => ["/training", "/races", "/wind"].includes(x.href)) && l.filter((x) => x === "Yarışlar").length === 1 && a.find((x) => x.id === "meeting") && g[6].items.map((x) => x.label).join(",") === "Toplantı,Doğum günü,Gemiler,Kameralar,Instagram" && HT.homeActions({}).flatMap((x) => x.items).find((x) => x.label === "Yarışlar")?.href === "/races" && a.every((x) => x.icon && x.label && x.label.length <= 12 && (x.href || x.id)) && new Set(a.map((x) => x.href || x.id)).size === a.length;
   })],
   ["işlemler: çalışan ve veli", F("çalışana Envanter/Kişiler/Fiş/Hesaplar yok (para yalnız ana hesapta); veliye Toplantı yok, Yoklama var; boş grup yok", () => {
