@@ -1,7 +1,7 @@
 "use client";
 
-// Sporcu iki yerde durur: kulüp projesinde (dikili-c7cc8, asıl kart) ve bizim projede Kişiler › Sporcular
-// (orgs/{ana hesap}/members, kind "athlete", athleteId ile kulüp kartına bağlı). Ekleme ve silme ikisini birlikte günceller.
+// Sporcu iki kayıttır: sporcu kartı (orgs/{ana hesap}/athletes, asıl kart) ve Kişiler › Sporcular
+// (orgs/{ana hesap}/members, kind "athlete", athleteId ile karta bağlı). Ekleme ve silme ikisini birlikte günceller.
 import { collection, deleteField, doc } from "firebase/firestore";
 import { addDoc, updateDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";

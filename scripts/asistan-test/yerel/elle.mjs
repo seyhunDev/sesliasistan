@@ -3680,29 +3680,6 @@ group("Uzman antrenörler")([
   ["yaş grubu", F("12 çocuk, 13 genç, 18 yetişkin", () => UZ.yasGrubu(12) === "cocuk" && UZ.yasGrubu(13) === "genc" && UZ.yasGrubu(18) === "yetiskin")],
   ["form", F("tek kelime ad ve branşsız kayıt reddedilir", () => !!UZ.uzmanTemizle({ ad: "Selin", brans: "fitness" }).hata && !!UZ.uzmanTemizle({ ad: "Selin Er" }).hata && UZ.uzmanTemizle({ ad: "Selin Er", brans: "fitness", kapasite: "12" }).veri.kapasite === 12)],
 ]);
-
-// Sporcuları Velora'ya taşıma (athleteCopy.js): biçim, geri çevirme ve karşılaştırma
-const AC = await import("@/lib/athleteCopy");
-{
-  const ts = (ms) => ({ toDate: () => new Date(ms) });
-  const src = { studentName: "Ali Kaya", createdAt: ts(1700000000123), body: [{ d: "2026-10-01", h: 150, kg: 40 }], attendance_2026: { "09-29": "present" } };
-  const enc = AC.encodeValue(src);
-  const back = AC.decodeValue(enc, (ms) => ({ ms }));
-  const reordered = { attendance_2026: { "09-29": "present" }, body: [{ kg: 40, h: 150, d: "2026-10-01" }], createdAt: { __ts: 1700000000123 }, studentName: "Ali Kaya" };
-  const H = [{ id: "b", data: { note: "x" } }, { id: "a", data: { note: "y" } }];
-  group("Sporcu taşıma")([
-    ["tarih ms olur", F("createdAt { __ts }", () => enc.createdAt.__ts === 1700000000123 && enc.body[0].kg === 40)],
-    ["geri çevirme", F("tarih yeniden Timestamp", () => back.createdAt.ms === 1700000000123 && back.attendance_2026["09-29"] === "present")],
-    ["anahtar sırası önemsiz", F("aynı özet", () => AC.athleteDigest(enc, H) === AC.athleteDigest(reordered, [...H].reverse()))],
-    ["alan farkı", F("farklı özet", () => AC.athleteDigest(enc, H) !== AC.athleteDigest({ ...enc, studentName: "Ali Kay" }, H))],
-    ["geçmiş farkı", F("farklı özet", () => AC.athleteDigest(enc, H) !== AC.athleteDigest(enc, H.slice(1)))],
-    ["karşılaştırma tam", F("ok", () => AC.compareCopy({ athletes: { x: "1" }, classes: { c: "2" }, coaches: {} }, { athletes: { x: "1" }, classes: { c: "2" }, coaches: {} }).ok)],
-    ["karşılaştırma eksik ve farklı", F("adlarla listeler", () => {
-      const r = AC.compareCopy({ athletes: { x: "1", y: "2" }, classes: {}, coaches: {} }, { athletes: { x: "9", z: "3" }, classes: {}, coaches: {} }, { x: "Ali", y: "Can", z: "Ece" });
-      return !r.ok && r.missing[0] === "Can" && r.changed[0] === "Ali" && r.extra[0] === "Ece" && r.counts.athletes.join() === "2,2";
-    })],
-  ]);
-}
 const UPL = [
   { id: "a", title: "Bacak günü", date: "2026-11-28", fit: { for: "s1" }, people: ["s1"] },
   { id: "b", title: "Optimist antrenmanı", cat: "Antrenman", date: "2026-11-29", people: ["s1"] },

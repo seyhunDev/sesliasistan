@@ -3,8 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { FieldPath, Timestamp, collection, deleteField, doc, getDoc, getDocs, orderBy, query } from "firebase/firestore";
 import { addDoc, deleteDoc, updateDoc, writeBatch } from "@/lib/firebase/write";
-import { dikiliAuth, dikiliDb } from "./dikili";
-import { memDb, memReady, onVelora } from "./veloraMem";
+import { memDb, memReady } from "./veloraMem";
 import { EXPIRY_KEYS } from "@/lib/expiry";
 import { attTakenIn, markAttTaken } from "./attTaken";
 import { todayStr } from "@/lib/utils/format";
@@ -23,17 +22,12 @@ function plain(v) {
 // Yarış evrakında kullanılan ek alanlar (sporcu kartında saklanır, bir kez girilir)
 export const DOC_FIELDS = ["studentSchoolAndClass", "studentSchool", "studentSchoolPlace", "studentNo", "studentClass", "licenseNo", "studentBirthPlace", "studentPhone", "motherName", "fatherName", "parentTc", "parentRelation", "tyfNo", "sailNo"];
 
-// Sporcuların durduğu yer. Taşındıysa (Ayarlar › Sporcuları Velora'ya taşı, Seyhun 2026-11-27) Velora: orgs/{ana hesap}/athletes,
-// sailingClasses, coaches (bellek önbellekli bağlantı, veloraMem.js). Taşınmadıysa eski yol: kulüp projesi (dikili-c7cc8), kulüp girişiyle.
+// Sporcular Velora'nın kendi verisinde (Seyhun 2026-11-27; eski kulüp veritabanı dikili-c7cc8 artık kullanılmıyor, veri orada yedek):
+// orgs/{ana hesap}/athletes (+ history), sailingClasses, coaches. Okuma ve yazma bellek önbellekli bağlantıdan (veloraMem.js).
 async function src() {
-  if (await onVelora()) {
-    const org = await memReady();
-    const db = memDb();
-    return { db, velora: true, col: (...p) => collection(db, "orgs", org, ...p), ref: (...p) => doc(db, "orgs", org, ...p), classes: "sailingClasses" };
-  }
-  await dikiliAuth().authStateReady(); // kayıtlı oturum geri yüklenmeden sorgu atılırsa kurallar reddeder
-  const db = dikiliDb();
-  return { db, velora: false, col: (...p) => collection(db, ...p), ref: (...p) => doc(db, ...p), classes: "sailing_classes" };
+  const org = await memReady();
+  const db = memDb();
+  return { db, col: (...p) => collection(db, "orgs", org, ...p), ref: (...p) => doc(db, "orgs", org, ...p), classes: "sailingClasses" };
 }
 
 // Sınıf ve antrenör adları
@@ -76,7 +70,7 @@ async function fetchAthletes() {
     });
   });
   rememberNames(athletes);
-  // Bugünün yoklaması kulüp sitesinden girildiyse de alındı sayılsın (yoklama hatırlatması gelmesin)
+  // Bugünün yoklaması başka cihazdan girildiyse de alındı sayılsın (yoklama hatırlatması gelmesin)
   if (attTakenIn(athletes, todayStr())) markAttTaken();
   return { athletes, ...n };
 }
@@ -98,7 +92,7 @@ export function athleteNames() {
   }
 }
 
-// ---- Yazma (kulüp uygulamasıyla aynı yapı) ----
+// ---- Yazma (eski kulüp uygulamasıyla aynı alanlar) ----
 // Yoklama sporcunun belgesinde: attendance_YYYY.{"MM-DD"} = "present" | "absent" | "excused"
 export const STATES = ["present", "absent", "excused"];
 const dayKey = (date) => [date.slice(0, 4), date.slice(5, 10)]; // "2026-09-29" -> ["2026", "09-29"]
@@ -159,7 +153,7 @@ export async function saveBody(id, m, drop = "") {
   return body;
 }
 
-// Yeni sporcu (kulüp projesine, kulüp uygulamasıyla aynı alanlar). Liste createdAt'e göre sıralandığı için createdAt şart.
+// Yeni sporcu (Velora, eski kulüp uygulamasıyla aynı alanlar). Liste createdAt'e göre sıralandığı için createdAt şart.
 // Dönüş: yeni sporcunun kimliği
 export async function createAthlete(fields) {
   const S = await src();
@@ -171,10 +165,10 @@ export async function createAthlete(fields) {
   return ref.id;
 }
 
-// Arşiv: kulüp uygulamasındaki "Pasif" durumu (listede gizlenir, yoklama ve aidat listesine girmez; geçmişi kalır)
+// Arşiv: "Pasif" durumu (listede gizlenir, yoklama ve aidat listesine girmez; geçmişi kalır)
 export const setArchived = (a, on, names) => updateAthlete(a.id, a, { status: on ? "passive" : "active" }, names);
 
-// Sporcuyu kulüp projesinden tamamen siler (geçmiş kayıtları dahil). Geri alınamaz.
+// Sporcuyu tamamen siler (geçmiş kayıtları dahil). Geri alınamaz.
 export async function deleteAthlete(id) {
   const S = await src();
   const hist = await getDocs(S.col("athletes", id, "history"));
@@ -220,8 +214,7 @@ export function useDikili(key, fn) {
           memo.set(key, d);
           return { d };
         },
-        // Velora'dayken izin hatası kulüp girişi istemez (o ekran yalnız eski yol için)
-        async (e) => ({ e: { code: e?.code === "permission-denied" && (await onVelora()) ? "velora-denied" : e?.code || "", text: message(e) } }),
+        (e) => ({ e: { code: e?.code || "", text: message(e) } }),
       ),
     [key, fn],
   );

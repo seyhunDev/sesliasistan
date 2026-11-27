@@ -11,7 +11,6 @@ import { useData } from "@/features/data/DataProvider";
 import { useAdd } from "@/features/add/AddProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { isActive, loadAthletes, message, updateAthlete, useDikili } from "@/features/athletes/data";
-import { DikiliLogin, useDikiliUser } from "@/features/athletes/Connect";
 import { RaceEditor } from "@/features/athletes/RaceEditor";
 import { Icon } from "@/components/ui/Icon";
 import { coachStart } from "@/features/athletes/raceDocs";
@@ -67,7 +66,6 @@ function Race({ orgId, uid, email, by, mail, coach }) {
   const { saveDrafts, plans, updateRecord, isStaff } = useData();
   const { openAdd } = useAdd();
   const { data, err, reload } = useDikili("list", loadAthletes);
-  const user = useDikiliUser();
   const [race, setRace] = useState(() => cachedRace(orgId, id));
   const [missingRace, setMissingRace] = useState(false);
   const [head0, setHead] = useState(null); // başlık: yarış bilgisi değişince güncellenir
@@ -304,7 +302,6 @@ function Race({ orgId, uid, email, by, mail, coach }) {
             <h1 className="rsh-c rsh-title">{title}</h1>
           </section>
           <div className="rzc-body bg-bg pb-4">
-            {err?.code === "permission-denied" && <DikiliLogin denied={!!user} onDone={reload} />}
             {missingRace ? <p className="mt-6 text-center text-[0.875rem] text-mut">Yarış bulunamadı.</p> : fail && !race ? <LoadFail onRetry={() => (setFail(false), setRetry((n) => n + 1))} /> : <Loading label="Yarış yükleniyor" />}
           </div>
         </>
@@ -317,7 +314,6 @@ function Race({ orgId, uid, email, by, mail, coach }) {
             head={head}
             title={title}
             sharedList={id === "new" ? sharedList : []}
-            alert={err?.code === "permission-denied" && <DikiliLogin denied={!!user} onDone={reload} />}
             orgId={orgId}
             start={race}
             athletes={data?.athletes || []}

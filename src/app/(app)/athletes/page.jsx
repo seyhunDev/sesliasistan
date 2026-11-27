@@ -11,9 +11,6 @@ import { BackButton } from "@/components/ui/BackButton";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { byId, isActive, loadAthletes, useDikili } from "@/features/athletes/data";
-import { DikiliLogin, disconnect, useDikiliUser } from "@/features/athletes/Connect";
-import { useOnVelora } from "@/features/athletes/veloraMem";
-import { MoveAthletesRow } from "@/features/settings/MoveAthletes";
 import { Loading } from "@/components/ui/Loader";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useData } from "@/features/data/DataProvider";
@@ -45,8 +42,6 @@ export default function AthletesPage() {
 
 function AthleteList() {
   const { data, err, reload } = useDikili("list", loadAthletes);
-  const user = useDikiliUser();
-  const velora = useOnVelora();
   const [q, setQ] = useState("");
   const [cls, setCls] = useState("");
   const [passive, setPassive] = useState(false);
@@ -156,15 +151,11 @@ function AthleteList() {
       </section>
 
       <div className="relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
-      {err?.code === "permission-denied" ? (
-        <DikiliLogin denied={!!user} onDone={reload} />
-      ) : (
-        err && (
-          <button onClick={reload} className="w-full rounded-[1.25rem] border border-line bg-card px-4 py-4 text-left text-[0.875rem]">
-            <b className="block font-semibold text-rec">{err.text}</b>
-            <span className="text-mut">Tekrar denemek için dokun</span>
-          </button>
-        )
+      {err && (
+        <button onClick={reload} className="w-full rounded-[1.25rem] border border-line bg-card px-4 py-4 text-left text-[0.875rem]">
+          <b className="block font-semibold text-rec">{err.text}</b>
+          <span className="text-mut">Tekrar denemek için dokun</span>
+        </button>
       )}
       {!data && !err && <Loading label="Sporcular yükleniyor" />}
 
@@ -291,20 +282,6 @@ function AthleteList() {
             names={{ classes: data.classes || [], coaches: data.coaches || [] }}
             athletes={all}
           />
-          {!velora && (
-            <div className="text-center text-[0.75rem] text-mut">
-              {user && (
-                <>
-                  Kulüp hesabı: {user.email} ·{" "}
-                  <button onClick={() => disconnect().then(reload)} className="underline underline-offset-2">
-                    bağlantıyı kes
-                  </button>
-                  {" · "}
-                </>
-              )}
-              <MoveAthletesRow link />
-            </div>
-          )}
         </>
       )}
       </div>

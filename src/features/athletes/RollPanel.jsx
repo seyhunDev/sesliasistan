@@ -9,7 +9,6 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { useData } from "@/features/data/DataProvider";
 import { mirrorChanges } from "@/features/athletes/mirror";
 import { AbsentNotice } from "@/features/athletes/AbsentNotice";
-import { DikiliLogin, useDikiliUser } from "@/features/athletes/Connect";
 import { byId, isActive, loadAthletes, message, saveAttendance, useDikili } from "@/features/athletes/data";
 import { missing, useNameIndex } from "@/features/athletes/names";
 import { RollRows, RollView, ST, shift } from "@/features/athletes/RollView";
@@ -28,7 +27,6 @@ import { Sheet } from "@/components/ui/Sheet";
 export function RollPanel({ inSheet = false, day = "", onSaved }) {
   const toast = useToast();
   const { data, err, reload } = useDikili("list", loadAthletes);
-  const user = useDikiliUser();
   const today = todayStr();
   const gun = useSearchParams().get("gun"); // bildirimden: o günün yoklaması (?gun=YYYY-MM-DD)
   const [date, setDate] = useState(() => (/^\d{4}-\d{2}-\d{2}$/.test(day || gun || "") && (day || gun) <= today ? day || gun : today));
@@ -135,9 +133,7 @@ export function RollPanel({ inSheet = false, day = "", onSaved }) {
           )}
         </section>
 
-        {err?.code === "permission-denied" ? (
-          <DikiliLogin denied={!!user} onDone={reload} />
-        ) : err ? (
+        {err ? (
           <button onClick={reload} className="w-full rounded-[1.25rem] border border-line bg-card px-4 py-4 text-left text-[0.875rem]">
             <b className="block font-semibold text-rec">{err.text}</b>
             <span className="text-mut">Tekrar denemek için dokun</span>
@@ -206,9 +202,7 @@ export function RollPanel({ inSheet = false, day = "", onSaved }) {
 
   return (
     <main className="pb-2">
-      {err?.code === "permission-denied" ? (
-        <DikiliLogin denied={!!user} onDone={reload} />
-      ) : err ? (
+      {err ? (
         <button onClick={reload} className="mt-4 w-full rounded-2xl bg-card px-4 py-4 text-left text-[0.875rem]">
           <b className="block font-semibold text-rec">{err.text}</b>
           <span className="text-mut">Tekrar denemek için dokun</span>
