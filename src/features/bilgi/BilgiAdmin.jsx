@@ -584,7 +584,7 @@ function PenPage({ org, members, ceza, ctx, pick, onPick, onDone }) {
       <div className="bzy-pgp">
         {Object.entries(PEN).map(([v, p]) => (
           <button key={v} type="button" className="bzy-sqb bzy-pn" data-k={v} disabled={busy || cur?.k === v} onClick={() => run(v)} data-press>
-            {v === "fd" ? <small /> : <small>{p.deg}</small>}
+            <small>{p.deg}</small>
             <b>{p.name}</b>
           </button>
         ))}
@@ -622,7 +622,7 @@ function SporcuSheet({ org, id, boat, cur, ctx, onClose, onVideo, onNot }) {
         {Object.entries(PEN).map(([v, p]) => (
           <button key={v} type="button" role="radio" aria-checked={k === v} data-k={v} onClick={() => setPick(v)} data-press>
             <b>{p.name}</b>
-            {v === "fd" ? null : <small>{p.deg}</small>}
+            <small>{p.deg}</small>
           </button>
         ))}
       </div>
