@@ -1865,3 +1865,14 @@ main.sahne-pg .ck-plan { background: #17171a; box-shadow: none; border: 1px soli
 /* Sahne sayfada seçili süzgeç hapı (eski beyaz) limon; sohbette benim balonum kartlardan ayrılsın */
 main.sahne-pg :is([aria-pressed="true"], [aria-selected="true"]).bg-white { background: #d4ff3a; border-color: #d4ff3a; color: #111; }
 main.sahne-pg.chat-view .bg-deep { background-color: #2e2e33; }
+
+/* HAVA SAYFASI Sahne (Seyhun 2026-11-27 "Yap"): büyük dar "HAVA" başlığı, #17171a paneller, seçili gün limon çerçeve */
+main.hv-sahne .iph-date b { font-size: 2.5rem; font-weight: 800; letter-spacing: .01em; line-height: .9; color: #fff; }
+main.hv-sahne .iph-date small { font-family: system-ui, sans-serif; text-transform: none; letter-spacing: 0; font-size: .8125rem; font-weight: 500; color: var(--mut); }
+main.hv-sahne .iph-pn, main.hv-sahne .iph-wx { background: #17171a; border: 1px solid #26262b; box-shadow: none; }
+main.hv-sahne .iph-me { background: #1f1f22; border-color: transparent; }
+main.hv-sahne .iph-day { background: #17171a; border-color: #26262b; }
+main.hv-sahne .iph-day[aria-pressed="true"] { border-color: #d4ff3a; box-shadow: inset 0 0 0 .5px #d4ff3a; }
+main.hv-sahne .iph-day[data-past] { background: #121214; }
+main.hv-sahne .iph-live i { background: #d4ff3a; box-shadow: 0 0 0 3px rgba(212, 255, 58, .16); }
+main.hv-sahne .iph-rain em { background: none; color: #7db4ff; padding: 0; }

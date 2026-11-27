@@ -17,7 +17,7 @@ import { nextDay } from "./hourCols";
 import { todayStr } from "@/lib/utils/format";
 import { dayHours, getPlace, placeLabel, setPlace, compareLinks } from "./weather";
 
-// 2026-11-22 açık tema (main.acik, ana sayfa #1480 gibi): beyaz kartlar, gri tonlar, tablo tone="acik".
+// 2026-11-27 Sahne tasarımı (main.navy.sahne-pg): siyah zemin, #17171a paneller, limon vurgu; tablo koyu tonda.
 // Hava sayfası (Seyhun 2026-11-12 "hava durumu sayfasını da ana sayfa hava durumuna göre yap… gerçekleşen değerleri de göster… birleştir";
 // örnek ana-sayfa/sade-2026-11/hava.html): ana sayfayla aynı lacivert (.iph) ve aynı Hava kutusu (HavaPanel: rüzgâr oku + saat saat rüzgâr,
 // geçen saatler istasyon ölçümü beyaz çizgi). Altında 12 gün (önceki 5 gün ölçülen, bugün ve 6 gün ileri; dokununca kutu ve tablo o güne geçer),
@@ -71,10 +71,10 @@ export function WeatherTop({ w, err, refresh }) {
   const links = compareLinks(place);
   const dname = isToday ? "Bugün" : new Date(`${sel}T12:00`).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric" });
   return (
-    <main className="iph iph-page acik" aria-label="Hava durumu">
+    <main className="iph iph-page navy sahne-pg hv-sahne" aria-label="Hava durumu">
       <header className="iph-hd">
         <BackButton href="/" />
-        <h1 className="iph-date">
+        <h1 className="iph-date sahne-t">
           <b>Hava</b>
           <small className="truncate">{placeLabel(place)}</small>
         </h1>
@@ -91,7 +91,7 @@ export function WeatherTop({ w, err, refresh }) {
       <div className="iph-wxg">
         <section className="iph-pn" aria-label="Saat saat">
           <span className="iph-pt">Saat saat · {dname}</span>
-          {rows.length > 0 && <HourTable key={sel} rows={rows} next={dayHours(w, nextDay(sel))} date={sel} tone="acik" flat />}
+          {rows.length > 0 && <HourTable key={sel} rows={rows} next={dayHours(w, nextDay(sel))} date={sel} flat />}
           {isToday && <NowRain place={place} rows={fcRows} radar={radar} />}
         </section>
         <section className="iph-pn" aria-label="Bölge">
