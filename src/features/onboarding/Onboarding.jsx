@@ -13,11 +13,12 @@ import { db } from "@/lib/firebase/clientApp";
 import { dismissPrompt } from "@/lib/permissions";
 import { enableReminders, needsInstall, pushSupported, syncPush } from "@/lib/push";
 import { SIZES, applySize } from "@/lib/textSize";
+import { isCoach } from "@/lib/kinds";
+import { IlkTanitim } from "./IlkTanitim";
 
-// Tanıtım slaytları. Üç durumda açılır:
-//   1) İlk giriş (users.onboarded false): hepsi
-//   2) Yeni özellik eklendiğinde: yalnızca kişinin görmediği slaytlar (slaytın sürümü v > users.introV)
-//   3) Ayarlar › Tanıtım: hepsi (izni zaten verilmiş slaytta tekrar izin istenmez, "İzin verildi" görünür)
+// İlk giriş (users.onboarded false) ve Ayarlar › Tanıtımı göster: kısa tanıtım + "Velora'da ayrıca" (IlkTanitim, 2026-11-27).
+// Aşağıdaki slaytlar artık yalnız eski hesaplara "Yenilikler" olarak çıkar: yeni özellik eklendiğinde kişinin görmediği
+// slaytlar (slaytın sürümü v > users.introV; izni zaten verilmiş olan atlanır).
 // Her slaytta "Geç" var; hiçbiri zorunlu değil. Yeni bir özellik slaytı eklerken v = INTRO_V + 1 yap ve INTRO_V'yi artır.
 export const openOnboarding = () => window.dispatchEvent(new Event("sa-onboarding"));
 
@@ -104,6 +105,22 @@ export function Onboarding() {
           setManual(false);
           dismissPrompt();
           // "Şimdi sen dene" (antrenman ekle örneği) sporcuya uymaz: o da görülmüş sayılır
+          if (!profile.onboarded || profile.introV < INTRO_V || !profile.tourDone) updateDoc(doc(db, "users", profile.uid), { onboarded: true, introV: INTRO_V, tourDone: true }).catch(() => {});
+        }}
+      />
+    );
+  }
+  // İlk giriş ve elle açılan tanıtım: kısa tanıtım + "Velora'da ayrıca", sonra ana sayfa ("Şimdi sen dene" de görülmüş sayılır)
+  if (fresh || manual) {
+    const kim = profile.role === "owner" ? "ana" : kind === "parent" ? "veli" : isCoach(profile) ? "coach" : "normal";
+    return (
+      <IlkTanitim
+        profile={profile}
+        kim={kim}
+        onDone={() => {
+          setClosed(true);
+          setManual(false);
+          dismissPrompt();
           if (!profile.onboarded || profile.introV < INTRO_V || !profile.tourDone) updateDoc(doc(db, "users", profile.uid), { onboarded: true, introV: INTRO_V, tourDone: true }).catch(() => {});
         }}
       />

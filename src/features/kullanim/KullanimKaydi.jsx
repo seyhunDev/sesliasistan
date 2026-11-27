@@ -61,9 +61,10 @@ export function KullanimKaydi() {
     if (izin === true) kayitSayfa(path);
   }, [path, izin]);
 
-  // Soru yalnız ana sayfada, açılıştan 15 sn sonra (açılış ve tanıtım pencereleriyle çakışmasın); "… gibi gör"de sorulmaz
+  // Soru yalnız ana sayfada, açılıştan 15 sn sonra (açılış ve tanıtım pencereleriyle çakışmasın); "… gibi gör"de sorulmaz.
+  // İlk giriş tanıtımı (onboarded false) bitmeden sayaç başlamaz: soru tanıtımın üstüne binmesin (2026-11-27).
   useEffect(() => {
-    if (izin !== null || preview || path !== "/" || !kayitli(profile)) return;
+    if (izin !== null || preview || path !== "/" || !kayitli(profile) || profile.onboarded !== true) return;
     const t = setTimeout(() => setSoru(true), 15e3);
     return () => clearTimeout(t);
   }, [izin, preview, path, profile]);
