@@ -1,5 +1,6 @@
 "use client";
 
+import { buttonClass } from "@/components/ui/buttonClass";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
@@ -380,10 +381,10 @@ function IstekDetay({ org, i, veri, liste, geri, guncelle }) {
                   </span>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  <Link href={`/settings/admin/uzman/${atanan.id}`} className="rounded-xl bg-acc px-3.5 py-2 text-[0.8125rem] font-bold text-[#111] shadow-[0_3px_0_#8ea620] active:translate-y-[2px]">
+                  <Link href={`/settings/admin/uzman/${atanan.id}`} className={buttonClass({ variant: "primary", size: "sm", full: false })}>
                     Uzmanın sayfası
                   </Link>
-                  <button type="button" onClick={() => (setSecili(""), setDegis(true))} className="rounded-xl bg-[#1f1f22] px-3.5 py-2 text-[0.8125rem] font-bold shadow-[0_3px_0_#000] active:translate-y-[2px]">
+                  <button type="button" onClick={() => (setSecili(""), setDegis(true))} className={buttonClass({ variant: "secondary", size: "sm", full: false })}>
                     Değiştir
                   </button>
                 </div>
@@ -434,12 +435,12 @@ function IstekDetay({ org, i, veri, liste, geri, guncelle }) {
       )}
       <div className="flex flex-wrap gap-2">
         {i.durum === "atandi" && (
-          <button type="button" onClick={() => yaz({ durum: "kabul" })} className="rounded-xl bg-acc px-3.5 py-2 text-[0.8125rem] font-bold text-[#111] shadow-[0_3px_0_#8ea620] active:translate-y-[2px]">
+          <button type="button" onClick={() => yaz({ durum: "kabul" })} className={buttonClass({ variant: "primary", size: "sm", full: false })}>
             Başladı
           </button>
         )}
         {i.durum === "kabul" && (
-          <button type="button" onClick={() => yaz({ durum: "bitti" })} className="rounded-xl bg-[#1f1f22] px-3.5 py-2 text-[0.8125rem] font-bold shadow-[0_3px_0_#000] active:translate-y-[2px]">
+          <button type="button" onClick={() => yaz({ durum: "bitti" })} className={buttonClass({ variant: "secondary", size: "sm", full: false })}>
             Bitti
           </button>
         )}

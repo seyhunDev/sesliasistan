@@ -1,5 +1,6 @@
 "use client";
 
+import { buttonClass } from "@/components/ui/buttonClass";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { collection, deleteDoc, doc, documentId, getCountFromServer, getDocs, limit, orderBy, query, updateDoc, where } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
@@ -146,7 +147,7 @@ const Bilgi = ({ ad, children }) => (
   </div>
 );
 const Dugme = ({ href, onClick, main, children }) => {
-  const c = `rounded-xl px-3.5 py-2 text-[0.8125rem] font-bold transition active:translate-y-[2px] ${main ? "bg-acc text-[#111] shadow-[0_3px_0_#8ea620]" : "bg-[#1f1f22] text-fg shadow-[0_3px_0_#000]"}`;
+  const c = buttonClass({ variant: main ? "primary" : "secondary", size: "sm", full: false });
   return href ? (
     <a href={href} className={c}>
       {children}
