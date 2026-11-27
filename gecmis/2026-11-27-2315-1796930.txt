@@ -1,8 +1,8 @@
-Commit: 2ac8ed0 · İngilizce kalıplara resimle ezber: kalıp resmi ve Hatırla adımı (#1424)
-Zaman: 2026-11-15-1931 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/43733843529
+Commit: 1796930 · Uzman Program hazırla: yayınlanmış hazır programlar da açılsın (#1678)
+Zaman: 2026-11-27-2315 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/46059583841
 
-TAM TEST · 15.11.2026 19:09:37
+TAM TEST · 27.11.2026 22:51:55
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -12,17 +12,8 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
     Sayfalar tarayıcıda açılıyor…
     Sesli asistan ekranı (sahte Firebase, yapay zekasız)…
     Asistan: sekme çubuğu, açılış, dinleme, kapanış…
-    Asistan: çalışırken, küçültme, sesli yanıt, geçmiş…
-    Asistan: kayıt, onaylar, görev listesi…
-    Asistan: sporcu, fitness, yarış multimedya, geniş ekran, iPhone kayıt yolu…
-    Deniz trafiği sayfası…
-    Kameralar sayfası…
-    Hava: yağış şeridi…
-    Hava: ölçülen / beklenen yağmur…
-    Ana sayfa: yarış günü havası…
-    Antrenman: sesle başlat ve bitir…
     Çevrimdışı çalışma (internet kesilip açılır)…
-    Çevrimdışı: 28/28 geçti
+    Çevrimdışı: 30/30 geçti
     Yarış sayfası (sporcu seçili, yarış günü)…
     Yarış günü (sporcu seçili)…
     Yarıştan önce (sporcu seçili)…
@@ -30,27 +21,34 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1411/1441 geçti · 30 kalan · 1312 sn
+SONUÇ: 1286/1315 geçti · 29 kalan · 1396 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
   ✗ Birim testleri: 0/1
-      ✗ “4567 test”
+      ✗ “4675 test”
           beklenen: hepsi geçer
-          olan:     4519/4567 geçti
+          olan:     4618/4675 geçti
+      ✗ “istem” → - Senin işlerin: Plan / takvime ekleme ("yarın 10'da antrenman ekle"); Tekrarlayan plan ("her salı 16:00 antrenman"); Görev ekleme (birine atama) ("Ali'ye motoru kontrol etmesini hatırlat"); Not alma (yalnız istenince) ("not al: malzeme odası dolu"); Görevi tamamlama ("motor yağı görevini tamamla"); Görevi yeniden açma ("motor yağı görevini yeniden aç"); Notu yapıldı yapma (Arşiv'e gider, silinmez) ya da geri alma ("malzeme odası notu yapıldı"); Planı bitirme (Arşiv'e) ("antrenman planını bitir"); Değiştirme / erteleme ("antrenmanı 11'e al"); Silme ("yarınki toplantıyı sil"); Plan iptali ve haber verme ("yarınki antrenmanı iptal et"); Tek cümlede sıralı işler ("Gökhan'a yarın bakım var diye yaz, takvime ekle ve not al"); Uygulama içi mesaj (kişi ya da grup) ("Ali'ye yaz, yarın 9'da iskelede olsun"); Gruba mesaj (Ekip, Sporcular, kurulan gruplar) ("sporculara söyle antrenman iptal"); WhatsApp mesajı ("Ali'ye WhatsApp'tan yaz, yarın gelsin"); Plan, görev, not, fiş soruları ve özet ("bu hafta neler var"); Hava ve rüzgâr ("yarın rüzgâr kaç knot")
+      ✗ “bugünün antrenmanı Yönet'te” → false (beklenen: bugünkü plan Bilgi Yönet (kanal adı, ant), başka gün günlük listesi; Yönet'te Antrenman penceresi, eski sayfa Yönet'e gider (Seyhun 2026-11-17, 2026-11-23))
       ✗ “yarışta açıldı › geri › geri” → {"races":true,"roll":true,"live":false} (beklenen: Yarışlar, sonra ana sayfa (Sporcular değil); Yoklama da ana sayfaya; Yayın yarışın üstüne açılır)
+      ✗ “hazır programın anlatımı” → false (beklenen: her hareketin nasıl yapılır anlatımı var; fotoğrafsızlar çizilir (prova hariç))
       ✗ “Yarışlar geri dönüş” → false (beklenen: liste racesNow ile başlar, yarış 1 dk içindeki listeden açılır)
       ✗ “tek kutu” → false (beklenen: solda kutu, sağda bas-konuş küresi)
-      ✗ “ana sayfa özellik kartları” → false (beklenen: Özet (Mesajlar) yok; İngilizce, Görevler, Medya kartları; medya kartı en yeni bölümün son 4 karesi, 30 dk önbellek)
+      ✗ “ana sayfada kalır” → false (beklenen: Seyhun 2026-11-25: Kulüp ana sayfada Sahne kokpiti (SahneHome Kokpit; eski HomeSummary listesi silindi), Yemek · Market · Giyim yok)
       ✗ “ortak hava tablosu” → false (beklenen: hava sayfası DayStrip + HourTable, yarış havası HourTable, ikisinde de eski grafik yok; ölçülen geçmiş sütun, plan çizgisi, günlük yağış; harita her yerde Harita düğmesi)
       ✗ “önceki 5 gün” → false (beklenen: Seyhun 2026-11-03: hava sayfasında 'Önceki 5 gün' düğmesi (kapalı başlar) geçmiş 5 günü şeritte açar, saatlik tabloda ölçülen sütunlar; yarış havasında yarıştan 5 gün önce)
       ✗ “rüzgâr yönü derece” → false (beklenen: tüm hava gösterimlerinde yön adı yanında derece (ana sayfa, hava sayfası, yarış havası, rüzgâr haritası, bölge haritası, multimedya Hava, asistan metni))
       ✗ “yarış satırı akşam kalkar” → false (beklenen: Seyhun 2026-10-31: günün yarışları bitince (18:00 ya da son yarıştan 90 dk) ana sayfa satırı kalkar, bu yarışın sayacı çalışıyorsa kalır)
       ✗ “yarışın tek ⋯ menüsü” → false (beklenen: Seyhun 2026-10-30: yarış ve multimedya sayfasında aynı liste (lib/raceMenu.js), Denemeleri sıfırla ve Gün ekle yalnız ⋯ içinde, yarıştan önce yarışın alt çubuğu yok)
       ✗ “yayın sayfası” → false (beklenen: Seyhun 2026-11-01: herkese açık ekran ayrı Yayın sayfasından yönetilir (/athletes/races/<id>/yayin, yalnız ana hesap): sayaç, Ekranda (canlı yayın / telefondan video, dikey-yatay), Parkur ve rüzgâr, Dönüşler; Yarışı yönet ve ⋯ › Yayın oraya gider, Canlı sekmesi yok)
+      ✗ “Giyim bir yere gitmez” → HATA: shop is not defined (beklenen: Giyim kartı off, bağlantı yok)
+      ✗ “açık market siparişi” → HATA: shop is not defined (beklenen: teslim / iptal açık sayılmaz)
       ✗ “sağ uçta büyük” → false (beklenen: dört sekme solda, küre sağda 4.75rem)
       ✗ “kısa dokunuş sınırı” → false (beklenen: SHORT_MS 200 (tek kelimelik cevap atılmasın, 2026-11-04), AWAY_PX 90)
+      ✗ “Resimler listesi” → false (beklenen: ⋯ içinde yalnız ana hesapta Resimler)
       ✗ “yayın: bugünün startları tek liste” → [true,false,true,false] (beklenen: Seyhun 2026-11-01: sınıf/grup/bayrak seçimi ile start sırası tek listede (plan.order [{cls,grp,prep}]); ilk bekleyen Sıradaki, Başlat onu rounds[start]'a yazıp listeden düşer; satıra dokununca çipler + Yukarı/Aşağı/Çıkar; herkese açık ekran plan.order'ı olduğu gibi sıradaki gösterir)
+      ✗ “yayın sıralaması: ilk 5 sabit, kızlar ayrı” → [true,false,true,true] (beklenen: Seyhun 2026-11-04: sol alt grup listesinde ilk 5 sabit, altı sayfa sayfa akar; ortadaki genel sıralama yalnız ilk 10 (Seyhun 2026-11-04 'genel sıralamada ilk 10'); kızlar kendi içinde ayrı sayfa (catsOf/onlyCat, yarış sayfasıyla aynı), listede K işareti; hepsi Junior ise yazılmaz; tablo Canlı rozetinin altında başlar; /api/canli sonuç satırında cinsiyet/kategori)
       ✗ “telefon izleyici şeridi: grubun kamerası, Sıralama, Sonuçlar, Rüzgâr, Parkur; süre boşsa Start bekleniyor” → [true,true,true,true,false] (beklenen: Seyhun 2026-11-05: /canli telefonda izleyici kendisi seçer (gruba bağlı kamera/drone, Sıralama, Sonuçlar, Rüzgâr, Parkur), seçmezse yayın odasının gösterdiği; sayaç yokken boş süre yerine 'Start bekleniyor'; telefonda sıralama tek sütun)
       ✗ “yayından çıkar anında keser: evrenin görüntüsü ve kayıt sırası geri gelmez” → [true,true,false,false,true,true,true] (beklenen: Seyhun 2026-11-06: Yayından çıkar / Ekrandan kaldır deyince o evrenin atanmış görüntüsü (evreScreen) ve günün kayıtları sırayla (autoOn) devam etmesin; yeni görüntü verilince off kalkar)
       ✗ “yayın sekmeleri, ekranda alt yazı, rüzgâr aralığı ve gün boyu grafik, üst şerit, yarışlar penceresi” → [false,false,false,true,false,false,false,true] (beklenen: Seyhun 2026-11-02: Yayın sayfası Süre · Video · Parkur · Dönüşler sekmeleri (Seg); Video'da 'Ekranda yazı' (screen.caption) → canlı ekranda alt yazı LowerThird, sesle 'ekrana yaz: …' / 'ekrandaki yazıyı kaldır'; rüzgâr aralığı okta salınır (lv-swing), değişince süzülür; gün boyu grafik her evrede: tahmin + istasyon ölçümü (/api/canli forecast.obs) + bizim ölçümler)
@@ -76,6 +74,7 @@ SONUÇ: 1411/1441 geçti · 30 kalan · 1312 sn
       ✗ “yayın kurulumu, resimli bayrak, grupların parkuru” → [true,true,true,true,false,true,false] (beklenen: Seyhun 2026-11-02 'önce sınıflar, sonra gruplar; bir kere seçip kapatalım, ayarlardan değişsin; sonra sekmeler. Bayrak resimli, hiçbiri seçili değil, seçince ilerler, geri de olsun. Sarı trapezde, mavi başka parkurda')
       ✗ “bekleme örnek H, tehir: bayrak + sebep, inişe geri sayım” → [false,true,false,true] (beklenen: Seyhun 2026-11-03: videosuz bekleme solda geri sayım + program + rüzgâr, sağ üstte parkur, vitrin dönmez; tehirde iki ekranda AP bayrağı ve sebep, iniş / uyarı işareti saati yok, süre belliyse 'Tehir inişine' geri sayım; Yayın'da inince 1 dk sonra geri sayım seçilebilir)
       ✗ “gruplar ayrı başlar, ▶ ekrana alır, kamera gruba bağlı” → [true,true,true,true,true,true,true,true,true,false] (beklenen: Seyhun 2026-11-02 'sarı başladı, mavi de başlayabilir; grupları ayrı yönetebilmeliyim; canlı yayında hangisini göstereceğimi seçeyim; Kamera 1 ile 1. ve 3. grubu, Kamera 2 ile 2. ve 4. grubu çekerim' (örnek gruplar-kamera/grup-a.png))
+      ✗ “eksik yanıt çökertmez” → [true,false] (beklenen: Seyhun 2026-11-02 'reading status': CDN önbelleği soruyla ayrılır (Netlify-Vary), race'siz yanıt veri sayılmaz, plan hep dolu)
       ✗ “sol alt: start + rüzgâr, yarış öncesi akış, Velora” → true,true,true,true,true,false,false,true,false (beklenen: Seyhun 2026-11-03 17:10 (sol-alt onayı): start kartı rüzgârın üstünde (üst orta boş), start dizisinde bayraklar start kartında 5·4·1·0 şeridi (sağda dizi kartı yok); yarış öncesi akış beklenen rüzgâr (rüzgârdan yana açılır, yalnız önümüzdeki saatler) → parkur → program (rota 17:34'te çıktı), Yayın'da Otomatik (8/12/20/30 sn) ya da Elle, Geri/Durdur/İleri; sağ altta Velora işareti)
       ✗ “süre yoksa süre alanı gösterilmez” → false,false,false,false (beklenen: Seyhun 2026-11-03 17:19: geri / ileri sayım yokken (—:—, —, geri sayım bitti) start kartında ve yarış bandında boş süre alanı yok; başka bilgi de yoksa kart yok)
       ✗ “canlı ekranda Rüzgâr: Parkur'daki ölçüm penceresi (ana hesap)” → [true,false] (beklenen: Seyhun 2026-11-05: rüzgâr yönü, eksen gibi ölçümler Yayın › Parkur'daki gibi /canli'den de girilir; Start'ın solunda Rüzgâr, aynı AddSheet ve addCourseObs)
@@ -86,6 +85,7 @@ SONUÇ: 1411/1441 geçti · 30 kalan · 1312 sn
       ✗ “canlı konum: renk listesindeki gruplar” → [true,true,true,true,true,false,true,true] (beklenen: Seyhun 2026-11-04 'renk listesi yüklenince sarı grup tekneler, mavi grup tekneler; örnek data ile gerçek renklere göre tekneler': fleetOf kayıt + grup listesinden, gruplar bilinen sırayla; realSet grubun gerçek tekneleri örnek izlerle (10'dan çoksa geride sıra), grup yoksa null; screen/evre görüntüsünde grp kalır; Yayın'da grup başına döşeme, canlı ekranda sol altta o grubun genel sırası)
       ✗ “takip ve bağlama” → [false,true,true] (beklenen: Seyhun 2026-11-07: Takip'te günün grupları ve program, eski ek talimat soluk; yarış sayfasından Siteden bağla, Siteden'de alınmışı birleştir)
       ✗ “Yayın ve canlı” → [true,false,true] (beklenen: Tehir penceresinde Kimin için; satırda İndir; Başlat tehirde engelli; canlıda tehirdeki grup küçük satır)
+      ✗ “Seyhun Mete'ye mesaj yazdı” → false (beklenen: Mete alır)
 
 2. ANLAMA: temiz cümleler: 120/121
   ✗ Temiz cümle: Plan / takvim: 7/8
@@ -204,94 +204,58 @@ SONUÇ: 1411/1441 geçti · 30 kalan · 1312 sn
   ✓ Saçma girdi: çökmez, takılmaz: 14/14
   ✓ Hız: 1/1
 
-3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları: 68/68
+3. UYGULAMA: tarayıcıda sayfalar, sunucu uçları: 67/67
   ✓ Sunucu ucu: girişsiz istek reddedilir: 18/18
-  ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 48/48
+  ✓ Sayfa açılıyor (girişsiz → giriş ekranı): 47/47
   ✓ Giriş ekranı: 2/2
 
-3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 122/139
-  ✓ Sekme çubuğundaki yeşil düğme: 2/2
-  ✗ Ana sayfa: 3/8
+3. SESLİ ASİSTAN EKRANI: düğme, açılış, halka, görev listesi, onaylar (sahte Firebase): 4/15
+  ✗ Sekme çubuğundaki yeşil düğme: 1/2
+      ✗ “ana sayfa”
+          beklenen: tek asistan düğmesi sağ uçta, solda 4 sekme
+          olan:     1 düğme · 0 sekme · küre x 300 / 390 · 76 px
+  ✗ Ana sayfa: 0/1
       ✗ “iş düğmeleri”
           beklenen: dört sütun, iki satır (en çok 8), her düğmede ikon ve ad
           olan:     0 düğme · 0 sütun · 0 ikonlu
-      ✗ “sade ana sayfa”
-          beklenen: İngilizce/Görevler/Medya kartları, Yemek · Market · Giyim ve Deniz trafiği · Kameralar düğmeleri yok
-          olan:     hata: locator.waitFor: Timeout 15000ms exceeded.
-      ✗ “iPad tek ekran”
-          beklenen: yatay 1180x820 ve dikey 820x1180: hava, takvim ve düğmeler görünür, sayfa kaymaz; telefonda takvim kenardan kenara bant
-          olan:     {"out":[["yatay",{"has":false,"scroll":-1,"cal":false,"calH":0,"tl":false,"nav":false,"closed":true,"err":"günü kapat: TimeoutError: locator.click: Timeout 6000ms exceeded.\nCall log:\n  - waiting for locator('.cal-emb [aria-label=\\'Günü kapat\\']')\n","adds":false,"opened":false,"quick":false,"closed2":true}],["dikey",{"has":false,"scroll":-1,"cal":false,"calH":0,"tl":false,"nav":false,"closed":true,"err":"günü kapat: TimeoutError: locator.click: Timeout 6000ms exceeded.\nCall log:\n  - waiting for locator('.cal-emb [aria-label=\\'Günü kapat\\']')\n","adds":false,"opened":false,"quick":false,"closed2":true}]],"ph":{"screen":false,"cal":false,"tl":false}}
-      ✗ “saat saat hava tablosu”
-          beklenen: hava kartında saat sütunları, Yağmur mm satırı ve kırmızı çerçeveli şimdiki saat
-          olan:     hata: locator.click: Timeout 30000ms exceeded.
-      ✗ “yarış günü havası”
-          beklenen: yarın (Foça'da yarış) takvimde seçilince hava alanı aynı kalır, yarış yeri tablosu çıkmaz; altında o günün planları alt alta okunur
-          olan:     hata: locator.waitFor: Timeout 12000ms exceeded.
   ✓ Enerji (boşta): 2/2
-  ✓ Bas konuş: tam ekran açılış: 4/4
-  ✓ Halka renkleri: 6/6
-  ✓ Yerel hızlı cevap (Hazır cevaplar açık): 6/6
-  ✓ Kapanış: 3/3
-  ✓ Kısa dokun yaz: 1/1
-  ✓ Sayfa hataları: 13/13
-  ✓ Küçültme (aşağı kaydır): 4/4
-  ✓ Yeniden açılış: 3/3
-  ✓ Sesli yanıt: 8/8
-  ✗ Onaysız kayıt ve “Kaydedildi”: 5/12
-      ✗ “geri sayımda ✕”
-          beklenen: kaydedilmez, “kaydetmedim” denir
-          olan:     kaydedilen kart 0 · “not al süt al Bunu kayda çeviremedim, biraz daha açık söyler misin?”
-      ✗ “saatsiz plan”
-          beklenen: “saatsiz” denir, saat teklif edilir
-          olan:     yarın tekne yıkama planı ekle Bunu kayda çeviremedim, biraz daha açık söyler misin?
-      ✗ “teklife saat cevabı”
-          beklenen: plan 18:00 olur, yapay zekaya gitmez
-          olan:     akşam 6'da Tamam. · yz isteği 1
-      ✗ “son tarihsiz görev”
-          beklenen: son tarih teklif edilir
-          olan:     motoru kontrol et diye görev ekle Bunu kayda çeviremedim, biraz daha açık söyler misin?
-      ✗ “teklife tarih cevabı”
-          beklenen: son tarih yarın olur, yapay zekaya gitmez
-          olan:     yarın Tamam. · yz isteği 1
-      ✗ “doğal cümle (söz)”
-          beklenen: sonuç söz yapay zekasına gider, dönen cümle gösterilir
-          olan:     yarın kayık boyama planı ekle Bunu kayda çeviremedim, biraz daha açık söyler misin? · söz: Bunu kayda çeviremedim, biraz daha açık söyler misin?
-      ✗ “söz sonrası teklif cevabı”
-          beklenen: plan 19:00 olur
-          olan:     akşam 7'de Tamam.
-      … 1 kalan daha (hepsi sonuç dosyasında)
-  ✓ Onay isteyen işler: 10/10
-  ✓ Görev listesi ve ilerleme halkası: 3/3
-  ✓ Tohum cümleler (telefonda cevap): 12/12
-  ✗ Kişi kare kodu: 3/4
-      ✗ “kare kodun fotoğrafı”
-          beklenen: kişi okunur, yapay zekaya gitmez
-          olan:     hata: dome is not defined
-  ✓ Asistanın gizli olduğu yerler: 8/8
-  ✗ Geniş ekran (sol menü): 2/3
-      ✗ “1280×800”
-          beklenen: sol menüde asistan düğmesi ve “Yazarak sor”
-          olan:     1 düğme · Yazarak sor 0 · x=175
-  ✓ Asistan raporu: 3/3
-  ✓ Ses kaydı yolu (ana ekran uygulaması): 7/7
-  ✓ Instagram gönderisi: 1/1
-  ✓ Tam ekran üstte: 1/1
-  ✓ Deniz trafiği: 2/2
-  ✓ Kameralar: 5/5
-  ✗ Hava: 0/3
-      ✗ “yağmur grafiği”
-          beklenen: saat saat tabloda yağış mm sayıyla (5,5 ve 9) görünür; Dün/Yarın gün satırı var
-          olan:     sütun 48 · gün düğmesi 0 · 5,5 true
-      ✗ “ölçülen / beklenen yağmur”
-          beklenen: geçmiş saatler istasyondan (ölçülen sütun), 3 saatlik 4,2 mm üç saate bölünür (1,4); altta tek satır açıklama
-          olan:     ölçülen sütun 20 · açıklama "Ölçülen: Dikili istasyonu" · bölünmüş true
-      ✗ “radar ve nokta”
-          beklenen: ölçülen sütunlar tabloda; Bölge başlığı, istasyon adı ve bölge haritası
-          olan:     yağan çubuk 20 · açıklama 20 · Nokta 0 · istasyon 1 · harita açıklaması "Seçilen yer Ölçüm" · kaynak 1
-  ✓ Antrenman yarışı sesle: 4/4
+  ✗ Bas konuş: tam ekran açılış: 0/4
+      ✗ “düğmeye dokun”
+          beklenen: tam ekran bulanık koyu zemin açılır (afull-in, data-theme=dark), alttan pencere yok
+          olan:     hata: locator.waitFor: Timeout 4000ms exceeded.
+      ✗ “açılış animasyonu”
+          beklenen: afull-in animasyonu tanımlı ve çalışıyor
+          olan:     hata: locator.evaluate: Timeout 30000ms exceeded.
+      ✗ “dinlemeye başlar”
+          beklenen: ses tanıma açılır, durum dinliyor
+          olan:     idle · tanıma 0 kez açıldı
+      ✗ “konuşurken”
+          beklenen: canlı yazı ortada, süre; Dur ve Gönder düğmesi yok (düğmeye dokununca gider)
+          olan:     hata: locator.innerText: Timeout 30000ms exceeded.
+  ✗ Halka renkleri: 0/3
+      ✗ “dinlerken”
+          beklenen: düğme dinliyor (gönder oku) + ortada ses dalgası, durum satırında yazı yok, “Dinliyorum” en çok bir yerde
+          olan:     hata: locator.getAttribute: Timeout 30000ms exceeded.
+      ✗ “zemin”
+          beklenen: arkadaki sayfa bulanık (örtü sürekli oynamaz), altta tek kutu, Dur yok, sağ üstte kapat
+          olan:     hata: locator.evaluate: Timeout 30000ms exceeded.
+      ✗ “cevaptan sonra”
+          beklenen: yeşil halka ve onay (✓ Tamam) bir kez görünür, sonra asistan düğmesi geri gelir
+          olan:     hata: locator.getAttribute: Timeout 30000ms exceeded.
+  ✗ Yerel hızlı cevap (Hazır cevaplar açık): 0/1
+      ✗ “notlarımı oku”
+          beklenen: not okunur, yapay zekaya gitmez
+          olan:      · yz isteği 0
+  ✗ Senaryolar: 0/1
+      ✗ “çalıştırma”
+          beklenen: tamamlanır
+          olan:     locator.click: Timeout 30000ms exceeded.
+Call log:
+  - waiting for locator('[data-apane]')
+ |     at scenarios (/home/runner/work/sesliasistan/sesliasistan/scripts/asistan-ekran-test/adimlar.mjs:166:38) |     at async Module.run (/home/runner/work/sesliasistan/sesliasistan/scripts/asistan-ekran-test/senaryolar.mjs:309:5) |     at async file:///home/runner/work/sesliasistan/sesliasistan/scripts/tam-test/calistir.mjs:110:21
   ✓ Güvenlik: 1/1
 
-3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 28/28
+3. ÇEVRİMDIŞI: internetsiz kayıt, bağlantı gelince gönderim, üstteki şerit (sahte Firebase): 30/30
   ✓ Anında açılış: 7/7
   ✓ İnternet varken: 2/2
   ✓ Yavaş bağlantı: 3/3
@@ -301,9 +265,10 @@ SONUÇ: 1411/1441 geçti · 30 kalan · 1312 sn
   ✓ Açıkken kopup gelince: 2/2
   ✓ Önbellek iç hatası: 3/3
   ✓ iPhone: 2/2
+  ✓ Arkada güncellenince: 2/2
 
-3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 16/22
-  ✗ Yarış sayfası: 11/14
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 8/19
+  ✗ Yarış sayfası: 7/14
       ✗ “yarış günü, sporcu seçili”
           beklenen: çökmeden açılır, "Canlı ekran" görünür
           olan:     "Canlı ekran" görünmedi
@@ -311,10 +276,38 @@ SONUÇ: 1411/1441 geçti · 30 kalan · 1312 sn
           beklenen: çökmeden açılır, "gün kaldı" görünür
           olan:     gün satırı yok
       ✗ “bütün sekmeler”
-          beklenen: her sekme çökmeden açılır
-          olan:     2 sekme açıldı
-  ✓ Antrenman: 3/3
-  ✓ Asılı bağlantı: 2/2
+          beklenen: açılır
+          olan:     hata: locator.click: Timeout 30000ms exceeded.
+      ✗ “bitiren kim”
+          beklenen: çökmeden açılır, "Start sayacı" görünür
+          olan:     kare göründü · satırda yok · kareler duruyor
+      ✗ “süre seçimi”
+          beklenen: açılır
+          olan:     hata: locator.click: Timeout 30000ms exceeded.
+      ✗ “tek ⋯ menüsü”
+          beklenen: açılır
+          olan:     hata: locator.click: Timeout 30000ms exceeded.
+      ✗ “Sonuç”
+          beklenen: açılır
+          olan:     hata: locator.click: Timeout 30000ms exceeded.
+      … 1 kalan daha (hepsi sonuç dosyasında)
+  ✗ Asılı bağlantı: 1/2
+      ✗ “asılı bağlantıda multimedya”
+          beklenen: "Start sayacı" 5 sn içinde görünür (yükleniyor'da kalmaz)
+          olan:     görünmedi: Oluştur
+KAYIT
+Plan
+Tarih ve saat
+Görev
+Yapılacak iş
+Not
+Kısa not
+Doğum günü
+Hatırlat
+KULÜP
+Yoklama
+Bugün kim geldi
+Yarış
   ✗ Yayın: 0/3
       ✗ “gruplar ayrı, ekranda seçim, kameralar”
           beklenen: açılır

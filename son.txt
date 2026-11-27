@@ -1,8 +1,8 @@
-Commit: f395be4 · Sahne ana sayfa üstü: selam menüyle çakışmasın, dar telefonda küçülsün (#1667)
-Zaman: 2026-11-27-2035 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/46040491559
+Commit: 1796930 · Uzman Program hazırla: yayınlanmış hazır programlar da açılsın (#1678)
+Zaman: 2026-11-27-2315 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/46059583841
 
-TAM TEST · 27.11.2026 20:16:59
+TAM TEST · 27.11.2026 22:51:55
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -21,14 +21,14 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1291/1315 geçti · 24 kalan · 1119 sn
+SONUÇ: 1286/1315 geçti · 29 kalan · 1396 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
   ✗ Birim testleri: 0/1
-      ✗ “4670 test”
+      ✗ “4675 test”
           beklenen: hepsi geçer
-          olan:     4613/4670 geçti
+          olan:     4618/4675 geçti
       ✗ “istem” → - Senin işlerin: Plan / takvime ekleme ("yarın 10'da antrenman ekle"); Tekrarlayan plan ("her salı 16:00 antrenman"); Görev ekleme (birine atama) ("Ali'ye motoru kontrol etmesini hatırlat"); Not alma (yalnız istenince) ("not al: malzeme odası dolu"); Görevi tamamlama ("motor yağı görevini tamamla"); Görevi yeniden açma ("motor yağı görevini yeniden aç"); Notu yapıldı yapma (Arşiv'e gider, silinmez) ya da geri alma ("malzeme odası notu yapıldı"); Planı bitirme (Arşiv'e) ("antrenman planını bitir"); Değiştirme / erteleme ("antrenmanı 11'e al"); Silme ("yarınki toplantıyı sil"); Plan iptali ve haber verme ("yarınki antrenmanı iptal et"); Tek cümlede sıralı işler ("Gökhan'a yarın bakım var diye yaz, takvime ekle ve not al"); Uygulama içi mesaj (kişi ya da grup) ("Ali'ye yaz, yarın 9'da iskelede olsun"); Gruba mesaj (Ekip, Sporcular, kurulan gruplar) ("sporculara söyle antrenman iptal"); WhatsApp mesajı ("Ali'ye WhatsApp'tan yaz, yarın gelsin"); Plan, görev, not, fiş soruları ve özet ("bu hafta neler var"); Hava ve rüzgâr ("yarın rüzgâr kaç knot")
       ✗ “bugünün antrenmanı Yönet'te” → false (beklenen: bugünkü plan Bilgi Yönet (kanal adı, ant), başka gün günlük listesi; Yönet'te Antrenman penceresi, eski sayfa Yönet'e gider (Seyhun 2026-11-17, 2026-11-23))
       ✗ “yarışta açıldı › geri › geri” → {"races":true,"roll":true,"live":false} (beklenen: Yarışlar, sonra ana sayfa (Sporcular değil); Yoklama da ana sayfaya; Yayın yarışın üstüne açılır)
@@ -267,8 +267,8 @@ Call log:
   ✓ iPhone: 2/2
   ✓ Arkada güncellenince: 2/2
 
-3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 13/19
-  ✗ Yarış sayfası: 11/14
+3. YARIŞ SAYFASI: sporcu seçili yarış, yarış günü, sekmeler, Multimedya (sahte Firebase): 8/19
+  ✗ Yarış sayfası: 7/14
       ✗ “yarış günü, sporcu seçili”
           beklenen: çökmeden açılır, "Canlı ekran" görünür
           olan:     "Canlı ekran" görünmedi
@@ -276,9 +276,38 @@ Call log:
           beklenen: çökmeden açılır, "gün kaldı" görünür
           olan:     gün satırı yok
       ✗ “bütün sekmeler”
-          beklenen: her sekme çökmeden açılır
-          olan:     2 sekme açıldı
-  ✓ Asılı bağlantı: 2/2
+          beklenen: açılır
+          olan:     hata: locator.click: Timeout 30000ms exceeded.
+      ✗ “bitiren kim”
+          beklenen: çökmeden açılır, "Start sayacı" görünür
+          olan:     kare göründü · satırda yok · kareler duruyor
+      ✗ “süre seçimi”
+          beklenen: açılır
+          olan:     hata: locator.click: Timeout 30000ms exceeded.
+      ✗ “tek ⋯ menüsü”
+          beklenen: açılır
+          olan:     hata: locator.click: Timeout 30000ms exceeded.
+      ✗ “Sonuç”
+          beklenen: açılır
+          olan:     hata: locator.click: Timeout 30000ms exceeded.
+      … 1 kalan daha (hepsi sonuç dosyasında)
+  ✗ Asılı bağlantı: 1/2
+      ✗ “asılı bağlantıda multimedya”
+          beklenen: "Start sayacı" 5 sn içinde görünür (yükleniyor'da kalmaz)
+          olan:     görünmedi: Oluştur
+KAYIT
+Plan
+Tarih ve saat
+Görev
+Yapılacak iş
+Not
+Kısa not
+Doğum günü
+Hatırlat
+KULÜP
+Yoklama
+Bugün kim geldi
+Yarış
   ✗ Yayın: 0/3
       ✗ “gruplar ayrı, ekranda seçim, kameralar”
           beklenen: açılır
