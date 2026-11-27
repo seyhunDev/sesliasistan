@@ -38,37 +38,8 @@ function markEl() {
   return d;
 }
 
-// Tekne çizimi (Seyhun 2026-11-27 örnek MMDJDf6thqn7VwVuhefoLg): Velora Sailing'in Optimist çizimi (public/tanitim/engine.js + boat-draw.js,
-// tanıtım sayfasıyla ortak) bir kez yüklenir; yüklenemezse eski nokta kalır. Tekne gittiği yöne (hdg) döner, yön yoksa son bilinen yön.
-let bdLoad = null;
-function loadBoatDraw() {
-  if (typeof window === "undefined") return Promise.reject(new Error("ssr"));
-  if (window.BoatDraw && window.SailEngine) return Promise.resolve();
-  bdLoad ||= ["/tanitim/engine.js", "/tanitim/boat-draw.js"]
-    .reduce(
-      (p, src) =>
-        p.then(
-          () =>
-            new Promise((ok, no) => {
-              const sc = document.createElement("script");
-              sc.src = src;
-              sc.onload = ok;
-              sc.onerror = no;
-              document.head.appendChild(sc);
-            }),
-        ),
-      Promise.resolve(),
-    )
-    .then(() => {
-      if (!window.BoatDraw || !window.SailEngine) throw new Error("boat-draw");
-    })
-    .catch((e) => {
-      bdLoad = null;
-      throw e;
-    });
-  return bdLoad;
-}
-const NS = "http://www.w3.org/2000/svg";
+// Yön üçgeni (Seyhun 2026-11-27: Optimist çizimi yerine navigasyon takibi gibi üçgen; yelken doğru konumlanamıyordu). Ucu gittiği
+// yöne (bilgiTekne.hdg, GPS) bakar; yön gelmezse son bilinen yön.
 // Renk: veride yoksa tekne kimliğine göre sabit, birbirinden ayrı renkler
 const BOAT_COLS = ["#ffd60a", "#5b8cff", "#ff6b5e", "#3ddc97", "#ff8fd0", "#f59e0b", "#a78bfa", "#2dd4bf"];
 function boatCol(id) {
@@ -76,22 +47,10 @@ function boatCol(id) {
   for (const c of String(id)) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   return BOAT_COLS[h % BOAT_COLS.length];
 }
-// Yelkenin hangi tarafta durduğu rüzgâra göre; rüzgâr bilinmiyorsa orsa (rüzgâr baştan 45° sancaktan) sayılır
-function boatSvg(color, hdg, wind, id) {
-  const E = window.SailEngine;
-  const svg = document.createElementNS(NS, "svg");
-  svg.setAttribute("viewBox", "-32 -32 64 64");
-  const g = document.createElementNS(NS, "g");
-  svg.appendChild(g);
-  const seed = E.seedOf(String(id));
-  const w = Number.isFinite(wind) ? wind : hdg + 45;
-  window.BoatDraw.draw(g, "optimist", { color, pose: E.sailPose(hdg, w, { v: 55, base: 55, t: 0, seed }), t: 0, seed, heading: hdg, speed: 0, rich: false });
-  return svg;
-}
 // Antrenör botu (sen): beyaz şişme bot, baş yukarı
 const RIB =
   '<svg viewBox="-24 -42 48 90" aria-hidden="true"><path d="M0,-35 C10,-30 15,-18 16,-4 L16,30 C16,34 13,36 9,36 L-9,36 C-13,36 -16,34 -16,30 L-16,-4 C-15,-18 -10,-30 0,-35 Z" fill="#e9eef5" stroke="#0b111a" stroke-width="1.5"/><path d="M0,-27 C6,-23 9,-14 10,-4 L10,29 L-10,29 L-10,-4 C-9,-14 -6,-23 0,-27 Z" fill="#9fb0c4"/><rect x="-6" y="2" width="12" height="9" rx="2" fill="#1b2a3e"/><rect x="-6" y="14" width="12" height="5" rx="1.5" fill="#5b6f86"/><rect x="-5" y="36" width="10" height="7" rx="2" fill="#1b2a3e"/><path d="M0,-31 L0,-20" stroke="#2f7dff" stroke-width="3" stroke-linecap="round"/></svg>';
-// Uzaklaşınca (yakınlık 14'ün altı) tekne çizimi yönlü küçük oka döner
+// Uzaklaşınca (yakınlık 14'ün altı) üçgen küçülür, ad yalnız cezalı/konuşan teknede
 const SMALL_Z = 14;
 
 // talk: o an konuşan teknenin cihaz kimliği (Seyhun 2026-11-17 örnek C): işareti yeşil atar, adının yanında ses dalgası
@@ -100,8 +59,7 @@ const SMALL_Z = 14;
 // sıraları hesaba katar (tekneler panelin altında kalmasın).
 // onPen(id): ceza rozetine dokununca (Yönet: cezayı tek dokunuşla kaldır, Seyhun 2026-11-25)
 // me (Seyhun 2026-11-27): bu telefonun konumu büyük antrenör botu olarak; yalnız bu ekranda, hiçbir yere yazılmaz
-// wind: rüzgârın geldiği yön (parkurdan), yelken tarafı için
-export function TekneMap({ boats, course = null, full = false, talk = "", tracks = null, api = null, onPen = null, me = false, wind = null }) {
+export function TekneMap({ boats, course = null, full = false, talk = "", tracks = null, api = null, onPen = null, me = false }) {
   const penCb = useRef(onPen);
   useEffect(() => {
     penCb.current = onPen;
@@ -113,19 +71,9 @@ export function TekneMap({ boats, course = null, full = false, talk = "", tracks
   const fitted = useRef("");
   const [ready, setReady] = useState(false);
   const [err, setErr] = useState(false);
-  const [bd, setBd] = useState(false);
   const [small, setSmall] = useState(false);
   const [mePos, setMePos] = useState(null);
   const meMk = useRef(null);
-  useEffect(() => {
-    let live = true;
-    loadBoatDraw()
-      .then(() => live && setBd(true))
-      .catch(() => {});
-    return () => {
-      live = false;
-    };
-  }, []);
   // Kendi konumun: harita açıkken izlenir (izin bir kez sorulur; reddedilirse bot görünmez)
   useEffect(() => {
     if (!me || typeof navigator === "undefined" || !navigator.geolocation) return undefined;
@@ -207,20 +155,11 @@ export function TekneMap({ boats, course = null, full = false, talk = "", tracks
         });
         mk = marks.current[b.id] = new lib.Marker({ element: elm, anchor: "bottom" }).setLngLat([b.lon, b.lat]).addTo(m);
       }
-      // Tekne çizimi: yön 10°'lik adımla yeniden çizilir (yelken tarafı değişir), döndürme her konumda
+      // Yön üçgeni: her konumda döner
       const bx = mk.getElement().querySelector(".tkm-b");
       if (Number.isFinite(b.hdg)) bx.dataset.h = String(b.hdg);
-      const h = +(bx.dataset.h || 0);
-      const col = b.color || boatCol(b.id);
-      if (bd) {
-        const key = `${col}|${Math.round(h / 10)}|${wind ?? ""}`;
-        if (bx.dataset.k !== key) {
-          bx.dataset.k = key;
-          bx.replaceChildren(boatSvg(col, h, wind, b.id));
-        }
-        bx.style.transform = `rotate(${Math.round(h)}deg)`;
-        bx.style.setProperty("--bc", col);
-      }
+      bx.style.transform = `rotate(${Math.round(+(bx.dataset.h || 0))}deg)`;
+      bx.style.setProperty("--bc", b.color || boatCol(b.id));
       mk.setLngLat([b.lon, b.lat]);
       const el = mk.getElement();
       el.querySelector(".tkm-t").textContent = [b.sail, b.name].filter(Boolean).join(" · ");
@@ -233,15 +172,15 @@ export function TekneMap({ boats, course = null, full = false, talk = "", tracks
       el.dataset.pen = b.penK || "";
       el.style.setProperty("--c", b.color || "");
       el.classList.toggle("old", !b.keep && now - (b.t || 0) > STALE);
-      el.classList.toggle("boat", bd);
-      el.classList.toggle("sm", bd && small);
+      el.classList.add("boat");
+      el.classList.toggle("sm", small);
     }
     for (const id of Object.keys(marks.current))
       if (!seen.has(id)) {
         marks.current[id].remove();
         delete marks.current[id];
       }
-  }, [boats, ready, talk, bd, small, wind]);
+  }, [boats, ready, talk, small]);
 
   // Sen: büyük beyaz bot, mavi halka, üstünde "Sen"
   useEffect(() => {
