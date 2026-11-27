@@ -3654,3 +3654,24 @@ group("Başvuru ve kullanım kaydı")([
   ["günlük kişi", F("bugün giren 1", () => { const g = KU.gunlukKisi([{ gunler: { "2026-11-26": 60 } }, { gunler: { "2026-11-25": 30 } }], "2026-11-26", 3); return g[2].kisi === 1 && g[1].kisi === 1 && g[0].kisi === 0; })],
   ["süre yazımı", F("49 dk, 2 sa 10 dk", () => KU.sureYaz(2940) === "49 dk" && KU.sureYaz(7800) === "2 sa 10 dk")],
 ]);
+
+// Uzman antrenörler (Seyhun 2026-11-27): branş listesi, eşleştirme puanı (lib/uzman)
+const UZ = await import("@/lib/uzman");
+const U = Object.fromEntries(UZ.ORNEK_UZMANLAR.map((u) => [u.id, u]));
+const ist = { brans: "fitness", spor: "sailing", yas: 12, hedef: "Kondisyon, yaz yarışları", sehir: "İzmir" };
+group("Uzman antrenörler")([
+  ["branş dışı", F("yelkenci fitness isteğine önerilmez", () => UZ.uzmanPuan(U["ornek-onur"], ist) === null)],
+  ["pasif", F("pasif uzman önerilmez", () => UZ.uzmanPuan({ ...U["ornek-selin"], durum: "pasif" }, ist) === null)],
+  ["çocuk sporcu", F("çocukla çalışmayan uzman önerilmez", () => UZ.uzmanPuan(U["ornek-selin"], ist) === null && UZ.uzmanPuan(U["ornek-baris"], ist) === null)],
+  ["en iyi öneri", F("12 yaş yelkenci: Melis Çınar ilk", () => UZ.oneriler(UZ.ORNEK_UZMANLAR, ist)[0]?.u.id === "ornek-melis")],
+  ["genç sporcu sırası", F("16 yaş İzmir: Selin > Melis > Barış", () => UZ.oneriler(UZ.ORNEK_UZMANLAR, { ...ist, yas: 16 }).map((x) => x.u.id).join() === "ornek-selin,ornek-melis,ornek-baris")],
+  ["dolu uzman", F("kapasitesi dolan uzman sona iner", () => {
+    const dolu = Array.from({ length: 10 }, (_, i) => ({ uzmanId: "ornek-selin", durum: "kabul", id: `d${i}` }));
+    const s = UZ.oneriler(UZ.ORNEK_UZMANLAR, { ...ist, yas: 16 }, dolu);
+    return s[s.length - 1].u.id === "ornek-selin" && s[s.length - 1].p.neden.includes("dolu");
+  })],
+  ["yeni branş", F("ayardaki branş ve etiket listeye eklenir", () => { const l = UZ.branslar({ branslar: [{ id: "tenis", ad: "Tenis", alt: ["Servis"] }, { id: "fitness", alt: ["Pilates"] }] }); return l.find((b) => b.id === "tenis")?.alt[0] === "Servis" && l.find((b) => b.id === "fitness").alt.includes("Pilates"); })],
+  ["kimlik", F("Spor psikolojisi -> spor-psikolojisi", () => UZ.kimlik("Spor psikolojisi") === "spor-psikolojisi")],
+  ["yaş grubu", F("12 çocuk, 13 genç, 18 yetişkin", () => UZ.yasGrubu(12) === "cocuk" && UZ.yasGrubu(13) === "genc" && UZ.yasGrubu(18) === "yetiskin")],
+  ["form", F("tek kelime ad ve branşsız kayıt reddedilir", () => !!UZ.uzmanTemizle({ ad: "Selin", brans: "fitness" }).hata && !!UZ.uzmanTemizle({ ad: "Selin Er" }).hata && UZ.uzmanTemizle({ ad: "Selin Er", brans: "fitness", kapasite: "12" }).veri.kapasite === 12)],
+]);
