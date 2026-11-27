@@ -766,15 +766,26 @@ function PenAlert({ pen, now }) {
     return (
       <button type="button" className="bz-penb" data-k={big.k} onClick={() => setSeen((x) => x && { ...x, until: 0 })} aria-live="assertive">
         <small>Antrenör · ceza</small>
-        <b className="num">{p.big}</b>
-        <span>{p.t}</span>
+        {/* "1 ceza dönüşü" büyük, derece yanında soluk (Seyhun 2026-11-27); faux départ'ta büyük FD ve ne yapılacağı */}
+        {big.k === "fd" ? (
+          <>
+            <b className="num">{p.big}</b>
+            <span>{p.t}</span>
+          </>
+        ) : (
+          <>
+            <b className="pn">{p.name}</b>
+            <i className="num">{p.deg}</i>
+          </>
+        )}
         <em className="num">{left}</em>
       </button>
     );
   return (
     <div className="bz-pens" data-k={pen.k} role="status">
-      <b className="num">{p.big}</b>
-      <span>{p.t}</span>
+      {pen.k === "fd" ? <b className="num">{p.big}</b> : null}
+      <span>{pen.k === "fd" ? p.t : p.name}</span>
+      {pen.k === "fd" ? null : <i className="num">{p.deg}</i>}
     </div>
   );
 }
