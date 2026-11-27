@@ -15,8 +15,8 @@ export const TURLER = [
 export const VARSAYILAN_TURLER = ["antrenman", "yelken", "yaris", "tatil"];
 export const DURUMLAR = {
   bekliyor: "Uzman bekleniyor",
-  atandi: "Uzmana iletildi",
-  kabul: "Uzman kabul etti",
+  atandi: "Uzmanla çalışıyor",
+  kabul: "Uzmanla çalışıyor",
   ret: "Uzman alamadı",
   bitti: "Bitti",
   iptal: "İptal edildi",
@@ -44,3 +44,18 @@ export function cleanIstek(b) {
 
 export const durumYaz = (d) => DURUMLAR[d] || DURUMLAR.bekliyor;
 export const acikMi = (d) => !["bitti", "iptal", "ret"].includes(d || "bekliyor");
+
+// Sporcunun uzmanı (Seyhun 2026-11-27 "uzmanla çalışma sporcunun fitness datasında tutulsun"): users/{uid}.fitUzman
+// { id, ad, istek, bas, bit } (atayınca sunucu yazar; fit alanı değil, çünkü profil kaydı fit'i baştan yazar), bitenler
+// users/{uid}.fitUzmanGecmis [{ …, bitti }]. Yol tek: atamak başlatmaktır, süre bitince ya da "Bitir" ile biter.
+export function ayEkle(gun, ay) {
+  const [y, m, d] = String(gun).split("-").map(Number);
+  const t = new Date(Date.UTC(y, m - 1 + (Number(ay) || 0), 1));
+  const son = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();
+  t.setUTCDate(Math.min(d, son));
+  return t.toISOString().slice(0, 10);
+}
+export const uzmanBag = (u, istek, bas) => ({ id: String(u?.id || ""), ad: S(u?.ad, 60), istek: String(istek?.id || ""), bas, bit: ayEkle(bas, SURELER.includes(Number(istek?.sure)) ? Number(istek.sure) : 3) });
+export const uzmanSurer = (b, bugun) => !!b?.id && (!b.bit || b.bit >= bugun);
+// Program kaç hafta: 1 ay 4, 3 ay ve üstü 12 (Program ekle'deki seçenekler 4/6/8/12)
+export const istekHafta = (sure) => (Number(sure) >= 3 ? 12 : 4);

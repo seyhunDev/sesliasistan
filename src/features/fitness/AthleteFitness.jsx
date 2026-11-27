@@ -15,6 +15,9 @@ import { FitPhoto, WeekBoxes } from "./FitDark";
 import { markStart } from "./guideVoice";
 import { Sheet } from "@/components/ui/Sheet";
 import { UzmanIstek } from "./UzmanIstek";
+import { uzmanSurer } from "@/lib/fitness/uzmanIstek";
+
+const kisaGun = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
 
 // Sporcunun Fitness sayfası (salt okunur; Seyhun 2026-10-25 "bizim fitness sayfası gibi"): ana hesabın Sporcular sekmesi gibi baştan sona koyu,
 // üstte salon fotoğrafı. Bugünün antrenmanı büyük yazılır, altında bu hafta (çubuk + Pzt–Paz kutuları) ve tek ana düğme;
@@ -67,6 +70,7 @@ export function AthleteFitness() {
           <section className="mt-4">
             <small className="text-[0.75rem] font-bold tracking-[.06em] text-white/60">{`BUGÜN · ${shortDay(today).toLocaleUpperCase("tr-TR")}${plan?.time ? ` · ${plan.time}` : ""}`}</small>
             <b className="mt-0.5 block truncate text-[1.625rem] font-bold leading-tight tracking-[-.02em]">{plan ? plan.fit?.name || plan.title : "Dinlenme günü"}</b>
+            {plan?.fit?.by && <p className="mt-0.5 text-[0.8125rem] text-white/60">Hazırlayan: {plan.fit.by}</p>}
             {sub && (
               <p className="mt-1 text-[0.875rem] text-white/75">
                 {sub.filter(Boolean).map(([t, cl], i) => (
@@ -146,9 +150,14 @@ export function AthleteFitness() {
         </div>
       )}
       {/* Uzmanla çalış (Seyhun 2026-11-27): sporcu bir uzman antrenörden program ister, planlarını paylaşıp paylaşmamayı kendisi seçer */}
+      {/* Uzmanı varsa (users/{uid}.fitUzman, Admin atayınca sunucu yazar) "Uzmanla çalış" yerine "Uzmanın" (2026-11-27) */}
       <section className="relative mt-7">
         <RowList>
-          <Row onClick={() => setUzman(true)} title="Uzmanla çalış" sub="Programını bir antrenör hazırlasın" />
+          {uzmanSurer(profile.fitUzman, today) ? (
+            <Row title={`Uzmanın: ${profile.fitUzman.ad}`} sub={`Programını o hazırlıyor${profile.fitUzman.bit ? ` · bitiş ${kisaGun(profile.fitUzman.bit)}` : ""}`} />
+          ) : (
+            <Row onClick={() => setUzman(true)} title="Uzmanla çalış" sub="Programını bir antrenör hazırlasın" />
+          )}
         </RowList>
       </section>
       <Sheet open={uzman} onClose={() => setUzman(false)} title="Uzmanla çalış">

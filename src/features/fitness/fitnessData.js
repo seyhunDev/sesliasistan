@@ -55,7 +55,8 @@ export async function saveProgram(orgId, uid, prog) {
   const ref = prog.id ? doc(col(orgId), prog.id) : doc(col(orgId));
   const now = new Date().toISOString();
   const clean = cleanProgram(prog);
-  const rec = { ...clean, uid, for: prog.for || "", forName: prog.for ? String(prog.forName || "").slice(0, 80) : "", forAge: prog.for ? Math.min(Math.max(+prog.forAge || 0, 0), 99) : 0, sport: prog.for ? String(prog.sport || "").slice(0, 20) : "", forSex: prog.for && (prog.forSex === "e" || prog.forSex === "k") ? prog.forSex : "", active: prog.active !== false, plansAt: prog.plansAt || "", createdAt: prog.createdAt || now, updatedAt: now };
+  const rec = { ...clean, uid, for: prog.for || "", forName: prog.for ? String(prog.forName || "").slice(0, 80) : "", forAge: prog.for ? Math.min(Math.max(+prog.forAge || 0, 0), 99) : 0, sport: prog.for ? String(prog.sport || "").slice(0, 20) : "", forSex: prog.for && (prog.forSex === "e" || prog.forSex === "k") ? prog.forSex : "", active: prog.active !== false, plansAt: prog.plansAt || "", createdAt: prog.createdAt || now, updatedAt: now, ...(prog.for && prog.by?.id ? { by: { id: String(prog.by.id).slice(0, 80), ad: String(prog.by.ad || "").slice(0, 60) } } : {}) };
+  // by: programı hazırlayan uzman (Admin › Uzmanlar › Program hazırla, 2026-11-27)
   // Yeni etkin program: aynı kişinin önceki programları etkin olmaktan çıkar (planları silinmez)
   const others = (cache.org === orgId && cache.list ? cache.list : []).filter((p) => p.id !== ref.id && p.active && (p.for || "") === rec.for);
   // merge: sunucunun yazdığı notifiedAt (sporcuya bildirim gitti) silinmesin
@@ -181,7 +182,7 @@ export async function syncPlans(orgId, uid, prog, plans, by = {}) {
         b.set(ref, {
           ownerId: orgId, cat: FIT_CAT, src: "fitness", createdBy: by, createdAt: now, createdByUid: uid, assignees: [], people: [who],
           title: v.title, date: v.date, endDate: "", time: timed ? v.time : "", allDay: !timed, durationMin: v.min || 45, tz,
-          timeSource: timed ? "user" : "none", place: "", status: "planned", fit: prog.for ? { ...v.fit, for: prog.for, ...(prog.forSex ? { sex: prog.forSex } : {}) } : v.fit,
+          timeSource: timed ? "user" : "none", place: "", status: "planned", fit: prog.for ? { ...v.fit, for: prog.for, ...(prog.forSex ? { sex: prog.forSex } : {}), ...(prog.by?.ad ? { by: String(prog.by.ad).slice(0, 60) } : {}) } : v.fit, // by: hazırlayan uzman
         });
       }
     }

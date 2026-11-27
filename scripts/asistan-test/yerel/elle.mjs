@@ -3730,6 +3730,12 @@ const UPL = [
     ["özet", F("2 sporcu, %67, 1 geride; biten sayılmaz", () => { const o = UZ.uzmanOzet(IS, FP, PR, "2026-11-27"); return o.sporcu === 2 && o.oran === 67 && o.geride === 1; })],
   ]);
 }
+group("Uzman: başlangıç, bitiş, sporcunun uzmanı")([
+  ["ay ekle", F("31 Ocak + 1 ay = 28 Şubat, 12 Kasım + 3 ay = 12 Şubat", () => FUZ.ayEkle("2026-01-31", 1) === "2026-02-28" && FUZ.ayEkle("2026-11-12", 3) === "2027-02-12")],
+  ["bağ", F("uzman, istek ve bitiş yazılır", () => { const b = FUZ.uzmanBag({ id: "u1", ad: "Murat" }, { id: "i1", sure: 3 }, "2026-11-27"); return b.id === "u1" && b.ad === "Murat" && b.istek === "i1" && b.bas === "2026-11-27" && b.bit === "2027-02-27"; })],
+  ["sürüyor mu", F("bitişten sonra sürmez", () => FUZ.uzmanSurer({ id: "u1", bit: "2027-02-27" }, "2027-02-27") && !FUZ.uzmanSurer({ id: "u1", bit: "2027-02-27" }, "2027-02-28") && !FUZ.uzmanSurer(null, "2026-11-27"))],
+  ["program haftası", F("1 ay 4 hafta, 3 ay 12 hafta", () => FUZ.istekHafta(1) === 4 && FUZ.istekHafta(3) === 12 && FUZ.istekHafta(6) === 12)],
+]);
 group("Uzman sayfası: paylaşılan planlar")([
   ["izin kapalı", F("hiçbir plan görünmez", () => UZ.paylasilanPlanlar(UPL, "s1", { acik: false, turler: ["yaris"] }, "2026-11-27").length === 0)],
   ["yalnız izinli türler", F("antrenman + yarış: Bacak günü, Kış kupası", () => UZ.paylasilanPlanlar(UPL, "s1", { acik: true, turler: ["antrenman", "yaris"] }, "2026-11-27").map((p) => p.id).join() === "a,c")],

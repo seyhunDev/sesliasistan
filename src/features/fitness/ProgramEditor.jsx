@@ -404,7 +404,7 @@ function AiEdit({ p, onChange }) {
       const r = await editProgram(p, ask, { age: p.forAge, sport: p.sport });
       if (!r.program?.days?.length) throw new Error(r.message || "Değişiklik yapılamadı");
       const keep = {};
-      for (const k of ["id", "for", "forName", "forAge", "forSex", "sport", "start", "plansAt", "notifiedAt", "template", "createdAt"]) if (p[k] != null) keep[k] = p[k];
+      for (const k of ["id", "for", "forName", "forAge", "forSex", "sport", "start", "plansAt", "notifiedAt", "template", "createdAt", "by"]) if (p[k] != null) keep[k] = p[k];
       onChange({ ...cleanProgram({ ...r.program, start: p.start }), ...keep });
       setMsg(r.message || "Değiştirdim. Kontrol edip kaydet.");
       setAsk("");

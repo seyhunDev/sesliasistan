@@ -19,7 +19,7 @@ import { liveHead } from "@/features/liveScreen/fonts";
 import { todayStr } from "@/lib/utils/format";
 import {
   AKTIF_DURUM, DURUM, ORNEK_ISTEKLER, ORNEK_UZMANLAR, PAYLAS_AD, SPORLAR, YASLAR,
-  bransAd, branslar as bransListesi, doluluk, kimlik, oneriler, sporAd, uzmanOzet, uzmanTemizle, yasAd,
+  bransAd, branslar as bransListesi, kimlik, oneriler, sporAd, uzmanOzet, uzmanTemizle,
 } from "@/lib/uzman";
 
 // Admin › Uzmanlar (Seyhun 2026-11-27 "yap", örnek project-files/admin-sayfasi/uzmanlar.html): üstte bekleyen sporcu istekleri,
@@ -164,7 +164,6 @@ function UzmanListe({ org, veri, liste, ac, yeni, guncelle }) {
   const sayi = (id) => uzmanlar.filter((u) => u.brans === id).length;
   const gruplar = liste.filter((b) => sayi(b.id) && (!sec || sec === b.id));
   const ornek = uzmanlar.filter((u) => u.ornek).length + istekler.filter((i) => i.ornek).length;
-  const uzmanAd = (id) => uzmanlar.find((u) => u.id === id)?.ad || "";
 
   const ornekEkle = async () => {
     const b = writeBatch(db);
@@ -318,13 +317,22 @@ function IstekDetay({ org, i, veri, liste, geri, guncelle }) {
   const [bekle, setBekle] = useState(false);
   const secId = secili || (!degis && oner[0]?.u.id) || "";
   const secU = veri.uzmanlar.find((u) => u.id === secId);
+  // Atamak başlatmaktır (Seyhun 2026-11-27): sunucu isteğe başlangıç/bitişi, sporcunun kaydına uzmanını (fitUzman) yazar
   const ata = async (u) => {
     setBekle(true);
-    await yaz({ uzmanId: u.id, uzmanUid: u.uid || null, durum: "atandi" });
-    setBekle(false);
-    setDegis(false);
-    setSecili("");
-    toast?.(`${u.ad} atandı`);
+    try {
+      const r = await authFetch("/api/uzman-istek", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ orgId: org, id: i.id, ata: u.id }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error);
+      guncelle((v) => ({ istekler: v.istekler.map((x) => (x.id === i.id ? { ...x, uzmanId: u.id, uzmanUid: u.uid || null, durum: "atandi", bas: j.istek?.bas, bit: j.istek?.bit } : x)) }));
+      setDegis(false);
+      setSecili("");
+      toast?.(`${u.ad} atandı, çalışma başladı`);
+    } catch (e) {
+      toast?.(e.message || "Atanamadı");
+    } finally {
+      setBekle(false);
+    }
   };
   const ders = async () => {
     try {
@@ -435,7 +443,7 @@ function IstekDetay({ org, i, veri, liste, geri, guncelle }) {
             Bitti
           </button>
         )}
-        {["bekliyor", "atandi"].includes(i.durum) && (
+        {i.durum === "bekliyor" && (
           <button
             type="button"
             onClick={() => ask({ title: "İstek reddedilsin mi?", yes: "Reddet", run: () => yaz({ durum: "ret" }) })}
