@@ -59,7 +59,7 @@ const SMALL_Z = 14;
 // sıraları hesaba katar (tekneler panelin altında kalmasın).
 // onPen(id): ceza rozetine dokununca (Yönet: cezayı tek dokunuşla kaldır, Seyhun 2026-11-25)
 // me (Seyhun 2026-11-27): bu telefonun konumu büyük antrenör botu olarak; yalnız bu ekranda, hiçbir yere yazılmaz
-export function TekneMap({ boats, course = null, full = false, talk = "", tracks = null, api = null, onPen = null, me = false }) {
+export function TekneMap({ boats, course = null, full = false, talk = "", tracks = null, api = null, onPen = null, me = false, pick = false }) {
   const penCb = useRef(onPen);
   useEffect(() => {
     penCb.current = onPen;
@@ -234,6 +234,12 @@ export function TekneMap({ boats, course = null, full = false, talk = "", tracks
     () => ({
       zoom: (d) => map.current?.easeTo({ zoom: map.current.getZoom() + d, duration: 250 }),
       fit: () => map.current && ml.current && allPts.current.length && fitTo(map.current, ml.current, allPts.current, 400),
+      // Parkur › Haritada yerleştir: nişan haritanın ortasında
+      center: () => {
+        const c = map.current?.getCenter();
+        return c ? { lat: +c.lat.toFixed(6), lon: +c.lng.toFixed(6) } : null;
+      },
+      go: (p) => map.current?.easeTo({ center: [p.lon, p.lat], zoom: Math.max(map.current.getZoom(), 15), duration: 300 }),
     }),
     [],
   );
@@ -297,5 +303,9 @@ export function TekneMap({ boats, course = null, full = false, talk = "", tracks
   }, [tk, ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (err && !full) return null;
-  return <div ref={box} className={`tkm-map${full ? " tkm-full" : ""}`} aria-label="Tekneler haritası" />;
+  return (
+    <div ref={box} className={`tkm-map${full ? " tkm-full" : ""}`} aria-label="Tekneler haritası">
+      {pick && <div className="tkm-pick" aria-hidden="true" />}
+    </div>
+  );
 }
