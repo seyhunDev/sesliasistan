@@ -1,8 +1,8 @@
-Commit: 07445d5 · Tanıtım: Denizde sahnesi Konuşuyor düzeltmesiyle (#1653)
-Zaman: 2026-11-27-1511 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/45994121211
+Commit: 786798d · Yönet haritası: sporcular tekne çizimiyle, sen büyük antrenör botu (#1655)
+Zaman: 2026-11-27-1648 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/46007636005
 
-TAM TEST · 27.11.2026 14:53:59
+TAM TEST · 27.11.2026 16:30:47
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -21,7 +21,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1291/1315 geçti · 24 kalan · 1057 sn
+SONUÇ: 1291/1315 geçti · 24 kalan · 1052 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
