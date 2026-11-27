@@ -140,6 +140,7 @@ button{font:inherit;color:inherit}
 .on .steps li{animation:up .5s both;animation-delay:calc(.7s + var(--j,0)*.08s)}
 .steps li b{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font:800 1rem/1 var(--f-head);background:#1b1b1e;box-shadow:inset 0 0 0 1px #2e2e33;color:#8b8b92;transition:background .35s,color .35s}
 .steps li span{padding-top:4px}
+.steps .sl{font:600 .72em/1 var(--f-text);letter-spacing:.02em;opacity:.45;margin:0 .15em;vertical-align:.08em}
 .steps li.now{color:var(--fg)}
 .steps li.now b{background:var(--lime);color:var(--ink);box-shadow:0 0 0 5px rgba(212,255,58,.14)}
 .steps li.past{color:#9a9aa0}
@@ -243,7 +244,7 @@ const F=[
     {t:0.3,y:'Start süresini tek dokunuşla başlat.'},
     {t:4.6,y:'Basılı tut, konuş: sesin bütün sporculara gider.',say:'Basılı tut ve konuş; sesin bütün sporculara gider.'},
     {t:10.6,y:'Sık kullandığın mesajlar hazır: seç, gönder.',say:'Sık kullandığın mesajlar hazır; seç ve gönder.'},
-    {t:15.4,y:'Sporcuyu seç, cezayı ver: 360° anında ona gider.',say:'Sporcuyu seç ve cezasını ver. Üç yüz altmış derece, anında ona gider.'}]},
+    {t:15.4,y:'Sporcuyu seç, cezayı ver: 1 ceza dönüşü <small class="sl">360°</small> anında ona gider.',say:'Sporcuyu seç ve cezasını ver. Bir ceza dönüşü, anında ona gider.'}]},
   {k:'Video',v:'etiket',s:0,e:11.4,r:1.5,h:'Videoyu *sporcuyla* eşleştir.',st:[
     {t:0.3,y:'Sporcuyu seç, Video\'ya dokun.',say:'Sporcuyu seç ve videoya dokun.'},
     {t:4.6,y:'Videoda kimler var? Sporcuları işaretle.'},
@@ -338,7 +339,7 @@ const quiet=()=>!talking||el>talkEnd;
 
 let cur=-1,t0=0,el=0,paused=false,si=-1,stepAt=0;
 function showStep(s,j){si=j;stepAt=el;s.li.forEach((li,k)=>{li.classList.toggle('now',k===j);li.classList.toggle('past',k<j)});const x=s.f.st[j];speak(x.say||x.y,s.f.v+'-'+(j+1));if(voice){const n=s.f.st[j+1];warm(n?s.f.v+'-'+(j+2):'')}}
-const minRead=s=>{const x=s.f.st[si];return Math.max(2.3,x.y.length*.055)};
+const minRead=s=>{const x=s.f.st[si];return Math.max(2.3,x.y.replace(/<[^>]+>/g,'').length*.055)};
 function go(n){
   n=Math.max(0,Math.min(S.length-1,n));
   hush();
@@ -376,7 +377,9 @@ function setPause(p){paused=p;pp.textContent=p?'▶':'❚❚';pp.setAttribute('a
 pp.addEventListener('click',()=>setPause(!paused));
 vo.addEventListener('click',()=>{voice=!voice;vo.setAttribute('aria-pressed',voice);vo.querySelector('span').textContent=voice?'Ses açık':'Seslendirme';app.classList.toggle('voice',voice);if(paused)setPause(false);requestAnimationFrame(fit);
   /* iPhone sesi yalnız dokunuşla başlatır: bu sahneyi şimdi yeniden başlat */
-  go(cur);if(!voice)hush()});
+  go(cur);if(!voice)hush();else onkur()});
+/* Ses açılınca bütün cümle dosyaları bir kez indirilir (küçük dosyalar, tarayıcı saklar): adım geçişinde bekleme olmaz */
+let kuruldu=false;function onkur(){if(!NAT||kuruldu||!Object.keys(LISTE).length)return;kuruldu=true;Object.keys(LISTE).forEach(id=>fetch(sesUrl(id)).catch(()=>{}))}
 addEventListener('keydown',e=>{if(e.key==='ArrowRight')go(cur+1);else if(e.key==='ArrowLeft')go(cur-1);else if(e.key===' '&&e.target===document.body){e.preventDefault();setPause(!paused)}});
 /* kaydırarak ileri/geri */
 let sx=null,sy=0;

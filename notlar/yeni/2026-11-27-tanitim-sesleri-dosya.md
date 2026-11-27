@@ -21,3 +21,8 @@
 
 - Yayın günlüğü: 29 tanıtım sesinin hepsi Chirp geldi, yani canlıda Gemini sesi hiç çalışmıyordu (fitness dahil). Velora Sailing'deki gibi Cloud TTS yolu anahtarı kabul etmiyor; `lib/server/tts.js` artık reddedilince Vertex AI generateContent yolunu dener (GEMINI_TTS_KEY, servis hesabına bağlı anahtar "velora-ses-anahtar", kısıtlaması Agent Platform API). Vertex WAV döner; Storage önbelleği türünü (contentType) saklar. Tanıtım derlemesi WAV'ı ffmpeg ile MP3 yapar; Chirp sesi 1 saatten eskiyse her yayında yeniden dener.
 - Netlify'da GEMINI_TTS_KEY olmalı (değeri velora-ses-anahtar). Seyhun ekleyecek/kontrol edecek.
+
+## Nerede kaldım (4. PR)
+
+- Kısa tanıtım: "360°" yerine "1 ceza dönüşü" ve yanında küçük soluk 360° (Seyhun 2026-11-27); seslendirme "Bir ceza dönüşü". Video sahnesi (yonet) hâlâ eski 360 düğmesini gösteriyor: Yayın panelindeki yeni ad yayına girince yeniden kaydedilecek.
+- Ses açılınca bütün cümle dosyaları önceden indirilir (adım geçişinde bekleme olmasın). Chirp sesi 10 dakikadan eskiyse yayında yeniden denenir.
