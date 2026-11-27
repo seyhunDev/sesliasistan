@@ -52,3 +52,6 @@ next-env.d.ts
 /.next*/
 * 2
 * 2.*
+
+# tanıtım sesleri: derlemede Storage önbelleğinden yazılır (scripts/tanitim-ses/uret.mjs)
+/public/tanitim/kisa/ses/

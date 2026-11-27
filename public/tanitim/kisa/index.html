@@ -312,19 +312,25 @@ function fit(){S.forEach(s=>{if(!s.f)return;const ar=AR[mode],bf=mode==='t'?.035
 const SS=window.speechSynthesis;let voice=false,trVoice=null,talking=false,talkEnd=0;
 function pickVoice(){if(!SS)return;const vs=SS.getVoices().filter(v=>/^tr/i.test(v.lang));trVoice=vs.find(v=>/premium|enhanced|natural|neural|google/i.test(v.name))||vs.find(v=>/yelda|emel|filiz|seda/i.test(v.name))||vs[0]||null}
 if(SS){pickVoice();SS.addEventListener&&SS.addEventListener('voiceschanged',pickVoice)}
-/* Sitede doğal ses: /api/tanitim-ses (Gemini, bir kez üretilip saklanır). Örnek sayfada ya da ses gelmezse cihazın sesi. */
-const NAT=SITE==='';const au=NAT?new Audio():null;let auId='';
+/* Sitede doğal ses: cümleler yayında önceden dosya olarak hazırlanır (kisa/ses/<id>.mp3, liste.json'da metin özeti).
+   Dosya yoksa sunucudan (/api/tanitim-ses) istenir; o da olmazsa cihazın sesi. Örnek sayfada hep cihazın sesi. */
+const NAT=SITE==='';const au=NAT?new Audio():null;let auId='',auApi=false;
+const SES='/tanitim/kisa/ses/';let LISTE={};
+if(NAT)fetch(SES+'liste.json',{cache:'no-cache'}).then(r=>r.ok?r.json():{}).then(j=>{LISTE=j||{}}).catch(()=>{});
+const apiUrl=id=>'/api/tanitim-ses?id='+encodeURIComponent(id);
+const sesUrl=id=>LISTE[id]?SES+id+'.mp3?h='+LISTE[id]:apiUrl(id);
 if(au){au.preload='auto';au.addEventListener('loadedmetadata',()=>{if(talking&&isFinite(au.duration))talkEnd=el+au.duration+.6});
   au.addEventListener('ended',()=>{talking=false;app.classList.remove('talk')});
-  au.addEventListener('error',()=>{if(talking&&auId)devSpeak(TXT[auId]||'')})}
-const sesUrl=id=>'/api/tanitim-ses?id='+encodeURIComponent(id);
+  au.addEventListener('error',()=>{if(!talking||!auId)return;
+    if(!auApi){auApi=true;au.src=apiUrl(auId);const id=auId;au.play().catch(e=>{if(e&&e.name!=='AbortError'&&auId===id)devSpeak(TXT[id]||'')});return}
+    devSpeak(TXT[auId]||'')})}
 const warm=id=>{if(NAT&&id)fetch(sesUrl(id)).catch(()=>{})};
 const TXT={};
 function devSpeak(t){auId='';if(!SS||!t){talking=false;app.classList.remove('talk');return}SS.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='tr-TR';if(trVoice)u.voice=trVoice;u.rate=1.02;
   talking=true;app.classList.add('talk');talkEnd=el+t.length*.085+1.2; /* onend gelmezse yedek süre */
   u.onend=u.onerror=()=>{if(u===cu){talking=false;app.classList.remove('talk')}};cu=u;SS.speak(u)}
 function speak(t,id){if(!voice||!t)return;TXT[id]=t;
-  if(au&&id){if(SS)SS.cancel();auId=id;talking=true;app.classList.add('talk');talkEnd=el+15;au.src=sesUrl(id);const p=au.play();p&&p.catch(()=>devSpeak(t));return}
+  if(au&&id){if(SS)SS.cancel();auId=id;auApi=!LISTE[id];talking=true;app.classList.add('talk');talkEnd=el+15;au.src=sesUrl(id);const p=au.play();p&&p.catch(e=>{if(e&&e.name!=='AbortError'&&auId===id)devSpeak(t)});return}
   devSpeak(t)}
 function hush(){if(SS)SS.cancel();if(au){au.pause();auId=''}talking=false;app.classList.remove('talk')}
 let cu=null;
