@@ -1844,6 +1844,8 @@ html[data-theme="dark"] .it-step { background: rgba(11, 26, 51, .7); color: #dbe
 .sahne :is(.bg-bg, .bg-card) { background-color: #1f1f22; }
 .sahne :is(.bg-white) { background-color: #1f1f22; color: #f4f4f5; }
 .sahne :is(input, select, textarea) { color: #f4f4f5; }
+/* Yeni plan penceresinde (PlanForm) plan adı dar büyük yazı: iOS yakınlaştırma kuralının 16px'i burada daha büyük */
+.pf-title { font-size: 1.875rem !important; }
 
 /* SAHNE SAYFA (Seyhun 2026-11-26 "eski tasarımda kalan sayfaları yenileyelim"): eski açık/lacivert sayfaları ana sayfanın koyu Sahne diline
    tek sınıfla geçirir. <main className="sahne-pg …">: renk değişkenleri koyu + limon (Fitness'taki main.fs ile aynı), body'de de değişir
