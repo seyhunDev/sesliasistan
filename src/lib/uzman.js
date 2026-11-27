@@ -133,3 +133,26 @@ export const ORNEK_ISTEKLER = [
   { id: "ornek-istek-1", sporcuUid: "", sporcuAd: "Zeynep Ak (örnek)", by: "", brans: "fitness", spor: "yelken", yas: 12, uzmanId: null, sure: 3, hedef: "Kondisyon, yaz yarışları", ders: null, paylas: { acik: true, turler: ["antrenman", "yaris"] }, durum: "bekliyor" },
   { id: "ornek-istek-2", sporcuUid: "", sporcuAd: "Kerem Aydın (örnek)", by: "", brans: "fitness", spor: "yelken", yas: 16, uzmanId: "ornek-selin", sure: 1, hedef: "Kuvvet", ders: null, paylas: { acik: false, turler: [] }, durum: "atandi" },
 ].map((i) => ({ ornek: true, ...i }));
+
+// Uzman sayfası: sporcunun paylaştığı planlar (yalnız izin verdiği türler, bugünden sonraki gün kadar).
+// antrenman: fitness ve diğer antrenmanlar (yelken antrenmanı hariç), yelken: yelken antrenmanı (tür Antrenman), yaris: Yarış,
+// tatil: başlığında tatil/izin geçen ya da tür Tatil, yemek: Beslenme (plan değil; şimdilik boş)
+export function planTuru(p) {
+  const cat = p?.cat || p?.category || "";
+  const t = String(p?.title || "");
+  if (/tatil|izin/i.test(t) || cat === "Tatil") return "tatil";
+  if (cat === "Yarış") return "yaris";
+  if (p?.fit || cat === "Fitness") return "antrenman";
+  if (cat === "Antrenman") return "yelken";
+  return "";
+}
+export function paylasilanPlanlar(plans = [], uid, paylas, bugun, gun = 21) {
+  if (!uid || !paylas?.acik || !paylas.turler?.length) return [];
+  const son = new Date(Date.parse(`${bugun}T12:00:00Z`) + gun * 864e5).toISOString().slice(0, 10);
+  return plans
+    .filter((p) => (p.people || []).includes(uid) || p.fit?.for === uid)
+    .filter((p) => p.date && p.date >= bugun && p.date <= son && !p.deleted)
+    .map((p) => ({ ...p, tur: planTuru(p) }))
+    .filter((p) => p.tur && paylas.turler.includes(p.tur))
+    .sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")));
+}

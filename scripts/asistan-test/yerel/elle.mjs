@@ -3698,3 +3698,16 @@ const AC = await import("@/lib/athleteCopy");
     })],
   ]);
 }
+const UPL = [
+  { id: "a", title: "Bacak günü", date: "2026-11-28", fit: { for: "s1" }, people: ["s1"] },
+  { id: "b", title: "Optimist antrenmanı", cat: "Antrenman", date: "2026-11-29", people: ["s1"] },
+  { id: "c", title: "Kış kupası", cat: "Yarış", date: "2026-12-05", people: ["s1"] },
+  { id: "d", title: "Aile tatili", date: "2026-12-10", people: ["s1"] },
+  { id: "e", title: "Eski", cat: "Yarış", date: "2026-11-01", people: ["s1"] },
+  { id: "f", title: "Başkası", cat: "Yarış", date: "2026-12-01", people: ["s2"] },
+];
+group("Uzman sayfası: paylaşılan planlar")([
+  ["izin kapalı", F("hiçbir plan görünmez", () => UZ.paylasilanPlanlar(UPL, "s1", { acik: false, turler: ["yaris"] }, "2026-11-27").length === 0)],
+  ["yalnız izinli türler", F("antrenman + yarış: Bacak günü, Kış kupası", () => UZ.paylasilanPlanlar(UPL, "s1", { acik: true, turler: ["antrenman", "yaris"] }, "2026-11-27").map((p) => p.id).join() === "a,c")],
+  ["yelken ve tatil", F("Optimist antrenmanı yelken, Aile tatili tatil", () => UZ.paylasilanPlanlar(UPL, "s1", { acik: true, turler: ["yelken", "tatil"] }, "2026-11-27").map((p) => p.id).join() === "b,d")],
+]);
