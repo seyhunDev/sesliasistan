@@ -27,7 +27,12 @@ export const TABS = {
 };
 export const tabsOf = (view) => TABS[view] || TABS.ana;
 
-// Ana sayfa › İşlemler düğmeleri, gruplu (sıra sabit). o: { staff, owner, side (sporcu/öğrenci/veli), parent, athletes (sporcu yetkisi), plain, coach,
+// Para bilgisi (Hesaplar, fiş/fatura listesi, banka ve Gmail bağlantısı, "fişin ödendi" bildirimi) yalnız ana hesapta
+// (Seyhun 2026-11-27 "normal kullanıcılar, sporcular… o bilgileri onlar görmeyecek; ana sayfasında da gösterilmesin").
+// Menü, Tümü ve ana sayfalar buna bakar; kayıtlı veri silinmez, çalışan fişini yine + Ekle ile ekler.
+export const seesMoney = (view) => view === "ana";
+
+// Ana sayfa › İşlemler düğmeleri, gruplu (sıra sabit). o: { staff, owner, money (seesMoney), side (sporcu/öğrenci/veli), parent, athletes (sporcu yetkisi), plain, coach,
 // races (Yarışlar ana sayfada), training, receipts, shop, lessons, fit (antrenörün hazırladığı fitness antrenmanı var) }. Toplantı bir sayfa değil: { id: "meeting" } döner.
 // Dönüş: [{ title, items: [{ href | id, icon, label }] }]; boş grup çıkmaz.
 export function homeActions(o) {
@@ -62,8 +67,8 @@ export function homeActions(o) {
       !o.staff && { href: "/inventory", icon: "box", label: "Envanter" },
     ]],
     ["Para", [
-      o.receipts && { href: "/receipts", icon: "receipt", label: "Fiş / Fatura" },
-      !o.staff && { href: "/mail", icon: "wallet", label: "Hesaplar" },
+      o.money && o.receipts && { href: "/receipts", icon: "receipt", label: "Fiş / Fatura" },
+      o.money && { href: "/mail", icon: "wallet", label: "Hesaplar" },
     ]],
     ["Hava ve deniz", [
       { href: "/weather", icon: "wind", label: "Hava" }, // bölge haritası rüzgârı da gösterir (eski Rüzgâr düğmesi)

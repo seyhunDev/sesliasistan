@@ -6,7 +6,7 @@ import { useRaceHome } from "@/features/athletes/raceHome";
 import { useMeeting } from "@/features/meeting/MeetingProvider";
 import { listsFor } from "@/features/shop/shop";
 import { myFit } from "@/lib/fitness/model";
-import { homeActions } from "@/lib/hesapGorunum";
+import { homeActions, seesMoney } from "@/lib/hesapGorunum";
 import { canReceipts } from "@/lib/kinds";
 
 // Tümü penceresi (HomeGrid) ve sol menü (SideNav) aynı sayfa listesini kullanır: hesap görünümüne göre (lib/hesapGorunum.js homeActions)
@@ -18,6 +18,7 @@ export function usePages() {
   return homeActions({
     staff: h.staff,
     owner: h.owner,
+    money: seesMoney(h.view),
     side: h.side,
     parent: h.kind === "parent",
     athletes: h.athletes,

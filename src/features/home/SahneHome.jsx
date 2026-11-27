@@ -12,7 +12,6 @@ import { usePlanOpen } from "@/features/athletes/usePlanOpen";
 import { useRaceHome } from "@/features/athletes/raceHome";
 import { useOpenInvoices } from "@/features/invoices/openInvoices";
 import { liveHead } from "@/features/liveScreen/fonts";
-import { PaidNotice } from "@/features/receipts/Payment";
 import { useWeather } from "@/features/weather/useWeather";
 import { dayHours, dirDeg, nowOf, windName } from "@/features/weather/weather";
 import { SkyIcon, WindArrow, WindChart, rainText, useObsRows } from "@/features/weather/WxPanel";
@@ -121,7 +120,6 @@ function Layout({ side, inbox, onInbox }) {
         <div className="sh-wr">
           <Waiting inbox={inbox} onAll={onInbox} />
         </div>
-        <PaidNotice />
       </div>
     </div>
   );

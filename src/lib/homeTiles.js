@@ -236,7 +236,7 @@ export function raceForPlan(plan, open, today) {
 }
 
 // Tümü penceresinin ve sol menünün sayfa listesi artık hesap görünümü dosyasında (lib/hesapGorunum.js, 2026-11-25)
-export { homeActions } from "./hesapGorunum";
+export { homeActions, seesMoney } from "./hesapGorunum";
 
 export const linkKey = (a) => a.href || a.id;
 

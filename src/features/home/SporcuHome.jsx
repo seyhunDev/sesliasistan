@@ -13,7 +13,6 @@ import { monthOf, useMyAttendance } from "@/features/athletes/myAttendance";
 import { daysTo, upcoming, useMyRaces } from "@/features/athletes/myRaces";
 import { markStart } from "@/features/fitness/guideVoice";
 import { liveHead } from "@/features/liveScreen/fonts";
-import { PaidNotice } from "@/features/receipts/Payment";
 import { useWeather } from "@/features/weather/useWeather";
 import { dayHours, nowOf, windName } from "@/features/weather/weather";
 import { WindArrow } from "@/features/weather/WxPanel";
@@ -86,7 +85,6 @@ export function SporcuHome() {
           <div className="sh-col">
             <EnCard />
             <Tiles />
-            <PaidNotice />
           </div>
         </div>
       </main>
