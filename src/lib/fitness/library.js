@@ -11,6 +11,7 @@
 import { exById, fold } from "./exercises";
 import { cleanMedia } from "./model";
 import { cleanYt } from "./youtube";
+import { cleanHow } from "./howText";
 
 const S = (v, n = 60) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 const KINDS = ["reps", "time", "cardio"];
@@ -65,7 +66,7 @@ export function cleanLib(v = {}) {
     if (spare.length) o.spare = spare;
     if (e.m || yt || media.length) o.m = true;
     if (e.renamed) o.renamed = true;
-    const how = S(e.how, 500);
+    const how = S(cleanHow(e.how, e.name), 500);
     if (how) o.how = how; // elle yazılan açıklama (Hareketler › hareket › Açıklama); programlardaki anlatımın yerine geçer
     items[k] = o;
     next = Math.max(next, no + 1);
@@ -310,7 +311,7 @@ export function libRename(lib, key, name) {
 export function libSetHow(lib, key, how) {
   const e = lib?.items?.[key];
   if (!e) return lib;
-  const h = S(how, 500);
+  const h = S(cleanHow(how, e.name), 500);
   const o = { ...e };
   if (h) o.how = h;
   else delete o.how;

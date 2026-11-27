@@ -2752,6 +2752,16 @@ group("Fitness: program ayrıntıları ve şablon")([
       a.items.every((x) => !x.ex) && split.repsTo === 12 && split.side && split.rest === 75 && split.note.includes("çantaya 1–2 kg") && !/gitar|17\.45/.test(a.note) && !p.forAge &&
       p.phases.length === 6 && p.rules.includes("Trafik ışığı") && FMI.planDrafts(p).length === 84;
   })],
+  ["açıklamada talimat yok", F("Kopyala metni açıklamaya yapıştırılınca ad ve İngilizce video talimatı atılır; kütüphane ve program kaydında da", async () => {
+    const AP = await import("@/lib/fitness/animPrompt");
+    const HT = await import("@/lib/fitness/howText");
+    const LB = await import("@/lib/fitness/library");
+    const pasted = AP.animShareText({ name: "Glute bridge", how: "Sırtüstü yat, kalçanı kaldır." });
+    const lib = LB.cleanLib({ items: { "c:glute bridge": { no: 1, name: "Glute bridge", how: pasted } } });
+    const it = FMK.cleanItem({ ex: "", name: "Glute bridge", how: pasted });
+    return HT.cleanHow(pasted, "Glute bridge") === "Sırtüstü yat, kalçanı kaldır." && HT.hasPrompt(pasted) && !HT.hasPrompt("Sırtüstü yat") &&
+      Object.values(lib.items)[0].how === "Sırtüstü yat, kalçanı kaldır." && it.how === "Sırtüstü yat, kalçanı kaldır." && HT.cleanHow("Dizleri bük, yavaş in.") === "Dizleri bük, yavaş in.";
+  })],
   ["hazır şablon saati", F("varsayılan tam gün (saat boş); eklerken seçilen saat yalnız o güne", () => {
     const p = FTPL.fromTemplate("yelken-ev-12", "2026-10-19", { 2: "18:30", 4: "bozuk" });
     const at = (n) => p.days.find((d) => d.dow === n);

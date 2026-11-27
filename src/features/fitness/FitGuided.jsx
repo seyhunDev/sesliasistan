@@ -13,6 +13,7 @@ import { useKind } from "@/features/auth/useKind";
 import { useTts } from "@/features/speech/TtsProvider";
 import { liveHead } from "@/features/liveScreen/fonts";
 import { LIME, SahneAdd, SahneBtn, SahneIcons, SahneIntro, SahneToggles, head } from "./FitSahne";
+import { cleanHow } from "@/lib/fitness/howText";
 
 // Antrenör sesi: doğal Gemini sesi, "fitness" tarzı; metinler sabit olduğu için sunucuda saklanır (docs/seslendirme.md)
 const FIT_VOICE = { style: "fitness", cache: true };
@@ -165,7 +166,8 @@ const sentences = (t) =>
     .map((x) => x.trim().replace(/\.$/, ""))
     .filter(Boolean);
 function howOf(it) {
-  if (it?.how) return sentences(it.how);
+  const own = cleanHow(it?.how, it?.name);
+  if (own) return sentences(own);
   const steps = guideSteps(it?.ex);
   if (steps.length) return steps;
   return String(exById(it?.ex)?.how || "")
@@ -176,7 +178,7 @@ function howOf(it) {
 
 // Sesli anlatım: önce hazırlık, sonra nasıl yapılır (listedeki harekette ilk 3 adım); boşsa ""
 function howSay(it) {
-  const h = it?.how ? howOf(it) : howOf(it).slice(0, 3);
+  const h = cleanHow(it?.how, it?.name) ? howOf(it) : howOf(it).slice(0, 3);
   const t = [it?.setup ? `Hazırlık: ${String(it.setup).replace(/\.$/, "")}` : "", ...h].filter(Boolean);
   return t.length ? ` ${t.join(". ")}.` : "";
 }
