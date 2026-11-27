@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <base href="/tanitim/">
 <title>Velora Kısa Tanıtım</title>
-<meta name="description" content="Velora'nın yedi özelliği bir dakikada: antrenman, yarış, denizde yönetim, video, hava, fitness ve simülatör.">
+<meta name="description" content="Velora'nın sekiz özelliği kısaca: antrenman, yarış, denizde yönetim, video, hava, fitness, sporcu ekranı ve simülatör.">
 <meta property="og:title" content="Velora Kısa Tanıtım">
-<meta property="og:description" content="Velora'nın yedi özelliği bir dakikada: antrenman, yarış, denizde yönetim, video, hava, fitness ve simülatör.">
+<meta property="og:description" content="Velora'nın sekiz özelliği kısaca: antrenman, yarış, denizde yönetim, video, hava, fitness, sporcu ekranı ve simülatör.">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#0b0b0c">
 <link rel="icon" href="/favicon.ico">
@@ -240,11 +240,11 @@ const F=[
     {t:3.4,y:'Yarışını ve sınıfını bul, Ekle\'ye dokun.',say:'Yarışını ve sınıfını bul, ekle\'ye dokun.'},
     {t:9,y:'Yarış sayfası hazır: kalan gün ve yapılacaklar.',say:'Yarış sayfası hazır. Kaç gün kaldığı ve yapılacaklar burada.'},
     {t:13,y:'Gereken evraklar tek listede, tamamladıkça işaretle.',say:'Gereken evraklar tek listede; tamamladıkça işaretle.'}]},
-  {k:'Denizde',v:'yonet',s:0,e:20.5,r:2,h:'Antrenmanı *denizden* yönet.',st:[
+  {k:'Denizde',v:'yonet',s:0,e:23.3,r:2,h:'Antrenmanı *denizden* yönet.',st:[
     {t:0.3,y:'Start süresini tek dokunuşla başlat.'},
     {t:4.6,y:'Basılı tut, konuş: sesin bütün sporculara gider.',say:'Basılı tut ve konuş; sesin bütün sporculara gider.'},
-    {t:10.6,y:'Sık kullandığın mesajlar hazır: seç, gönder.',say:'Sık kullandığın mesajlar hazır; seç ve gönder.'},
-    {t:15.4,y:'Sporcuyu seç, cezayı ver: 1 ceza dönüşü <small class="sl">360°</small> anında ona gider.',say:'Sporcuyu seç ve cezasını ver. Bir ceza dönüşü, anında ona gider.'}]},
+    {t:9.6,y:'Sık kullandığın mesajlar hazır: seç, gönder.',say:'Sık kullandığın mesajlar hazır; seç ve gönder.'},
+    {t:13.9,y:'Sporcuyu seç, cezayı ver: 1 ceza dönüşü <small class="sl">360°</small> anında ona gider.',say:'Sporcuyu seç ve cezasını ver. Bir ceza dönüşü, anında ona gider.'}]},
   {k:'Video',v:'etiket',s:0,e:11.4,r:1.5,h:'Videoyu *sporcuyla* eşleştir.',st:[
     {t:0.3,y:'Sporcuyu seç, Video\'ya dokun.',say:'Sporcuyu seç ve videoya dokun.'},
     {t:4.6,y:'Videoda kimler var? Sporcuları işaretle.'},
@@ -254,11 +254,17 @@ const F=[
     {t:0,y:'Bugünün rüzgârı saat saat: hız, yön, yağmur.',say:'Bugünün rüzgârı saat saat: hızı, yönü ve yağmur.'},
     {t:3,y:'Bir güne dokun, o günün havası açılsın.',say:'Bir güne dokun; o günün havası açılır.'},
     {t:5,y:'O günün planları hemen altında.',say:'O günün planları da hemen altında.'}]},
-  {k:'Fitness',v:'fit',s:0,e:11,r:1.2,h:'Fitness *adım* *adım.*',st:[
-    {t:0,y:'Günün programı hazır: hareketler, setler ve tekrarlar.',say:'Günün fitness programı hazır: hareketler, setler ve tekrarlar.'},
-    {t:2,y:'Antrenmana başla: süre, hareket ve set sayısı bir bakışta.',say:'Antrenmana başla; süre, hareket ve set sayısı bir bakışta.'},
-    {t:4.6,y:'Her harekette görsel, nasıl yapılır ve tekrar sayısı.',say:'Her harekette görsel, nasıl yapıldığı ve tekrar sayısı var.'},
-    {t:8,y:'Seti bitir, sıradaki hareket gelsin.',say:'Seti bitir; sıradaki hareket gelir.'}]},
+  {k:'Fitness',v:'fit',s:0,e:17.1,r:1.5,h:'Sporcuya *fitness* programı.',st:[
+    {t:0.3,y:'Sporcunu seç, + Program\'a dokun.',say:'Sporcunu seç ve program ekle.'},
+    {t:3.8,y:'Hazır programı seç ya da yapay zekayla hazırla.',say:'Hazır bir program seç, ya da yapay zekayla hazırlat.'},
+    {t:5.6,y:'Program açılır: günler, saatler ve hareketler hazır.',say:'Program açılır; günler, saatler ve hareketler hazır.'},
+    {t:10.4,y:'Kaydet: bütün antrenmanlar sporcunun takvimine gider.',say:'Kaydet; bütün antrenmanlar sporcunun takvimine gider.'},
+    {t:13.6,y:'Sporcunun haftasını gün gün takip et.'}]},
+  {k:'Sporcu',v:'sporcu',s:0,e:19.1,r:1.4,h:'Sporcu *kendi* *ekranından* takip eder.',st:[
+    {t:0,y:'Sporcu uygulamayı açar: bugünün antrenmanı en üstte.',say:'Sporcu uygulamayı açtığında, bugünün antrenmanı en üstte.'},
+    {t:5.6,y:'Haftasını gün gün görür, her günün hareketleri hazır.',say:'Haftasını gün gün görür; her günün hareketleri hazır.'},
+    {t:10.9,y:'Antrenmana başlar: hareket hareket, fotoğraflı anlatım.',say:'Antrenmana başlar; hareket hareket, fotoğraflı anlatımla.'},
+    {t:13.4,y:'Bitirdikçe işaretler, antrenör ilerlemesini görür.',say:'Bitirdikçe işaretler; antrenör de ilerlemesini görür.'}]},
   {k:'Simülatör',v:'simulator',s:0.3,e:45,r:2.4,h:'Denize çıkmadan *taktik* çalış.',st:[
     {t:0.3,y:'Senaryolar ana sayfada: birini seç, İzle\'ye dokun.',say:'Senaryolar ana sayfada. Birini seç ve izle\'ye dokun.'},
     {t:5.6,y:'Tekneler adım adım ilerler; her adımda ne ve neden yapıldığını oku.',say:'Tekneler adım adım ilerler. Her adımda ne yapıldığını ve nedenini okursun.'},
