@@ -1,12 +1,11 @@
-// Ana sayfadaki "Sporcular" düğmesi yalnızca bu e-postalarda görünür: NEXT_PUBLIC_SPORCU_EMAILS="a@b.com,c@d.com".
-// Asıl koruma Firestore kurallarıdır: sporcular orgs/{ana hesap}/athletes, yalnız ana hesap okur (sunucu /api/sporcu-giris de bu listeye bakar).
-const list = () =>
-  (process.env.NEXT_PUBLIC_SPORCU_EMAILS || "seyhunyildiz@gmail.com")
-    .split(",")
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean);
-
-export const canSeeAthletes = (email) => !!email && list().includes(String(email).toLowerCase());
+// Sporcu işleri kimde (Seyhun 2026-11-27 "herkes kendi sporcularını yönetsin"): giriş yapan ana hesap kendi alanındaki
+// (orgs/{uid}/athletes) sporcuları yönetir. Eskiden yalnız NEXT_PUBLIC_SPORCU_EMAILS listesi. Çalışan, sporcu, veli görmez.
+// Oturumun ana hesap e-postasını AuthProvider yazar (profil belgesi okununca); asıl koruma Firestore kurallarıdır.
+let ownerEmail = "";
+export const setAthleteAccount = (email) => {
+  ownerEmail = String(email || "").toLowerCase();
+};
+export const canSeeAthletes = (email) => !!email && !!ownerEmail && String(email).toLowerCase() === ownerEmail;
 
 // Asistana söylenen yoklama mı? ("yoklama: Ali ve Zeynep geldi", "bugün antrenmana Ali gelmedi")
 // here: yoklama sayfası açık; orada "yoklama" denmeden de "Ali ve Zeynep geldi", "Emre izinli", "kalanlar gelmedi" yoklamadır
