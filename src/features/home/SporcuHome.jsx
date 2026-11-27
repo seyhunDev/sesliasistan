@@ -26,6 +26,7 @@ import { todayStr } from "@/lib/utils/format";
 import { InboxSheet, useInbox } from "./Inbox";
 import { DersCard } from "./DersCard";
 import { SahneTop, SporcuAdd, SporcuMenu } from "./SporcuMenu";
+import { SporcuHava } from "./SahneHome";
 
 // SPORCU ANA SAYFASI · "Sahne" (Seyhun 2026-11-25 "tamamen farklı, profesyonel, modern"; A seçti; örnek velora-tarama/sporcu-ana-yeni.html):
 // Fitness Sahne ile aynı dil: koyu zemin, dar dev başlıklar (Barlow Condensed), tek vurgu limon sarısı. Telefon önce; iPad'de iki sütun (sporcu.css).
@@ -74,9 +75,10 @@ export function SporcuHome() {
     <>
       <main data-theme="dark" className={`sh ${liveHead.variable}`} data-home-sporcu>
         <SahneTop inbox={inbox} onInbox={() => setSheet(true)} onMenu={() => setMenu(true)} onAdd={() => setAdd(true)} />
+        <Hello tr={tr} now={now} />
         <div className="sh-grid">
+          <SporcuHava />
           <div className="sh-col">
-            <Hello tr={tr} now={now} />
             {live && !tr && <LiveHero kanal={live} />}
             {fit && <FitHero fit={fit} />}
             {tr && <Today tr={tr} live={!!live} />}

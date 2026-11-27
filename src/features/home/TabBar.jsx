@@ -932,7 +932,7 @@ function Dome({ noAi = false, tabs = [], bar, slim, rec, active, leaving = false
               {/* Bas-konuş (Seyhun 2026-10-25 "A · Çubuğun sağ ucunda"): dört sekme solda, büyük küre sağ uçta, baş parmağın altında */}
               <div className="mx-auto flex h-14 max-w-[34rem] items-stretch">
                 <div className="grid min-w-0 flex-1" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
-                  {/* Sekmeler hesap görünümüne göre (lib/hesapGorunum.js TABS; normal kullanıcıda Kulüp ve İngilizce, Seyhun 2026-11-24) */}
+                  {/* Sekmeler hesap görünümüne göre (lib/hesapGorunum.js TABS; normal kullanıcıda Mesajlar ve İngilizce, Seyhun 2026-11-27) */}
                   {tabs.map(([href, label, icon, key]) => (
                     <NavTab key={href} href={href} icon={icon} label={label} active={href === "/" ? path === "/" : String(path || "").startsWith(href)} badge={key === "msg" ? unread : undefined} />
                   ))}

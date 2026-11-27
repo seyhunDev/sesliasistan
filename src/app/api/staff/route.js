@@ -119,7 +119,7 @@ export async function POST(request) {
   return NextResponse.json({ ok: true, member: { uid: user.uid, name, login } });
 }
 
-// Hesap bilgisi güncelle: { uid, name?, kind?, password?, coach? } (coach: antrenör işareti, yalnız çalışanda anlamlı) — kişi kaydı istemcide değişir; burada hesap, profil ve rehber eşitlenir
+// Hesap bilgisi güncelle: { uid, name?, kind?, password? } — kişi kaydı istemcide değişir; burada hesap, profil ve rehber eşitlenir
 export async function PATCH(request) {
   const o = await owner(request);
   if (o.res) return o.res;
@@ -140,11 +140,10 @@ export async function PATCH(request) {
     console.warn("[staff] hesap güncellenemedi:", e.code);
     if (password) return bad("Şifre değiştirilemedi.", 500);
   }
-  const coach = typeof body.coach === "boolean" ? { coach: body.coach } : {};
   const patch = { ...(name ? { name } : {}), ...(kind ? { kind } : {}) };
-  if (Object.keys(patch).length || "coach" in coach) {
+  if (Object.keys(patch).length) {
     const batch = db.batch();
-    batch.set(db.collection("users").doc(uid), { ...patch, ...coach }, { merge: true });
+    batch.set(db.collection("users").doc(uid), patch, { merge: true });
     batch.set(org.collection("directory").doc(uid), patch, { merge: true });
     await batch.commit();
   }

@@ -55,7 +55,7 @@ export function useHesap() {
     side: isAthleteSide(kind),
     plain: view === "normal",
     athletes: preview ? false : canSeeAthletes(profile?.email),
-    coach: preview ? false : isCoach(profile),
+    coach: preview ? preview === "normal" : isCoach(profile), // "normal gibi gör"de Yönet kutusu da görünsün (çalışan gibi)
     preview,
   };
 }

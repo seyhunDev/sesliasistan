@@ -258,6 +258,30 @@ function Plans({ date, nowH }) {
   );
 }
 
+// Sporcu ana sayfasında iPad'de (dik ve yatay) Hava kutusu grafiğiyle ve 7 gün (Seyhun 2026-11-27): ortak SahneHava + Days, ana sayfadakiyle aynı.
+// Telefonda gizli (sporcu.css .sh-ipwx): orada selamın altındaki tek satır hava, dokununca Hava sayfası.
+export function SporcuHava() {
+  const now = useNow(30000);
+  const today = todayStr();
+  const [sel, setSel] = useState(today);
+  const days = useMemo(() => {
+    const base = new Date(`${today}T12:00`);
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(base);
+      d.setDate(d.getDate() + i);
+      return ymd(d);
+    });
+  }, [today]);
+  const date = days.includes(sel) ? sel : today;
+  const nowH = now.getHours() + now.getMinutes() / 60;
+  return (
+    <div className="sh-ipwx">
+      <SahneHava date={date} today={today} nowH={date === today ? nowH : null} />
+      <Days days={days} date={date} today={today} onSel={setSel} />
+    </div>
+  );
+}
+
 // ─── ANA HESAP ───
 export function OwnerSahne() {
   const h = useHesap();
@@ -301,12 +325,19 @@ function Kokpit() {
         {sport && <DuesTile />}
         <MoneyTile />
         {(h.owner || h.coach) && <YonetTile profile={h.profile} />}
-        <Link href="/sailing" data-press className="sh-tile sh-sailing">
-          <span className="sh-k">Velora Sailing</span>
-          <b className="sh-t">Aç</b>
-        </Link>
+        <SailingTile />
       </div>
     </>
+  );
+}
+
+// Velora Sailing kutusu (ana hesap ve normal kullanıcı aynı); /sailing tam ekran, kendi Velora hesabıyla girer
+function SailingTile() {
+  return (
+    <Link href="/sailing" data-press className="sh-tile sh-sailing">
+      <span className="sh-k">Velora Sailing</span>
+      <b className="sh-t">Aç</b>
+    </Link>
   );
 }
 
@@ -441,7 +472,8 @@ function MoneyTile() {
 }
 
 // ─── NORMAL KULLANICI ───
-// Antrenörse Yönet büyük kartı (kendi sporcuları), fitness varsa yatay kart, Bekleyen, ödeme. Kulüp ve İngilizce alt çubukta.
+// Kulüp (Seyhun 2026-11-27, örnek velora-tarama/normal-ana-alt-cubuk.html): ana hesaptaki gibi kutular, çalışanda Yönet (kendi alanı, YonetTile)
+// ve herkeste Velora Sailing. Fitness varsa yatay kart, Bekleyen, ödeme.
 export function NormalSahne() {
   const h = useHesap();
   const fit = useTodayFit();
@@ -451,16 +483,11 @@ export function NormalSahne() {
         <Layout
           side={
             <>
-              {h.coach && (
-                <Link href="/bilgi/yonet" data-press className="sh-wide sh-yon">
-                  <span className="min-w-0 flex-1">
-                    <span className="sh-k">ANTRENÖR · YÖNET</span>
-                    <span className="sh-c sh-wide-t">Sporcularım</span>
-                    <small>Yoklama · süre · tekne ekranı</small>
-                  </span>
-                  <span className="sh-wide-b">Aç</span>
-                </Link>
-              )}
+              <span className="sh-sec">KULÜP</span>
+              <div className="sh-tiles">
+                {h.coach && <YonetTile profile={h.profile} />}
+                <SailingTile />
+              </div>
               {fit && <FitWide fit={fit} />}
             </>
           }
