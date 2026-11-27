@@ -46,7 +46,7 @@ function Form({ names, athletes, onClose, onSaved }) {
       toast(`${name} eklendi${warn}`);
       onSaved?.(id);
     } catch (e) {
-      toast(e?.code === "permission-denied" ? "Kulüp hesabının sporcu ekleme izni yok." : message(e));
+      toast(e?.code === "permission-denied" ? "Bu hesabın sporcu ekleme izni yok." : message(e));
     }
     setBusy(false);
   };
@@ -82,7 +82,7 @@ function Form({ names, athletes, onClose, onSaved }) {
         <input value={f.parentName} onChange={set("parentName")} placeholder="Veli ad soyad" aria-label="Veli ad soyad" className={field} />
         <input value={f.parentPhone} onChange={set("parentPhone")} placeholder="Veli telefonu" aria-label="Veli telefonu" inputMode="tel" className={field} />
       </div>
-      <p className="mt-2 text-[0.75rem] text-mut">Kulüp listesine ve Kişiler › Sporcular’a eklenir. T.C., okul ve diğer bilgiler sporcunun sayfasında Düzenle’den.</p>
+      <p className="mt-2 text-[0.75rem] text-mut">Sporcu listene ve Kişiler › Sporcular’a eklenir. T.C., okul ve diğer bilgiler sporcunun sayfasında Düzenle’den.</p>
       <div className="sticky bottom-0 -mx-5 mt-4 grid grid-cols-2 gap-2 bg-card px-5 pt-2">
         <button onClick={onClose} data-press className="btn btn-secondary">Vazgeç</button>
         <button onClick={save} disabled={busy} data-press className="btn btn-primary">
