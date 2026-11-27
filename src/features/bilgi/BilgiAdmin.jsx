@@ -297,45 +297,86 @@ function NumIn({ value, onSave, label, unit }) {
   );
 }
 
-// Koordinat satırı: "39.0712, 26.8840" yazılır ya da "Konumum"; auto: hesaplanan (elle değilse soluk), onAuto: elleyi kaldır
-function PtRow({ label, pt, manual, onSave, onAuto, offLabel = "Otomatik" }) {
+// Parkur (Seyhun 2026-11-15): rüzgâr + hakem botu girilince şamandıralar kendiliğinden yerleşir (lib/bilgi buildCourse); her biri elle
+// düzeltilebilir. Adım adım kurma (Seyhun 2026-11-27 örnek 9quvtj9qsA6sx7wBJEodEC "İkisi de"): 1 Rüzgâr, 2 Start hattı, 3 Hakem botu,
+// 4 Pin, 5 Şamandıralar; her adımda tek iş. Konum için üç yol hep aynı: Konumum, Haritada yerleştir (onPick: pencere kapanır, haritanın
+// ortasındaki nişan), Koordinat yaz.
+const PK_STEPS = ["Rüzgâr", "Start hattı", "Hakem botu", "Pin", "Şamandıralar"];
+const WIND_CH = [
+  [0, "K"],
+  [45, "KD"],
+  [90, "D"],
+  [135, "GD"],
+  [180, "G"],
+  [225, "GB"],
+  [270, "B"],
+  [315, "KB"],
+];
+const LINE_CH = [80, 100, 120, 150];
+
+// Büyük sayı: − / + ve dokunup yazma
+function BigNum({ value, unit, step, min, max, onSave, label }) {
+  const [v, setV] = useState(null);
+  const clamp = (x) => (unit === "°" ? ((x % 360) + 360) % 360 : Math.min(max, Math.max(min, x)));
+  return (
+    <div className="bzy-pkbig">
+      <button type="button" aria-label={`${label} azalt`} onClick={() => onSave(clamp((value ?? 0) - step))} data-press>
+        −
+      </button>
+      <label>
+        <input
+          className="num"
+          inputMode="numeric"
+          aria-label={label}
+          value={v ?? (value == null ? "" : String(value))}
+          placeholder="—"
+          onChange={(e) => setV(e.target.value.replace(/[^0-9]/g, "").slice(0, 4))}
+          onBlur={() => {
+            if (v != null && v !== "" && v !== String(value ?? "")) onSave(clamp(+v));
+            setV(null);
+          }}
+        />
+        <small>{unit}</small>
+      </label>
+      <button type="button" aria-label={`${label} artır`} onClick={() => onSave(clamp((value ?? 0) + step))} data-press>
+        +
+      </button>
+    </div>
+  );
+}
+
+// Konum: Konumum, Haritada yerleştir, Koordinat yaz (hakem botu, pin, şamandıra için aynı)
+function PtWays({ label, pt, onSave, onPick, primary }) {
   const toast = useToast();
-  const [open, setOpen] = useState(false);
+  const [typing, setTyping] = useState(false);
   const [v, setV] = useState("");
   const save = (q) => {
     if (!q) return toast("Koordinat okunamadı");
     onSave(q);
-    setOpen(false);
+    setTyping(false);
   };
   return (
-    <div className="bzy-pkr">
-      <button type="button" className="bzy-fr" onClick={() => (setV(fmtPt(pt)), setOpen((x) => !x))}>
-        <b>{label}</b>
-        <span className={`num${pt && !manual && onAuto ? " auto" : ""}`}>{pt ? fmtPt(pt) : "—"}</span>
+    <div className="bzy-pkways">
+      <button type="button" className={primary ? "on" : ""} onClick={async () => save(await here())} data-press>
+        Konumum
       </button>
-      {open && (
-        <div className="bzy-ptin">
-          <input className="bzy-in num" value={v} inputMode="decimal" placeholder="39.07120, 26.88400" onChange={(e) => setV(e.target.value)} />
-          <div className="bzy-row">
-            <Button onClick={() => save(parsePt(v))}>Kaydet</Button>
-            <Button variant="secondary" onClick={async () => save(await here())}>
-              Konumum
-            </Button>
-            {manual && onAuto && pt && (
-              <Button variant="secondary" onClick={() => (onAuto(), setOpen(false))}>
-                {offLabel}
-              </Button>
-            )}
-          </div>
+      <button type="button" onClick={() => onPick(label, pt, save)} data-press>
+        Haritada yerleştir
+      </button>
+      <button type="button" aria-expanded={typing} onClick={() => (setV(fmtPt(pt)), setTyping((x) => !x))} data-press>
+        Koordinat yaz
+      </button>
+      {typing && (
+        <div className="bzy-pkin">
+          <input className="bzy-in num" value={v} inputMode="decimal" placeholder="39.07120, 26.88400" onChange={(e) => setV(e.target.value)} aria-label={`${label} koordinatı`} />
+          <Button onClick={() => save(parsePt(v))}>Kaydet</Button>
         </div>
       )}
     </div>
   );
 }
 
-// Parkur (Seyhun 2026-11-15): rüzgâr + hakem botu girilince şamandıralar kendiliğinden yerleşir (lib/bilgi buildCourse); her biri elle
-// düzeltilebilir. Harita Tekneler'deki gerçek haritanın aynısı (tek ortak harita; Seyhun 2026-11-15 "iki harita var, biri çalışmıyor")
-function ParkurEdit({ org, pk }) {
+function ParkurEdit({ org, pk, step, setStep, onPick, onDone, extra }) {
   const toast = useToast();
   const p = pk || { type: "trapez", wind: null, komite: null, line: 120, orsa: 900, marks: {} };
   const c = buildCourse(p);
@@ -346,9 +387,8 @@ function ParkurEdit({ org, pk }) {
     );
   const at = (k) => c.pts.find((x) => x.k === k) || null;
   const ask = useConfirm();
-  // Sıfırla / sil (Seyhun 2026-11-16 "konumları sıfırlayabilmemiz, istediğimizi değiştirebilmemiz ya da tamamen silebilmemiz gerekiyor"):
-  // elle düzeltilen şamandıralar tek dokunuşla otomatiğe döner; Parkuru sil bütün parkuru (tip, rüzgâr, hakem botu, uzunluklar,
-  // şamandıralar) belgeden kaldırır, link kopyasına da yazılır (saveBilgi); ekranlarda harita boşalır.
+  const [mk, setMk] = useState("");
+  // Sıfırla / sil (Seyhun 2026-11-16): elle düzeltilen şamandıralar tek dokunuşla otomatiğe döner; Parkuru sil bütün parkuru belgeden kaldırır
   const nManual = markKeys(p.type).filter((k) => p.marks?.[k]).length;
   const any = !!(pk && (pk.komite || pk.wind != null || Object.values(pk.marks || {}).some(Boolean)));
   const wipe = () =>
@@ -358,44 +398,137 @@ function ParkurEdit({ org, pk }) {
       yes: "Parkuru sil",
       run: () =>
         saveBilgi(org, { parkur: null }).then(
-          () => toast("Parkur silindi"),
+          () => (toast("Parkur silindi"), setStep(0)),
           (e) => {
             toast("Silinemedi");
             throw e;
           },
         ),
     });
+  const pin = at("pin");
+  const last = step === PK_STEPS.length - 1;
   return (
-    <>
-      <Seg value={p.type} items={PK_TYPES} onPick={(k) => put({ type: k })} />
-      <div className="bzy-list mt-2">
-        <NumIn label="Rüzgâr" unit="°" value={p.wind} onSave={(v) => put({ wind: v == null ? null : v % 360 })} />
-        <PtRow label="Hakem botu" pt={p.komite} manual onSave={(q) => put({ komite: q })} onAuto={() => put({ komite: null })} offLabel="Kaldır" />
-        <NumIn label="Start hattı" unit="m" value={p.line} onSave={(v) => put({ line: v ?? 120 })} />
-        <NumIn label="1 numaraya" unit="m" value={p.orsa} onSave={(v) => put({ orsa: v ?? 900 })} />
+    <div className="bzy-pk">
+      <div className="bzy-pksteps" role="tablist" aria-label="Parkur adımları">
+        {PK_STEPS.map((n, i) => (
+          <button key={n} type="button" role="tab" aria-selected={i === step} aria-label={`${i + 1}. ${n}`} data-st={i < step ? "done" : i === step ? "cur" : ""} onClick={() => setStep(i)} />
+        ))}
       </div>
-      {c.has && (
-        <div className="bzy-list mt-2">
-          {markKeys(p.type).map((k) => (
-            <PtRow key={k} label={k === "pin" ? "Pin" : PK_NAMES[k]} pt={at(k)} manual={!!p.marks?.[k]} onSave={(q) => put({ marks: { [k]: q } })} onAuto={() => put({ marks: { [k]: null } })} />
-          ))}
-        </div>
+      <p className="bzy-pksn">
+        {step + 1} / {PK_STEPS.length} · {PK_STEPS[step]}
+      </p>
+      {step === 0 && (
+        <>
+          <h3 className="bzy-pkq">Rüzgâr nereden esiyor?</h3>
+          <BigNum label="Rüzgâr" unit="°" step={5} value={p.wind} onSave={(v) => put({ wind: v })} />
+          <div className="bzy-pkch">
+            {WIND_CH.map(([d, n]) => (
+              <button key={d} type="button" aria-pressed={p.wind === d} onClick={() => put({ wind: d })} data-press>
+                {n} {d}°
+              </button>
+            ))}
+          </div>
+        </>
       )}
-      {(nManual > 0 || any) && (
-        <div className="bzy-row bzy-pkact">
-          {nManual > 0 && (
-            <Button variant="secondary" onClick={() => put({ marks: null }).then((ok) => ok && toast("Şamandıralar otomatiğe döndü"))}>
-              Şamandıraları sıfırla
+      {step === 1 && (
+        <>
+          <h3 className="bzy-pkq">Start hattı ne kadar?</h3>
+          <BigNum label="Start hattı" unit="m" step={10} min={20} max={2000} value={p.line} onSave={(v) => put({ line: v })} />
+          <div className="bzy-pkch">
+            {LINE_CH.map((m) => (
+              <button key={m} type="button" aria-pressed={p.line === m} onClick={() => put({ line: m })} data-press>
+                {m} m
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      {step === 2 && (
+        <>
+          <h3 className="bzy-pkq">Hakem botu nerede?</h3>
+          <PtWays label="Hakem botu" pt={p.komite} primary onSave={(q) => put({ komite: q })} onPick={onPick} />
+          <div className="bzy-pkval">
+            <span>Şu an</span>
+            <b className="num">{p.komite ? fmtPt(p.komite) : "—"}</b>
+          </div>
+        </>
+      )}
+      {step === 3 && (
+        <>
+          <h3 className="bzy-pkq">Pin</h3>
+          <div className="bzy-pkval">
+            <span>{p.marks?.pin ? "Elle" : "Otomatik"}</span>
+            <b className="num" data-auto={p.marks?.pin ? undefined : "1"}>
+              {pin ? fmtPt(pin) : "Önce rüzgâr ve hakem botu"}
+            </b>
+          </div>
+          <PtWays label="Pin" pt={pin} onSave={(q) => put({ marks: { pin: q } })} onPick={onPick} />
+          {p.marks?.pin && (
+            <Button variant="secondary" onClick={() => put({ marks: { pin: null } })}>
+              Otomatiğe dön
             </Button>
           )}
-          {any && (
-            <Button variant="danger" onClick={wipe}>
-              Parkuru sil
-            </Button>
-          )}
-        </div>
+        </>
       )}
-    </>
+      {last && (
+        <>
+          <Seg value={p.type} items={PK_TYPES} onPick={(k) => put({ type: k })} />
+          <div className="bzy-list">
+            <NumIn label="1 numaraya" unit="m" value={p.orsa} onSave={(v) => put({ orsa: v ?? 900 })} />
+          </div>
+          {c.has ? (
+            <div className="bzy-list bzy-pkmk">
+              {markKeys(p.type)
+                .filter((k) => k !== "pin")
+                .map((k) => {
+                  const q = at(k);
+                  return (
+                    <div key={k} className="bzy-pkr">
+                      <button type="button" className="bzy-fr" aria-expanded={mk === k} onClick={() => setMk((x) => (x === k ? "" : k))}>
+                        <b>{PK_NAMES[k]}</b>
+                        <span className={`num${p.marks?.[k] ? "" : " auto"}`}>{q ? fmtPt(q) : "—"}</span>
+                      </button>
+                      {mk === k && (
+                        <div className="bzy-ptin">
+                          <PtWays label={PK_NAMES[k]} pt={q} onSave={(x) => (put({ marks: { [k]: x } }), setMk(""))} onPick={onPick} />
+                          {p.marks?.[k] && (
+                            <Button variant="secondary" onClick={() => (put({ marks: { [k]: null } }), setMk(""))}>
+                              Otomatiğe dön
+                            </Button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+            </div>
+          ) : (
+            <p className="bzy-pksn">Şamandıralar rüzgâr ve hakem botu girilince yerleşir.</p>
+          )}
+          {extra}
+          {(nManual > 0 || any) && (
+            <div className="bzy-row bzy-pkact">
+              {nManual > 0 && (
+                <Button variant="secondary" onClick={() => put({ marks: null }).then((ok) => ok && toast("Şamandıralar otomatiğe döndü"))}>
+                  Şamandıraları sıfırla
+                </Button>
+              )}
+              {any && (
+                <Button variant="danger" onClick={wipe}>
+                  Parkuru sil
+                </Button>
+              )}
+            </div>
+          )}
+        </>
+      )}
+      <div className="bzy-pknav">
+        <Button variant="secondary" disabled={step === 0} onClick={() => setStep(step - 1)}>
+          Geri
+        </Button>
+        <Button onClick={() => (last ? onDone() : setStep(step + 1))}>{last ? "Bitti" : "İleri"}</Button>
+      </div>
+    </div>
   );
 }
 
@@ -835,6 +968,15 @@ export function BilgiAdmin() {
   const [sheet, setSheet] = useState("");
   const [typing, setTyping] = useState(false);
   const mapApi = useRef(null);
+  // Parkur adımı (pencere kapanıp haritada yerleştirince aynı adıma dönülür) ve haritada yerleştirme (nişan haritanın ortasında)
+  const [pkStep, setPkStep] = useState(null);
+  const [pick, setPick] = useState(null);
+  const startPick = (label, pt, save) => {
+    setPick({ label, save });
+    setSheet("");
+    if (pt) mapApi.current?.go(pt);
+  };
+  const endPick = () => (setPick(null), setSheet("parkur"));
   const ask = useConfirm();
   // Canlı'nın Sonuçlar, Gruplar, Program'ı (Seyhun 2026-11-19 örnek onaylandı): o günün yarışı; pencere açıkken 20 sn, kapalıyken 2 dk'da bir
   const yaris = useCanliRace(club && !!org, ["sonuc", "grup", "prog"].includes(sheet) ? 20e3 : 120e3);
@@ -1158,7 +1300,7 @@ export function BilgiAdmin() {
   const names = [...new Set([antAd, yaris.data?.race?.name?.slice(0, 30), "Antrenman"].filter(Boolean))];
   return (
     <main className="bzy-app" aria-label="Bilgi ekranı yönetimi" data-open={open && !izK ? "1" : undefined} data-mini={mini ? "1" : undefined}>
-      <TekneMap boats={izK ? iz.boats : liveBoats} tracks={izK ? iz.tracks : null} course={course.has ? course : null} talk={izK ? "" : talk?.dev || ""} full api={mapApi} onPen={izK ? null : unPen} me={!izK} />
+      <TekneMap boats={izK ? iz.boats : liveBoats} tracks={izK ? iz.tracks : null} course={course.has ? course : null} talk={izK ? "" : talk?.dev || ""} full api={mapApi} onPen={izK ? null : unPen} me={!izK} pick={!!pick} />
       {izK && <IzPanel k={izK} iz={iz} onClose={() => setIzK(null)} />}
       {!izK && talk && !liveBoats.some((x) => x.id === talk.dev && Number.isFinite(x.lat)) && (
         <div className="bzy-talk" role="status">
@@ -1402,18 +1544,47 @@ export function BilgiAdmin() {
       <Sheet big open={sheet === "hava"} onClose={() => setSheet("")} title="Hava">
         {sheet === "hava" && <RaceAtWx org={org} id={yaris.id} />}
       </Sheet>
-      <Sheet open={sheet === "parkur"} onClose={() => setSheet("")} title="Parkur">
-        <ParkurEdit org={org} pk={b?.parkur} />
-        <input
-          className="bzy-in mt-2"
-          value={state ?? b?.state ?? ""}
-          maxLength={80}
-          placeholder="Durum"
-          onChange={(e) => setState(e.target.value)}
-          onBlur={() => saveText("state", state)}
-          aria-label="Parkur durumu"
+      <Sheet open={sheet === "parkur"} onClose={() => (setSheet(""), setPkStep(null))} title="Parkur">
+        <ParkurEdit
+          org={org}
+          pk={b?.parkur}
+          step={pkStep ?? (b?.parkur?.komite ? 4 : 0)}
+          setStep={setPkStep}
+          onPick={startPick}
+          onDone={() => (setSheet(""), setPkStep(null))}
+          extra={
+            <input
+              className="bzy-in"
+              value={state ?? b?.state ?? ""}
+              maxLength={80}
+              placeholder="Durum"
+              onChange={(e) => setState(e.target.value)}
+              onBlur={() => saveText("state", state)}
+              aria-label="Parkur durumu"
+            />
+          }
         />
       </Sheet>
+      {pick && (
+        <div className="bzy-pickbar glass" role="dialog" aria-label={`${pick.label}: haritada yerleştir`}>
+          <b>{pick.label}</b>
+          <span>Haritayı kaydır, nişanı getir</span>
+          <div className="bzy-row">
+            <Button variant="secondary" onClick={endPick}>
+              Vazgeç
+            </Button>
+            <Button
+              onClick={() => {
+                const q = mapApi.current?.center();
+                if (q) pick.save(q);
+                endPick();
+              }}
+            >
+              Buraya koy
+            </Button>
+          </div>
+        </div>
+      )}
       <Sheet open={sheet === "ekran"} onClose={() => setSheet("")} title="Ekran">
         <input
           className="bzy-in"
