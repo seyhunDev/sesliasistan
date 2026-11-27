@@ -3711,6 +3711,25 @@ const UPL = [
   { id: "e", title: "Eski", cat: "Yarış", date: "2026-11-01", people: ["s1"] },
   { id: "f", title: "Başkası", cat: "Yarış", date: "2026-12-01", people: ["s2"] },
 ];
+{
+  const FP = [
+    { id: "p1", date: "2026-11-23", fit: { for: "s1", res: { st: "done" } } },
+    { id: "p2", date: "2026-11-25", fit: { for: "s1" } },
+    { id: "p3", date: "2026-11-27", fit: { for: "s1" } },
+    { id: "p4", date: "2026-11-29", fit: { for: "s1" } },
+    { id: "p5", date: "2026-11-24", fit: { for: "s2", res: { st: "done" } } },
+    { id: "p6", date: "2026-11-24", cat: "Antrenman" },
+  ];
+  const PR = [{ id: "g1", for: "s1", title: "Core", start: "2026-11-09", weeks: 8, active: true }];
+  const IS = [{ id: "i1", sporcuUid: "s1", durum: "kabul" }, { id: "i2", sporcuUid: "s2", durum: "atandi" }, { id: "i3", sporcuUid: "s3", durum: "bitti" }];
+  const T = UZ.sporcuTakip(IS[0], FP, PR, "2026-11-27");
+  group("Uzman: sporcu takibi")([
+    ["bu hafta", F("4 plan, 1 yaptı, 1 yapmadı (çarşamba geçti)", () => T.plan === 4 && T.yapti === 1 && T.yapmadi === 1)],
+    ["program haftası", F("9 Kasım başlayan 8 haftalık programda 3. hafta", () => T.prog?.id === "g1" && T.hafta.n === 3 && T.hafta.of === 8)],
+    ["gün kutuları", F("Pzt yapıldı, Çar yapılmadı, Cuma bugün", () => T.gunler[0].st === "done" && T.gunler[2].st === "missed" && T.gunler[4].bugun && T.gunler[4].st === "today")],
+    ["özet", F("2 sporcu, %67, 1 geride; biten sayılmaz", () => { const o = UZ.uzmanOzet(IS, FP, PR, "2026-11-27"); return o.sporcu === 2 && o.oran === 67 && o.geride === 1; })],
+  ]);
+}
 group("Uzman sayfası: paylaşılan planlar")([
   ["izin kapalı", F("hiçbir plan görünmez", () => UZ.paylasilanPlanlar(UPL, "s1", { acik: false, turler: ["yaris"] }, "2026-11-27").length === 0)],
   ["yalnız izinli türler", F("antrenman + yarış: Bacak günü, Kış kupası", () => UZ.paylasilanPlanlar(UPL, "s1", { acik: true, turler: ["antrenman", "yaris"] }, "2026-11-27").map((p) => p.id).join() === "a,c")],
