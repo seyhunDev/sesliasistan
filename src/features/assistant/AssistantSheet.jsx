@@ -315,7 +315,7 @@ export function AssistantSheet({ open, onClose, seed, onLive, onAct, slot }) {
                 <li key={x.id} className="flex items-center gap-3 px-3.5 py-3">
                   <span className="relative grid size-9 shrink-0 place-items-center rounded-xl bg-acc/10 text-acc">
                     <Icon name={KIND_ICON[x.type]} className="size-[1.125rem]" />
-                    <span className="asaved-badge absolute -bottom-1 -right-1 grid size-4 place-items-center rounded-full bg-ok text-white ring-2 ring-card"><Icon name="check" className="size-2.5 [stroke-width:3]" /></span>
+                    <span className="asaved-badge absolute -bottom-1 -right-1 grid size-4 place-items-center rounded-full bg-ok text-on-ok ring-2 ring-card"><Icon name="check" className="size-2.5 [stroke-width:3]" /></span>
                   </span>
                   <span className="min-w-0 flex-1">
                     <b className="block truncate text-[0.875rem] font-semibold">{x.title}</b>

@@ -113,7 +113,7 @@ export function PaidNotice() {
   const sum = fresh.reduce((a, r) => a + totalOf(r), 0);
   return (
     <div className="fade-in mt-4 flex items-center gap-3 rounded-2xl bg-ok/10 px-4 py-3">
-      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-ok text-white">
+      <span className="grid size-9 shrink-0 place-items-center rounded-full bg-ok text-on-ok">
         <Icon name="check" className="size-5" />
       </span>
       <Link href="/receipts" className="min-w-0 flex-1 active:opacity-60">

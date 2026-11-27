@@ -39,7 +39,7 @@ export function RaceHotels({ hotels, onChange, onRooms, roomsBusy }) {
                   {h.note && <span className="block break-words text-[0.8125rem] text-mut">{h.note}</span>}
                 </button>
                 {tel && (
-                  <a href={tel} aria-label={`${h.name} ara`} className="flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-ok px-3.5 text-[0.8125rem] font-semibold text-white active:scale-95">
+                  <a href={tel} aria-label={`${h.name} ara`} className="flex h-10 shrink-0 items-center gap-1.5 rounded-full bg-ok px-3.5 text-[0.8125rem] font-semibold text-on-ok active:scale-95">
                     <Icon name="phone" className="size-4" />
                     Ara
                   </a>

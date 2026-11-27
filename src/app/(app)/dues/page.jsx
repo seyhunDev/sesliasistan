@@ -473,7 +473,7 @@ function Income({ inc }) {
   );
 }
 
-const CELL = { paid: "bg-ok text-white", part: "bg-amber-500 text-white", due: "border border-rec/60 text-rec", free: "bg-line text-mut", burs: "bg-line text-mut", none: "bg-line/60 text-mut" };
+const CELL = { paid: "bg-ok text-on-ok", part: "bg-amber-500 text-white", due: "border border-rec/60 text-rec", free: "bg-line text-mut", burs: "bg-line text-mut", none: "bg-line/60 text-mut" };
 const MARK = { paid: "✓", part: "½", due: "", free: "–", burs: "–", none: "–" };
 
 // Açılan satır: 12 aylık şerit, ödemeler, Ödeme ekle, sporcuya özel ayar

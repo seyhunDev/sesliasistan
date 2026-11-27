@@ -57,7 +57,7 @@ export function Thumb({ kind, url, thumb = "", local = "", dur = 0, up = null, d
           </svg>
         </span>
       )}
-      {done && <span className="absolute right-1.5 top-1.5 grid size-[1.125rem] place-items-center rounded-full bg-ok text-[0.6875rem] font-bold text-white">✓</span>}
+      {done && <span className="absolute right-1.5 top-1.5 grid size-[1.125rem] place-items-center rounded-full bg-ok text-[0.6875rem] font-bold text-on-ok">✓</span>}
       {err && <span className="absolute right-1.5 top-1.5 grid size-[1.125rem] place-items-center rounded-full bg-warn text-[0.6875rem] font-bold text-white">!</span>}
     </>
   );
