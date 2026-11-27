@@ -227,7 +227,8 @@ function PanelClock({ org }) {
   return (
     <div className="bzy-sure" data-run={running ? "1" : undefined} data-up={up ? "1" : undefined} style={{ "--p": `${left}%` }}>
       <div className="bzy-sh">
-        <span>Süre</span>
+        {/* Sayarken "Süre" yazısı yok (Seyhun 2026-11-27 telefonda "Sü…" kalıyordu): yer 5·4·1·0'a ve start saatine */}
+        {running ? null : <span>Süre</span>}
         {!running ? (
           <button type="button" className="bzy-dur" aria-expanded={pick} onClick={() => setPick((x) => !x)} data-press>
             {Math.round(t.dur / 60)} dk
@@ -255,7 +256,7 @@ function PanelClock({ org }) {
         </div>
       ) : (
         <button type="button" className="bzy-sgo" onClick={running ? stop : go} data-press>
-          <b className="num">{running && !up ? `−${time}` : time}</b>
+          <b className="num" style={{ "--n": (running && !up ? `−${time}` : time).length }}>{running && !up ? `−${time}` : time}</b>
           <span>{running ? "Bitir" : "Başlat"}</span>
         </button>
       )}
