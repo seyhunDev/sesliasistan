@@ -104,7 +104,8 @@ export function PendingPayments() {
   );
 }
 
-// Çalışan: ana sayfada "ödemen yapıldı" bildirimi (görene kadar)
+// Çalışan: "ödemen yapıldı" bildirimi (görene kadar). Ana sayfalardan kalktı (Seyhun 2026-11-27: para bilgisi yalnız ana hesapta,
+// lib/hesapGorunum.js seesMoney); bileşen duruyor.
 export function PaidNotice() {
   const { receipts, isStaff, markPaySeen } = useData();
   const fresh = receipts.filter((r) => r.payStatus === "paid" && !r.paySeenAt);
