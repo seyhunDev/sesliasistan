@@ -15,7 +15,6 @@ import { Row } from "@/features/settings/ui";
 import { telGoster } from "@/lib/basvuru";
 import { gunEkle, gunOf, gunlukKisi, sonGunlerde, sureYaz } from "@/lib/kullanim";
 import { Hatalar } from "./Hatalar";
-import { Uzmanlar } from "./Uzmanlar";
 
 // Ayarlar › Admin (yalnız ana hesap; Seyhun 2026-11-26 "yap", örnek project-files/admin-sayfasi/ornek.html):
 // Başvurular (tanıtımdaki "Velora'ya katıl" formu, /api/basvuru) ve Kullanım (izin veren hesaplar; lib/kullanim.js).
@@ -71,7 +70,7 @@ export function AdminPage() {
   const { profile } = useAuth();
   const org = profile?.orgId;
   const { veri, setVeri, hata, yukle } = useAdmin(org);
-  const [sek, setSek] = useState(() => (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("sekme") === "uzman" ? "u" : "b"));
+  const [sek, setSek] = useState("b");
   const bugun = gunOf();
 
   if (profile?.role !== "owner") return null;
@@ -84,7 +83,7 @@ export function AdminPage() {
           <BackButton href="/settings" />
           <div className="min-w-0 flex-1 leading-tight">
             <h1 className="sahne-t truncate text-[2rem]">Admin</h1>
-            <p className="mt-1 truncate text-[0.8125rem] text-mut">Başvurular, kullanım, hatalar, uzmanlar</p>
+            <p className="mt-1 truncate text-[0.8125rem] text-mut">Başvurular, kullanım, hatalar</p>
           </div>
         </header>
       </section>
@@ -99,12 +98,14 @@ export function AdminPage() {
             <Kutu ad="Bugün giren" n={izinli.filter((h) => sonGunlerde(h, bugun, 1)).length} />
             <Kutu ad="7 gün" n={izinli.filter((h) => sonGunlerde(h, bugun, 7)).length} />
           </div>
-          <div className="grid grid-cols-4 gap-1 rounded-2xl border border-line bg-card p-1" role="tablist">
+          <div className="overflow-hidden rounded-[1.25rem] border border-line bg-card">
+            <UzmanlarRow org={org} />
+          </div>
+          <div className="grid grid-cols-3 gap-1 rounded-2xl border border-line bg-card p-1" role="tablist">
             {[
               ["b", "Başvurular"],
               ["k", "Kullanım"],
               ["h", "Hatalar"],
-              ["u", "Uzmanlar"],
             ].map(([k, l]) => (
               <button key={k} type="button" role="tab" aria-selected={sek === k} onClick={() => setSek(k)} className={`min-w-0 truncate rounded-xl px-0.5 py-2 text-[0.8125rem] font-semibold transition ${sek === k ? "bg-acc text-[#111]" : "text-mut"}`}>
                 {l}
@@ -115,8 +116,6 @@ export function AdminPage() {
             <Basvurular org={org} list={veri.basvuru} setList={(f) => setVeri((v) => ({ ...v, basvuru: f(v.basvuru) }))} />
           ) : sek === "h" ? (
             <Hatalar org={org} />
-          ) : sek === "u" ? (
-            <Uzmanlar org={org} />
           ) : (
             <Kullanim org={org} hesaplar={veri.hesap} bugun={bugun} />
           )}
@@ -369,6 +368,24 @@ function KisiAyrinti({ org, h }) {
 }
 
 // Ayarlar'daki satır (yalnız ana hesap): yanında yeni başvuru sayısı (tek sayım sorgusu)
+// Admin › Uzman antrenörler: ayrı sayfa (Seyhun 2026-11-27 "Admin işlemleri ayrı, uzmanlar ayrı"); sağda uzman bekleyen sporcu sayısı
+function UzmanlarRow({ org }) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (!org) return;
+    getCountFromServer(query(collection(db, "orgs", org, "uzmanIstekleri"), where("durum", "==", "bekliyor")))
+      .then((s) => setN(s.data().count))
+      .catch(() => {});
+  }, [org]);
+  return (
+    <Row
+      title="Uzman antrenörler"
+      href="/settings/admin/uzmanlar"
+      right={n ? <span className="rounded-full bg-acc px-2 py-0.5 text-[0.6875rem] font-bold text-[#111]">{n} bekliyor</span> : null}
+    />
+  );
+}
+
 export function AdminRow({ org }) {
   const [n, setN] = useState(0);
   useEffect(() => {

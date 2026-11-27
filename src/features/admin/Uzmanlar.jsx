@@ -14,6 +14,8 @@ import { Sheet, SheetActions, SheetTone } from "@/components/ui/Sheet";
 import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useData } from "@/features/data/DataProvider";
+import { useAuth } from "@/features/auth/AuthProvider";
+import { liveHead } from "@/features/liveScreen/fonts";
 import { todayStr } from "@/lib/utils/format";
 import {
   AKTIF_DURUM, DURUM, ORNEK_ISTEKLER, ORNEK_UZMANLAR, PAYLAS_AD, SPORLAR, YASLAR,
@@ -90,6 +92,26 @@ function useUzmanVeri(org) {
     Promise.resolve().then(yukle);
   }, [yukle]);
   return { veri, setVeri, hata, yukle };
+}
+
+// Ayrı sayfa /settings/admin/uzmanlar (Seyhun 2026-11-27): geri Admin'e döner
+export function UzmanlarSayfasi() {
+  const { profile } = useAuth();
+  if (profile?.role !== "owner") return null;
+  return (
+    <main className={`sahne-pg ${liveHead.variable} wide mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]`}>
+      <section className="pb-5 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+        <header className="flex items-center gap-2.5">
+          <BackButton href="/settings/admin" />
+          <div className="min-w-0 flex-1 leading-tight">
+            <h1 className="sahne-t truncate text-[2rem]">Uzmanlar</h1>
+            <p className="mt-1 truncate text-[0.8125rem] text-mut">Uzman antrenörler ve sporcuları</p>
+          </div>
+        </header>
+      </section>
+      <Uzmanlar org={profile.orgId} />
+    </main>
+  );
 }
 
 export function Uzmanlar({ org }) {
