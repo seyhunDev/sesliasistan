@@ -1,7 +1,9 @@
 // Kısa tanıtımın (/tanitim/kisa) seslendirme cümleleri (Seyhun 2026-11-27: "doğal sesle, bir kere üretilip saklansın").
-// Sayfa yalnız kimliği ister (/api/tanitim-ses?id=…); sunucu yalnız bu listedeki sabit metni okur. Ses ilk istekte Gemini
-// doğal sesiyle üretilir, Storage önbelleğine (tts-cache) yazılır, sonra hep oradan gelir: API bir daha çağrılmaz.
+// Sesler yayında dosya olarak hazırlanır (scripts/tanitim-ses/uret.mjs → /tanitim/kisa/ses/<id>.mp3, Storage tanitim-ses/).
+// Metin değişince özeti değişir ve yalnız o cümle bir kez yeniden üretilir. Yedek yol: /api/tanitim-ses?id=…
 // Metni değiştirirsen sayfadaki (public/tanitim/kisa/index.html) aynı adımın "say" metnini de değiştir.
+import { createHash } from "node:crypto";
+
 export const TANITIM_SES = {
   "giris": "Antrenör, sporcu ve tekne. Hepsi tek uygulamada: Velora.",
   "son": "Sezona hazır mısın? Velora'ya hemen katıl.",
@@ -34,3 +36,6 @@ export const TANITIM_SES = {
   "simulator-4": "Oynat; tekneler çizdiğin rotada ilerler.",
 };
 export const TANITIM_SES_STIL = { voice: "Aoede", style: "anlatim" };
+// Cümlenin özeti (ses + stil + metin): dosya adı ve "metin değişti mi" denetimi
+export const tanitimOzet = (text) =>
+  createHash("sha256").update([TANITIM_SES_STIL.voice, TANITIM_SES_STIL.style, String(text).replace(/\s+/g, " ").trim()].join("|")).digest("hex").slice(0, 24);

@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { synthesize } from "@/lib/server/tts";
-import { TANITIM_SES, TANITIM_SES_STIL } from "@/lib/tanitimSes";
+import { TANITIM_SES, TANITIM_SES_STIL, tanitimOzet } from "@/lib/tanitimSes";
 
 export const runtime = "nodejs";
 
 // Kısa tanıtımın doğal seslendirmesi (Seyhun 2026-11-27). Asıl yol: sesler yayında dosya olarak hazırlanır
-// (scripts/tanitim-ses/uret.mjs → /tanitim/kisa/ses/<id>.mp3); bu uç yalnız dosyası olmayan cümle için yedektir. Herkese açık ama yalnız lib/tanitimSes.js'teki sabit cümleler:
+// (scripts/tanitim-ses/uret.mjs → /tanitim/kisa/ses/<id>.mp3); derleme eksik cümleyi buradan bir kez alır (ses anahtarı
+// yalnız burada, çalışırken okunabiliyor), sayfa da dosyası olmayan cümle için buraya döner. Herkese açık ama yalnız lib/tanitimSes.js'teki sabit cümleler:
 // serbest metin kabul edilmez. Ses bir kez Gemini ile üretilir, Storage önbelleğinden (tts-cache) gelir ve CDN'de bir yıl
 // saklanır; yani her izleyen yeni bir API çağrısı yapmaz. Yalnız Chirp yedeği gelirse uzun saklanmaz (Gemini dönünce düzelsin).
 export async function GET(request) {
@@ -22,7 +23,8 @@ export async function GET(request) {
         "cache-control": kalici,
         "netlify-cdn-cache-control": dogal ? "public, max-age=31536000, durable" : "public, max-age=300",
         // CDN her cümleyi ayrı saklasın: yoksa ?id= yok sayılıp her cümlede aynı ses dönebiliyordu (2026-11-27 takılma)
-        "netlify-vary": "query=id",
+        "netlify-vary": "query=id|o",
+        "x-tanitim-ozet": tanitimOzet(text),
         "x-tts-engine": r.engine,
       },
     });
