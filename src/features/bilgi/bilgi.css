@@ -222,7 +222,7 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 @media (prefers-reduced-motion: reduce) { .bzy-st, .bzy-ck path { animation: none; stroke-dashoffset: 0; } }
 /* Yönet › Parkur: satırlar (ad · değer), koordinat düzeltme, önizleme haritası */
 .bzy-fr { display: flex; align-items: center; gap: 0.625rem; width: 100%; padding: 0.6875rem 0.75rem; border-top: 1px solid var(--line); font-size: 0.875rem; background: none; text-align: left; color: var(--fg); }
-.bzy-list > .bzy-fr:first-child, .bzy-list > .bzy-pt:first-child > .bzy-fr { border-top: 0; }
+.bzy-list > .bzy-fr:first-child, .bzy-list > .bzy-pkr:first-child > .bzy-fr { border-top: 0; }
 .bzy-fr b { flex: 1; font-weight: 600; }
 .bzy-fr input { width: 5rem; text-align: right; border: 0; background: none; font-size: 0.9375rem; color: var(--fg); outline: none; padding: 0; }
 .bzy-fr span { color: var(--fg); font-size: 0.875rem; }
