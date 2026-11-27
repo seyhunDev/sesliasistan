@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <base href="/tanitim/">
 <title>Velora Kısa Tanıtım</title>
-<meta name="description" content="Velora'nın sekiz özelliği kısaca: antrenman, yarış, denizde yönetim, video, hava, fitness, sporcu ekranı ve simülatör.">
+<meta name="description" content="Velora kısaca: denizde yönetim, simülatör, ana sayfa ve plan, toplu antrenman, fitness, sporcu ekranı, yarış, video ve hava.">
 <meta property="og:title" content="Velora Kısa Tanıtım">
-<meta property="og:description" content="Velora'nın sekiz özelliği kısaca: antrenman, yarış, denizde yönetim, video, hava, fitness, sporcu ekranı ve simülatör.">
+<meta property="og:description" content="Velora kısaca: denizde yönetim, simülatör, ana sayfa ve plan, toplu antrenman, fitness, sporcu ekranı, yarış, video ve hava.">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#0b0b0c">
 <link rel="icon" href="/favicon.ico">
@@ -269,30 +269,26 @@ if(APP){document.getElementById('app').classList.add('inapp');document.getElemen
 /* Altı özellik. v: kayıt; s–e: kaydın gösterilen bölümü (sn); r: hız. st: adımlar (t = kayıttaki an; y = yazı; say = seslendirme, yoksa yazı okunur).
    Başlıkta *kelime* limon olur. Yazı modunda her adım okunacak kadar ekranda kalır; seslendirmede cümle bitmeden sonraki adıma geçilmez (kayıt bekler). */
 const F=[
-  {k:'Antrenman',v:'toplu',s:0,e:10.6,r:1.4,h:'Antrenmanları *tek* seferde kur.',st:[
-    {t:0,y:'Takvimde + ile Toplu antrenman\'ı aç.',say:'Takvimde artıya dokun ve toplu antrenmanı seç.'},
-    {t:3,y:'Ayları ve günleri seç: hafta sonu, hafta içi ya da istediğin günler.'},
-    {t:5.4,y:'Grubu ve saati belirle.'},
-    {t:7,y:'Tek dokunuş: 10 antrenman takvime eklendi.',say:'Tek dokunuşla on antrenman takvime eklenir.'}]},
-  {k:'Yarış',v:'yaris',s:0.4,e:18,r:1.8,h:'Duyurulan yarışı *tek* dokunuşla ekle.',st:[
-    {t:0.5,y:'Yarışlar\'da + ile duyurulan yarışları aç.',say:'Yarışlar sayfasında artıya dokun; duyurulan yarışlar listelenir.'},
-    {t:3.4,y:'Yarışını ve sınıfını bul, Ekle\'ye dokun.',say:'Yarışını ve sınıfını bul, ekle\'ye dokun.'},
-    {t:9,y:'Yarış sayfası hazır: kalan gün ve yapılacaklar.',say:'Yarış sayfası hazır. Kaç gün kaldığı ve yapılacaklar burada.'},
-    {t:13,y:'Gereken evraklar tek listede, tamamladıkça işaretle.',say:'Gereken evraklar tek listede; tamamladıkça işaretle.'}]},
   {k:'Denizde',v:'yonet',s:0,e:23.3,r:2,h:'Antrenmanı *denizden* yönet.',st:[
     {t:0.3,y:'Start süresini tek dokunuşla başlat.'},
     {t:4.6,y:'Basılı tut, konuş: sesin bütün sporculara gider.',say:'Basılı tut ve konuş; sesin bütün sporculara gider.'},
     {t:9.6,y:'Sık kullandığın mesajlar hazır: seç, gönder.',say:'Sık kullandığın mesajlar hazır; seç ve gönder.'},
     {t:13.9,y:'Sporcuyu seç, cezayı ver: 1 ceza dönüşü <small class="sl">360°</small> anında ona gider.',say:'Sporcuyu seç ve cezasını ver. Bir ceza dönüşü, anında ona gider.'}]},
-  {k:'Video',v:'etiket',s:0,e:11.4,r:1.5,h:'Videoyu *sporcuyla* eşleştir.',st:[
-    {t:0.3,y:'Sporcuyu seç, Video\'ya dokun.',say:'Sporcuyu seç ve videoya dokun.'},
-    {t:4.6,y:'Videoda kimler var? Sporcuları işaretle.'},
-    {t:7.4,y:'Manevrayı etiketle: orsa, start, dönüş.'},
-    {t:9.8,y:'Galeriye kaydet, etiketleriyle birlikte.',say:'Galeriye kaydet; video etiketleriyle birlikte saklanır.'}]},
-  {k:'Hava',v:'hava',s:0,e:8.9,r:1,h:'Rüzgârı *saat* *saat* gör.',st:[
-    {t:0,y:'Bugünün rüzgârı saat saat: hız, yön, yağmur.',say:'Bugünün rüzgârı saat saat: hızı, yönü ve yağmur.'},
-    {t:3,y:'Bir güne dokun, o günün havası açılsın.',say:'Bir güne dokun; o günün havası açılır.'},
-    {t:5,y:'O günün planları hemen altında.',say:'O günün planları da hemen altında.'}]},
+  {k:'Simülatör',v:'simulator',s:0.3,e:45,r:2.4,h:'Denize çıkmadan *taktik* çalış.',st:[
+    {t:0.3,y:'Senaryolar ana sayfada: birini seç, İzle\'ye dokun.',say:'Senaryolar ana sayfada. Birini seç ve izle\'ye dokun.'},
+    {t:5.6,y:'Tekneler adım adım ilerler; her adımda ne ve neden yapıldığını oku.',say:'Tekneler adım adım ilerler. Her adımda ne yapıldığını ve nedenini okursun.'},
+    {t:18,y:'Kendi taktiğini çiz: tekneleri koy, rotayı çiz.',say:'Kendi taktiğini çiz: tekneleri koy, rotalarını çiz.'},
+    {t:33.6,y:'Oynat: tekneler çizdiğin rotada gider.',say:'Oynat; tekneler çizdiğin rotada ilerler.'}]},
+  {k:'Ana sayfa',v:'ev',s:0,e:20.3,r:1.5,h:'Her şey *ana* *sayfada*.',st:[
+    {t:0.3,y:'Bugünün rüzgârı saat saat, günün planları altında.',say:'Ana sayfada bugünün rüzgârı ve planların bir arada.'},
+    {t:3.2,y:'Bir güne dokun: o günün havası ve planları.',say:'Bir güne dokun; o günün havası ve planları açılır.'},
+    {t:6.8,y:'Kulüp: Yönet ile denize, bir dokunuşla simülatöre.',say:'Kulüp bölümünden tek dokunuşla denizdeki yönetime ya da simülatöre geç.'},
+    {t:10.4,y:'+ ile plan ekle: tür, gün, saat, Ekle.',say:'Artıya dokun ve plan ekle: türü, günü ve saati seç, ekle.'}]},
+  {k:'Antrenman',v:'toplu',s:0,e:10.6,r:1.4,h:'Antrenmanları *tek* seferde kur.',st:[
+    {t:0,y:'Takvimde + ile Toplu antrenman\'ı aç.',say:'Takvimde artıya dokun ve toplu antrenmanı seç.'},
+    {t:3,y:'Ayları ve günleri seç: hafta sonu, hafta içi ya da istediğin günler.'},
+    {t:5.4,y:'Grubu ve saati belirle.'},
+    {t:7,y:'Tek dokunuş: 10 antrenman takvime eklendi.',say:'Tek dokunuşla on antrenman takvime eklenir.'}]},
   {k:'Fitness',v:'fit',s:0,e:25.1,r:1.5,h:'Sporcuya *fitness* programı.',st:[
     {t:0.3,y:'Sporcunu seç, + Program\'a dokun.',say:'Sporcunu seç ve program ekle.'},
     {t:4.2,y:'Uzmanla çalış: programı uzman antrenör hazırlar, planlarını paylaşmayı sporcu seçer.',say:'Dilersen uzman bir antrenörle çalış; sporcu, planlarını paylaşıp paylaşmayacağını kendisi seçer.'},
@@ -305,11 +301,20 @@ const F=[
     {t:5.6,y:'Haftasını gün gün görür, her günün hareketleri hazır.',say:'Haftasını gün gün görür; her günün hareketleri hazır.'},
     {t:10.9,y:'Antrenmana başlar: hareket hareket, fotoğraflı anlatım.',say:'Antrenmana başlar; hareket hareket, fotoğraflı anlatımla.'},
     {t:13.4,y:'Bitirdikçe işaretler, antrenör ilerlemesini görür.',say:'Bitirdikçe işaretler; antrenör de ilerlemesini görür.'}]},
-  {k:'Simülatör',v:'simulator',s:0.3,e:45,r:2.4,h:'Denize çıkmadan *taktik* çalış.',st:[
-    {t:0.3,y:'Senaryolar ana sayfada: birini seç, İzle\'ye dokun.',say:'Senaryolar ana sayfada. Birini seç ve izle\'ye dokun.'},
-    {t:5.6,y:'Tekneler adım adım ilerler; her adımda ne ve neden yapıldığını oku.',say:'Tekneler adım adım ilerler. Her adımda ne yapıldığını ve nedenini okursun.'},
-    {t:18,y:'Kendi taktiğini çiz: tekneleri koy, rotayı çiz.',say:'Kendi taktiğini çiz: tekneleri koy, rotalarını çiz.'},
-    {t:33.6,y:'Oynat: tekneler çizdiğin rotada gider.',say:'Oynat; tekneler çizdiğin rotada ilerler.'}]},];
+  {k:'Yarış',v:'yaris',s:0.4,e:18,r:1.8,h:'Duyurulan yarışı *tek* dokunuşla ekle.',st:[
+    {t:0.5,y:'Yarışlar\'da + ile duyurulan yarışları aç.',say:'Yarışlar sayfasında artıya dokun; duyurulan yarışlar listelenir.'},
+    {t:3.4,y:'Yarışını ve sınıfını bul, Ekle\'ye dokun.',say:'Yarışını ve sınıfını bul, ekle\'ye dokun.'},
+    {t:9,y:'Yarış sayfası hazır: kalan gün ve yapılacaklar.',say:'Yarış sayfası hazır. Kaç gün kaldığı ve yapılacaklar burada.'},
+    {t:13,y:'Gereken evraklar tek listede, tamamladıkça işaretle.',say:'Gereken evraklar tek listede; tamamladıkça işaretle.'}]},
+  {k:'Video',v:'etiket',s:0,e:11.4,r:1.5,h:'Videoyu *sporcuyla* eşleştir.',st:[
+    {t:0.3,y:'Sporcuyu seç, Video\'ya dokun.',say:'Sporcuyu seç ve videoya dokun.'},
+    {t:4.6,y:'Videoda kimler var? Sporcuları işaretle.'},
+    {t:7.4,y:'Manevrayı etiketle: orsa, start, dönüş.'},
+    {t:9.8,y:'Galeriye kaydet, etiketleriyle birlikte.',say:'Galeriye kaydet; video etiketleriyle birlikte saklanır.'}]},
+  {k:'Hava',v:'hava',s:0,e:8.9,r:1,h:'Rüzgârı *saat* *saat* gör.',st:[
+    {t:0,y:'Bugünün rüzgârı saat saat: hız, yön, yağmur.',say:'Bugünün rüzgârı saat saat: hızı, yönü ve yağmur.'},
+    {t:3,y:'Bir güne dokun, o günün havası açılsın.',say:'Bir güne dokun; o günün havası açılır.'},
+    {t:5,y:'O günün planları hemen altında.',say:'O günün planları da hemen altında.'}]}];
 const N=F.length, INTRO=4.9;
 const SAY_IN='Antrenör, sporcu ve tekne. Hepsi tek uygulamada: Velora.';
 const SAY_OUT='Sezona hazır mısın? Velora\'ya hemen katıl.';
@@ -418,6 +423,31 @@ function tick(now){
   }
   requestAnimationFrame(tick);
 }
+/* Fon müziği (Seyhun 2026-11-27): seslendirme açıkken çalar; konuşurken kısılır, cümle aralarında yükselir.
+   Müzik dosyası yok: tarayıcıda Web Audio ile burada üretilir (bize ait, telifsiz, sözsüz). 112 BPM, Lm F C G. */
+const muz=(()=>{let ac=null,duck=null,step=0,next=0,timer=0;const BPM=112,S16=60/BPM/4;
+  const CH=[[57,60,64],[53,57,60],[48,52,55],[55,59,62]],BASS=[45,41,36,43];
+  const hz=m=>440*Math.pow(2,(m-69)/12);let noise=null;
+  function env(g,t,a,peak,d){g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(peak,t+a);g.gain.exponentialRampToValueAtTime(0.0001,t+a+d)}
+  function tone(type,f,t,a,peak,d,dest,cut){const o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.value=f;let n=o;if(cut){const l=ac.createBiquadFilter();l.type='lowpass';l.frequency.value=cut;o.connect(l);n=l}n.connect(g);g.connect(dest);env(g,t,a,peak,d);o.start(t);o.stop(t+a+d+.05)}
+  function kick(t){const o=ac.createOscillator(),g=ac.createGain();o.frequency.setValueAtTime(150,t);o.frequency.exponentialRampToValueAtTime(45,t+.12);o.connect(g);g.connect(duck);env(g,t,.003,.9,.28);o.start(t);o.stop(t+.35)}
+  function nz(t,type,f,peak,d){const b=ac.createBufferSource();b.buffer=noise;const fl=ac.createBiquadFilter();fl.type=type;fl.frequency.value=f;const g=ac.createGain();b.connect(fl);fl.connect(g);g.connect(duck);env(g,t,.002,peak,d);b.start(t);b.stop(t+d+.05)}
+  function play(i,t){const bar=Math.floor(i/16)%4,s=i%16,c=CH[bar];
+    if(s%4===0)kick(t);
+    if(s===4||s===12)nz(t,'bandpass',1800,.35,.14);
+    if(s%2===0)nz(t,'highpass',7500,s%4===2?.16:.07,.04);
+    if(s%2===0&&s!==6)tone('sawtooth',hz(BASS[bar]+(s===10?12:0)),t,.005,.22,S16*1.6,duck,520);
+    if(s===0)c.forEach(m=>tone('triangle',hz(m),t,.35,.045,S16*15,duck,1800));
+    const arp=[0,1,2,1,2,0,1,2];if(s%2===1||s===0)tone('square',hz(c[arp[(s>>1)%8]]+12),t,.004,.035,S16*1.2,duck,2600)}
+  function tick(){while(next<ac.currentTime+.15){play(step,next);step++;next+=S16}}
+  function init(){if(ac)return;const C=window.AudioContext||window.webkitAudioContext;if(!C)return;ac=new C();
+    noise=ac.createBuffer(1,ac.sampleRate,ac.sampleRate);const d=noise.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+    const comp=ac.createDynamicsCompressor();duck=ac.createGain();duck.gain.value=0.0001;duck.connect(comp);comp.connect(ac.destination);
+    next=ac.currentTime+.1;timer=setInterval(()=>{if(ac.state==='running')tick()},25)}
+  function set(v){if(!ac)return;if(v>0&&ac.state==='suspended')ac.resume();duck.gain.setTargetAtTime(Math.max(.0001,v),ac.currentTime,v<duck.gain.value?.12:.45)}
+  return{init,set}})();
+let muzHedef=-1;setInterval(()=>{const v=!voice||paused||document.hidden?0:talking?.07:.24;if(v!==muzHedef){muzHedef=v;muz.set(v)}},120);
+vo.addEventListener('click',()=>muz.init());
 function setPause(p){paused=p;pp.textContent=p?'▶':'❚❚';pp.setAttribute('aria-label',p?'Oynat':'Durdur');const v=S[cur]&&S[cur].video;if(v){p?v.pause():v.play().catch(()=>{})}
   if(voice){if(au&&auId){p?au.pause():au.play().catch(()=>{})}else if(SS){p?SS.pause():SS.resume()}}
   document.querySelectorAll('.sc.on *').forEach(x=>x.style.animationPlayState=p?'paused':'')}
