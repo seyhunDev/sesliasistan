@@ -32,6 +32,7 @@ const nextConfig = {
     return [
       { source: "/tanitim", destination: "/tanitim/index.html" },
       { source: "/tanitim/simulator", destination: "/tanitim/simulator/index.html" },
+      { source: "/tanitim/kisa", destination: "/tanitim/kisa/index.html" },
     ];
   },
   async headers() {
