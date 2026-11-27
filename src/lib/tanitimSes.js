@@ -18,7 +18,7 @@ export const TANITIM_SES = {
   "yonet-1": "Start süresini tek dokunuşla başlat.",
   "yonet-2": "Basılı tut ve konuş; sesin bütün sporculara gider.",
   "yonet-3": "Sık kullandığın mesajlar hazır; seç ve gönder.",
-  "yonet-4": "Sporcuyu seç ve cezasını ver. Üç yüz altmış derece, anında ona gider.",
+  "yonet-4": "Sporcuyu seç ve cezasını ver. Bir ceza dönüşü, anında ona gider.",
   "etiket-1": "Sporcuyu seç ve videoya dokun.",
   "etiket-2": "Videoda kimler var? Sporcuları işaretle.",
   "etiket-3": "Manevrayı etiketle: orsa, start, dönüş.",

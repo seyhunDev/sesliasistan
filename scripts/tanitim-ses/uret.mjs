@@ -5,7 +5,7 @@
 // - Yoksa (yeni ya da değişmiş cümle) canlı sitedeki /api/tanitim-ses'ten BİR KEZ alınır ve Storage'a yazılır. Ses anahtarı
 //   derlemede okunamıyor (Netlify gizli değeri derlemeye vermiyor, 2026-11-27 "API key not valid"), o yüzden canlı sunucu üretir.
 //   Canlıdaki metin farklıysa (cümle bu yayınla değişiyor) alınmaz; sayfa o cümleyi bir sonraki yayına kadar sunucudan ister.
-// - Doğal (Gemini) olmayan ses gelirse de saklanır ama 1 saatten eskiyse her yayında yeniden denenir (Gemini açılınca geçsin).
+// - Doğal (Gemini) olmayan ses gelirse de saklanır ama 10 dakikadan eskiyse her yayında yeniden denenir (Gemini açılınca geçsin).
 // - Gemini Vertex yolundan WAV gelir: ffmpeg ile MP3'e çevrilir (GitHub'daki makinede var); ffmpeg yoksa o cümle atlanır.
 // - Çıktı: public/tanitim/kisa/ses/<id>.mp3 + liste.json ({ id: özet }); depoya girmez (.gitignore).
 // - Storage açılmazsa hiçbir şey yapılmaz, derleme DURMAZ; sayfa /api/tanitim-ses'e, o da olmazsa cihazın sesine döner.
@@ -16,7 +16,7 @@ register(new URL("./hooks.mjs", import.meta.url));
 
 const OUT = new URL("../../public/tanitim/kisa/ses/", import.meta.url);
 const SITE = (process.env.URL || "https://sesliasistan.netlify.app").replace(/\/$/, "");
-const YENIDEN = 3600 * 1000;
+const YENIDEN = 10 * 60 * 1000;
 const log = (...a) => console.log("[tanıtım sesleri]", ...a);
 
 function toMp3(wav) {
