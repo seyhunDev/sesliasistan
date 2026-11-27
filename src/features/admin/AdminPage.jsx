@@ -102,6 +102,7 @@ export function AdminPage() {
           </div>
           <div className="divide-y divide-line overflow-hidden rounded-[1.25rem] border border-line bg-card">
             <UzmanlarRow org={org} />
+            {String(profile?.email || "").toLowerCase() === VELORA_ADMIN && <Row title="Açılış" sub="Herkese açmadan önce" href="/settings/admin/acilis" />}
             {String(profile?.email || "").toLowerCase() === VELORA_ADMIN && <Row title="Paketler" href="/settings/admin/paketler" />}
             {String(profile?.email || "").toLowerCase() === VELORA_ADMIN && <Row title="Kulüpler" href="/settings/admin/kulupler" />}
           </div>
