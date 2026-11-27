@@ -7,15 +7,15 @@ import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 import { deleteDoc, setDoc, updateDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { CLUB, DIKILI, DIKILI_ID, cleanClub, clubKey, setClub } from "@/lib/club";
-import { TYF_CLUBS } from "@/lib/clubsTyf";
+import { DIKILI_GSB, TYF_CLUBS } from "@/lib/clubsTyf";
 
 let listMemo = null; // Promise<[{ id, ...club }]>
 const subs = new Set();
 const tell = () => subs.forEach((f) => f());
 
-// Hazır liste: Dikili + TYF kulüpleri (lib/clubsTyf.js). Veritabanında kayıt olmasa da listede görünür (Seyhun 2026-11-27 "kulüp
+// Hazır liste: Dikili + TYF kulüpleri (lib/clubsTyf.js: lig kulüpleri ve federasyon portalındaki GSB numaralı kulüpler, 2026-11-27). Veritabanında kayıt olmasa da listede görünür (Seyhun 2026-11-27 "kulüp
 // listesi neden çıkmıyor"); Admin › Kulüpler'de düzenlenen kulüp clubs/{id} kaydıyla üstüne yazılır (aynı kimlik ya da aynı TYF adı).
-export const BASE_CLUBS = [{ id: DIKILI_ID, ...DIKILI }, ...TYF_CLUBS.map(([id, tyfName, name, city]) => ({ id, name, tyfName, city, district: "" }))];
+export const BASE_CLUBS = [{ id: DIKILI_ID, ...DIKILI, tfId: DIKILI_GSB }, ...TYF_CLUBS.map(([id, tyfName, name, city, tfId]) => ({ id, name, tyfName, city, district: "", tfId }))];
 const withBase = (l) => {
   const ids = new Set(l.map((c) => c.id));
   const keys = new Set(l.map((c) => clubKey(c.tyfName || c.name)).filter(Boolean));
