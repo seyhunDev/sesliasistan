@@ -105,7 +105,7 @@ Bir sayfa geçince bu listeyi güncelle.
 
 ## Yarış detayı "Sahne" (Seyhun 2026-11-25 "Yap"; örnek project-files/yaris-detay-sahne/ornek.html)
 
-Yarış detayı ana sayfa ve Fitness ile aynı koyu dilde (`main.fs.rsh`, CSS `src/features/athletes/raceSahne.css`). Aşağıdaki "yarış kart" düzeninin yerini alır (Yarışlar listesi şimdilik eski).
+Yarış detayı ana sayfa ve Fitness ile aynı koyu dilde (`main.fs.rsh`, CSS `src/features/athletes/raceSahne.css`). Aşağıdaki "yarış kart" düzeninin yerini alır. Yarışlar listesi de Sahne (2026-11-27; `main.rsl`, `raceListSahne.css`): üst çubuk geri · Yarışlar · limon +, Sıradaki yarış aynı yarış kartı (`.rsh-hero`) ve Sporcu · Evrak · Yapılacak kutuları, satırlar `.fs-list`, iPad'de iki sütun.
 - Üst çubuk: yuvarlak geri, ortada küçük büyük harfle "Yarışlar" (yarış günü kırmızı noktalı "Yarışta · 2. gün"), sağda Ekran · Yönet · limon Canlı (ana hesap, yarış günü) ve ⋯.
 - Yarış kartı `RaceHero`: tarih · yer, dar büyük ad; önce sağda kalan gün (limon), yarış günü altta Bugün · Sıradaki kutuları.
 - Hava: ana sayfadaki panel (`.sh-wxp`, ortak `WindChart`), birden çok yarış günü varsa gün kutuları; altında Harita kutusu (Aç).

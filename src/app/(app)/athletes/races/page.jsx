@@ -13,8 +13,12 @@ import { loadRaces, racesNow } from "@/features/athletes/races";
 import { shareAll } from "@/features/athletes/sharedRaces";
 import { sweepLive } from "@/features/athletes/raceWipe";
 import { RaceAddSheet } from "@/features/athletes/RaceAddSheet";
+import { liveHead } from "@/features/liveScreen/fonts";
+import "@/features/fitness/fitSahne.css";
+import "@/features/athletes/raceSahne.css";
+import "@/features/athletes/raceListSahne.css";
 
-// Yarışlar (açık tema, Seyhun 2026-11-23): açık gri zeminde başlık, beyaz Sıradaki kartı, Yaklaşan, Geçmiş, Yarış takvimi; yarışa dokununca yarış sayfası
+// Yarışlar (Sahne, Seyhun 2026-11-26): koyu zeminde üst çubuk, Sıradaki yarış kartı, Yaklaşan, Geçmiş, Yarış takvimi; yarışa dokununca yarış sayfası
 export default function RacesPage() {
   const { user, profile } = useAuth();
   const router = useRouter();
@@ -49,39 +53,34 @@ function Races({ orgId, me }) {
 
   // Başlık (yarış kart, Seyhun 2026-11-07 "Yarışlar başlığı geri butonun yanında olmalı, diğer sayfalardaki gibi"): Planlar gibi yuvarlak geri,
   // yanında "Yarışlar", sağda beyaz + Yarış. Az kullanılanlar (Geçmiş yarışlar, Yarış takvimi, Siteden ekle) altta açılır "Diğer"de.
-  const add = owner ? (
-    <button type="button" onClick={() => setAdding(true)} data-press className="btn btn-primary h-10 shrink-0 gap-1 px-3.5 text-[0.9375rem]">
-      <Icon name="plus" className="size-4" />
-      Yarış
-    </button>
-  ) : (
-    <Link href="/athletes/races/new" data-press className="btn btn-primary h-10 shrink-0 gap-1 px-3.5 text-[0.9375rem]">
-      <Icon name="plus" className="size-4" />
-      Yarış
-    </Link>
-  );
-  // Başlık (açık tema, Seyhun 2026-11-23 "Yap"): üst satırda yuvarlak geri ve sağda + Yarış (ana hesapta federasyon penceresi RaceAddSheet,
-  // diğerlerinde elle), altında büyük "Yarışlar"
+  // Üst çubuk (Sahne, Seyhun 2026-11-26): yarış detayı ve Fitness gibi yuvarlak geri, ortada küçük "Yarışlar", sağda limon + (ana hesapta
+  // federasyon penceresi RaceAddSheet: TFF'den seç · Talimatla · Elle; diğerlerinde elle yeni yarış)
   const head = (
-    <header>
-      <div className="flex items-center justify-between gap-2.5">
-        <BackButton href="/" />
-        {add}
-      </div>
-      <h1 className="rzl-title">Yarışlar</h1>
+    <header className="rsh-bar">
+      <BackButton href="/" />
+      <span className="rsh-mid">Yarışlar</span>
+      {owner ? (
+        <button type="button" onClick={() => setAdding(true)} aria-label="Yarış ekle" data-press className="fs-rb fs-add">
+          <Icon name="plus" className="size-5" />
+        </button>
+      ) : (
+        <Link href="/athletes/races/new" aria-label="Yarış ekle" data-press className="fs-rb fs-add">
+          <Icon name="plus" className="size-5" />
+        </Link>
+      )}
     </header>
   );
   const extra = (
-    <>
-      <Link href="/races" data-press="row" className="rz-row w-full">
-        <span className="rz-k">Yarış takvimi</span>
-        <span className="rz-chev" aria-hidden="true" />
-      </Link>
-    </>
+    <Link href="/races" data-press="row" className="rsl-row">
+      <span className="rsl-k">
+        <b>Yarış takvimi</b>
+      </span>
+      <Icon name="chev" className="size-4 shrink-0 text-mut" />
+    </Link>
   );
 
   return (
-    <main className="rz rzc rzla acik mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]">
+    <main className={`rz rzc rzla fs rsh rsl ${liveHead.variable} mx-auto max-w-[30rem] px-5 pb-[calc(7rem+env(safe-area-inset-bottom))]`}>
       <RaceList races={races} head={head} extra={extra} onOpen={(r) => router.push(`/athletes/races/${r.id}`)}>
         {error && <p className="text-center text-[0.875rem] text-rec">{error}</p>}
         {!races && <Loading label="Yarışlar yükleniyor" />}

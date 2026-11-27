@@ -1,0 +1,48 @@
+/* Yarışlar listesi "Sahne" (Seyhun 2026-11-26 "yarışlar sayfasının tasarımını da yeni uygulama tasarımına uygun yap"): yarış detayı
+   (raceSahne.css) ve Fitness (fitSahne.css) ile aynı koyu dil. Sıradaki yarış detaydaki yarış kartı (.rsh-hero), satırlar .fs-list kutusunda,
+   kalan gün ve dereceler dar büyük yazı (.rsh-c), tek vurgu limon. Sayfa: main.rz.rzc.rzla.fs.rsh.rsl (athletes/races/page.jsx, RaceList.jsx) */
+main.rsl .rsl-head { margin-bottom: .25rem; }
+.rsl-h { display: flex; align-items: center; justify-content: space-between; margin: 1.5rem .25rem .5rem; font-size: .75rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--mut); }
+.rsl-h h2 { font: inherit; }
+main.rsl section:first-child > .rsl-h { margin-top: 1rem; }
+.rsl-all { font-size: .8125rem; font-weight: 700; letter-spacing: 0; text-transform: none; color: var(--fs-lime); }
+
+/* Sıradaki yarış kartı (detaydaki .rsh-hero; burada dokunulur) */
+.rsl-hero { display: block; width: 100%; margin-top: 0; text-align: left; }
+.rsl-hero[data-pressed] { transform: scale(.99); }
+.rsl-hero .rsh-tt { display: block; }
+.rsl-cnt-w { font-size: 1.75rem !important; }
+.rsl-on { display: block; font-size: .6875rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: #fff; }
+.rsl-on::before { content: ""; display: inline-block; width: .45rem; height: .45rem; margin-right: .4rem; border-radius: 50%; background: #ff4d3d; vertical-align: .08rem; }
+.rsl-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.rsl-facts > span { display: block; min-width: 0; padding: .55rem .7rem; border-radius: 1rem; background: rgba(255, 255, 255, .07); }
+.rsl-facts > span > span { display: block; font-size: .6875rem; font-weight: 700; color: #cbd5e1; }
+.rsl-facts b { display: block; margin-top: .2rem; font-size: 1.6rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rsl-amber { color: var(--warn); }
+
+/* Satırlar */
+.rsl-row { display: flex; align-items: center; gap: .875rem; width: 100%; min-height: 4rem; padding: .625rem 1rem; text-align: left; color: var(--fg); border-top: 1px solid var(--line); }
+.fs-list > .rsl-row:first-child { border-top: 0; }
+.rsl-row[data-pressed] { background: #1f1f22; }
+.rsl-day { display: flex; width: 2.5rem; flex-shrink: 0; flex-direction: column; align-items: center; line-height: 1; }
+.rsl-day b { font-size: 1.75rem; }
+.rsl-day small { margin-top: .2rem; font-size: .6875rem; font-weight: 700; color: var(--mut); }
+.rsl-past b { color: var(--fg2); }
+.rsl-k { flex: 1; min-width: 0; }
+.rsl-k b { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: 1rem; font-weight: 700; }
+.rsl-k small { display: block; margin-top: .125rem; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-size: .8125rem; color: var(--mut); }
+.rsl-n { flex-shrink: 0; text-align: right; line-height: 1; }
+.rsl-n b { display: block; font-size: 1.75rem; color: var(--fs-lime); }
+.rsl-n small { display: block; margin-top: .125rem; font-size: .625rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--mut); }
+.rsl-best b { color: #fff; }
+.rsl-warn { flex-shrink: 0; font-size: .875rem; font-weight: 700; color: var(--warn); }
+.rsl-extra { margin-top: 1.5rem; }
+.rsl-extra > .rsl-row { min-height: 3.5rem; }
+
+/* iPad: iki sütun (solda Sıradaki + Yaklaşan, sağda Geçmiş + Yarış takvimi) */
+@media (min-width: 48rem) {
+  main.rsl.max-w-\[30rem\] { max-width: 64rem; padding-left: 2rem; padding-right: 2rem; }
+  .rsl-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 1.75rem; align-items: start; }
+  .rsl-cols > div:last-child > section:first-child > .rsl-h { margin-top: 1rem; }
+  .rsl-cols > div:last-child > .rsl-extra:first-child { margin-top: 2.6rem; }
+}
