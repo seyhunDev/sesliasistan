@@ -2677,6 +2677,7 @@ const FMI = await import("@/lib/fitness/model");
 const FTPL = await import("@/lib/fitness/templates");
 const FUZ = await import("@/lib/fitness/uzmanIstek");
 const FRV = await import("@/lib/fitness/review");
+const CLB = await import("@/lib/club");
 group("Fitness: program ayrıntıları ve şablon")([
   ["aralık ve yan", F("8–12/yan, 20–30 sn/yan; üst sınır alttan küçükse atılır", () => {
     const a = FMI.cleanItem({ ex: "", name: "Split squat", sets: 3, reps: 8, repsTo: 12, side: true, rest: 75 });
@@ -2781,6 +2782,7 @@ group("Fitness: program ayrıntıları ve şablon")([
     ];
     const s = FRV.planSummary(plans[1], "2026-10-17");
     const rev = FRV.cleanReview({ week: "2026-10-12", rows: [{ label: "Ev kuvveti", v: 1 }], note: "Not <b>" }, { rows: [{ label: "Ev kuvveti", goal: "2 seans", unit: "/ 2" }], ask: [] });
+    CLB.setClub({ id: CLB.DIKILI_ID, ...CLB.DIKILI });
     const week = FRV.reportHtml({ name: "İlay", prog: { title: "Ev" }, plans, review: rev, week: "2026-10-12", pick: { week: true }, today: "2026-10-17" });
     const all = FRV.reportHtml({ name: "İlay", prog: { title: "Ev" }, plans, review: rev, week: "2026-10-12", pick: { all: true, review: true }, today: "2026-10-17", coach: "Seyhun Yıldız", meta: "14 yaş · Yelken" });
     return FRV.weekPlans(plans, "2026-10-12").length === 2 && s.st === "done" && s.rows[0].line === "1 × 0:30" && s.rows[1].line === "Yapılmadı" &&

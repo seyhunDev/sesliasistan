@@ -40,6 +40,9 @@ import { RaceAdd } from "./RaceAddSheet";
 import { ContactLinks } from "./ContactLinks";
 import { FORM_DOCS, FORM_NAMES, TaskLinks, isFinal } from "./TaskLinks";
 import { takeRaceDraft } from "./raceDraft";
+import { CLUB } from "@/lib/club";
+import { ClubPick } from "@/features/clubs/ClubPick";
+import { chooseClub } from "@/features/clubs/clubs";
 import { RaceDayTop, dayStats, useRacePhase } from "./RaceDayTop";
 import { RACE_KEY } from "@/features/posts/postModel";
 import { loadPosts } from "@/features/posts/posts";
@@ -176,7 +179,10 @@ const PREP = ["sum", "docs", "trip", "budget"]; // Hazırlık sekmesinin bölüm
 const SECS = [...RACE_SECS.map(([k]) => k), "site", "belge"]; // site: Takip (?sec=site); belge: siteden gelen belgelerin tamamı
 
 export function RaceEditor({ sec = "", uid = "", head = null, title = "", alert = null, sharedList = [], orgId, start, athletes, classes = [], athletesErr, onRetryAthletes, onSave, onDelete, plans = [], onOpenPlan, menu = false, onMenu, onPlan, onNoticePlan, onSyncPlan, onSaveAthlete, onMail, mailTo, onMailTo, coach: savedCoach, onCoach, siteDocs = null, siteNew = 0, onResultsFile = null }) {
-  const { isOwner } = useAuth(); // Canlı ekran yalnız ana hesapta
+  const { isOwner, profile: me } = useAuth(); // Canlı ekran yalnız ana hesapta
+  // Kulübü seçilmemişse evrak hazırlanırken bir kez sorulur (antet ve katılım formu; Seyhun 2026-11-27). Kulüpsüz de geçilebilir.
+  const [clubAsk, setClubAsk] = useState(false);
+  const clubAsked = useRef(false);
   const router = useRouter();
   const toast = useToast();
   const confirmIt = useConfirm();
@@ -399,6 +405,11 @@ export function RaceEditor({ sec = "", uid = "", head = null, title = "", alert 
   const lacks = (ready[0][1] ? 0 : 1) + (chosen.length ? 0 : 1) + (r.signer.trim() ? 0 : 1) + fixList.length + (coachLack.length ? 1 : 0);
 
   const make = async () => {
+    if (!CLUB.id && !clubAsked.current) {
+      clubAsked.current = true;
+      setClubAsk(true);
+      return;
+    }
     const bad = ready.find(([, ok, , soft]) => !ok && !soft);
     if (bad && bad[2] === "phone") {
       setFix(noPhone[0]);
@@ -1788,6 +1799,16 @@ export function RaceEditor({ sec = "", uid = "", head = null, title = "", alert 
       </Sheet>
       {docView && <PdfViewer title={docView.name} load={() => Promise.resolve(docView)} onClose={() => setDocView(null)} />}
       {viewer && r.noticeFile && <PdfViewer title={r.noticeFile.name || "Yarış talimatı"} load={loadViewer} onClose={() => setViewer(false)} />}
+      {clubAsk && (
+        <ClubPick
+          onClose={() => setClubAsk(false)}
+          onPick={async (id) => {
+            await chooseClub(me?.uid, id).catch(() => {});
+            setClubAsk(false);
+            make();
+          }}
+        />
+      )}
       </div>
     </>
   );

@@ -77,7 +77,7 @@ export async function buildGunKaydiPdf(g, fonts) {
     }
     if (logo) page.drawImage(logo, { x: L, y: H - 80, width: 44, height: 44 });
     const hx = logo ? L + 54 : L;
-    text(CLUB.name, hx, 48, f.b, 9, { color: MUT });
+    text(CLUB.upper, hx, 48, f.b, 9, { color: MUT });
     text(g.title, hx, 70, f.b, 18, { max: R - hx - 150 });
     text(g.sub, hx, 86, f.r, 9.5, { color: MUT, max: R - hx - 150 });
     if (g.coach) text(`Antrenör: ${g.coach}`, R, 70, f.r, 9, { align: "right", color: MUT, max: 150 });

@@ -121,6 +121,13 @@ service cloud.firestore {
 
     // Tekne takibi (lib/boatTrack.js, Seyhun 2026-11-02): ana hesap yarışın takibini açar (anahtar k); teknedeki telefon giriş yapmadan,
     // linkteki anahtarla yalnız kendi konumunu yazar, okuyamaz. Herkese açık yayın konumları sunucudan (/api/canli) okur.
+    // Resmi kulüp listesi (src/lib/club.js, Seyhun 2026-11-27): giriş yapan herkes okur (kulübünü seçer), yalnız Velora ana hesabı
+    // ekler, değiştirir, siler (Admin › Kulüpler). Kullanıcının kulübü kendi profilinde (users/{uid}.clubId); kulüp yetki vermez.
+    match /clubs/{id} {
+      allow read: if signedIn();
+      allow write: if veloraAdmin() && id.matches('^[a-z0-9-]{2,60}$');
+    }
+
     match /takip/{rid} {
       allow read, delete: if isOwner(resource.data.org);
       allow create: if isOwner(request.resource.data.org);

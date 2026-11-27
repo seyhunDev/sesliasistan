@@ -90,6 +90,8 @@ export function AuthProvider({ children }) {
             orgId: doc_?.orgId || user.uid,
             courierOf: doc_?.role === "courier" ? doc_?.courierOf || "" : "", // kuryenin çalıştığı işletme (sunucu yazar)
             kind: doc_?.role === "staff" ? doc_?.kind || "staff" : "owner", // kişi türü (lib/kinds): staff | family | athlete | student | parent | other
+            clubId: typeof doc_?.clubId === "string" ? doc_.clubId : "", // resmi kulüp listesinden kulübü (clubs/{id}; lib/club.js), boş: kulüpsüz
+            clubAsked: !!doc_?.clubAsked, // "Kulübün?" bir kez soruldu (ClubGate)
             photo: doc_?.photo || "", // profil fotoğrafı adresi (Storage; /api/photo yazar)
             photoPath: doc_?.photoPath || "",
             icsToken: doc_?.icsToken || "", // takvim aboneliği gizli bağlantısı (Ayarlar › iPhone takvimi; sunucu yazar)

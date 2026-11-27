@@ -1,3 +1,4 @@
+import { clubMatch } from "./club";
 // Yarış sonuç belgesi (PDF): yapay zeka listeyi okur (sınıf başına sıra, ad, yelken no, kulüp, cinsiyet, kategori),
 // sıralamayı uygulama hesaplar (saf fonksiyonlar, test edilir):
 // - Genel sıra: sınıftaki bütün sporcular (kategori, cinsiyet ayrımı yok).
@@ -172,7 +173,7 @@ function nameHit(rowName, athleteName) {
 }
 
 // Bizim sporcuları listede bulur: { sporcuId: { fi, ri } } (fi: sınıf sırası, ri: satır sırası)
-export function findOurs(fleets, athletes, club = "dikili") {
+export function findOurs(fleets, athletes, club = clubMatch()) {
   const out = {};
   for (const a of athletes || []) {
     if (!a?.id || !a.studentName) continue;
@@ -183,7 +184,7 @@ export function findOurs(fleets, athletes, club = "dikili") {
     const sail = digits(a.sailNo);
     if (pick.length > 1 && sail.length >= 3) pick = pick.filter((h) => digits(h.r.sail).endsWith(sail)).concat(pick).slice(0, pick.length);
     if (pick.length > 1) {
-      const ours = pick.filter((h) => plain(h.r.club).includes(club));
+      const ours = club ? pick.filter((h) => plain(h.r.club).includes(club)) : [];
       if (ours.length) pick = ours;
     }
     out[a.id] = { fi: pick[0].fi, ri: pick[0].ri };

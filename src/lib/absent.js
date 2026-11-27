@@ -1,3 +1,4 @@
+import { clubSign } from "./club";
 // Yoklamada gelmeyen sporcunun velisine haber: metin ve WhatsApp numarası (saf fonksiyonlar, test edilir)
 
 // "0532 123 45 67", "+90 532…", "532…" → "905321234567"; geçersizse ""
@@ -16,7 +17,7 @@ function dayWord(date, today) {
 }
 
 // "Merhaba, Ali bugünkü antrenmana gelmedi. Bir sorun varsa bize haber verebilir misiniz? Dikili Yelken Spor Kulübü"
-export function absentText(name, date, today, club = "Dikili Yelken Spor Kulübü") {
+export function absentText(name, date, today, club = clubSign()) {
   return `Merhaba, ${first(name)} ${dayWord(date, today)} antrenmana gelmedi. Bir sorun varsa bize haber verebilir misiniz?${club ? ` ${club}` : ""}`;
 }
 

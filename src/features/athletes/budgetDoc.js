@@ -49,7 +49,7 @@ export async function buildBudgetPdf(r, athletes, fonts) {
   newPage();
   if (logo) page.drawImage(logo, { x: L, y: H - 92, width: 46, height: 46 });
   const hx = logo ? L + 58 : L;
-  text(CLUB.name, hx, 62, f.b, 13, { color: NAVY });
+  text(CLUB.upper, hx, 62, f.b, 13, { color: NAVY });
   text("YARIŞ BÜTÇESİ", hx, 80, f.r, 9.5, { color: MUT });
   text(new Date().toLocaleDateString("tr-TR"), R, 62, f.r, 9.5, { align: "right", color: MUT });
   page.drawLine({ start: { x: L, y: H - 104 }, end: { x: R, y: H - 104 }, thickness: 1.4, color: NAVY });

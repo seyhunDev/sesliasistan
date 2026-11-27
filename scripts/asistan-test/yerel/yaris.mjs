@@ -1192,3 +1192,15 @@ group("Tekne takibi")([
     ["paylaşma eki bağlı", { desc: "velora://paylas → share → SharedResults; ortak akış addResults", fn: () => [/case "paylas": koy\("share"\)/.test(readFileSync(new URL("../../../mobil/ios/App/Ortak/BasKonusIntent.swift", import.meta.url), "utf8")), /what === "share"/.test(src("features/ios/IosBridge.jsx")), /addResults\(\{ orgId, race: cur, athletes, file \}\)/.test(src("features/ios/SharedResults.jsx")), /VeloraPaylas\.appex in Embed Foundation Extensions/.test(readFileSync(new URL("../../../mobil/ios/App/App.xcodeproj/project.pbxproj", import.meta.url), "utf8"))], ok: (a) => a.every(Boolean) }],
   ]);
 }
+
+// Kulüp listesi (lib/club.js; Seyhun 2026-11-27): resmi listeden seçim, arama, sonuçlardan öneri, belgelerin kulübü
+{
+  const CL = await import("@/lib/club");
+  const list = [{ id: "dikili-yelken", ...CL.DIKILI }, { id: "foca-yelken-kulubu", name: "Foça Yelken Kulübü", city: "İzmir", district: "Foça" }];
+  group("Kulüp listesi")([
+    ["arama", { desc: "ad, kısa ad, il ve ilçe; Türkçe harf fark etmez; boşsa hepsi ad sırasıyla", fn: () => [CL.searchClubs(list, "foca"), CL.searchClubs(list, "DYK"), CL.searchClubs(list, "izmir"), CL.searchClubs(list, ""), CL.searchClubs(list, "bodrum")].map((r) => r.map((c) => c.id[0]).join("")), ok: (a) => a.join("|") === "f|d|df|df|" }],
+    ["sonuçlardan öneri", { desc: "listedeki kulüp (yazılışı farklı da olsa) ve kısaltma önerilmez; aynı kulüp birleşir, en çok geçen önce", fn: () => CL.clubSuggestions([{ fleets: [{ rows: [{ club: "Dikili Yelken" }, { club: "DİKİLİ YELKEN VE KANO SPOR KULÜBÜ" }, { club: "Arkas Spor Kulübü" }, { club: "ARKAS SPOR" }, { club: "Arkas Spor Kulübü" }, { club: "Bodrum Deniz Kulübü" }, { club: "DYK" }, { club: "" }] }] }], list), ok: (r) => r.map((x) => `${x.name}:${x.n}`).join() === "Arkas Spor Kulübü:3,Bodrum Deniz Kulübü:1" }],
+    ["kimlik", { desc: "addan okunur kalıcı kimlik", fn: () => CL.clubIdOf("Foça Yelken Kulübü"), ok: (r) => r === "foca-yelken-kulubu" }],
+    ["belgelerin kulübü", { desc: "kulüpsüzde ad ve eşleştirme boş, imza kişinin adı; Dikili'de büyük harfli ad, yer ve 'dikili'", fn: () => { CL.setClub(null, "Ayşe Er"); const a = [CL.CLUB.upper, CL.clubSign(), CL.clubMatch()]; CL.setClub({ id: CL.DIKILI_ID, ...CL.DIKILI }, "Seyhun"); const b = [CL.CLUB.upper, CL.CLUB.place, CL.clubSign(), CL.clubMatch()]; return [a, b]; }, ok: ([a, b]) => a.join("|") === "|Ayşe Er|" && b.join("|") === "DİKİLİ YELKEN SPOR KULÜBÜ|Dikili / İZMİR|Dikili Yelken Spor Kulübü|dikili" }],
+  ]);
+}
