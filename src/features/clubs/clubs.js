@@ -6,15 +6,25 @@ import { useEffect, useState } from "react";
 import { collection, doc, getDoc, getDocs } from "firebase/firestore";
 import { deleteDoc, setDoc, updateDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
-import { CLUB, DIKILI, DIKILI_ID, cleanClub, setClub } from "@/lib/club";
+import { CLUB, DIKILI, DIKILI_ID, cleanClub, clubKey, setClub } from "@/lib/club";
+import { TYF_CLUBS } from "@/lib/clubsTyf";
 
 let listMemo = null; // Promise<[{ id, ...club }]>
 const subs = new Set();
 const tell = () => subs.forEach((f) => f());
 
+// Hazır liste: Dikili + TYF kulüpleri (lib/clubsTyf.js). Veritabanında kayıt olmasa da listede görünür (Seyhun 2026-11-27 "kulüp
+// listesi neden çıkmıyor"); Admin › Kulüpler'de düzenlenen kulüp clubs/{id} kaydıyla üstüne yazılır (aynı kimlik ya da aynı TYF adı).
+export const BASE_CLUBS = [{ id: DIKILI_ID, ...DIKILI }, ...TYF_CLUBS.map(([id, tyfName, name, city]) => ({ id, name, tyfName, city, district: "" }))];
+const withBase = (l) => {
+  const ids = new Set(l.map((c) => c.id));
+  const keys = new Set(l.map((c) => clubKey(c.tyfName || c.name)).filter(Boolean));
+  return [...BASE_CLUBS.filter((c) => !ids.has(c.id) && !keys.has(clubKey(c.tyfName))), ...l];
+};
+
 export function loadClubs({ fresh = false } = {}) {
   if (fresh || !listMemo) {
-    listMemo = getDocs(collection(db, "clubs")).then((s) => s.docs.map((d) => ({ id: d.id, ...d.data() })));
+    listMemo = getDocs(collection(db, "clubs")).then((s) => withBase(s.docs.map((d) => ({ id: d.id, ...d.data() }))));
     listMemo.catch(() => (listMemo = null));
   }
   return listMemo;
@@ -26,7 +36,8 @@ export async function loadClub(id) {
   const hit = list?.find((c) => c.id === id);
   if (hit) return hit;
   const s = await getDoc(doc(db, "clubs", id)).catch(() => null);
-  return s?.exists() ? { id: s.id, ...s.data() } : null;
+  if (s?.exists()) return { id: s.id, ...s.data() };
+  return BASE_CLUBS.find((c) => c.id === id) || null;
 }
 
 // Kullanıcının kulübünü seçer (id) ya da kulüpsüz geçer (""); soru bir daha sorulmaz
@@ -51,8 +62,9 @@ export async function removeClub(id) {
   tell();
 }
 // Dikili kaydı listede yoksa eklenir (eski koddaki antet bilgileriyle)
-export async function seedDikili(list) {
-  if ((list || []).some((c) => c.id === DIKILI_ID)) return false;
+export async function seedDikili() {
+  const s = await getDoc(doc(db, "clubs", DIKILI_ID));
+  if (s.exists()) return false;
   await saveClub(DIKILI_ID, DIKILI);
   return true;
 }

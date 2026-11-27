@@ -8,6 +8,7 @@ export const CLUB_FIELDS = [
   ["name", "Kulüp adı"],
   ["short", "Kısa ad (DYK)"],
   ["tyfName", "TYF kaydındaki adı"],
+  ["tfId", "Federasyon kulüp no"],
   ["city", "İli"],
   ["district", "İlçesi"],
   ["web", "Web sitesi"],
@@ -59,6 +60,36 @@ export const clubIdOf = (name) =>
     .slice(0, 6)
     .join("-")
     .slice(0, 60);
+
+// Toplu içeri alma (Admin › Kulüpler › Listeyi içeri al; TYF resmi listesi gelince): JSON dizi ya da satır satır
+// "no; ad; il; ilçe" (ayraç ; ya da sekme). Dönüş [{ id, name, tfId, city, district }]; adı olmayan satır atılır.
+// Aynı federasyon no ya da aynı ad listede varsa o kaydın kimliği kullanılır (üstüne yazılır, kopya açılmaz).
+export function parseClubImport(text, list = []) {
+  const t = String(text || "").trim();
+  let rows = [];
+  if (t.startsWith("[")) {
+    try {
+      rows = JSON.parse(t).map((r) => ({ tfId: r.tfId ?? r.id ?? r.no, name: r.name ?? r.ad, city: r.city ?? r.il, district: r.district ?? r.ilce }));
+    } catch {
+      return [];
+    }
+  } else
+    rows = t.split(/\r?\n/).map((l) => {
+      const p = l.split(/;|\t/).map((x) => x.trim());
+      return /^\d+$/.test(p[0] || "") ? { tfId: p[0], name: p[1], city: p[2], district: p[3] } : { name: p[0], city: p[1], district: p[2] };
+    });
+  const byTf = new Map((list || []).filter((c) => c.tfId).map((c) => [String(c.tfId), c.id]));
+  const byKey = new Map((list || []).flatMap((c) => [[clubKey(c.name), c.id], [clubKey(c.tyfName), c.id]]).filter(([k]) => k));
+  const out = new Map();
+  for (const r of rows) {
+    const name = S(r.name);
+    if (!name) continue;
+    const tfId = S(r.tfId, 20);
+    const id = (tfId && byTf.get(tfId)) || byKey.get(clubKey(name)) || clubIdOf(name);
+    if (id) out.set(id, { id, name, tfId, city: S(r.city), district: S(r.district) });
+  }
+  return [...out.values()];
+}
 
 // Listede arama: adın, kısa adın, il ve ilçenin her sözü yazılan sözlerle başlıyorsa eşleşir; ad sırasına göre
 export function searchClubs(list, q) {

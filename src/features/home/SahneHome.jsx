@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
 import { useHesap } from "@/features/auth/useHesap";
+import { isVeloraAdmin } from "@/lib/hesapGorunum";
 import { useData } from "@/features/data/DataProvider";
 import { usePlanOpen } from "@/features/athletes/usePlanOpen";
 import { useRaceHome } from "@/features/athletes/raceHome";
@@ -323,7 +324,7 @@ function Kokpit() {
           </Link>
         )}
         {sport && <DuesTile />}
-        <MoneyTile />
+        {isVeloraAdmin(h.profile?.email) && <MoneyTile />}
         {(h.owner || h.coach) && <YonetTile profile={h.profile} />}
         <SailingTile />
       </div>

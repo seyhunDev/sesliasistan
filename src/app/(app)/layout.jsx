@@ -30,6 +30,7 @@ import { MeetingProvider } from "@/features/meeting/MeetingProvider";
 import { logout } from "@/lib/auth";
 import { OfflineBanner, PushSync } from "@/features/pwa/Pwa";
 import { UpdateNote } from "@/features/pwa/UpdateNote";
+import { isVeloraAdmin } from "@/lib/hesapGorunum";
 import { NewVersionBar } from "@/features/pwa/NewVersionBar";
 import { Onboarding } from "@/features/onboarding/Onboarding";
 import { TryAssistant } from "@/features/onboarding/TryAssistant";
@@ -101,7 +102,7 @@ export default function AppLayout({ children }) {
                   <SyncLine />
                   <SwipeBack />
                   <OfflineBanner />
-                  {!live && <UpdateNote />}
+                  {!live && isVeloraAdmin(user?.email || profile?.email) && <UpdateNote />}
                   {!live && <NewVersionBar />}
                   <PushSync profile={profile} />
                   {children}
