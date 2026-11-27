@@ -84,7 +84,11 @@ async function check(org, body) {
   const dst = await digests(org);
   const names = body.names && typeof body.names === "object" ? body.names : {};
   const r = compareCopy(body.src || {}, dst, names);
-  await org.collection("sporcuTasima").doc("son").set({ at: new Date().toISOString(), ok: r.ok, counts: { athletes: r.counts.athletes[1], classes: r.counts.classes[1], coaches: r.counts.coaches[1] } });
+  // İlk "Hepsi aynı"da active: true olur ve bir daha kalkmaz: uygulama o andan sonra sporcuları yalnız Velora'dan okur ve yazar
+  // (features/athletes/veloraMem.js onVelora). Sonra kulüpteki eski veriyle yeniden kopyalama reddedilir (POST başı).
+  const counts = { athletes: r.counts.athletes[1], classes: r.counts.classes[1], coaches: r.counts.coaches[1] };
+  const now = new Date().toISOString();
+  await org.collection("sporcuTasima").doc("son").set({ at: now, ok: r.ok, counts, ...(r.ok ? { active: true, activeAt: now } : {}) }, { merge: true });
   return NextResponse.json(r);
 }
 
@@ -94,6 +98,8 @@ export async function POST(request) {
   const body = await request.json().catch(() => ({}));
   const org = adminDb().collection("orgs").doc(o.uid);
   try {
+    const st = (await org.collection("sporcuTasima").doc("son").get()).data() || {};
+    if (st.active) return bad("Sporcular zaten Velora'da. Kulüpteki eski veriyle yeniden kopyalanmaz.", 409);
     if (body.op === "write") return await write(org, body);
     if (body.op === "check") return await check(org, body);
     return bad("Bilinmeyen işlem.");

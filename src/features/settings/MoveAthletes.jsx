@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { collection, getDocs } from "firebase/firestore";
+import { forget } from "@/features/athletes/data";
+import { movedNow, useOnVelora } from "@/features/athletes/veloraMem";
 import { Sheet } from "@/components/ui/Sheet";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
@@ -15,7 +17,8 @@ import { Row } from "./ui";
 // 1) Kulüpten (dikili-c7cc8) yalnız OKUR: sporcular, her birinin geçmişi, sınıflar, antrenörler. Kulüpte hiçbir şey değişmez, silinmez.
 // 2) Sunucuya parça parça yollar; sunucu Velora'ya aynı kimliklerle yazar (/api/sporcu-tasi). Tekrar basılırsa üstüne yazar, çift kayıt olmaz.
 // 3) Karşılaştırır: sayılar ve her sporcunun bütün alanları. Veri yalnız bellekte durur, cihaza yazılmaz.
-// Uygulama şimdilik sporcuları kulüpten okumaya devam eder; geçiş karşılaştırma tam tuttuktan sonra ayrı adımda.
+// İlk "Hepsi aynı"dan sonra (sporcuTasima/son.active) uygulama sporcuları yalnız Velora'dan okur ve yazar; kulüpteki veri yedek
+// olarak kalır, bir daha kopyalanmaz (Velora'daki yeni değişikliklerin üstüne eski veri yazılmasın).
 
 async function readClub(step) {
   await dikiliAuth().authStateReady();
@@ -67,6 +70,8 @@ export function MoveAthletesRow() {
   const [step, setStep] = useState("");
   const [err, setErr] = useState("");
   const [res, setRes] = useState(null);
+  const [done, setDone] = useState(false);
+  const velora = useOnVelora();
   if (profile?.role !== "owner" || !canSeeAthletes(profile?.email)) return null;
 
   async function run(copy) {
@@ -84,6 +89,11 @@ export function MoveAthletesRow() {
       setStep("Karşılaştırılıyor…");
       const r = await post({ op: "check", src: srcDigests(data), names: nameMap(data) });
       setRes({ ...r, history: data.athletes.reduce((n, a) => n + a.history.length, 0) });
+      if (r.ok) {
+        movedNow();
+        forget();
+        setDone(true);
+      }
     } catch (e) {
       setErr(e?.code === "permission-denied" ? "Kulüp hesabının sporcuları okuma izni yok." : e?.message || "Taşınamadı.");
     } finally {
@@ -99,7 +109,9 @@ export function MoveAthletesRow() {
       <Row title="Sporcuları Velora'ya taşı" onClick={() => setOpen(true)} chevron />
       <Sheet open={open} onClose={() => !busy && setOpen(false)} title="Sporcuları Velora'ya taşı">
         <div className="space-y-3 pb-2">
-          {club === null ? (
+          {velora && !done ? (
+            <p className="px-1 py-3 text-[0.9375rem]">{"Sporcular Velora'da. Ekleme, düzenleme ve yoklama buradan yapılır. Kulüpteki eski veri yedek olarak duruyor."}</p>
+          ) : club === null ? (
             <DikiliLogin />
           ) : (
             <>
@@ -120,12 +132,18 @@ export function MoveAthletesRow() {
                   <List title="Yalnız Velora'da" items={res.extra} />
                 </section>
               )}
-              <button type="button" disabled={busy || club === undefined} onClick={() => run(true)} data-press className="btn btn-primary h-12 w-full">
-                {res ? "Yeniden taşı" : "Taşı"}
-              </button>
-              <button type="button" disabled={busy || club === undefined} onClick={() => run(false)} data-press className="btn btn-secondary h-11 w-full">
-                Yalnız karşılaştır
-              </button>
+              {done ? (
+                <p className="px-1 text-[0.9375rem] font-medium text-ok">{"Sporcular artık Velora'da. Bundan sonra her şey buradan yapılır."}</p>
+              ) : (
+                <>
+                  <button type="button" disabled={busy || club === undefined} onClick={() => run(true)} data-press className="btn btn-primary h-12 w-full">
+                    {res ? "Yeniden taşı" : "Taşı"}
+                  </button>
+                  <button type="button" disabled={busy || club === undefined} onClick={() => run(false)} data-press className="btn btn-secondary h-11 w-full">
+                    Yalnız karşılaştır
+                  </button>
+                </>
+              )}
             </>
           )}
         </div>
