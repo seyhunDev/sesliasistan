@@ -14,7 +14,7 @@
 //  9. Antrenör: Paketim 3 / 10; 4. sporcu eklenir.
 // Açılış öncesi eklenenler (2026-11-27 "herkese açmadan önce hangi testler"):
 // 11. /tanitim, /tanitim/kisa, /tanitim/simulator ve video açılır. 12. "Velora'ya katıl" formu → Admin › Başvurular.
-// 13. Antrenör Yönet ("Günü başlat") ve Fitness › Hazır programlar açılır. 14. İkinci antrenör birincinin sporcularını, takvimini
+// Admin › Açılış işaretleri kaydedilir. 13. Antrenör Yönet ("Günü başlat") ve Fitness › Hazır programlar açılır. 14. İkinci antrenör birincinin sporcularını, takvimini
 // görmez; kurallar başkasının verisini okutmaz/yazdırmaz. 15. Admin yalnız Velora sahibinde; sporcu ana hesap alanlarına giremez.
 // Ayrıca: kayıttan sonra "E-postanı doğrula" (doğrulanmadan sunucu sporcu almaz) ve girişte "Şifremi unuttum".
 // Seçenek --gorunur: tarayıcı ekranda açılır. Ekran görüntüleri: scripts/yeni-kullanici-test/sonuc/ (depoya girmez).
@@ -365,6 +365,18 @@ try {
   await a.shot("basvurular");
   const bm = await metin(a);
   ok("Admin › Başvurular'da başvuru görünür (ad, kulüp)", /Selin Rüzgar/.test(bm) && /Didim Yelken/.test(bm), bm.slice(0, 300));
+
+  // Admin › Açılış: işaret kaydedilir, sayfa yenilenince durur
+  await a.goto(`${U}/settings/admin`, { waitUntil: "domcontentloaded" });
+  await a.getByRole("link", { name: /Açılış/ }).click({ timeout: 60000 });
+  const iban = a.getByRole("checkbox", { name: /IBAN ve alıcı adı girildi/ });
+  await iban.click({ timeout: 60000 });
+  await bekle(a, 2000);
+  await a.reload({ waitUntil: "domcontentloaded" });
+  await a.getByRole("checkbox", { name: /IBAN ve alıcı adı girildi/ }).waitFor({ timeout: 60000 }).catch(() => {});
+  await bekle(a, 1500);
+  await a.shot("acilis");
+  ok("Admin › Açılış: işaret kaydedilir, yenileyince durur", (await a.getByRole("checkbox", { name: /IBAN ve alıcı adı girildi/ }).getAttribute("aria-checked").catch(() => "")) === "true");
 
   // 13. Yönet ve Fitness (antrenör)
   console.log("\n  13. Yönet ve Fitness");
