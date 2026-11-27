@@ -1,5 +1,6 @@
 "use client";
 
+import { buttonClass } from "@/components/ui/buttonClass";
 import { useEffect, useState } from "react";
 import { BackButton } from "@/components/ui/BackButton";
 import { LoadFail } from "@/components/ui/LoadFail";
@@ -100,7 +101,7 @@ export function PaketSayfasi() {
                   />
                 ))}
               </div>
-              <button type="button" data-press disabled={bekle} onClick={() => is(() => paketIste(sec, period))} className="h-[3.25rem] w-full rounded-2xl bg-acc text-[1rem] font-bold text-[#111] active:scale-[.98] disabled:opacity-60">
+              <button type="button" data-press disabled={bekle} onClick={() => is(() => paketIste(sec, period))} className={buttonClass({ variant: "primary" })}>
                 {bekle ? "…" : paket?.size === sec ? "Paketi yenile" : `${sec} sporcuya geç`}
               </button>
             </>
@@ -175,12 +176,12 @@ function Havale({ v, ist, bekle, odedim, iptal }) {
       ) : (
         <>
           <p className="px-1 text-[0.875rem] text-mut">Açıklamaya {v.kod} yaz.</p>
-          <button type="button" data-press disabled={bekle || !v.odeme?.iban} onClick={odedim} className="h-[3.25rem] w-full rounded-2xl bg-acc text-[1rem] font-bold text-[#111] active:scale-[.98] disabled:opacity-60">
+          <button type="button" data-press disabled={bekle || !v.odeme?.iban} onClick={odedim} className={buttonClass({ variant: "primary" })}>
             {bekle ? "…" : "Ödemeyi yaptım"}
           </button>
         </>
       )}
-      <button type="button" disabled={bekle} onClick={iptal} className="h-11 w-full rounded-2xl bg-[#1f1f22] text-[0.9375rem] font-semibold text-white active:scale-[.98]">
+      <button type="button" disabled={bekle} onClick={iptal} className={buttonClass({ variant: "secondary" })}>
         {ist.durum === "odendi" ? "İsteği geri al" : "Başka paket seç"}
       </button>
     </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { buttonClass } from "@/components/ui/buttonClass";
 import { useEffect, useMemo, useState } from "react";
 import { BackButton } from "@/components/ui/BackButton";
 import { LoadFail } from "@/components/ui/LoadFail";
@@ -120,10 +121,10 @@ function Paketler() {
                     {k.istek.size} sporcu · {k.istek.period === "yil" ? "Yıllık" : "Aylık"} · {k.kod || ""} · {gun(k.istek.odendiAt)}
                   </p>
                   <div className="grid grid-cols-2 gap-2">
-                    <button type="button" disabled={!!bekle} onClick={() => confirm({ title: `${k.name || k.email} isteği reddedilsin mi?`, text: "Paket açılmaz, istek silinir.", yes: "Reddet", run: () => is(k.uid, () => adminRed(k.uid), "Reddedildi") })} className="h-10 rounded-xl bg-[#1f1f22] text-[0.875rem] font-semibold text-white">
+                    <button type="button" disabled={!!bekle} onClick={() => confirm({ title: `${k.name || k.email} isteği reddedilsin mi?`, text: "Paket açılmaz, istek silinir.", yes: "Reddet", run: () => is(k.uid, () => adminRed(k.uid), "Reddedildi") })} className={buttonClass({ variant: "secondary" })}>
                       Reddet
                     </button>
-                    <button type="button" disabled={!!bekle} onClick={() => is(k.uid, () => adminOnay(k.uid), "Paket açıldı")} className="h-10 rounded-xl bg-acc text-[0.875rem] font-bold text-[#111]">
+                    <button type="button" disabled={!!bekle} onClick={() => is(k.uid, () => adminOnay(k.uid), "Paket açıldı")} className={buttonClass({ variant: "primary" })}>
                       {bekle === k.uid ? "…" : "Onayla"}
                     </button>
                   </div>

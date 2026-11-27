@@ -1,5 +1,6 @@
 "use client";
 
+import { buttonClass } from "@/components/ui/buttonClass";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -44,7 +45,7 @@ const Bar = ({ v, kotu }) => (
   </span>
 );
 const dugme = (main) =>
-  `flex h-11 flex-1 items-center justify-center rounded-2xl px-3 text-[0.9375rem] font-bold transition active:translate-y-[2px] ${main ? "bg-acc text-[#111] shadow-[0_3px_0_#8ea620]" : "bg-[#1f1f22] text-fg shadow-[0_3px_0_#000]"}`;
+  `${buttonClass({ variant: main ? "primary" : "secondary", full: false })} flex-1`;
 
 function Ust({ geri, href, baslik, tur, alt }) {
   return (

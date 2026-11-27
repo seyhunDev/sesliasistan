@@ -60,17 +60,10 @@ function Sec({ title, children }) {
   );
 }
 
-// Sürüm: satırda tarih ve PR, dokununca değişikliğin kendisi
-function VersionRow() {
-  const [date, pr, ...rest] = buildLine().split(" · ");
-  const short = pr?.startsWith("#") ? `${date} · ${pr}` : date;
-  const more = (pr?.startsWith("#") ? rest : [pr, ...rest]).filter(Boolean).join(" · ");
-  if (!more) return <Row title="Sürüm" sub={short} />;
-  return (
-    <Fold title="Sürüm" sub={short}>
-      <p className="px-4 pb-3.5 text-[0.875rem] leading-snug text-mut">{more}</p>
-    </Fold>
-  );
+// Sürüm: her hesapta sayfanın sonunda tek satır (tarih · PR); ayrı satır değil
+function VersionLine() {
+  const ver = buildLine().split(" · ").slice(0, 2).join(" · ");
+  return ver ? <p className="pb-2 text-center text-[0.75rem] text-mut [column-span:all]">Sürüm {ver}</p> : null;
 }
 
 // Ana hesap dışındaki kişiler (çalışan, aile, sporcu…): yalnız kişinin kendisine gereken ayarlar (Seyhun, 2026-10-19).
@@ -85,7 +78,7 @@ function PersonSettings({ profile, n }) {
       <main className={`sahne-pg ${liveHead.variable} wide mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]`}>
         <Top profile={profile} label={isCoach(profile) ? "Antrenör" : KIND_LABEL[kind] || "Kişi"} />
         <Body>
-          <Sec title="Ayarlar">
+          <Sec title="Genel">
             <SizeRow />
             <ThemeRow />
             <NotifyRow n={n} />
@@ -105,7 +98,7 @@ function PersonSettings({ profile, n }) {
     <main className={`sahne-pg ${liveHead.variable} wide mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]`}>
       <Top profile={profile} label={KIND_LABEL[kind] || "Kişi"} />
       <Body>
-        <Sec title="Ayarlar">
+        <Sec title="Genel">
           <SizeRow />
           <ThemeRow />
           <NotifyRow n={n} />
@@ -120,10 +113,10 @@ function PersonSettings({ profile, n }) {
           <PasswordRow />
           <FaceIdRow />
           <KullanimRow />
-          <VersionRow />
           <AndroidApkRow />
           <Row title="Çıkış yap" danger onClick={() => logout()} />
         </Sec>
+        <VersionLine />
       </Body>
     </main>
   );
@@ -159,7 +152,6 @@ export default function SettingsPage() {
   // Yeni düzen (örnek velora-tarama/ayarlar.html, Seyhun 2026-11-25 "yap"; 2026-11-26 grafikli Durum, dik iPad 52rem + 2 sütun): en üstte Durum kartları; Kişiler ve hesaplar ayrı grup;
   // Geliştirici en altta, sürüm sayfanın sonunda tek satır. Kalkanlar (gizli, silinmedi): Ana sayfada yarışlar / yarış kısayolu
   // (yarışlar artık hep görünür), ayrı Yapay zeka kullanımı, Açılış süresi, Telefondaki veriler ve Yayın satırları (kartlara taşındı).
-  const ver = buildLine().split(" · ").slice(0, 2).join(" · ");
   const admin = isVeloraAdmin(profile.email);
   return (
     <main className={`sahne-pg ${liveHead.variable} wide mx-auto max-w-[30rem] px-5 md:max-w-[52rem] md:px-8 pb-[calc(3rem+env(safe-area-inset-bottom))]`}>
@@ -230,7 +222,7 @@ export default function SettingsPage() {
         </Sec>
         )}
 
-        {ver && <p className="pb-2 text-center text-[0.75rem] text-mut">Sürüm {ver}</p>}
+        <VersionLine />
       </Body>
     </main>
   );

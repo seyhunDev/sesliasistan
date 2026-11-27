@@ -283,7 +283,7 @@ export function Durum() {
         <Tile onClick={() => setSheet("veri")}>
           <Head label="Telefonda" />
           <Big value={dev ? n0(dev.total / 1048576) : null} unit="MB" />
-          <Stack parts={devParts} />
+          {dev?.total >= 1048576 && <Stack parts={devParts} />}
           {dev && <Legend parts={devParts.filter((p) => p.v > 0 && p.k !== "Diğer")} />}
         </Tile>
         <Tile onClick={() => setSheet("ai")}>
