@@ -26,3 +26,5 @@
 
 - Kısa tanıtım: "360°" yerine "1 ceza dönüşü" ve yanında küçük soluk 360° (Seyhun 2026-11-27); seslendirme "Bir ceza dönüşü". Video sahnesi (yonet) hâlâ eski 360 düğmesini gösteriyor: Yayın panelindeki yeni ad yayına girince yeniden kaydedilecek.
 - Ses açılınca bütün cümle dosyaları önceden indirilir (adım geçişinde bekleme olmasın). Chirp sesi 10 dakikadan eskiyse yayında yeniden denenir.
+
+- 5. PR: Gemini sesi artık geliyor (Vertex, WAV) ama GitHub makinesinde ffmpeg yoktu, 29 dosya MP3'e çevrilemedi. `Netlify yayın` iş akışına ffmpeg kurulum adımı eklendi (yoksa kurar; kurulamazsa yayın durmaz, sayfa sesi sunucudan alır).

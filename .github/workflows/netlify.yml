@@ -37,6 +37,9 @@ jobs:
       - name: Paketler
         if: steps.ok.outputs.go == '1'
         run: npm install --no-audit --no-fund
+      - name: ffmpeg (tanıtım sesleri WAV → MP3, scripts/tanitim-ses/uret.mjs)
+        if: steps.ok.outputs.go == '1'
+        run: command -v ffmpeg || (sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends ffmpeg) || echo "ffmpeg kurulamadı, tanıtım sesleri sunucudan gelir"
       - name: Derle ve yayınla
         if: steps.ok.outputs.go == '1'
         env:
