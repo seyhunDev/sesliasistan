@@ -52,9 +52,11 @@ export function cleanBilgi(d = {}) {
 // Ceza uyarısı (Seyhun 2026-11-25): Yönet bir sporcuya 360° / 720° ceza dönüşü ya da faux départ verir; ekran belgesinde
 // ceza = { [cihaz]: { k: "1" | "2" | "fd", at } }. Sporcu ekranı 10 sn tam ekran, sonra şerit; Yönet kaldırana kadar durur.
 export const PEN = {
-  1: { big: "360°", t: "Bir ceza dönüşü yap", say: "Bir ceza dönüşü yap" },
-  2: { big: "720°", t: "İki ceza dönüşü yap", say: "İki ceza dönüşü yap" },
-  fd: { big: "FD", t: "Faux départ · hattın gerisine dön, yeniden başla", say: "Faux départ. Hattın gerisine dön, yeniden başla" },
+  // name: yönetimde ve tanıtımda görünen ad, deg: yanında küçük soluk (Seyhun 2026-11-27 "360-720 yerine bir ceza dönüşü, 2 ceza dönüşü");
+  // short: rozet (sporcu karesi, harita). big: sporcu ekranındaki büyük yazı
+  1: { name: "1 ceza dönüşü", deg: "360°", short: "1 dönüş", big: "360°", t: "Bir ceza dönüşü yap", say: "Bir ceza dönüşü yap" },
+  2: { name: "2 ceza dönüşü", deg: "720°", short: "2 dönüş", big: "720°", t: "İki ceza dönüşü yap", say: "İki ceza dönüşü yap" },
+  fd: { name: "Faux départ", deg: "FD", short: "FD", big: "FD", t: "Faux départ · hattın gerisine dön, yeniden başla", say: "Faux départ. Hattın gerisine dön, yeniden başla" },
 };
 export const PEN_BIG_MS = 10e3;
 function cleanCeza(c) {

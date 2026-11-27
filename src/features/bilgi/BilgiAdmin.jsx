@@ -554,7 +554,7 @@ function PenPage({ org, members, ceza, ctx, pick, onPick, onDone }) {
     try {
       await setCeza(org, m.id, v);
       if (v || cur?.k) logEv(org, v ? { kind: "ceza", k: v, to: sailName(m), dev: m.id } : { kind: "ceza-off", k: cur.k, to: sailName(m), dev: m.id }, ctx);
-      toast(v ? `${sailName(m) || "Sporcu"} · ${PEN[v].big} gönderildi` : "Ceza kaldırıldı");
+      toast(v ? `${sailName(m) || "Sporcu"} · ${PEN[v].name} gönderildi` : "Ceza kaldırıldı");
       onDone();
     } catch {
       toast("Gönderilemedi, tekrar dene.");
@@ -569,7 +569,7 @@ function PenPage({ org, members, ceza, ctx, pick, onPick, onDone }) {
             <small>{x.sail ? String(x.sail).replace(/\d+/g, "").trim() || "No" : "Sporcu"}</small>
             <b>{String(x.sail || "").match(/\d+/)?.[0] || (x.name || "?").slice(0, 3)}</b>
             <span>{x.name || x.sail || "Sporcu"}</span>
-            {ceza[x.id] ? <em data-k={ceza[x.id].k}>{PEN[ceza[x.id].k].big}</em> : null}
+            {ceza[x.id] ? <em data-k={ceza[x.id].k}>{PEN[ceza[x.id].k].short}</em> : null}
           </button>
         ))}
       </div>
@@ -583,15 +583,15 @@ function PenPage({ org, members, ceza, ctx, pick, onPick, onDone }) {
       </button>
       <div className="bzy-pgp">
         {Object.entries(PEN).map(([v, p]) => (
-          <button key={v} type="button" className="bzy-sqb" data-k={v} disabled={busy || cur?.k === v} onClick={() => run(v)} data-press>
-            <small>{v === "1" ? "Bir dönüş" : v === "2" ? "İki dönüş" : "Faux départ"}</small>
-            <b>{p.big}</b>
+          <button key={v} type="button" className="bzy-sqb bzy-pn" data-k={v} disabled={busy || cur?.k === v} onClick={() => run(v)} data-press>
+            {v === "fd" ? <small /> : <small>{p.deg}</small>}
+            <b>{p.name}</b>
           </button>
         ))}
       </div>
       {cur && (
         <button type="button" className="bzy-pgoff" disabled={busy} onClick={() => run("")} data-press>
-          {PEN[cur.k].big} kaldır
+          {PEN[cur.k].name} kaldır
         </button>
       )}
     </>
@@ -608,7 +608,7 @@ function SporcuSheet({ org, id, boat, cur, ctx, onClose, onVideo, onNot }) {
     try {
       await setCeza(org, id, v);
       if (v || cur?.k) logEv(org, v ? { kind: "ceza", k: v, to: sailName(boat), dev: id } : { kind: "ceza-off", k: cur.k, to: sailName(boat), dev: id }, ctx);
-      toast(v ? `${PEN[v].big} gönderildi` : "Ceza kaldırıldı");
+      toast(v ? `${PEN[v].name} gönderildi` : "Ceza kaldırıldı");
       setPick("");
       onClose();
     } catch {
@@ -621,8 +621,8 @@ function SporcuSheet({ org, id, boat, cur, ctx, onClose, onVideo, onNot }) {
       <div className="bzy-pens" role="radiogroup" aria-label="Ceza">
         {Object.entries(PEN).map(([v, p]) => (
           <button key={v} type="button" role="radio" aria-checked={k === v} data-k={v} onClick={() => setPick(v)} data-press>
-            <b>{p.big}</b>
-            <small>{v === "1" ? "1 ceza dönüşü" : v === "2" ? "2 ceza dönüşü" : "Faux départ"}</small>
+            <b>{p.name}</b>
+            {v === "fd" ? null : <small>{p.deg}</small>}
           </button>
         ))}
       </div>
@@ -1016,7 +1016,7 @@ export function BilgiAdmin() {
       (e) => toast(e?.message ? `Video galeriye eklenemedi: ${e.message}` : "Video galeriye eklenemedi. Fotoğraflar'da duruyor."),
     );
   };
-  const liveBoats = chBoats.filter((x) => now - (x.t || 0) < LIVE_MS).map((x) => (ceza[x.id] ? { ...x, pen: PEN[ceza[x.id].k].big, penK: ceza[x.id].k } : x));
+  const liveBoats = chBoats.filter((x) => now - (x.t || 0) < LIVE_MS).map((x) => (ceza[x.id] ? { ...x, pen: PEN[ceza[x.id].k].short, penK: ceza[x.id].k } : x));
   const holdOn = (id) => {
     const h = holdT.current;
     h.fired = false;
@@ -1037,7 +1037,7 @@ export function BilgiAdmin() {
     setCeza(org, id, null).then(
       () => (
         logEv(org, { kind: "ceza-off", ...ev, ...(auto ? { auto: true } : {}) }, ctx),
-        toast(`${athTag(bt) || "Sporcu"} · ${PEN[c.k].big} kaldırıldı`, {
+        toast(`${athTag(bt) || "Sporcu"} · ${PEN[c.k].name} kaldırıldı`, {
           action: { label: "Geri al", onClick: () => setCeza(org, id, c.k, true).then(() => logEv(org, { kind: "ceza", ...ev, back: true }, ctx), () => {}) },
         })
       ),
@@ -1188,7 +1188,7 @@ export function BilgiAdmin() {
           {penLeft > 0 && (
             <button type="button" className="bzy-penc" data-k={penNew.c.k} onClick={() => (penGone.current.add(`${penNew.id}:${penNew.c.at}`), unPen(penNew.id))} aria-label="Cezayı kaldır" data-press>
               <small>Ceza verildi</small>
-              <b>{PEN[penNew.c.k].big}</b>
+              <b className="pn">{PEN[penNew.c.k].name}</b>
               <span>{athTag(chBoats.find((x) => x.id === penNew.id)) || "Sporcu"}</span>
               <em className="num">{penLeft}</em>
             </button>
@@ -1264,7 +1264,7 @@ export function BilgiAdmin() {
                       {m.label}
                       {m.id && ceza[m.id] ? (
                         <em className="bzy-pen" data-k={ceza[m.id].k}>
-                          {PEN[ceza[m.id].k].big}
+                          {PEN[ceza[m.id].k].short}
                         </em>
                       ) : null}
                       {m.st && <i data-k={m.st.k} aria-label={m.st.t} />}
@@ -1352,7 +1352,7 @@ export function BilgiAdmin() {
           {members.map((m) => (
             <button key={m.id} type="button" onClick={() => setSheet(`sp:${m.id}`)} data-press>
               <span>{[m.sail, m.name].filter(Boolean).join(" · ") || "Sporcu"}</span>
-              {ceza[m.id] ? <em className="bzy-pen" data-k={ceza[m.id].k}>{PEN[ceza[m.id].k].big}</em> : null}
+              {ceza[m.id] ? <em className="bzy-pen" data-k={ceza[m.id].k}>{PEN[ceza[m.id].k].short}</em> : null}
             </button>
           ))}
         </div>
