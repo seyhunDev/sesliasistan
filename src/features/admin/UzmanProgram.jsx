@@ -112,8 +112,10 @@ export function UzmanProgram({ id, istekId }) {
     }
   }
   function template(tid, f, pre) {
-    const t = TEMPLATES.find((x) => x.id === tid);
-    const p = fromTemplate(tid, pre.start, pre.times);
+    // Hazır programlar iki kaynaktan (koddaki TEMPLATES + Velora'nın yayınladıkları; NewProgram seçileni pre.tpl ile verir)
+    const list = pre.tpl ? [pre.tpl] : TEMPLATES;
+    const t = list.find((x) => x.id === tid);
+    const p = fromTemplate(tid, pre.start, pre.times, list);
     if (!t || !p) return;
     ac(fixStart({ ...p, ...kim(f, pre, t), title: `${pre.forName} · ${t.title}` }));
   }
