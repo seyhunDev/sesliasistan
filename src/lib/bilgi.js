@@ -56,7 +56,8 @@ export const PEN = {
   // short: rozet (sporcu karesi, harita). big: sporcu ekranındaki büyük yazı
   1: { name: "1 ceza dönüşü", deg: "360°", short: "1 dönüş", big: "360°", t: "Bir ceza dönüşü yap", say: "Bir ceza dönüşü yap" },
   2: { name: "2 ceza dönüşü", deg: "720°", short: "2 dönüş", big: "720°", t: "İki ceza dönüşü yap", say: "İki ceza dönüşü yap" },
-  fd: { name: "Faux départ", deg: "FD", short: "FD", big: "FD", t: "Faux départ · hattın gerisine dön, yeniden başla", say: "Faux départ. Hattın gerisine dön, yeniden başla" },
+  // Faux départ = erken start (Seyhun 2026-11-27 "Fox depart değil, Faux départ diyoruz; yani erken start"): ses Türkçe okunuşla "Fodepar"
+  fd: { name: "Faux départ", deg: "Erken start", short: "FD", big: "FD", t: "Faux départ · erken start, hattın gerisine dön, yeniden başla", say: "Fodepar. Erken start. Hattın gerisine dön, yeniden başla" },
 };
 export const PEN_BIG_MS = 10e3;
 function cleanCeza(c) {
