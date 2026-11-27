@@ -216,10 +216,22 @@ function DayPanel({ d, onChange, onDrop }) {
       {groups.length > 0 && <span className="mt-1 block text-[0.8125rem] text-mut">{groups.join(" · ")}</span>}
 
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <label className="flex h-12 items-center gap-2 rounded-2xl bg-bg px-3">
-          <Icon name="clock" className="size-4 shrink-0 text-mut" />
-          <input type="time" value={d.time} onChange={(e) => set("time", e.target.value)} aria-label="Saat" className="h-full w-full min-w-0 appearance-none bg-transparent text-[0.9375rem] font-semibold outline-none" />
-        </label>
+        {/* Saat boşsa "Tam gün": gün içinde boş olunca yapılır (Seyhun 2026-11-27); dokununca saat seçilir, ✕ ile tam güne döner */}
+        {d.time ? (
+          <label className="flex h-12 items-center gap-2 rounded-2xl bg-bg px-3">
+            <Icon name="clock" className="size-4 shrink-0 text-mut" />
+            <input type="time" value={d.time} onChange={(e) => set("time", e.target.value)} aria-label="Saat" className="h-full w-full min-w-0 appearance-none bg-transparent text-[0.9375rem] font-semibold outline-none" />
+            <button type="button" aria-label="Tam gün yap" onClick={() => set("time", "")} className="grid size-7 shrink-0 place-items-center rounded-full text-mut">
+              <Icon name="x" className="size-4" />
+            </button>
+          </label>
+        ) : (
+          <button type="button" onClick={() => set("time", "17:00")} className="flex h-12 items-center gap-2 rounded-2xl bg-bg px-3 text-left">
+            <Icon name="clock" className="size-4 shrink-0 text-mut" />
+            <span className="min-w-0 flex-1 truncate text-[0.9375rem] font-semibold">Tam gün</span>
+            <span className="shrink-0 text-[0.8125rem] font-semibold text-acc">Saat seç</span>
+          </button>
+        )}
         <div className="flex h-12 items-center rounded-2xl bg-bg px-1.5">
           <button type="button" aria-label="Süreyi azalt" onClick={() => set("min", Math.max(15, n(d.min) - 15))} data-press className="btn btn-round btn-sm">
             <Icon name="minus" className="size-4" />
