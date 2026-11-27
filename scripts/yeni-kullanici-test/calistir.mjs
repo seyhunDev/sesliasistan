@@ -12,6 +12,10 @@
 //  7. Paket: 10 sporcu › havale bilgisi (IBAN, tutar, açıklama kodu) › Ödemeyi yaptım.
 //  8. Admin › Paketler: onay bekleyen ödemede Onayla → paket açılır.
 //  9. Antrenör: Paketim 3 / 10; 4. sporcu eklenir.
+// Açılış öncesi eklenenler (2026-11-27 "herkese açmadan önce hangi testler"):
+// 11. /tanitim, /tanitim/kisa, /tanitim/simulator ve video açılır. 12. "Velora'ya katıl" formu → Admin › Başvurular.
+// 13. Antrenör Yönet ("Günü başlat") ve Fitness › Hazır programlar açılır. 14. İkinci antrenör birincinin sporcularını, takvimini
+// görmez; kurallar başkasının verisini okutmaz/yazdırmaz. 15. Admin yalnız Velora sahibinde; sporcu ana hesap alanlarına giremez.
 // Ayrıca: kayıttan sonra "E-postanı doğrula" (doğrulanmadan sunucu sporcu almaz) ve girişte "Şifremi unuttum".
 // Seçenek --gorunur: tarayıcı ekranda açılır. Ekran görüntüleri: scripts/yeni-kullanici-test/sonuc/ (depoya girmez).
 import { existsSync, mkdirSync } from "node:fs";
@@ -54,8 +58,8 @@ async function launch() {
 }
 
 // Emülatörde giriş anahtarı (kurallar denemesi için) ve Firestore'a doğrudan istek
-async function idToken(email) {
-  const r = await fetch(`http://${AUTH_HOST}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=demo`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password: SIFRE, returnSecureToken: true }) });
+async function idToken(email, password = SIFRE) {
+  const r = await fetch(`http://${AUTH_HOST}/identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=demo`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email, password, returnSecureToken: true }) });
   const j = await r.json();
   return { token: j.idToken, uid: j.localId };
 }
@@ -68,6 +72,8 @@ console.log("YENİ KULLANICI UÇTAN UCA TESTİ (sahte Firebase)");
 let emu = null;
 let server = null;
 let browser = null;
+let kul = "";
+let sif = "";
 try {
   emu = await startEmulator({ log: console.log });
   console.log("    Uygulama açılıyor (ilk derleme 1-3 dakika sürebilir)…");
@@ -91,7 +97,7 @@ try {
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const p = await ctx.newPage();
     p.on("pageerror", (e) => hatalar.push(`${ad}: ${e.message.slice(0, 200)}`));
-    p.on("console", (m) => m.type() === "error" && !NOISE.test(m.text()) && !BILINEN.test(m.text()) && hatalar.push(`${ad} [${new URL(p.url()).pathname}]: ${m.text().slice(0, 1500)}`));
+    p.on("console", (m) => m.type() === "error" && !NOISE.test(m.text()) && !BILINEN.test(m.text()) && hatalar.push(`${ad} [${new URL(p.url()).pathname}]: ${m.text().slice(0, 5000)}`));
     // Kullanım kaydı izni penceresi her an çıkabilir: "Hayır, teşekkürler" ile kapatılır
     await p.addLocatorHandler(p.getByRole("button", { name: "Hayır, teşekkürler" }), (b) => b.click());
     let n = 0;
@@ -255,8 +261,8 @@ try {
   await p.getByText("Hesap açıldı").waitFor({ timeout: 30000 }).catch(() => {});
   await p.shot("hesap-acildi");
   const hm = await metin(p);
-  const kul = hm.match(/Kullanıcı adı ([a-z0-9.]+)/)?.[1];
-  const sif = hm.match(/Şifre ([A-Za-z0-9]{6,})/)?.[1];
+  kul = hm.match(/Kullanıcı adı ([a-z0-9.]+)/)?.[1];
+  sif = hm.match(/Şifre ([A-Za-z0-9]{6,})/)?.[1];
   ok("Sporcuya hesap açılır (kullanıcı adı ve şifre gösterilir)", !!(kul && sif), hm.slice(0, 200));
   await p.getByRole("button", { name: "Tamam" }).click().catch(() => {});
   if (kul && sif) {
@@ -318,6 +324,135 @@ try {
   ok("'Şifremi unuttum' › 'E-postanı kontrol et'", /E-postanı kontrol et/.test(await metin(q)));
   const kod2 = (await oobKodlar()).find((c) => c.email === ANTRENOR.email && c.requestType === "PASSWORD_RESET");
   ok("Şifre sıfırlama e-postası gönderildi", !!kod2);
+
+  // 11. Tanıtım sayfaları (herkese açık, girişsiz)
+  console.log("\n  11. Tanıtım sayfaları");
+  for (const yol of ["/tanitim", "/tanitim/kisa", "/tanitim/simulator"]) {
+    const r = await fetch(`${U}${yol}`);
+    const h = r.ok ? await r.text() : "";
+    ok(`${yol} açılır (200, video var)`, r.status === 200 && /<video|\.mp4/.test(h), r.status);
+  }
+  {
+    const r = await fetch(`${U}/tanitim/gun-t.mp4`, { headers: { range: "bytes=0-1023" } });
+    ok("Tanıtım videosu iner (gun-t.mp4)", r.status === 200 || r.status === 206, r.status);
+    await r.arrayBuffer().catch(() => {});
+  }
+
+  // 12. "Velora'ya katıl" formu → Admin › Başvurular. Antrenör de "owner" olduğu için başvuru Velora sahibine gitmeli.
+  console.log("\n  12. Velora'ya katıl formu");
+  {
+    const r = await fetch(`${U}/api/basvuru`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ rol: "Antrenör", ad: "Ali Veli", tel: "0532", mail: "x@ornek.com", kulup: "Didim Yelken" }) });
+    ok("Hatalı telefonla başvuru reddedilir (400)", r.status === 400, r.status);
+  }
+  const t = await yeni("tanitim");
+  await t.goto(`${U}/tanitim`, { waitUntil: "domcontentloaded", timeout: 120000 });
+  await bekle(t, 1500);
+  await t.shot("tanitim");
+  await t.evaluate(() => {
+    const f = document.querySelector(".jn form");
+    f.ad.value = "Selin Rüzgar";
+    f.tel.value = "532 765 43 21";
+    f.mail.value = "selin@ornek.com";
+    f.kulup.value = "Didim Yelken, Aydın";
+    [...f.querySelectorAll(".rl button")].find((b) => b.textContent.trim() === "Kulüp")?.click();
+    f.requestSubmit();
+  });
+  await t.getByText("Başvurun alındı").waitFor({ timeout: 20000, state: "attached" }).catch(() => {});
+  ok("Tanıtım › Başvur › 'Başvurun alındı'", /Başvurun alındı/.test(await t.content()));
+  await t.context().close();
+  await a.goto(`${U}/settings/admin`, { waitUntil: "domcontentloaded" });
+  await a.getByText("Selin Rüzgar").first().waitFor({ timeout: 60000 }).catch(() => {});
+  await a.shot("basvurular");
+  const bm = await metin(a);
+  ok("Admin › Başvurular'da başvuru görünür (ad, kulüp)", /Selin Rüzgar/.test(bm) && /Didim Yelken/.test(bm), bm.slice(0, 300));
+
+  // 13. Yönet ve Fitness (antrenör)
+  console.log("\n  13. Yönet ve Fitness");
+  await p.goto(`${U}/bilgi/yonet`, { waitUntil: "domcontentloaded" });
+  await p.getByText("Günü başlat").first().waitFor({ timeout: 60000 }).catch(() => {});
+  await p.shot("yonet");
+  ok("Yönet açılır ('Günü başlat')", /Günü başlat|GÜNÜ BAŞLAT/.test(await metin(p)));
+  await p.goto(`${U}/fitness`, { waitUntil: "domcontentloaded" });
+  const hz = p.getByRole("button", { name: "Hazır programlar" }).first();
+  await hz.waitFor({ timeout: 60000 }).catch(() => {});
+  let hzAcik = false;
+  if (await hz.count()) {
+    await hz.click().catch(() => {});
+    await bekle(p, 1500);
+    hzAcik = (await p.getByRole("dialog").count()) > 0;
+  }
+  await p.shot("hazir-programlar");
+  ok("Fitness › Hazır programlar açılır", hzAcik);
+  await p.keyboard.press("Escape").catch(() => {});
+
+  // 14. Veri ayrılığı: ikinci antrenör birincinin hiçbir verisini görmez (ekranda ve kurallarda)
+  console.log("\n  14. İki hesabın verisi ayrı");
+  const B = { ad: "Ege Antrenör", email: "ikinci@ornek.local" };
+  const b = await yeni("antrenor2");
+  await kaydol(b, B.ad, B.email);
+  const kodB = (await oobKodlar()).find((c) => c.email === B.email && c.requestType === "VERIFY_EMAIL");
+  if (kodB) await fetch(kodB.oobLink);
+  const dgB = b.getByRole("dialog", { name: "E-posta doğrulama" });
+  await dgB.getByRole("button", { name: "Doğruladım" }).click({ timeout: 45000 }).catch(() => {});
+  await dgB.waitFor({ state: "detached", timeout: 20000 }).catch(() => {});
+  await ilkAcilis(b, "");
+  await b.goto(`${U}/athletes`, { waitUntil: "domcontentloaded" });
+  await b.getByText("Henüz sporcu yok").waitFor({ timeout: 60000 }).catch(() => {});
+  const bs = await metin(b);
+  await b.shot("sporcular");
+  ok("İkinci antrenör: sporcu listesi boş, birincinin sporcuları yok", /Henüz sporcu yok/.test(bs) && !/Ayşe Deniz|Mert Rüzgar|Kaan Dalga/.test(bs), bs.slice(0, 200));
+  await b.goto(`${U}/calendar`, { waitUntil: "domcontentloaded" });
+  await b.getByRole("button", { name: "+ Plan" }).waitFor({ timeout: 60000 }).catch(() => {});
+  await bekle(b, 2000);
+  ok("İkinci antrenör: takviminde birincinin planı yok", !/Optimist antrenmanı/.test(await metin(b)));
+  const tb = await idToken(B.email);
+  const ta = { token, uid };
+  const adm = await idToken(VELORA_ADMIN);
+  const oku = async (kim, yol) => (await fetch(fsUrl(yol), { headers: { authorization: `Bearer ${kim.token}` } })).status;
+  ok("Kurallar: 2. antrenör 1.'nin sporcularını okuyamaz", (await oku(tb, `orgs/${ta.uid}/athletes`)) === 403);
+  ok("Kurallar: 2. antrenör 1.'nin planlarını okuyamaz", (await oku(tb, `orgs/${ta.uid}/plans`)) === 403);
+  ok("Kurallar: 1. antrenör 2.'nin planlarını okuyamaz", (await oku(ta, `orgs/${tb.uid}/plans`)) === 403);
+  ok("Kurallar: antrenör ana hesabın başvurularını okuyamaz", (await oku(ta, `orgs/${adm.uid}/basvurular`)) === 403);
+  ok("Kurallar: antrenör ana hesabın sporcularını okuyamaz", (await oku(ta, `orgs/${adm.uid}/athletes`)) === 403);
+  {
+    const r = await fetch(fsUrl(`orgs/${ta.uid}/plans`), { method: "POST", headers: { authorization: `Bearer ${tb.token}`, "content-type": "application/json" }, body: JSON.stringify({ fields: { title: { stringValue: "Sızma" } } }) });
+    ok("Kurallar: 2. antrenör 1.'nin takvimine yazamaz", r.status === 403, r.status);
+  }
+  {
+    const r = await fetch(`${fsUrl(`users/${tb.uid}`)}?updateMask.fieldPaths=role&updateMask.fieldPaths=orgId`, { method: "PATCH", headers: { authorization: `Bearer ${tb.token}`, "content-type": "application/json" }, body: JSON.stringify({ fields: { orgId: { stringValue: ta.uid }, role: { stringValue: "staff" } } }) });
+    ok("Kurallar: kendini başkasının ekibine yazamaz", r.status === 403, r.status);
+  }
+  await b.context().close();
+
+  // 15. Yetki: Admin yalnız Velora sahibinde; sporcu ana hesap alanlarına giremez
+  console.log("\n  15. Yetki");
+  await p.goto(`${U}/settings/admin`, { waitUntil: "domcontentloaded" });
+  await bekle(p, 4000);
+  ok("Antrenörde Admin sayfası boş (Başvurular yok)", !/Başvurular|Selin Rüzgar/.test(await metin(p)));
+  ok("Antrenör Ayarlar'ında Admin satırı yok", await (async () => {
+    await p.goto(`${U}/settings`, { waitUntil: "domcontentloaded" });
+    await p.getByRole("link", { name: "Paketim" }).waitFor({ timeout: 60000 }).catch(() => {});
+    return !(await p.getByRole("link", { name: /^Admin/ }).count());
+  })());
+  if (kul && sif) {
+    const { loginEmail } = await import("../../src/lib/kinds.js");
+    const sp = await idToken(loginEmail(kul), sif);
+    ok("Kurallar: sporcu antrenörün sporcu listesini okuyamaz", (await oku(sp, `orgs/${ta.uid}/athletes`)) === 403);
+    ok("Kurallar: sporcu ana hesabın başvurularını okuyamaz", (await oku(sp, `orgs/${adm.uid}/basvurular`)) === 403);
+    {
+      const r = await fetch(`${fsUrl(`users/${sp.uid}`)}?updateMask.fieldPaths=role`, { method: "PATCH", headers: { authorization: `Bearer ${sp.token}`, "content-type": "application/json" }, body: JSON.stringify({ fields: { role: { stringValue: "owner" } } }) });
+      ok("Kurallar: sporcu kendini ana hesap yapamaz", r.status === 403, r.status);
+    }
+    const s = await yeni("sporcu2");
+    await girisYap(s, kul, sif);
+    await s.getByText(/Hoş geldin, Ayşe/).waitFor({ timeout: 30000 }).catch(() => {});
+    const sm = await metin(s);
+    ok("Sporcu ana sayfasında Yönet, Hesaplar, Admin yok", !/YÖNET|Hesaplar · toplam|Admin/i.test(sm.replace(/Velora/g, "")), sm.slice(0, 200));
+    await s.goto(`${U}/settings/admin`, { waitUntil: "domcontentloaded" });
+    await bekle(s, 4000);
+    ok("Sporcu Admin sayfasını göremez", !/Başvurular|Selin Rüzgar/.test(await metin(s)));
+    await s.context().close();
+  }
 
   ok("Sayfa hatası yok", !hatalar.length, hatalar.map((h) => h.slice(0, 200)).slice(0, 5).join(" | "));
   if (hatalar.length) (await import("node:fs")).writeFileSync(`${OUT}hatalar.txt`, hatalar.join("\n\n"));
