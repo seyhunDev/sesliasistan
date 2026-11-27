@@ -36,6 +36,8 @@ const PATHS = {
   storm: <><path d="M6 16.33A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 .5 8.97" /><path d="m13 12-3 5h4l-3 5" /></>,
   arrow: <><path d="M12 19V5" /><path d="m5 12 7-7 7 7" /></>,
   cake: <><path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8" /><path d="M4 16s.5-1 2-1 2.5 2 4 2 2.5-2 4-2 2.5 2 4 2 2-1 2-1" /><path d="M2 21h20M7 8v3M12 8v3M17 8v3M7 4h.01M12 4h.01M17 4h.01" /></>,
+  // dil (İngilizce sekmesi, Seyhun 2026-11-27 "ikonları doğru olsun"): solda yazı işareti, sağda A
+  lang: <><path d="M4 5h9M8.5 3v2M6 5c.6 3.2 2.7 5.6 5.5 6.8M11 5c-.6 3.4-3 6.3-6.5 7.8" /><path d="m13 21 4-9 4 9M14.4 18h5.2" /></>,
   book: <><path d="M12 7v14" /><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" /></>,
   checks: <><path d="M18 6 7 17l-5-5" /><path d="m22 10-7.5 7.5L13 16" /></>,
   keyboard: <><rect x="2" y="5" width="20" height="14" rx="2.5" /><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 12h.01M10 12h.01M14 12h.01M18 12h.01M8 15.5h8" /></>,

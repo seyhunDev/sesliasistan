@@ -170,7 +170,11 @@ export function ChatList() {
         <header className="flex items-center gap-2.5">
           <BackButton href="/" className="chat-back touch-manipulation" />
           <div className="min-w-0 flex-1 leading-tight">
-            <h1 className="truncate text-[1.375rem] font-semibold tracking-[-.02em]">Mesajlar</h1>
+            {/* Beta (Seyhun 2026-11-27 "Mesajlarda beta olduğu belirtilsin") */}
+            <h1 className="truncate text-[1.375rem] font-semibold tracking-[-.02em]">
+              Mesajlar
+              <span className="ml-2 inline-block rounded-full border border-white/25 px-2 py-px align-middle text-[0.6875rem] font-bold uppercase tracking-[.08em] text-white/80">Beta</span>
+            </h1>
             <p className="truncate text-[0.8125rem] text-white/65">{chatCount ? `${chatCount} sohbet` : "Henüz sohbet yok"}</p>
           </div>
           <button type="button" onClick={() => setNewOpen(true)} data-press className="btn btn-primary btn-sm shrink-0 gap-1">

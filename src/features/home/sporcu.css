@@ -222,9 +222,13 @@ main.sh.sh .tone-st { --tfg: #22c55e; } main.sh.sh .tone-sp { --tfg: #60a5fa; } 
   .sh-b:not(:has(.sh-wl > *)) { grid-template-areas: "h" "p"; }
   .sh-wl { border-left: 0; padding-left: 0; border-top: 1px solid #26262b; padding-top: .8rem; margin-top: .6rem; align-self: start; }
 }
+/* Sporcu iPad havası (Seyhun 2026-11-27): telefonda gizli (tek satır hava), iPad'de dik ve yatay tam genişlik üstte, altında iki sütun */
+.sh-ipwx { display: none; }
 @media (min-width: 48rem) {
   .sh { padding-left: max(1.5rem, env(safe-area-inset-left)); padding-right: max(1.5rem, env(safe-area-inset-right)); }
   .sh-grid { grid-template-columns: 1.25fr 1fr; gap: 1.1rem; align-items: start; }
+  .sh-ipwx { display: flex; flex-direction: column; gap: .8rem; grid-column: 1 / -1; min-width: 0; }
+  [data-home-sporcu] .sh-wx { display: none; }
   .sh-hero { min-height: 20rem; }
   .sh-sail { width: 8rem; height: 10rem; }
 }

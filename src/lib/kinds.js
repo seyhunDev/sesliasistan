@@ -11,7 +11,8 @@ export const kindOf = (p) => (KINDS.includes(p?.kind) ? p.kind : "staff");
 export const isAthleteSide = (k) => k === "athlete" || k === "student" || k === "parent";
 // Antrenör (Seyhun 2026-11-24): ana hesabın "Antrenör" işaretlediği çalışan. Kendi Yönet ekranı olur, kendi sporcularına link
 // gönderir. Verisi kulübünkinden ayrı: orgs/k-{uid} (Firestore kuralı isCoachSpace). Ana hesabın alanı kendi işletmesi.
-export const isCoach = (p) => p?.role === "staff" && kindOf(p) === "staff" && p?.coach === true;
+// Seyhun 2026-11-27 "Yönet kutusu her çalışanda görünsün": işaret gerekmez, her çalışan (tür "staff") antrenör sayılır; aile, diğer, sporcu değil.
+export const isCoach = (p) => p?.role === "staff" && kindOf(p) === "staff";
 export const coachSpace = (uid) => (uid ? `k-${uid}` : "");
 export const bilgiOrg = (p) => (!p ? "" : p.role === "owner" ? p.orgId || "" : isCoach(p) ? coachSpace(p.uid) : "");
 // Normal kullanıcı (Seyhun 2026-11-24 "küçük kapsamlı uygulama"): çalışan, aile, diğer. Sade menü, alt çubuk ve Ayarlar.

@@ -37,11 +37,12 @@ service cloud.firestore {
       return signedIn() && p.role == "staff" && p.orgId == orgId;
     }
     function inOrg(orgId) { return isOwner(orgId) || isStaff(orgId); }
-    // Antrenörün kendi Yönet alanı (Seyhun 2026-11-24): "k-" + kendi uid'si; ana hesabın "Antrenör" işaretlediği çalışan (users.coach, sunucu yazar).
+    // Antrenörün kendi Yönet alanı (Seyhun 2026-11-24): "k-" + kendi uid'si. 2026-11-27: her çalışan (role staff, tür staff; aile/sporcu değil).
     // Bilgi ekranı belgeleri bu alanda orgs/k-{uid} altında, açık link ve tekne belgelerinde org = "k-{uid}".
     function isCoachSpace(o) {
       return signedIn() && o == "k-" + request.auth.uid
-          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get("coach", false) == true;
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get("role", "") == "staff"
+          && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get("kind", "staff") == "staff";
     }
     function bilgiAdmin(o) { return isOwner(o) || isCoachSpace(o); }
     // Velora Yemek kuryesi (profili yalnız sunucu açar: role "courier", courierOf = işletme). Yalnız okur; yazmalar /api/kurye

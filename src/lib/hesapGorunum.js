@@ -18,12 +18,13 @@ export function viewOf(role, kind) {
 }
 
 // Alt çubuk (telefon, dik iPad) ve sol menünün üstü: [href, ad, simge]. "msg" okunmamış sayısını taşır.
-// Normal kullanıcı (Seyhun 2026-11-24): Kulüp (Velora Sailing) ve İngilizce; Mesajlar ve Görevler Tümü'de.
+// Normal kullanıcı (Seyhun 2026-11-27): Ana sayfa, Takvim, Mesajlar, İngilizce ("Kulüp" sekmesi kalktı: Velora Sailing ana sayfada Kulüp kutusunda).
+// İngilizce simgesi "lang" (dil), kitap değil.
 export const TABS = {
   ana: [["/", "Ana sayfa", "home"], ["/calendar", "Takvim", "cal"], ["/messages", "Mesajlar", "chat", "msg"], ["/tasks", "Görevler", "task"]],
-  normal: [["/", "Ana sayfa", "home"], ["/calendar", "Takvim", "cal"], ["/sailing", "Kulüp", "anchor"], ["/english", "İngilizce", "book"]],
+  normal: [["/", "Ana sayfa", "home"], ["/calendar", "Takvim", "cal"], ["/messages", "Mesajlar", "chat", "msg"], ["/english", "İngilizce", "lang"]],
   // Sporcu tarafında Mesajlar yok (Seyhun 2026-11-25 "mesajları şimdilik sporculara göstermeyelim"; /messages ana sayfaya döner)
-  sporcu: [["/", "Ana sayfa", "home"], ["/calendar", "Takvim", "cal"], ["/english", "İngilizce", "book"]], // Görevler yerine İngilizce (Seyhun 2026-11-25)
+  sporcu: [["/", "Ana sayfa", "home"], ["/calendar", "Takvim", "cal"], ["/english", "İngilizce", "lang"]], // Görevler yerine İngilizce (Seyhun 2026-11-25)
 };
 export const tabsOf = (view) => TABS[view] || TABS.ana;
 
@@ -46,7 +47,6 @@ export function homeActions(o) {
       { href: "/plans", icon: "cal", label: "Planlar" },
       { href: "/tasks", icon: "task", label: "Görevler" },
       { href: "/notes", icon: "note", label: "Notlar" },
-      o.plain && { href: "/messages", icon: "chat", label: "Mesajlar" },
       !o.side && full && { id: "meeting", icon: "mic", label: "Toplantı", hid: true },
       o.side && { href: "/my-attendance", icon: "check", label: o.parent ? "Yoklama" : "Yoklamam" },
       { href: "/birthdays", icon: "cake", label: "Doğum günü", hid: !o.side }, // sporcu tarafında görünür kalır
@@ -77,7 +77,7 @@ export function homeActions(o) {
     ]],
     ["Kişisel", [
       { href: "/fitness", icon: "dumbbell", label: "Fitness" }, // herkeste (Seyhun 2026-11-25 "normal kullanıcı ve sporcular da fitness görebilmeli")
-      { href: "/english", icon: "chat", label: "İngilizce" }, // kelimeler ve kalıplar; sporcuda da (Seyhun 2026-11-25), ilerlemesi kendi cihazında
+      { href: "/english", icon: "lang", label: "İngilizce" }, // kelimeler ve kalıplar; sporcuda da (Seyhun 2026-11-25), ilerlemesi kendi cihazında
       o.shop && { href: "/shopping", icon: "cart", label: "Alışveriş" },
       o.lessons && full && { href: "/schedule", icon: "book", label: "Dersler", hid: true },
     ]],
