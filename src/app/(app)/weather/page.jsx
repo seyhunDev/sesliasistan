@@ -12,10 +12,10 @@ export default function WeatherPage() {
   const place = getPlace();
   if (w?.today) return <WeatherTop key={w.place || place.name} w={w} err={err} refresh={refresh} />;
   return (
-    <main className="iph iph-page acik">
+    <main className="iph iph-page navy sahne-pg hv-sahne">
       <header className="iph-hd">
         <BackButton href="/" />
-        <h1 className="iph-date">
+        <h1 className="iph-date sahne-t">
           <b>Hava</b>
           <small>{place.name}</small>
         </h1>
