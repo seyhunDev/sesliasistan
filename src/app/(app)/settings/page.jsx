@@ -26,6 +26,7 @@ import { useRouter } from "next/navigation";
 import { ProfilePhoto } from "@/features/people/ProfilePhoto";
 import { liveHead } from "@/features/liveScreen/fonts";
 import { AdminRow } from "@/features/admin/AdminPage";
+import { PaketKart } from "@/features/paket/PaketKart";
 import { ClubRow } from "@/features/clubs/ClubRow";
 import { isVeloraAdmin } from "@/lib/hesapGorunum";
 import { KullanimRow } from "@/features/kullanim/KullanimKaydi";
@@ -164,6 +165,7 @@ export default function SettingsPage() {
     <main className={`sahne-pg ${liveHead.variable} wide mx-auto max-w-[30rem] px-5 md:max-w-[52rem] md:px-8 pb-[calc(3rem+env(safe-area-inset-bottom))]`}>
       <Top profile={profile} label="Ana hesap" />
       <Body>
+        <PaketKart />
         {admin && <Durum />}
 
         <Sec title="Görünüm">

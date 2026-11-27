@@ -15,6 +15,9 @@ import { Loading } from "@/components/ui/Loader";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useData } from "@/features/data/DataProvider";
 import { AccessSheet } from "@/features/athletes/AccessSheet";
+import { LimitSheet } from "@/features/paket/LimitSheet";
+import { limitOf } from "@/lib/paket";
+import { isVeloraAdmin } from "@/lib/hesapGorunum";
 import { syncAthleteAtt } from "@/features/athletes/mirror";
 import { NewAthlete } from "@/features/athletes/NewAthlete";
 import { repairLinks } from "@/features/athletes/memberSync";
@@ -41,6 +44,7 @@ export default function AthletesPage() {
 }
 
 function AthleteList() {
+  const { profile } = useAuth();
   const { data, err, reload } = useDikili("list", loadAthletes);
   const [q, setQ] = useState("");
   const [cls, setCls] = useState("");
@@ -50,6 +54,7 @@ function AthleteList() {
   const [sel, setSel] = useState(null); // toplu seçim: Set(sporcu kimliği) | null
   const [access, setAccess] = useState(null); // hesap açılacak sporcular
   const [adding, setAdding] = useState(false);
+  const [dolu, setDolu] = useState(0); // sporcu hakkı doldu penceresi (sınır; lib/paket.js)
   // Uygulamada kişisi olan sporcular (kulüp kimliği → kişi)
   const linked = new Map(members.filter((m) => m.athleteId && m.status !== "left").map((m) => [m.athleteId, m]));
   // Liste yüklenince hesabı olan sporcuların yoklama kopyası güncellenir (kulüp uygulamasından girilenler de gelsin)
@@ -105,7 +110,12 @@ function AthleteList() {
             <p className="truncate text-[0.8125rem] text-white/65">{sub}</p>
           </div>
           {data && !err && (
-            <button type="button" onClick={() => setAdding(true)} data-press className="btn btn-primary btn-sm shrink-0 gap-1">
+            <button type="button" onClick={() => {
+              // Paket sınırı (sunucu da denetler): doluysa form yerine "hakkın doldu" penceresi
+              const lim = limitOf(profile?.paket, { admin: isVeloraAdmin(profile?.email) });
+              if ((data?.athletes || []).length >= lim) setDolu(lim);
+              else setAdding(true);
+            }} data-press className="btn btn-primary btn-sm shrink-0 gap-1">
               <Icon name="plus" className="size-4" />
               Sporcu
             </button>
@@ -281,7 +291,9 @@ function AthleteList() {
             }}
             names={{ classes: data.classes || [], coaches: data.coaches || [] }}
             athletes={all}
+            onFull={(lim) => (setAdding(false), setDolu(lim || 3))}
           />
+          <LimitSheet open={!!dolu} limit={dolu} onClose={() => setDolu(0)} />
         </>
       )}
       </div>

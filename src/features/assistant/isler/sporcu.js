@@ -63,7 +63,11 @@ export async function athleteCmd(ctx, s, viaVoice, pre = null) {
       done(`Ekledim: ${ac.name}${ac.birth ? `, ${ac.birth.slice(0, 4)} doğumlu` : ""}. Sınıfını ve veli bilgisini sporcu kartından tamamlayabilirsin.`, { engine: "local", nav: "athletes" }, viaVoice);
     } catch (e) {
       stepsEnd(false);
-      reply(e?.code === "permission-denied" ? "Kulüp hesabının sporcu ekleme izni yok." : "Sporcuyu ekleyemedim.", { fail: true, engine: "local" }, viaVoice);
+      reply(
+        e?.code === "paket-dolu" ? `${e.limit || 3} sporcu hakkın doldu. Ayarlar › Paketim'den paketini büyütebilirsin.` : e?.code === "permission-denied" ? "Bu hesabın sporcu ekleme izni yok." : "Sporcuyu ekleyemedim.",
+        { fail: true, engine: "local" },
+        viaVoice,
+      );
     }
     return true;
   }

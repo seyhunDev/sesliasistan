@@ -6,6 +6,7 @@ import { applySize } from "@/lib/textSize";
 import { doc, onSnapshot, setDoc as setDocument } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase/clientApp";
 import { clearWarm, readWarmMe, saveWarmMe } from "@/lib/warmStart";
+import { kayitSuruyor } from "@/lib/auth";
 import { setAthleteAccount } from "@/features/athletes/access";
 
 const Ctx = createContext(null);
@@ -59,7 +60,7 @@ export function AuthProvider({ children }) {
                     setLoading(false);
                     if (snap.exists()) saveWarmMe(firebaseUser, snap.data());
                     // Sunucudan gelen kesin "yok" bilgisinde (önbellekten değil) ana hesap profilini oluştur
-                    if (!snap.exists() && !snap.metadata.fromCache) {
+                    if (!snap.exists() && !snap.metadata.fromCache && !kayitSuruyor()) {
                         setDocument(doc(db, "users", firebaseUser.uid), {
                             name: firebaseUser.displayName || firebaseUser.email?.split("@")[0] || "",
                             email: firebaseUser.email || "",
@@ -93,6 +94,9 @@ export function AuthProvider({ children }) {
             kind: doc_?.role === "staff" ? doc_?.kind || "staff" : "owner", // kişi türü (lib/kinds): staff | family | athlete | student | parent | other
             clubId: typeof doc_?.clubId === "string" ? doc_.clubId : "", // resmi kulüp listesinden kulübü (clubs/{id}; lib/club.js), boş: kulüpsüz
             clubAsked: !!doc_?.clubAsked, // "Kulübün?" bir kez soruldu (ClubGate)
+            paket: doc_?.paket && typeof doc_.paket === "object" ? doc_.paket : null, // sporcu paketi (lib/paket.js; yalnız sunucu yazar)
+            dogrula: doc_?.dogrula === true, // kayıtla açılan hesap: e-posta doğrulanana kadar DogrulaGate (2026-11-27)
+            paketIstek: doc_?.paketIstek && typeof doc_.paketIstek === "object" ? doc_.paketIstek : null, // paket isteği / havale bildirimi
             photo: doc_?.photo || "", // profil fotoğrafı adresi (Storage; /api/photo yazar)
             photoPath: doc_?.photoPath || "",
             icsToken: doc_?.icsToken || "", // takvim aboneliği gizli bağlantısı (Ayarlar › iPhone takvimi; sunucu yazar)

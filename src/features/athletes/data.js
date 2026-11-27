@@ -155,14 +155,14 @@ export async function saveBody(id, m, drop = "") {
 
 // Yeni sporcu (Velora, eski kulüp uygulamasıyla aynı alanlar). Liste createdAt'e göre sıralandığı için createdAt şart.
 // Dönüş: yeni sporcunun kimliği
+// Sporcu sunucudan eklenir (/api/sporcu-ekle; paket sınırı lib/paket.js). Hak dolduysa hata code "paket-dolu" (count, limit).
 export async function createAthlete(fields) {
-  const S = await src();
-  const data = { status: "active", currentClassId: "", currentCoachId: "", ...fields, createdAt: new Date() };
-  const d = data.studentBirthDate;
-  data.studentBirthDate = d ? Timestamp.fromDate(new Date(`${String(d).slice(0, 10)}T12:00:00`)) : null;
-  const ref = await addDoc(S.col("athletes"), data);
+  const { authFetch } = await import("@/lib/authFetch");
+  const res = await authFetch("/api/sporcu-ekle", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ fields }) });
+  const j = await res.json().catch(() => ({}));
+  if (!res.ok) throw Object.assign(new Error(j.error || "Sporcu eklenemedi."), { code: j.full ? "paket-dolu" : res.status === 403 ? "permission-denied" : "server", count: j.count, limit: j.limit });
   forget();
-  return ref.id;
+  return j.id;
 }
 
 // Arşiv: "Pasif" durumu (listede gizlenir, yoklama ve aidat listesine girmez; geçmişi kalır)

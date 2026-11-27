@@ -35,6 +35,7 @@ import { NewVersionBar } from "@/features/pwa/NewVersionBar";
 import { Onboarding } from "@/features/onboarding/Onboarding";
 import { TryAssistant } from "@/features/onboarding/TryAssistant";
 import { SportGate } from "@/sports/SportGate";
+import { DogrulaGate } from "@/features/auth/DogrulaGate";
 import { ClubGate } from "@/features/clubs/ClubGate";
 import { installTrail } from "@/lib/navTrail";
 import { NavProgress } from "@/components/ui/NavProgress";
@@ -116,6 +117,7 @@ export default function AppLayout({ children }) {
                   {!live && <TryAssistant />}
                   {!live && <SportGate />}
                   {!live && <ClubGate />}
+                  {!live && <DogrulaGate />}
                   <TimerSound />
                   <BilgiSync />
                   <AntTemizle />

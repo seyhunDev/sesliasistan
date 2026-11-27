@@ -7,6 +7,17 @@ const F = (desc, fn) => ({ desc, fn, ok: (r) => r === true });
 const NX = await import("@/lib/notifyExtra");
 const W = await import("@/lib/waTemplates");
 const WROWS = Array.from({ length: 24 }, (_, i) => ({ hh: String(i).padStart(2, "0"), wind: i >= 14 && i <= 18 ? 23 : 10, gust: i >= 14 && i <= 18 ? 30 : 14 }));
+// Sporcu paketleri ve havale (lib/paket.js; Seyhun 2026-11-27): 3 ücretsiz, 10/15/20, süre, onay
+const PK = await import("@/lib/paket");
+group("Sporcu paketleri")([
+  ["sınır", F("paketsiz 3; geçerli 15'lik 15; süresi biten 3; sınırsız (0) ve ana hesap sonsuz", () => PK.limitOf(null) === 3 && PK.limitOf({ size: 15, until: "2026-12-27" }, { gun: "2026-11-27" }) === 15 && PK.limitOf({ size: 15, until: "2026-11-26" }, { gun: "2026-11-27" }) === 3 && PK.limitOf({ size: 0 }) === Infinity && PK.limitOf(null, { admin: true }) === Infinity)],
+  ["geçersiz paket", F("bilinmeyen boy (12) ve bozuk istek kabul edilmez; ücretsiz paket istenmez", () => PK.cleanPaket({ size: 12 }) === null && PK.cleanIstek({ size: 3 }) === null && PK.cleanIstek({ size: 20, period: "yil" })?.period === "yil")],
+  ["fiyat", F("15 sporcu aylık 199 ₺, yıllık 1.990 ₺ (10 ay)", () => PK.fiyatOf(15) === 199 && PK.fiyatOf(15, "yil") === 1990 && PK.fiyatYazi(10, "yil") === "1.490 ₺ / yıl" && PK.fiyatYazi(3) === "Ücretsiz")],
+  ["bitiş günü", F("bir ay sonra aynı gün, ay sonu taşmaz, yıllık bir yıl", () => PK.bitisOf("2026-11-27", "ay") === "2026-12-27" && PK.bitisOf("2026-01-31", "ay") === "2026-02-28" && PK.bitisOf("2026-11-27", "yil") === "2027-11-27")],
+  ["onay", F("yeni paket bugünden; aynı paket sürerken yenilenirse bitişin üstüne eklenir; farklı pakete geçiş bugünden", () => PK.onayla({ size: 10, period: "ay" }, null, "2026-11-27").until === "2026-12-27" && PK.onayla({ size: 15, period: "ay" }, { size: 15, until: "2026-12-10" }, "2026-11-27").until === "2027-01-10" && PK.onayla({ size: 20, period: "ay" }, { size: 15, until: "2026-12-10" }, "2026-11-27").until === "2026-12-27" && PK.onayla({ size: 3 }, null) === null)],
+  ["havale", F("açıklama kodu hesaba göre sabit; IBAN boşluksuz saklanır, dörtlü gösterilir, TR + 24 rakam", () => PK.kodOf("tUs6nxsvn9") === "VLR-TUS6NX" && PK.ibanTemiz("tr12 0001 0000 0000 0000 0000 01") === "TR120001000000000000000001" && PK.ibanYazi("TR120001000000000000000001") === "TR12 0001 0000 0000 0000 0000 01" && PK.ibanGecerli("TR12 0001 0000 0000 0000 0000 01") && !PK.ibanGecerli("DE12 3456"))],
+  ["kalan hak", F("11/15 → 4; dolu → 0; sınırsız → sonsuz", () => PK.kalanOf(11, 15) === 4 && PK.kalanOf(16, 15) === 0 && PK.kalanOf(5, Infinity) === Infinity)],
+]);
 const WPLANS = [{ title: "Optimist antrenmanı", date: "2026-10-05", time: "16:00", cat: "Antrenman" }, { title: "Toplantı", date: "2026-10-05", time: "16:00", cat: "Toplantı" }];
 group("Ek bildirimler")([
   ["doğum günü bugün", F("Ali Kaya, 12 yaş", () => /Ali Kaya \(12 yaşında\)/.test(NX.birthdayText([{ name: "Ali Kaya", month: 10, day: 5, year: 2014 }, { name: "Veli", month: 11, day: 5 }], "2026-10-05")?.title || ""))],
