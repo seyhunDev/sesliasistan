@@ -15,7 +15,6 @@ import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
-import { DikiliLogin, useDikiliUser } from "@/features/athletes/Connect";
 import { isActive, loadAthletes, useDikili } from "@/features/athletes/data";
 import { monthLabel } from "@/features/athletes/attendanceReport";
 import { EXCEL_UPLOAD } from "@/features/bank/LedgerCard";
@@ -74,7 +73,6 @@ function Dues({ uid, duesAt }) {
     if (duesAt == null) updateDoc(doc(db, "users", uid), { duesAt: "10:00" }).catch(() => {});
   }, [duesAt, uid]);
   const { data, err, reload } = useDikili("list", loadAthletes);
-  const user = useDikiliUser();
   const thisMonth = todayStr().slice(0, 7);
   const [yms] = useState(() => lastMonths(thisMonth, 12));
   const [d, setD] = useState(null); // { cfg, months }
@@ -136,7 +134,6 @@ function Dues({ uid, duesAt }) {
     saveSum("dues", { ym: thisMonth, paidCount: t.paidCount, count: t.count, pending });
   }, [data, d, mv, yms, thisMonth]);
 
-  if (err?.code === "permission-denied") return <Shell><DikiliLogin denied={!!user} onDone={reload} /></Shell>;
   if (err)
     return (
       <Shell>

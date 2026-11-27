@@ -1,5 +1,5 @@
 // Ana sayfadaki "Sporcular" düğmesi yalnızca bu e-postalarda görünür: NEXT_PUBLIC_SPORCU_EMAILS="a@b.com,c@d.com".
-// Asıl koruma sporcu projesinin (dikili-c7cc8) kendi güvenlik kurallarıdır; veriyi o projenin hesabıyla okuruz.
+// Asıl koruma Firestore kurallarıdır: sporcular orgs/{ana hesap}/athletes, yalnız ana hesap okur (sunucu /api/sporcu-giris de bu listeye bakar).
 const list = () =>
   (process.env.NEXT_PUBLIC_SPORCU_EMAILS || "seyhunyildiz@gmail.com")
     .split(",")

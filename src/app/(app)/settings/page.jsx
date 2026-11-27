@@ -17,7 +17,6 @@ import { CalendarFeedRow } from "@/features/settings/CalendarFeed";
 import { PastChatsRow } from "@/features/settings/PastChats";
 import { AndroidApkRow } from "@/features/settings/AndroidApk";
 import { CleanAccountsRow } from "@/features/settings/CleanAccounts";
-import { MoveAthletesRow } from "@/features/settings/MoveAthletes";
 import { buildLine } from "@/lib/buildInfo";
 import { logout } from "@/lib/auth";
 import { FaceIdRow } from "@/features/ios/AppLock";
@@ -196,7 +195,6 @@ export default function SettingsPage() {
           <Row title="Gmail ve banka mailleri" href="/mail/setup" />
           <CalendarFeedRow />
           <BackupRow />
-          <MoveAthletesRow />
         </Sec>
 
         <Sec title="Hesap">

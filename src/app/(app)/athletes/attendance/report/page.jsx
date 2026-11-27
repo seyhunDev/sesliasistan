@@ -11,7 +11,6 @@ import { Loading } from "@/components/ui/Loader";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
-import { DikiliLogin, useDikiliUser } from "@/features/athletes/Connect";
 import { byId, isActive, loadAthletes, useDikili } from "@/features/athletes/data";
 import { downloadExcel, monthLabel, monthReport, shiftMonth } from "@/features/athletes/attendanceReport";
 import { ClassMenu } from "@/features/athletes/RollView";
@@ -35,7 +34,6 @@ const rateTone = (r) => (r === null ? "text-mut" : r >= 75 ? "text-ok" : r >= 50
 function Report() {
   const toast = useToast();
   const { data, err, reload } = useDikili("list", loadAthletes);
-  const user = useDikiliUser();
   const thisMonth = todayStr().slice(0, 7);
   const [ym, setYm] = useState(thisMonth);
   const [cls, setCls] = useState("");
@@ -98,9 +96,7 @@ function Report() {
       </section>
 
       <div className="split-cols relative -mx-5 -mt-6 space-y-6 rounded-t-[1.75rem] bg-bg px-5 pt-5">
-        {err?.code === "permission-denied" ? (
-          <DikiliLogin denied={!!user} onDone={reload} />
-        ) : err ? (
+        {err ? (
           <RowList>
             <Row onClick={reload} title={<span className="text-rec">{err.text}</span>} sub="Tekrar dene" />
           </RowList>

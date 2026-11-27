@@ -1,16 +1,15 @@
 // Yarış sayfası ekran testi: uygulama bu bilgisayarda açılır, sahte Firebase'e (emülatör) girilir, yarış sayfası SPORCU SEÇİLİ olarak
 // açılır (Seyhun 2026-10-26: #837'den sonra sporcu seçili yarış "Cannot access before initialization" ile açılmıyordu; sporcusuz
 // denemede görünmemişti). Sınananlar: yarış günü görünümü (Multimedya, hava, eksik bölüm satırı), yarıştan önceki görünüm, sekmeler
-// ve Multimedya sayfası çökmeden açılır, sporcu listede görünür. Kulüp verisi de emülatörden (dikili.js); gerçek veriye dokunulmaz.
+// ve Multimedya sayfası çökmeden açılır, sporcu listede görünür. Sporcu Velora'da (orgs/{owner}/athletes, emülatör); gerçek veriye dokunulmaz.
 // Hava tahmini sahte (open-meteo isteği karşılanır), yapay zekaya istek gitmez.
 import { existsSync } from "node:fs";
 import { INIT } from "../asistan-ekran-test/taklitler.mjs";
-import { seed, FS_HOST, AUTH_HOST } from "../asistan-ekran-test/emulator.mjs";
+import { seed } from "../asistan-ekran-test/emulator.mjs";
 
 const K = "yarış ekranı";
 const OWNER = "sahip@ornek.local";
 const PASS = "test-sifre-123";
-const CLUB = "dikili-c7cc8"; // kulüp projesinin adı (dikili.js); emülatörde ayrı proje
 const ymd = (d) => d.toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" });
 // Yarış günü sayfası evreye göre açılır (gün bitince Sonuç): akşam ya da sabah erken çalışınca test tarayıcısının saati bugün 13:00'e alınır,
 // yoksa Start sekmesi açılmaz ve testler saate göre düşer
@@ -41,26 +40,6 @@ async function launch() {
   throw new Error(`Tarayıcı bulunamadı. ${String(last?.message || "").split("\n")[0]}`);
 }
 
-// Kulübün sporcusu emülatördeki kulüp projesine (Bearer owner kuralları atlar)
-async function putAthlete(id, f) {
-  const fields = Object.fromEntries(Object.entries(f).map(([k, v]) => [k, { stringValue: v }]));
-  const r = await fetch(`http://${FS_HOST}/v1/projects/${CLUB}/databases/(default)/documents/athletes?documentId=${id}`, { method: "POST", headers: { Authorization: "Bearer owner", "content-type": "application/json" }, body: JSON.stringify({ fields }) });
-  if (!r.ok) throw new Error(`sporcu yazılamadı: ${r.status} ${(await r.text()).slice(0, 200)}`);
-}
-
-// Kulüp projesinin kuralları emülatörde: girişli hesap okur (gerçek kulüp kuralları yöneticiyi ister; burada yalnız sahte veri var)
-async function openClubRules() {
-  const content = "rules_version = '2'; service cloud.firestore { match /databases/{d}/documents { match /{doc=**} { allow read, write: if request.auth != null; } } }";
-  const r = await fetch(`http://${FS_HOST}/emulator/v1/projects/${CLUB}:securityRules`, { method: "PUT", headers: { "content-type": "application/json" }, body: JSON.stringify({ rules: { files: [{ content }] } }) });
-  if (!r.ok) throw new Error(`kulüp kuralları yazılamadı: ${r.status} ${(await r.text()).slice(0, 200)}`);
-}
-
-// Kulüp hesabı emülatördeki kulüp projesinde (Sporcu sekmesindeki "Kulüp hesabına bağlan" ile girilir)
-async function putClubUser(email, password) {
-  const r = await fetch(`http://${AUTH_HOST}/identitytoolkit.googleapis.com/v1/projects/${CLUB}/accounts`, { method: "POST", headers: { Authorization: "Bearer owner", "content-type": "application/json" }, body: JSON.stringify({ email, password }) });
-  if (!r.ok) throw new Error(`kulüp hesabı yazılamadı: ${r.status} ${(await r.text()).slice(0, 200)}`);
-}
-
 // Sahte saatlik tahmin (bütün günler aynı)
 const H = Array.from({ length: 16 * 24 }, (_, i) => `${plus(Math.floor(i / 24))}T${String(i % 24).padStart(2, "0")}:00`);
 const WX = { hourly: { time: H, temperature_2m: H.map(() => 18), weather_code: H.map(() => 2), is_day: H.map(() => 1), wind_speed_10m: H.map(() => 9), wind_direction_10m: H.map(() => 20), wind_gusts_10m: H.map(() => 14), precipitation_probability: H.map(() => 0) } };
@@ -84,11 +63,9 @@ export async function run(server, log = () => {}) {
         // Yayın: grupları ayrı (Seyhun 2026-11-02): Sarı yarışta, Mavi sırada; ▶ ile Sarı ekranda, Sarı Kamera 1'e bağlı
         { path: "orgs/{owner}/raceLive/r2", data: { plan: { day: TODAY, sets: [{ cls: "Optimist", grps: ["Sarı", "Mavi"] }], order: [{ cls: "Optimist", grp: "Mavi", prep: "P" }] }, starts: [{ id: "g1", day: TODAY, n: 1, cd: new Date(now.getTime() - 10 * 60e3).toISOString(), at: new Date(now.getTime() - 5 * 60e3).toISOString(), grp: "Sarı" }], rounds: { g1: { route: [], legs: {}, cls: "Optimist", grp: "Sarı", prep: "P" } }, onAir: { sid: "g1" }, camBy: { "Optimist|Sarı": "c1" } } },
         { path: "orgs/{owner}/races/r2", data: { name: "Bahar Kupası", city: "İzmir", district: "Dikili", startDate: plus(5), endDate: plus(6), spot: { name: "Dikili", lat: 39.07, lon: 26.89 }, athleteIds: ["a1"], createdAt: now.toISOString() } },
+        { path: "orgs/{owner}/athletes/a1", data: { studentName: "Deniz Yılmaz", status: "aktif", createdAt: now.toISOString() } },
       ],
     });
-    await openClubRules();
-    await putClubUser(OWNER, PASS);
-    await putAthlete("a1", { studentName: "Deniz Yılmaz", status: "aktif", createdAt: now.toISOString() });
   } catch (e) {
     push("Hazırlık", "sahte hesap, yarış ve sporcu", "yazılır", false, e.message);
     return rows;
@@ -163,15 +140,6 @@ export async function run(server, log = () => {}) {
     await page.locator("input[name=password]").fill(PASS);
     await page.locator("input[name=password]").press("Enter");
     await page.waitForURL((x) => !x.pathname.startsWith("/login"), { timeout: 60000 });
-
-    // Kulüp hesabına bağlan (Sporcular sayfası); sporcular bundan sonra yarış sayfasına gelir
-    await openSec("people");
-    const form = page.locator("form", { has: page.locator("input[type=password]") }).first();
-    await form.waitFor({ timeout: 30000 });
-    await form.locator("input").first().fill(OWNER);
-    await form.locator("input[type=password]").fill(PASS);
-    await form.locator("button[type=submit]").click();
-    await page.getByText("Bu hesabın sporcuları görme izni yok").waitFor({ state: "detached", timeout: 30000 }).catch(() => {});
 
     log("    Yarış günü (sporcu seçili)…");
     // Multimedya sayfası kalktı (Seyhun 2026-11-01, tek Yayın): yarış günü sayfa yerinde kalır, "Canlı ekran" ve "Yayın" düğmeleri (2026-11-06), Yayın Yayın sayfasına götürür,

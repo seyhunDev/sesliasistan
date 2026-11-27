@@ -13,7 +13,6 @@ import { age, byId, deleteAthlete, fmtDate, isActive, loadAthlete, message, setA
 import { unlinkMembers } from "@/features/athletes/memberSync";
 import { useData } from "@/features/data/DataProvider";
 import { useToast } from "@/components/ui/ToastProvider";
-import { DikiliLogin, useDikiliUser } from "@/features/athletes/Connect";
 import { EditAthlete } from "@/features/athletes/EditAthlete";
 import { AppLogin } from "@/features/athletes/AppLogin";
 import { alertText, expiryOf } from "@/lib/expiry";
@@ -265,7 +264,6 @@ function Detail() {
   const { id } = useParams();
   const load = useCallback(() => loadAthlete(id), [id]);
   const { data, err, reload } = useDikili(`a:${id}`, load);
-  const user = useDikiliUser();
   const [edit, setEdit] = useState(false);
   const [more, setMore] = useState(false); // ⋯: Arşive al, Sil
   const a = err ? null : data?.athlete;
@@ -275,9 +273,7 @@ function Detail() {
       <main className="sahne-pg mx-auto max-w-[30rem] px-5">
         <Top title="Sporcu" />
         <div className={LIGHT}>
-          {err?.code === "permission-denied" ? (
-            <DikiliLogin denied={!!user} onDone={reload} />
-          ) : err ? (
+          {err ? (
             <RowList>
               <LRow onClick={reload} title={<span className="text-rec">{err.text}</span>} sub="Tekrar dene" />
             </RowList>
