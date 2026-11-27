@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { libAttach, libDrop, libEntry, libMerge, libRename, libSetHow, libSetMedia } from "@/lib/fitness/library";
-import { FIT_LIB, loadLib, peekLib, saveLib, spreadLib } from "./fitnessData";
+import { FIT_LIB, libDirty, loadLib, peekLib, saveLib, spreadLib } from "./fitnessData";
 
 // Hareket kütüphanesi (yalnız ana hesap okur/yazar): { lib, setMedia(item, { yt, media } ya da güncel kayıt => { yt, media }), merge(keep, keys), attach(key, künyeler), rename(key, ad), drop(key) }
 // setMedia hareketin fotoğraf/videosunu kütüphaneye yazar ve hemen programlara ve sporcuların antrenmanlarına taşır
@@ -22,13 +22,22 @@ export function useFitLib() {
     if (!orgId) return;
     let live = true;
     const pull = () => live && setLib(peekLib(orgId));
-    loadLib(orgId).then((l) => live && setLib(l)).catch(() => {});
+    loadLib(orgId)
+      .then((l) => {
+        if (live) setLib(l);
+        // Açıklamaya karışmış animasyon talimatı: temizlenmiş kütüphane bir kez kaydedilir ve programlara taşınır (yalnız ana hesap yazar)
+        if (libDirty(orgId) && profile?.role === "owner")
+          saveLib(orgId, l)
+            .then(() => spreadLib(orgId, all.current))
+            .catch(() => {});
+      })
+      .catch(() => {});
     window.addEventListener(FIT_LIB, pull);
     return () => {
       live = false;
       window.removeEventListener(FIT_LIB, pull);
     };
-  }, [orgId]);
+  }, [orgId, profile?.role]);
   const setMedia = useCallback(
     async (it, v) => {
       if (!orgId) return null;

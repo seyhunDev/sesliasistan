@@ -1,5 +1,6 @@
 "use client";
 
+import { hasPrompt } from "@/lib/fitness/howText";
 import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { afterSent, deleteDoc, setDoc, updateDoc, writeBatch } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
@@ -329,18 +330,23 @@ let libCache = { org: "", lib: null };
 export const FIT_LIB = "sa-fit-lib";
 const libTold = () => window.dispatchEvent(new CustomEvent(FIT_LIB));
 export const peekLib = (orgId) => (libCache.org === orgId ? libCache.lib : null);
+export const libDirty = (orgId) => libCache.org === orgId && !!libCache.dirty;
 // Bellekteki kütüphane (hangi kulüp olursa; yapay zekaya hareket adlarını vermek için)
 export const libNow = () => libCache.lib;
 export async function loadLib(orgId, { force = false } = {}) {
   if (!force && libCache.org === orgId && libCache.lib) return libCache.lib;
   const snap = await getDoc(libRef(orgId));
-  libCache = { org: orgId, lib: cleanLib(snap.exists() ? snap.data() : {}) };
+  const raw = snap.exists() ? snap.data() : {};
+  libCache = { org: orgId, lib: cleanLib(raw) };
+  // Açıklamasına animasyon talimatı karışmış hareket varsa (2026-11-27) temizlenmiş hali bir kez kaydedilsin (useFitLib)
+  libCache.dirty = Object.values(raw.items || {}).some((e) => hasPrompt(e?.how));
   return libCache.lib;
 }
 // Bellekteki kopya yazma beklenmeden yenilenir: hemen ardından kaydedilen program (adoptProgram) yeni videoyu görsün
 export async function saveLib(orgId, lib) {
   const clean = cleanLib(lib);
   const prev = libCache;
+  if (libCache.org === orgId) libCache.dirty = false;
   libCache = { org: orgId, lib: clean };
   libTold();
   try {

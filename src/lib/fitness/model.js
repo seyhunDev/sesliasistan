@@ -8,6 +8,7 @@
 // Takip ekranı planlardan hesaplanır (planlar zaten cihazda; ek okuma yok).
 import { EXERCISES, exById, findExercise, fold } from "./exercises";
 import { cleanYt } from "./youtube";
+import { cleanHow } from "./howText";
 
 export const GOALS = [
   ["kilo", "Kilo vermek"],
@@ -138,7 +139,7 @@ export function cleanItem(it = {}) {
   // Nasıl yapılır (hazır programlar; adım adım ekranda ve sesli anlatımda): setup hareketten önceki hazırlık, how cümle cümle
   const setup = S(it.setup, 200);
   if (setup) out.setup = setup;
-  const how = S(it.how, 500);
+  const how = S(cleanHow(it.how, it.name), 500);
   if (how) out.how = how;
   const media = cleanMedia(it.media);
   if (media.length) out.media = media;
