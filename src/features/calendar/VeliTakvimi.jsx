@@ -7,7 +7,7 @@ import { PdfViewer } from "@/components/ui/PdfViewer";
 import { useData } from "@/features/data/DataProvider";
 import { todayStr } from "@/lib/utils/format";
 import { monthLabel, monthsAhead } from "@/lib/topluAntrenman";
-import { cleanExt, monthOf, parentRaces, parentTrainings, periodTitle } from "@/lib/veliTakvimi";
+import { monthOf, parentRaces, parentTrainings, periodTitle } from "@/lib/veliTakvimi";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { audLabel } from "@/lib/kimler";
 import { KimlerPick, useKimler } from "./Kimler";
@@ -36,7 +36,7 @@ export function VeliTakvimi({ open, onClose, month, prefill }) {
     const s = saved();
     const start = month && all.includes(month) ? month : today.slice(0, 7);
     const i = all.indexOf(start);
-    return { months: prefill?.months?.length ? prefill.months.filter((m) => all.includes(m)) : all.slice(i, i + 3), title: s.title || "", note: s.note || "", size: s.size === "a4" ? "a4" : "tel", ext: s.ext && typeof s.ext === "object" ? s.ext : {} };
+    return { months: prefill?.months?.length ? prefill.months.filter((m) => all.includes(m)) : all.slice(i, i + 3), title: s.title || "", note: s.note || "", size: s.size === "a4" ? "a4" : "tel" };
   });
   const [view, setView] = useState(false);
   const put = (p) => setF((x) => ({ ...x, ...p }));
@@ -57,9 +57,7 @@ export function VeliTakvimi({ open, onClose, month, prefill }) {
       on = false;
     };
   }, [open, orgId]);
-  const races = useMemo(() => parentRaces(plans, months, null, f.ext, real), [plans, months, f.ext, real]);
-  // Ekstra gün yalnız PDF içindir, yarış planı değişmez
-  const bump = (id, k, d) => put({ ext: { ...f.ext, [id]: { ...cleanExt(f.ext[id]), [k]: cleanExt({ [k]: cleanExt(f.ext[id])[k] + d })[k] } } });
+  const races = useMemo(() => parentRaces(plans, months, null, real), [plans, months, real]);
   const nRace = races.length;
   // Yarışın kimleri yarış planına yazılır (Takvim, PDF); yarışa katılacak hesaplar audUids (sporcu tarafında yalnız görünürlük)
   const setRaceAud = (r, aud) => updateRecord("plan", r.id, aud ? { aud, audUids: kim.uidsOf(aud) } : { aud: null, audUids: null }, { name: profile?.name ?? "Kullanıcı" });
@@ -67,13 +65,13 @@ export function VeliTakvimi({ open, onClose, month, prefill }) {
 
   const make = () => {
     try {
-      localStorage.setItem(KEY, JSON.stringify({ title: f.title, note: f.note, ext: f.ext, size: f.size }));
+      localStorage.setItem(KEY, JSON.stringify({ title: f.title, note: f.note, size: f.size }));
     } catch {}
     setView(true);
   };
   const load = useCallback(async () => {
     // Telefon (varsayılan, Seyhun 2026-11-27: WhatsApp'tan telefonda açılıyor): her ay ayrı uzun sayfa; A4: yazdırmak için
-    const opts = { plans, months, title: f.title.trim(), note: f.note.trim(), ext: f.ext, real };
+    const opts = { plans, months, title: f.title.trim(), note: f.note.trim(), real };
     const [{ loadFonts }] = await Promise.all([import("@/features/athletes/raceDocs")]);
     if (f.size === "a4") return (await import("./veliPdf")).buildParentPdf(opts, await loadFonts());
     return (await import("./veliPdfTelefon")).buildPhonePdf(opts, await loadFonts());
@@ -109,19 +107,7 @@ export function VeliTakvimi({ open, onClose, month, prefill }) {
                         </span>
                         <b>{audLabel(r.aud)}</b>
                       </button>
-                      {raceOpen === r.id && (
-                        <>
-                          <KimlerPick value={r.aud} onChange={(aud) => setRaceAud(r, aud)} classes={kim.classes} />
-                          {[["pre", "Önce"], ["post", "Sonra"]].map(([k, l]) => (
-                            <div key={k} className="tb-row tb-step">
-                              <span>{l}</span>
-                              <button type="button" data-press aria-label={`${l} bir gün az`} disabled={!cleanExt(f.ext[r.id])[k]} onClick={() => bump(r.id, k, -1)}>−</button>
-                              <b>{cleanExt(f.ext[r.id])[k] ? `${cleanExt(f.ext[r.id])[k]} gün` : "Yok"}</b>
-                              <button type="button" data-press aria-label={`${l} bir gün ekle`} disabled={cleanExt(f.ext[r.id])[k] >= 3} onClick={() => bump(r.id, k, 1)}>+</button>
-                            </div>
-                          ))}
-                        </>
-                      )}
+                      {raceOpen === r.id && <KimlerPick value={r.aud} onChange={(aud) => setRaceAud(r, aud)} classes={kim.classes} />}
                     </div>
                   ))}
                 </div>

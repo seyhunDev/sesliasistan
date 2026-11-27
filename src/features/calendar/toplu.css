@@ -39,6 +39,3 @@
 .tb-ok:disabled { opacity: .4; }
 .tb-del { background: #2a1416; color: #ff6b6b; border: 1px solid #4a1f23; }
 .tb-grp .tb-rn small, .tb-li .tb-rn small { display: block; margin-top: .15rem; font-size: .78rem; font-weight: 500; color: #a1a1aa; white-space: normal; }
-.tb-step b { flex: 1; text-align: center; color: #fff !important; }
-.tb-step button { width: 2.25rem; height: 2.25rem; border-radius: 999px; background: rgba(255,255,255,.1); color: #fff; font-size: 1.2rem; font-weight: 700; }
-.tb-step button:disabled { opacity: .35; }

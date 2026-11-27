@@ -3578,7 +3578,7 @@ group("Toplu eklemeler listesi")([
 group("Veli takvimi: yalnız yarış ve antrenman")([
   ["asıl yarış günleri", F("plan gidiş–dönüş 2–9 Ara, yarış 3–8 Ara → PDF 3–8", () => {
     const p = { id: "p", raceId: "x", title: "Kupa", date: "2026-12-02", endDate: "2026-12-09", cat: "Yarış" };
-    const r = TBV.parentRaces([p], ["2026-12"], null, {}, { x: { startDate: "2026-12-03", endDate: "2026-12-08" } })[0];
+    const r = TBV.parentRaces([p], ["2026-12"], null, { x: { startDate: "2026-12-03", endDate: "2026-12-08" } })[0];
     const n = TBV.parentRaces([p], ["2026-12"])[0];
     return r.date === "2026-12-03" && r.endDate === "2026-12-08" && n.date === "2026-12-02";
   })],
@@ -3594,11 +3594,10 @@ group("Veli takvimi: yalnız yarış ve antrenman")([
     const r = TBV.parentRaces(pl, ["2027-03"]);
     return r.length === 1 && r[0].id === "r" && TBV.parentTrainings(pl, ["2027-03"]).length === 1;
   })],
-  ["ekstra gün", F("plan tarihleri, önce 1 sonra 1 gün yalnız PDF'te", () => {
+  ["ekstra gün yok", F("önce/sonra gün eklenmez (Seyhun 2026-11-27); eski ayar yok sayılır", () => {
     const p = { id: "r", title: "İzmir Kupası", date: "2027-03-12", endDate: "2027-03-14", cat: "Yarış" };
     const a = TBV.parentRaces([p], ["2027-03"])[0];
-    const b = TBV.parentRaces([p], ["2027-03"], null, { r: { pre: 1, post: 1 } })[0];
-    return a.date === "2027-03-12" && a.endDate === "2027-03-14" && b.date === "2027-03-11" && b.endDate === "2027-03-15" && p.date === "2027-03-12" && TBV.cleanExt({ pre: 9 }).pre === 3;
+    return a.date === "2027-03-12" && a.endDate === "2027-03-14" && !("cleanExt" in TBV);
   })],
 ]);
 

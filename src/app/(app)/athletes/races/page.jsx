@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Icon } from "@/components/ui/Icon";
@@ -9,6 +9,8 @@ import { Loading } from "@/components/ui/Loader";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { RaceList } from "@/features/athletes/RaceList";
+import { useData } from "@/features/data/DataProvider";
+import { racePlanSync, racePlansOf } from "@/features/athletes/raceLinks";
 import { loadRaces, racesNow } from "@/features/athletes/races";
 import { shareAll } from "@/features/athletes/sharedRaces";
 import { sweepLive } from "@/features/athletes/raceWipe";
@@ -50,6 +52,21 @@ function Races({ orgId, me }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orgId, ver]);
   const owner = me.uid === orgId;
+  // Yarış planları yarışın asıl günlerine (Seyhun 2026-11-27 "bir kere düzeltelim"): eskiden yolculuk yazılınca plan gidiş–dönüş günlerine
+  // uzuyordu. Liste açılınca, ana hesapta, oturumda bir kez: günleri yarıştan farklı olan yarış planları yarışın günlerine çekilir (yolculuk
+  // günleri yarış kaydında kalır, bir şey kaybolmaz). Sonrası yarış sayfasındaki eşitlemeyle (raceLinks.racePlanSync) aynı.
+  const { plans, updateRecord, isStaff } = useData();
+  const swept = useRef(false);
+  useEffect(() => {
+    if (swept.current || !owner || isStaff || !races?.length || !plans?.length) return;
+    swept.current = true;
+    for (const r of races) {
+      for (const [pid, x] of racePlanSync(r, racePlansOf(r, plans))) {
+        if (!("date" in x)) continue;
+        updateRecord("plan", pid, { date: x.date, endDate: x.endDate }, { name: me.name || "Kullanıcı" });
+      }
+    }
+  }, [owner, isStaff, races, plans, updateRecord, me.name]);
 
   // Başlık (yarış kart, Seyhun 2026-11-07 "Yarışlar başlığı geri butonun yanında olmalı, diğer sayfalardaki gibi"): Planlar gibi yuvarlak geri,
   // yanında "Yarışlar", sağda beyaz + Yarış. Az kullanılanlar (Geçmiş yarışlar, Yarış takvimi, Siteden ekle) altta açılır "Diğer"de.
