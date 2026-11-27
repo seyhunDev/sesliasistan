@@ -156,3 +156,47 @@ export function paylasilanPlanlar(plans = [], uid, paylas, bugun, gun = 21) {
     .filter((p) => p.tur && paylas.turler.includes(p.tur))
     .sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")));
 }
+
+// Uzmanın sporcu takibi (Seyhun 2026-11-27 "uzmanın aldığı sporcular, programı ve takibi"). Planlar: sporcuların fitness
+// planları (ana hesapta useData().fitOthers; planda fit.for = sporcu, fit.res.st done|skip). Hafta pazartesiden.
+const gunEk = (d, n) => {
+  const t = new Date(`${d}T12:00:00Z`);
+  t.setUTCDate(t.getUTCDate() + n);
+  return t.toISOString().slice(0, 10);
+};
+export const pazartesi = (d) => gunEk(d, -((new Date(`${d}T12:00:00Z`).getUTCDay() + 6) % 7));
+export function antDurum(p, bugun) {
+  const st = p?.fit?.res?.st;
+  if (st === "done" || st === "skip") return st;
+  return p.date < bugun ? "missed" : p.date === bugun ? "today" : "next";
+}
+const fitMi = (p) => (p?.fit || (p?.cat || p?.category) === "Fitness") && p.status !== "cancelled" && p.date;
+export function sporcuTakip(i, plans = [], progs = [], bugun) {
+  const uid = i?.sporcuUid;
+  const mine = uid ? plans.filter((p) => fitMi(p) && p.fit?.for === uid).sort((a, b) => a.date.localeCompare(b.date) || (a.time || "").localeCompare(b.time || "")) : [];
+  const prog = (uid && (progs.find((p) => p.for === uid && p.active) || progs.find((p) => p.for === uid))) || null;
+  const pzt = pazartesi(bugun);
+  const gunler = Array.from({ length: 7 }, (_, k) => {
+    const d = gunEk(pzt, k);
+    const g = mine.filter((p) => p.date === d);
+    const st = g.length ? (g.some((p) => antDurum(p, bugun) === "missed") ? "missed" : g.every((p) => antDurum(p, bugun) === "done") ? "done" : antDurum(g[0], bugun)) : "";
+    return { d, st, bugun: d === bugun };
+  });
+  const hafta = mine.filter((p) => p.date >= pzt && p.date <= gunEk(pzt, 6)).map((p) => antDurum(p, bugun));
+  const say = (k) => hafta.filter((x) => x === k).length;
+  let hn = null;
+  if (prog?.start && prog.weeks) {
+    const n = Math.floor(Math.round((new Date(`${pzt}T12:00:00Z`) - new Date(`${pazartesi(prog.start)}T12:00:00Z`)) / 864e5) / 7) + 1;
+    hn = { n: bugun < prog.start ? 0 : Math.min(n, prog.weeks + 1), of: prog.weeks };
+  }
+  const son = mine.filter((p) => p.date <= bugun && antDurum(p, bugun) !== "today").slice(-5).reverse();
+  return { prog, hafta: hn, gunler, plan: hafta.length, yapti: say("done"), yapmadi: say("missed") + say("skip"), son, sonraki: mine.find((p) => p.date >= bugun && !p.fit?.res?.st) || null };
+}
+// Uzmanın özeti: sürdürdüğü sporcular, bu haftaki yapılma oranı (günü gelmişlerden), geride kalan sporcu sayısı
+export function uzmanOzet(istekler = [], plans = [], progs = [], bugun) {
+  const sur = istekler.filter((i) => AKTIF_DURUM.includes(i.durum));
+  const t = sur.map((i) => sporcuTakip(i, plans, progs, bugun));
+  const yapti = t.reduce((a, x) => a + x.yapti, 0);
+  const vade = yapti + t.reduce((a, x) => a + x.yapmadi, 0);
+  return { sporcu: sur.length, oran: vade ? Math.round((yapti / vade) * 100) : null, geride: t.filter((x) => x.yapmadi > 0).length };
+}
