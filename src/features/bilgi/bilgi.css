@@ -663,6 +663,16 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
   .bzy-two[data-n="3"] .bzy-sure .bzy-sgo b { font-size: min(3.75rem, calc((100cqw - 1.5rem) / 2.9)); }
 }
 
+/* Süre her genişlikte sığan en büyük boyutta (Seyhun 2026-11-27 "genişlik varsa daha büyük göster"; telefonda "Sü…", "…", yalnız "5" kalıyordu):
+   rakam boyu kutu genişliği / karakter sayısı (--n), yükseklikle sınırlı; 5·4·1·0 kutuya göre küçülür, hiç kesilmez */
+.bzy-app .bzy-sure .bzy-sgo b { font-size: clamp(2rem, calc((100cqw - 2rem) / (var(--n, 5) * 0.47)), 5rem); }
+.bzy-app .bzy-two[data-n="3"] .bzy-sure .bzy-sgo b { font-size: clamp(1.75rem, calc((100cqw - 1.5rem) / (var(--n, 5) * 0.47)), 4rem); }
+.bzy-app .bzy-sh .bzy-lad { flex: 0 1 auto; min-width: 0; gap: clamp(0.1875rem, 2cqw, 0.375rem); }
+.bzy-app .bzy-sh .bzy-lad i { width: clamp(1.125rem, 13cqw, 1.75rem); height: clamp(1.125rem, 13cqw, 1.75rem); font-size: clamp(0.6875rem, 6cqw, 0.875rem); }
+@media (orientation: landscape) and (max-height: 32rem) { .bzy-app .bzy-sure .bzy-sgo b { font-size: clamp(1.75rem, calc((100cqw - 2rem) / (var(--n, 5) * 0.47)), 3rem); } }
+.bzy-sure[data-run] .bzy-sh { justify-content: flex-start; }
+.bzy-sure[data-run] .bzy-sh > span { overflow: visible; }
+
 /* Yönet › Hava: Sahne Hava kutusu (sporcu.css .sh-wxp) ve gün şeridi pencerede */
 .bzy-wx { --sh-lime: #d4ff3a; --sh-line: #26262b; --sh-tile: #17171a; --sh-mut: #a1a1aa; display: grid; gap: 0.625rem; color: #fff; }
 .bzy-wx .sh-days { margin: 0; padding: 0; }
