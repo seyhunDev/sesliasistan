@@ -36,7 +36,7 @@ export function VeliTakvimi({ open, onClose, month, prefill }) {
     const s = saved();
     const start = month && all.includes(month) ? month : today.slice(0, 7);
     const i = all.indexOf(start);
-    return { months: prefill?.months?.length ? prefill.months.filter((m) => all.includes(m)) : all.slice(i, i + 3), title: s.title || "", note: s.note || "", ext: s.ext && typeof s.ext === "object" ? s.ext : {} };
+    return { months: prefill?.months?.length ? prefill.months.filter((m) => all.includes(m)) : all.slice(i, i + 3), title: s.title || "", note: s.note || "", size: s.size === "a4" ? "a4" : "tel", ext: s.ext && typeof s.ext === "object" ? s.ext : {} };
   });
   const [view, setView] = useState(false);
   const put = (p) => setF((x) => ({ ...x, ...p }));
@@ -53,13 +53,16 @@ export function VeliTakvimi({ open, onClose, month, prefill }) {
 
   const make = () => {
     try {
-      localStorage.setItem(KEY, JSON.stringify({ title: f.title, note: f.note, ext: f.ext }));
+      localStorage.setItem(KEY, JSON.stringify({ title: f.title, note: f.note, ext: f.ext, size: f.size }));
     } catch {}
     setView(true);
   };
   const load = useCallback(async () => {
-    const [{ buildParentPdf }, { loadFonts }] = await Promise.all([import("./veliPdf"), import("@/features/athletes/raceDocs")]);
-    return buildParentPdf({ plans, months, title: f.title.trim(), note: f.note.trim(), ext: f.ext }, await loadFonts());
+    // Telefon (varsayılan, Seyhun 2026-11-27: WhatsApp'tan telefonda açılıyor): her ay ayrı uzun sayfa; A4: yazdırmak için
+    const opts = { plans, months, title: f.title.trim(), note: f.note.trim(), ext: f.ext };
+    const [{ loadFonts }] = await Promise.all([import("@/features/athletes/raceDocs")]);
+    if (f.size === "a4") return (await import("./veliPdf")).buildParentPdf(opts, await loadFonts());
+    return (await import("./veliPdfTelefon")).buildPhonePdf(opts, await loadFonts());
     // PDF bir kez hazırlanır (açıkken veri değişse de yeniden çizilmez)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view]);
@@ -118,6 +121,16 @@ export function VeliTakvimi({ open, onClose, month, prefill }) {
               <span>Not</span>
               <textarea value={f.note} onChange={(e) => put({ note: e.target.value })} placeholder="Yer, iletişim…" rows={3} maxLength={300} />
             </label>
+            <div>
+              <div className="tb-k">Sayfa</div>
+              <div className="tb-seg tb-seg2" role="radiogroup">
+                {[["tel", "Telefon"], ["a4", "A4 · yazdır"]].map(([k, l]) => (
+                  <button key={k} type="button" role="radio" aria-checked={f.size === k} onClick={() => put({ size: k })}>
+                    {l}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="tb-sum" aria-live="polite">
               <b>{periodTitle(months) || "Ay seç"}</b>
               {months.length > 0 && <small>{[`${n} antrenman`, nRace > 0 && `${nRace} yarış`, `${hol} tatil`].filter(Boolean).join(" · ")}</small>}
