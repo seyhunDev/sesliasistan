@@ -35,7 +35,7 @@ export function parentTrainings(plans = [], months = [], sel = null) {
 }
 
 // Yarışlar: yalnız yarışın kendisi (tür "Yarış"). Talimattan yazılan son tarihler ("İzmir Kupası: Kayıt son günü") ve
-// diğer planlar PDF'e girmez (Seyhun 2026-11-26). Tarihler plandan; ext {id: {pre, post}} yalnız PDF'te gün ekler.
+// diğer planlar PDF'e girmez (Seyhun 2026-11-26). Tarihler yarış kaydından (yoksa plandan); önce/sonra gün eklenmez.
 const DEADLINE = /son\s*g[üu]n|kay[ıi]t|ba[şs]vuru|[öo]deme|teslim|bildirim|toplant[ıi]|kapan[ıi][şs]/i;
 export function isRacePlan(p, plans = []) {
   if ((p?.cat || p?.category) !== "Yarış" || p.status === "cancelled" || !p.date) return false;
@@ -54,13 +54,6 @@ export const shiftDay = (d, n) => {
   x.setDate(x.getDate() + n);
   return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
 };
-// Ekstra günler: önce/sonra en çok 3
-export const cleanExt = (e) => ({ pre: Math.max(0, Math.min(3, +e?.pre || 0)), post: Math.max(0, Math.min(3, +e?.post || 0)) });
-export function raceDays(p, e) {
-  const { pre, post } = cleanExt(e);
-  const end = p.endDate && p.endDate >= p.date ? p.endDate : p.date;
-  return { date: shiftDay(p.date, -pre), endDate: shiftDay(end, post) };
-}
 // real {raceId: {startDate, endDate}}: yarış kaydındaki asıl yarış günleri (Seyhun 2026-11-27). Yarış planı yolculuk yazıldıysa
 // gidiş–dönüş günlerini kapsar; PDF'te asıl yarış günleri gösterilir, plan tarihi yalnız yarış kaydı yoksa kullanılır.
 export function realDates(p, real) {
@@ -68,7 +61,8 @@ export function realDates(p, real) {
   if (!r?.startDate) return p;
   return { ...p, date: r.startDate, endDate: r.endDate && r.endDate >= r.startDate ? r.endDate : r.startDate };
 }
-export function parentRaces(plans = [], months = [], sel = null, ext = {}, real = {}) {
+// Yarışa önce/sonra ekstra gün eklenmez (Seyhun 2026-11-27 "artı eksi gün eklemeyeceğiz"): PDF'te yarış hep asıl günleriyle
+export function parentRaces(plans = [], months = [], sel = null, real = {}) {
   const s = [...months].sort();
   if (!s.length) return [];
   const from = `${s[0]}-01`;
@@ -76,7 +70,7 @@ export function parentRaces(plans = [], months = [], sel = null, ext = {}, real 
   return plans
     .filter((p) => isRacePlan(p, plans) && audIncludes(sel, p.aud))
     .map((p) => realDates(p, real))
-    .map((p) => ({ ...p, ...raceDays(p, ext?.[p.id]), plan: { date: p.date, endDate: p.endDate || p.date } }))
+    .map((p) => ({ ...p, endDate: p.endDate && p.endDate >= p.date ? p.endDate : p.date, plan: { date: p.date, endDate: p.endDate || p.date } }))
     .filter((p) => p.date <= to && p.endDate >= from)
     .sort((a, b) => a.date.localeCompare(b.date));
 }

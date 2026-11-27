@@ -61,11 +61,11 @@ export function planRaceHref(p, races = []) {
   return kind !== "plan" && race?.id ? `/athletes/races/${race.id}` : "";
 }
 
-// Yarışın planlara yazılan hali (addRacePlan ve yarış değişince plan eşitleme aynı alanları kullanır): yolculuk yazıldıysa çıkış gününden dönüş
-// gününe, yoksa yarış günleri.
+// Yarışın planlara yazılan hali (addRacePlan ve yarış değişince plan eşitleme aynı alanları kullanır): hep yarışın asıl günleri. Yolculuk (gidiş,
+// dönüş) planı uzatmaz (Seyhun 2026-11-27 "artı eksi gün eklemeyeceğiz, olanlar da gerçek tarihlerine dönsün"); eski uzamış planlar eşitlemede düzelir.
 export function racePlanDates(r) {
-  const date = r?.departDate || r?.startDate || "";
-  const end = r?.returnDate || r?.endDate || "";
+  const date = r?.startDate || "";
+  const end = r?.endDate || "";
   return { date, endDate: end && end > date ? end : "" };
 }
 

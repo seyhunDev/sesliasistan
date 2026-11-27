@@ -308,11 +308,11 @@ export function freshRace(last = {}, today = "") {
 }
 
 // Yarışı planlara yazar (tüm gün, çok günlü, "Yarış" kategorisi). saveDrafts: DataProvider'dan.
-// Yolculuk yazıldıysa plan çıkış gününde, çıkış saatinde başlar, dönüş gününde biter; yeri buluşma noktası (tek plan, ayrı kayıt yok).
+// Plan yarışın asıl günlerinde (yolculuk günleri eklenmez, Seyhun 2026-11-27); çıkış yarışın ilk günüyse saati çıkış saati; yeri buluşma noktası.
 // Plan yarışın kimliğini taşır (raceId): Planlar, Takvim ve ana sayfada dokununca yarış sayfası açılır, yarışın adı değişse de bağ kopmaz (raceLinks.js).
 export async function addRacePlan(saveDrafts, r, by) {
   const { date, endDate } = racePlanDates(r);
-  const time = /^\d{2}:\d{2}$/.test(r.departTime || "") ? r.departTime : "";
+  const time = /^\d{2}:\d{2}$/.test(r.departTime || "") && (!r.departDate || r.departDate === date) ? r.departTime : "";
   const res = await saveDrafts(
     [{ type: "plan", title: r.name.trim(), date, endDate, time, place: (r.meetPoint || r.departFrom || "").trim() || [r.district, r.city].filter(Boolean).join(", "), cat: "Yarış", assignees: [], raceId: r.id || "" }],
     { source: "manual", by },
