@@ -8,7 +8,8 @@ service cloud.firestore {
       allow read: if request.auth != null && request.auth.uid == uid;
       allow create: if request.auth != null && request.auth.uid == uid
                     && request.resource.data.role == "owner"
-                    && request.resource.data.orgId == uid;
+                    && request.resource.data.orgId == uid
+                    && !("paket" in request.resource.data) && !("paketIstek" in request.resource.data);
       allow update: if request.auth != null && request.auth.uid == uid
                     && request.resource.data.role == resource.data.role
                     && request.resource.data.orgId == resource.data.orgId
@@ -19,7 +20,12 @@ service cloud.firestore {
                     && request.resource.data.get("via", null) == resource.data.get("via", null)
                     && request.resource.data.get("restaurantOf", null) == resource.data.get("restaurantOf", null)
                     && request.resource.data.get("placeId", null) == resource.data.get("placeId", null)
-                    && (request.resource.data.get("coach", null) != true || resource.data.get("coach", null) == true);
+                    && (request.resource.data.get("coach", null) != true || resource.data.get("coach", null) == true)
+                    // Sporcu paketi ve paket isteği (lib/paket.js, 2026-11-27): yalnız sunucu (/api/paket) yazar
+                    && request.resource.data.get("paket", null) == resource.data.get("paket", null)
+                    && request.resource.data.get("paketIstek", null) == resource.data.get("paketIstek", null)
+                    // E-posta doğrulama işareti (kayıtta yazılır, lib/auth.js) sonradan silinemez
+                    && request.resource.data.get("dogrula", null) == resource.data.get("dogrula", null);
       allow delete: if false;
     }
 
@@ -222,9 +228,19 @@ service cloud.firestore {
     match /orgs/{orgId} {
       // Ana hesap: kendi işletmesindeki her şey (doğum günleri hariç: kişiye özel, aşağıda)
       match /{col}/{document=**} {
-        allow read, write: if isOwner(orgId) && !(col in ["birthdays", "chats", "calls"]);
+        allow read, update, delete: if isOwner(orgId) && !(col in ["birthdays", "chats", "calls"]);
+        // Yeni sporcu belgesi (orgs/{org}/athletes/{id}) istemciden açılmaz: paket sınırı için /api/sporcu-ekle'den (lib/paket.js,
+        // 2026-11-27). Sporcunun alt belgeleri (geçmiş) aşağıda; Velora ana hesabı istemciden de ekleyebilir (sınırsız).
+        allow create: if isOwner(orgId) && !(col in ["birthdays", "chats", "calls", "athletes"]);
         // Antrenörün kendi Yönet alanı (orgs/k-{uid}): yalnız bilgi ekranı belgeleri (ekran, ses, kanallar, kayıtlar, pusula)
         allow read, write: if col in ["bilgi", "bilgiKanal", "bilgiLog", "bilgiPusula"] && isCoachSpace(orgId);
+      }
+      match /athletes/{aid} {
+        allow create: if isOwner(orgId) && veloraAdmin();
+        // /{sub=**} boş yolu da (sporcunun kendisini) kapsar; bu yüzden en az bir alt bölüm şart
+        match /{sub}/{rest=**} {
+          allow create: if isOwner(orgId);
+        }
       }
       // Kullanım kaydı (Ayarlar › Admin, Seyhun 2026-11-26): izin veren kişi yalnız kendi kullanım belgesini ve gün kayıtlarını
       // yazar, okur, siler (izni geri alınca). Ana hesap hepsini okur (yukarıdaki kural). Başvurular (basvurular) yalnız sunucudan yazılır.

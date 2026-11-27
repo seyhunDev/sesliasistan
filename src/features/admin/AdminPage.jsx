@@ -101,6 +101,7 @@ export function AdminPage() {
           </div>
           <div className="divide-y divide-line overflow-hidden rounded-[1.25rem] border border-line bg-card">
             <UzmanlarRow org={org} />
+            {String(profile?.email || "").toLowerCase() === VELORA_ADMIN && <Row title="Paketler" href="/settings/admin/paketler" />}
             {String(profile?.email || "").toLowerCase() === VELORA_ADMIN && <Row title="Kulüpler" href="/settings/admin/kulupler" />}
           </div>
           <div className="grid grid-cols-3 gap-1 rounded-2xl border border-line bg-card p-1" role="tablist">

@@ -12,15 +12,15 @@ const low = (s) => String(s || "").trim().toLocaleLowerCase("tr-TR");
 
 // Yeni sporcu: kulüp listesine (diğer Firebase projesi) yazılır, Kişiler › Sporcular'a da bağlı kişi olarak eklenir.
 // Diğer bilgiler sporcunun sayfasındaki Düzenle'den.
-export function NewAthlete({ open, onClose, onSaved, names, athletes }) {
+export function NewAthlete({ open, onClose, onSaved, onFull, names, athletes }) {
   return (
     <Sheet open={open} onClose={onClose} title="Sporcu ekle">
-      {open && <Form names={names} athletes={athletes} onClose={onClose} onSaved={onSaved} />}
+      {open && <Form names={names} athletes={athletes} onClose={onClose} onSaved={onSaved} onFull={onFull} />}
     </Sheet>
   );
 }
 
-function Form({ names, athletes, onClose, onSaved }) {
+function Form({ names, athletes, onClose, onSaved, onFull }) {
   const toast = useToast();
   const { members, myUid } = useData();
   const [f, setF] = useState({ studentName: "", studentBirthDate: "", studentGender: "", currentClassId: "", currentCoachId: "", parentName: "", parentPhone: "" });
@@ -46,7 +46,8 @@ function Form({ names, athletes, onClose, onSaved }) {
       toast(`${name} eklendi${warn}`);
       onSaved?.(id);
     } catch (e) {
-      toast(e?.code === "permission-denied" ? "Bu hesabın sporcu ekleme izni yok." : message(e));
+      if (e?.code === "paket-dolu" && onFull) onFull(e.limit);
+      else toast(e?.code === "permission-denied" ? "Bu hesabın sporcu ekleme izni yok." : message(e));
     }
     setBusy(false);
   };

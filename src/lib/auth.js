@@ -2,6 +2,7 @@
 import { loginEmail } from "@/lib/kinds";
 import {
   sendPasswordResetEmail,
+  sendEmailVerification,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
@@ -41,7 +42,21 @@ export async function login(emailOrUser, password) {
 }
 
 // extra: profile eklenecek alanlar (ör. { via: "sailing" }: Velora Sailing bağlantısından kaydoldu, bkz. lib/sailingReturn.js)
+// Kayıt sürerken AuthProvider "profil yok" görüp boş profil açmasın: yoksa kayıttaki spor ve via yazılamaz (kurallar via'yı
+// sonradan değiştirtmez) ve yeni antrenöre yeniden "Hangi spor?" sorulur (uçtan uca test, 2026-11-27).
+let kayit = 0;
+export const kayitSuruyor = () => kayit > 0;
+
 export async function register(name, email, password, sport = "sailing", extra) {
+  kayit++;
+  try {
+    await kayitYap(name, email, password, sport, extra);
+  } finally {
+    kayit--;
+  }
+}
+
+async function kayitYap(name, email, password, sport, extra) {
   const cred = await createUserWithEmailAndPassword(auth, email.trim().toLowerCase(), password);
 
   // Firebase Auth profilini güncelle
@@ -55,8 +70,17 @@ export async function register(name, email, password, sport = "sailing", extra) 
     orgId: cred.user.uid, // Güvenlik kurallarınıza göre orgId = uid
     sport, // kayıtta seçilen spor (src/sports)
     ...(extra || {}),
+    dogrula: true, // e-posta doğrulanana kadar uygulama DogrulaGate'te bekler; sunucu sporcu ve paket isteğini almaz
     createdAt: new Date().toISOString(),
   });
+  await dogrulamaGonder(cred.user).catch(() => {});
+}
+
+// E-posta doğrulama bağlantısı (Türkçe); kayıtta ve "Tekrar gönder"de
+export async function dogrulamaGonder(user = auth.currentUser) {
+  if (!user) return;
+  auth.languageCode = "tr";
+  await sendEmailVerification(user);
 }
 
 // Şifre sıfırlama bağlantısı e-postayla gider (Türkçe)

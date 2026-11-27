@@ -140,14 +140,14 @@ async function check(uid, email, cached, free = false) {
       error: over === "hour" ? "Kısa sürede çok fazla istek gönderildi. Biraz sonra tekrar dene." : "Bugünkü kullanım sınırına ulaşıldı. Yarın tekrar dene.",
     };
   }
-  return { ok: true, uid, email: (email || "").toLowerCase(), staff: !!cached?.staff };
+  return { ok: true, uid, email: (email || "").toLowerCase(), staff: !!cached?.staff, verified: !!cached?.verified };
 }
 
 // Token'ın içindeki kullanıcı kimliği (imza doğrulanmadan; yalnızca geliştirme kısayolunda kullanılır)
 function peek(token) {
   try {
     const p = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString("utf8"));
-    return { uid: p.user_id || p.sub || "", email: String(p.email || "").toLowerCase() };
+    return { uid: p.user_id || p.sub || "", email: String(p.email || "").toLowerCase(), verified: p.email_verified === true };
   } catch {
     return { uid: "", email: "" };
   }
@@ -161,10 +161,10 @@ export async function requireUser(request, { free = false } = {}) {
   const h = request.headers.get("authorization") || "";
   const token = h.startsWith("Bearer ") ? h.slice(7).trim() : "";
   if (process.env.DEV_SKIP_AUTH === "1" && process.env.NODE_ENV !== "production") {
-    const { uid, email } = token ? peek(token) : {};
+    const { uid, email, verified } = token ? peek(token) : {};
     if (!uid) return { ok: false, error: "Geliştirme modunda da giriş yapmış olmalısın." };
     const r = await roleOf(uid, token, []);
-    return { ok: true, uid, email, staff: r.staff };
+    return { ok: true, uid, email, staff: r.staff, verified: !!verified };
   }
   const key = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
   if (!token || !key) return { ok: false };
@@ -180,7 +180,7 @@ export async function requireUser(request, { free = false } = {}) {
     if (!res.ok) return { ok: false };
     const u = (await res.json()).users?.[0];
     if (!u?.localId) return { ok: false };
-    const entry = { uid: u.localId, email: u.email || "", exp: Date.now() + 5 * 60 * 1000 };
+    const entry = { uid: u.localId, email: u.email || "", verified: !!u.emailVerified, exp: Date.now() + 5 * 60 * 1000 };
     const allowed = allowList();
     // İzin listesindeki e-posta ana hesaptır; değilse rolüne bakılır (kişi mi, ana hesabı izinli mi)
     if (!allowed.includes(entry.email.toLowerCase())) {

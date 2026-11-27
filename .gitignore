@@ -55,3 +55,4 @@ next-env.d.ts
 
 # tanıtım sesleri: derlemede Storage önbelleğinden yazılır (scripts/tanitim-ses/uret.mjs)
 /public/tanitim/kisa/ses/
+scripts/yeni-kullanici-test/sonuc/
