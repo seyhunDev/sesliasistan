@@ -100,15 +100,6 @@ export function UzmanlarSayfasi() {
   if (profile?.role !== "owner") return null;
   return (
     <main className={`sahne-pg ${liveHead.variable} wide mx-auto max-w-[30rem] px-5 pb-[calc(3rem+env(safe-area-inset-bottom))]`}>
-      <section className="pb-5 pt-[calc(0.75rem+env(safe-area-inset-top))]">
-        <header className="flex items-center gap-2.5">
-          <BackButton href="/settings/admin" />
-          <div className="min-w-0 flex-1 leading-tight">
-            <h1 className="sahne-t truncate text-[2rem]">Uzmanlar</h1>
-            <p className="mt-1 truncate text-[0.8125rem] text-mut">Uzman antrenörler ve sporcuları</p>
-          </div>
-        </header>
-      </section>
       <Uzmanlar org={profile.orgId} />
     </main>
   );
@@ -118,8 +109,22 @@ export function Uzmanlar({ org }) {
   const { veri, setVeri, hata, yukle } = useUzmanVeri(org);
   const [gor, setGor] = useState({ t: "liste" });
   const [form, setForm] = useState(null); // null | {} (yeni) | uzman (düzenle)
-  if (hata) return <LoadFail onRetry={yukle} />;
-  if (!veri) return <ListLoading height="16rem" />;
+  // Her görünümde tek başlık ve tek geri (Seyhun 2026-11-27): listede "Uzmanlar" (geri Admin), istekte sporcunun adı (geri liste)
+  const anaUst = <Ust href="/settings/admin" baslik="Uzmanlar" alt="Uzman antrenörler ve sporcuları" />;
+  if (hata)
+    return (
+      <>
+        {anaUst}
+        <LoadFail onRetry={yukle} />
+      </>
+    );
+  if (!veri)
+    return (
+      <>
+        {anaUst}
+        <ListLoading height="16rem" />
+      </>
+    );
   const liste = bransListesi(veri.ayar);
   const guncelle = (f) => setVeri((v) => ({ ...v, ...f(v) }));
   const istek = gor.t === "istek" && veri.istekler.find((i) => i.id === gor.id);
@@ -128,7 +133,10 @@ export function Uzmanlar({ org }) {
       {istek ? (
         <IstekDetay org={org} i={istek} veri={veri} liste={liste} geri={() => setGor({ t: "liste" })} guncelle={guncelle} />
       ) : (
-        <UzmanListe org={org} veri={veri} liste={liste} ac={setGor} yeni={() => setForm({})} guncelle={guncelle} />
+        <>
+          {anaUst}
+          <UzmanListe org={org} veri={veri} liste={liste} ac={setGor} yeni={() => setForm({})} guncelle={guncelle} />
+        </>
       )}
       <UzmanForm org={org} acik={!!form} u={form} liste={liste} ayar={veri.ayar} kapat={() => setForm(null)} guncelle={guncelle} />
     </SheetTone.Provider>
@@ -269,16 +277,23 @@ function UzmanListe({ org, veri, liste, ac, yeni, guncelle }) {
   );
 }
 
-function Ust({ geri, baslik, alt, sag }) {
+// Sayfa başlığı: uzmanın sayfasıyla aynı (geri + büyük ad + bir satır)
+function Ust({ href, geri, baslik, tur, alt }) {
   return (
-    <div className="flex items-center gap-2.5">
-      <BackButton onClick={geri} />
-      <div className="min-w-0 flex-1 leading-tight">
-        <h2 className="sahne-t truncate text-[1.75rem]">{baslik}</h2>
-        {alt && <p className="mt-0.5 truncate text-[0.8125rem] text-mut">{alt}</p>}
-      </div>
-      {sag}
-    </div>
+    <section className="pb-5 pt-[calc(0.75rem+env(safe-area-inset-top))]">
+      <header className="flex items-center gap-2.5">
+        {href ? <BackButton href={href} /> : <BackButton onClick={geri} />}
+        <div className="min-w-0 flex-1 leading-tight">
+          <h1 className="sahne-t truncate text-[2rem]">{baslik}</h1>
+          {(alt || tur) && (
+            <p className="mt-1 flex min-w-0 items-center gap-1.5 text-[0.8125rem] text-mut">
+              {tur && <Etiket tur={tur} />}
+              <span className="truncate">{alt}</span>
+            </p>
+          )}
+        </div>
+      </header>
+    </section>
   );
 }
 
@@ -325,7 +340,7 @@ function IstekDetay({ org, i, veri, liste, geri, guncelle }) {
   const gosterilen = hepsi ? oner : oner.slice(0, 3);
   return (
     <div className="space-y-5">
-      <Ust geri={geri} baslik="İstek" alt={[i.sporcuAd, i.yas && `${i.yas} yaş`].filter(Boolean).join(" · ")} />
+      <Ust geri={geri} baslik={i.sporcuAd || "Sporcu"} tur="s" alt={[DURUM[i.durum] || i.durum, i.yas && `${i.yas} yaş`].filter(Boolean).join(" · ")} />
       <Liste>
         <Bilgi ad="Branş">{bransAd(i.brans, liste)}</Bilgi>
         <Bilgi ad="Spor">{i.spor ? sporAd(i.spor) : ""}</Bilgi>
