@@ -13,9 +13,11 @@ import { ListLoading } from "@/components/ui/Loader";
 import { Sheet, SheetActions, SheetTone } from "@/components/ui/Sheet";
 import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useToast } from "@/components/ui/ToastProvider";
+import { useData } from "@/features/data/DataProvider";
+import { todayStr } from "@/lib/utils/format";
 import {
   AKTIF_DURUM, DURUM, ORNEK_ISTEKLER, ORNEK_UZMANLAR, PAYLAS_AD, SPORLAR, YASLAR,
-  bransAd, branslar as bransListesi, doluluk, kimlik, oneriler, sporAd, uzmanTemizle, yasAd,
+  bransAd, branslar as bransListesi, doluluk, kimlik, oneriler, sporAd, uzmanOzet, uzmanTemizle, yasAd,
 } from "@/lib/uzman";
 
 // Admin › Uzmanlar (Seyhun 2026-11-27 "yap", örnek project-files/admin-sayfasi/uzmanlar.html): üstte bekleyen sporcu istekleri,
@@ -30,8 +32,16 @@ const kisaAd = (s) =>
     .map((w) => w[0])
     .join("")
     .toLocaleUpperCase("tr");
-const Av = ({ ad, big }) => (
-  <span className={`grid shrink-0 place-items-center rounded-full font-bold ${big ? "size-14 bg-acc text-[1.1rem] text-[#111]" : "size-9 bg-[#26262b] text-[0.8125rem] text-fg2"}`}>{kisaAd(ad)}</span>
+// Uzman yeşil, sporcu mavi: kim kim, bir bakışta (Seyhun 2026-11-27 "kim uzman, kim sporcu anlamıyorum")
+export const Av = ({ ad, big, tur }) => (
+  <span
+    className={`grid shrink-0 place-items-center rounded-full font-bold ${big ? "size-14 bg-acc text-[1.1rem] text-[#111]" : `size-9 text-[0.8125rem] ${tur === "u" ? "bg-acc/15 text-acc" : tur === "s" ? "bg-[#60a5fa]/20 text-[#93c5fd]" : "bg-[#26262b] text-fg2"}`}`}
+  >
+    {kisaAd(ad)}
+  </span>
+);
+export const Etiket = ({ tur }) => (
+  <span className={`shrink-0 rounded-md px-1.5 py-px text-[0.625rem] font-bold tracking-[0.06em] ${tur === "u" ? "bg-acc/15 text-acc" : "bg-[#60a5fa]/20 text-[#93c5fd]"}`}>{tur === "u" ? "UZMAN" : "SPORCU"}</span>
 );
 const Liste = ({ children }) => <div className="divide-y divide-line overflow-hidden rounded-[1.25rem] border border-line bg-card">{children}</div>;
 const Bilgi = ({ ad, children }) => (
@@ -90,19 +100,28 @@ export function Uzmanlar({ org }) {
   if (!veri) return <ListLoading height="16rem" />;
   const liste = bransListesi(veri.ayar);
   const guncelle = (f) => setVeri((v) => ({ ...v, ...f(v) }));
-  const uzman = gor.t === "uzman" && veri.uzmanlar.find((u) => u.id === gor.id);
   const istek = gor.t === "istek" && veri.istekler.find((i) => i.id === gor.id);
   return (
     <SheetTone.Provider value="sahne">
-      {uzman ? (
-        <UzmanDetay u={uzman} veri={veri} liste={liste} geri={() => setGor({ t: "liste" })} ac={(id) => setGor({ t: "istek", id })} duzenle={() => setForm(uzman)} />
-      ) : istek ? (
+      {istek ? (
         <IstekDetay org={org} i={istek} veri={veri} liste={liste} geri={() => setGor({ t: "liste" })} guncelle={guncelle} />
       ) : (
         <UzmanListe org={org} veri={veri} liste={liste} ac={setGor} yeni={() => setForm({})} guncelle={guncelle} />
       )}
       <UzmanForm org={org} acik={!!form} u={form} liste={liste} ayar={veri.ayar} kapat={() => setForm(null)} guncelle={guncelle} />
     </SheetTone.Provider>
+  );
+}
+
+// Uzman satırının sağı: kaç sporcusu var, bu hafta antrenmanlarının yüzde kaçı yapıldı
+function UzmanSag({ u, istekler }) {
+  const { fitOthers = [] } = useData();
+  const o = uzmanOzet(istekler.filter((i) => i.uzmanId === u.id), fitOthers, [], todayStr());
+  return (
+    <span className="shrink-0 text-right text-[0.8125rem] leading-tight tabular-nums">
+      <span className="block text-fg2">{o.sporcu ? `${o.sporcu} sporcu` : "Sporcusu yok"}</span>
+      {o.oran != null && <span className={`block ${o.oran >= 70 ? "text-ok" : "text-[#ff6b6b]"}`}>%{o.oran} yapıldı</span>}
+    </span>
   );
 }
 
@@ -156,15 +175,15 @@ function UzmanListe({ org, veri, liste, ac, yeni, guncelle }) {
       </div>
       {bekleyen.length > 0 && (
         <section>
-          <ListHead title="Bekleyen istekler" count={bekleyen.length} />
+          <ListHead title="Uzman bekleyen sporcular" count={bekleyen.length} />
           <div className="divide-y divide-line overflow-hidden rounded-[1.25rem] border border-acc bg-card">
             {bekleyen.map((i) => (
               <button key={i.id} type="button" onClick={() => ac({ t: "istek", id: i.id })} className="flex min-h-[3.25rem] w-full items-center gap-2.5 px-4 py-2 text-left transition active:bg-bg">
-                <Av ad={i.sporcuAd} />
+                <Av ad={i.sporcuAd} tur="s" />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium">{i.sporcuAd || "Sporcu"}</span>
                   <span className="block truncate text-[0.8125rem] text-mut">
-                    {[bransAd(i.brans, liste), i.sure && `${i.sure} ay`, i.uzmanId ? `${uzmanAd(i.uzmanId)} atandı` : DURUM.bekliyor].filter(Boolean).join(" · ")}
+                    {[`${bransAd(i.brans, liste)} uzmanı istiyor`, i.sure && `${i.sure} ay`].filter(Boolean).join(" · ")}
                   </span>
                 </span>
                 <Durum d={i.durum} />
@@ -193,21 +212,19 @@ function UzmanListe({ org, veri, liste, ac, yeni, guncelle }) {
               .filter((u) => u.brans === b.id)
               .sort((x, y) => (x.durum === "pasif") - (y.durum === "pasif") || String(x.ad).localeCompare(String(y.ad), "tr"))
               .map((u) => (
-                <button key={u.id} type="button" onClick={() => ac({ t: "uzman", id: u.id })} className="flex min-h-[3.25rem] w-full items-center gap-2.5 px-4 py-2 text-left transition active:bg-bg">
-                  <Av ad={u.ad} />
+                <Link key={u.id} href={`/settings/admin/uzman/${u.id}`} className="flex min-h-[3.5rem] w-full items-center gap-2.5 px-4 py-2 text-left transition active:bg-bg">
+                  <Av ad={u.ad} tur="u" />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium">{u.ad}</span>
-                    <span className="block truncate text-[0.8125rem] text-mut">{[(u.alt || []).slice(0, 2).join(", "), u.sehir, u.online && "online"].filter(Boolean).join(" · ")}</span>
+                    <span className="block truncate text-[0.8125rem] text-mut">{[bransAd(u.brans, liste), u.sehir, u.online && "online"].filter(Boolean).join(" · ")}</span>
                   </span>
                   {u.durum === "pasif" ? (
                     <span className="rounded-full bg-[#1f1f22] px-2 py-0.5 text-[0.6875rem] font-bold text-mut">Pasif</span>
                   ) : (
-                    <span className="text-[0.8125rem] tabular-nums text-mut">
-                      {doluluk(u.id, istekler)}
-                      {u.kapasite ? `/${u.kapasite}` : ""}
-                    </span>
+                    <UzmanSag u={u} istekler={istekler} />
                   )}
-                </button>
+                  <span className="shrink-0 font-bold text-[#71717a]">›</span>
+                </Link>
               ))}
           </Liste>
         </section>
@@ -242,76 +259,6 @@ function Ust({ geri, baslik, alt, sag }) {
     </div>
   );
 }
-
-function UzmanDetay({ u, veri, liste, geri, ac, duzenle }) {
-  const sporcular = veri.istekler.filter((i) => i.uzmanId === u.id);
-  const dolu = doluluk(u.id, veri.istekler);
-  const bekleyen = sporcular.filter((i) => i.durum === "atandi").length;
-  return (
-    <div className="space-y-5">
-      <Ust geri={geri} baslik={u.ad} alt={[bransAd(u.brans, liste), u.sehir, u.online && "online da çalışır", u.ornek && "örnek"].filter(Boolean).join(" · ")} sag={<button type="button" onClick={duzenle} className="rounded-xl bg-[#1f1f22] px-3 py-2 text-[0.8125rem] font-bold shadow-[0_3px_0_#000] active:translate-y-[2px]">Düzenle</button>} />
-      <Link href={`/settings/admin/uzman/${u.id}`} className="sahne-t flex h-[3.25rem] w-full items-center justify-center rounded-2xl bg-acc text-[1.3rem] text-[#111] shadow-[0_4px_0_#8ea620] transition active:translate-y-[3px]">
-        Uzmanın sayfası
-      </Link>
-      <div className="grid grid-cols-3 gap-2">
-        {[
-          ["Sporcu", dolu, true],
-          ["Boş yer", u.kapasite ? Math.max(0, u.kapasite - dolu) : "–"],
-          ["Bekleyen", bekleyen],
-        ].map(([k, n, acc]) => (
-          <div key={k} className="min-w-0 rounded-2xl border border-line bg-card px-3 py-2.5">
-            <p className="truncate text-[0.75rem] text-mut">{k}</p>
-            <p className={`sahne-t mt-1 text-[2rem] tabular-nums ${acc && n ? "text-acc" : ""}`}>{n}</p>
-          </div>
-        ))}
-      </div>
-      {(u.alt || []).length > 0 && (
-        <section>
-          <ListHead title="Uzmanlık" />
-          <div className="flex flex-wrap gap-1.5">
-            {u.alt.map((t) => (
-              <Hap key={t}>{t}</Hap>
-            ))}
-          </div>
-        </section>
-      )}
-      <section>
-        <ListHead title="Kime" />
-        <Liste>
-          <Bilgi ad="Sporlar">{(u.sporlar || []).length ? u.sporlar.map(sporAd).join(", ") : "Hepsi"}</Bilgi>
-          <Bilgi ad="Yaş">{(u.yas || []).length ? u.yas.map(yasAd).join(", ") : "Hepsi"}</Bilgi>
-          <Bilgi ad="En çok sporcu">{u.kapasite || "Sınırsız"}</Bilgi>
-          <Bilgi ad="Telefon">{u.tel}</Bilgi>
-          <Bilgi ad="E-posta">{u.mail}</Bilgi>
-          <Bilgi ad="Giriş hesabı">{u.uid ? "Var" : "Henüz yok"}</Bilgi>
-          <Bilgi ad="Durum">{u.durum === "pasif" ? "Pasif (önerilmez)" : "Aktif"}</Bilgi>
-        </Liste>
-        {u.not && <p className="mt-2 px-1 text-[0.875rem] leading-snug text-fg2">{u.not}</p>}
-      </section>
-      <section>
-        <ListHead title="Sporcuları" count={sporcular.length} />
-        {sporcular.length ? (
-          <Liste>
-            {sporcular.map((i) => (
-              <button key={i.id} type="button" onClick={() => ac(i.id)} className="flex min-h-[3.25rem] w-full items-center gap-2.5 px-4 py-2 text-left transition active:bg-bg">
-                <Av ad={i.sporcuAd} />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium">{i.sporcuAd || "Sporcu"}</span>
-                  <span className="block truncate text-[0.8125rem] text-mut">{[i.sure && `${i.sure} ay`, paylasYaz(i)].filter(Boolean).join(" · ")}</span>
-                </span>
-                <Durum d={i.durum} />
-              </button>
-            ))}
-          </Liste>
-        ) : (
-          <p className="px-1 text-[0.875rem] text-mut">Henüz sporcusu yok.</p>
-        )}
-      </section>
-    </div>
-  );
-}
-
-const paylasYaz = (i) => (i.paylas?.acik && i.paylas.turler?.length ? `Planlar paylaşıldı: ${i.paylas.turler.map((t) => PAYLAS_AD[t] || t).join(", ")}` : "paylaşım kapalı");
 
 function IstekDetay({ org, i, veri, liste, geri, guncelle }) {
   const toast = useToast();
@@ -381,7 +328,7 @@ function IstekDetay({ org, i, veri, liste, geri, guncelle }) {
               <ListHead title="Atanan uzman" />
               <div className="rounded-[1.25rem] border border-acc bg-card px-4 py-3">
                 <div className="flex items-center gap-2.5">
-                  <Av ad={atanan.ad} />
+                  <Av ad={atanan.ad} tur="u" />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium">{atanan.ad}</span>
                     <span className="block truncate text-[0.8125rem] text-mut">{[bransAd(atanan.brans, liste), DURUM[i.durum]].filter(Boolean).join(" · ")}</span>
@@ -479,7 +426,7 @@ const Alan = ({ ad, children }) => (
 );
 
 // Yeni ya da düzenlenen uzman. Branş ve uzmanlık listesine "+" ile yeni ad eklenir (ayar/uzmanlik'e yazılır, bir dahakine listede)
-function UzmanForm({ org, acik, u, liste, ayar, kapat, guncelle }) {
+export function UzmanForm({ org, acik, u, liste, ayar, kapat, guncelle }) {
   const toast = useToast();
   const ask = useConfirm();
   const [f, setF] = useState(null);
