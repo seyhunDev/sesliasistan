@@ -2762,6 +2762,15 @@ group("Fitness: program ayrıntıları ve şablon")([
     return HT.cleanHow(pasted, "Glute bridge") === "Sırtüstü yat, kalçanı kaldır." && HT.hasPrompt(pasted) && !HT.hasPrompt("Sırtüstü yat") &&
       Object.values(lib.items)[0].how === "Sırtüstü yat, kalçanı kaldır." && it.how === "Sırtüstü yat, kalçanı kaldır." && HT.cleanHow("Dizleri bük, yavaş in.") === "Dizleri bük, yavaş in.";
   })],
+  ["ortak hazır programlar", F("yayınlanan programda kişiye ait alan kalmaz; liste: koddakiler önce, yeniler sonra, aynı kimlik bir kez; şablon listeden açılır", async () => {
+    const OR = await import("@/lib/fitness/ortak");
+    const prog = { title: "Ada · Kuvvet", for: "u1", forName: "Ada", forAge: 12, start: "2026-12-01", weeks: 6, days: [{ dow: 2, time: "18:00", name: "A", items: [{ ex: "", name: "Glute bridge", sets: 3, reps: 10 }] }] };
+    const h = OR.cleanHazir({ title: "Kuvvet", prog, at: 5 }, "p-1");
+    const list = OR.hazirList([h, { ...h, at: 9, id: "p-2" }, { ...h, id: "yelken-ev-12" }, { id: "bos", prog: { days: [] } }]);
+    const p = FTPL.fromTemplate("p-1", "2026-12-07", {}, list);
+    return !("for" in h.prog) && !("forName" in h.prog) && !h.prog.start && h.prog.title === "Kuvvet" && OR.cleanHazir({ prog: { days: [] } }) === null &&
+      list.map((t) => t.id).join() === "yelken-ev-12,p-2,p-1" && p.start === "2026-12-07" && p.days[0].time === "" && p.template === "p-1" && OR.hazirOzet(h).weeks === 6;
+  })],
   ["hazır şablon saati", F("varsayılan tam gün (saat boş); eklerken seçilen saat yalnız o güne", () => {
     const p = FTPL.fromTemplate("yelken-ev-12", "2026-10-19", { 2: "18:30", 4: "bozuk" });
     const at = (n) => p.days.find((d) => d.dow === n);

@@ -17,7 +17,10 @@ import { todayStr } from "@/lib/utils/format";
 import {
   GOALS, LEVEL_MAX, SPORTS, STATUS, addDays, ageFrom, copyFor, levelUp, progEnd, athleteRows, upcomingList, dayLine, dayRows, cleanItem, cleanProgram, dowOf, fitPlans, itemLine, labelOf, monthStats, programText, progWeek, records, resLine, statusOf, weekStats,
 } from "@/lib/fitness/model";
-import { libList } from "@/lib/fitness/library";
+import { libList, progWithLib } from "@/lib/fitness/library";
+import { useOrtak } from "./useOrtak";
+import { HazirProgramlar } from "./HazirProgramlar";
+import { VeloraHareketler } from "./VeloraHareketler";
 import { useFitLib } from "./useFitLib";
 import { kindOf } from "@/lib/kinds";
 import { FIT_PREVIEW, FIT_SAVED, activeOf, adoptProgram, spreadLib, askFitness, deleteProgram, loadPrograms, resetFitness, notifyProgram, removePlans, dropFrom, saveProfile, saveProgram, syncPlans, takeProgram, peekProgram, peekPrograms, relinkPrograms } from "./fitnessData";
@@ -75,6 +78,20 @@ export function FitnessHome() {
   const [fitProf, setFitProf] = useState(profile.fit || {});
   const [forUid, setForUid] = useState(""); // Program hazırla bir sporcu için açıldıysa
   const [libOpen, setLibOpen] = useState(false);
+  // Hazır programlar ve Velora hareketleri (Seyhun 2026-11-27): herkes görür; Velora sahibi olmayan hesapta Hareketler önce Velora'nınkiler
+  const ortak = useOrtak();
+  const [hazirOpen, setHazirOpen] = useState(false);
+  const [veloraOpen, setVeloraOpen] = useState(false);
+  const [newTpl, setNewTpl] = useState("");
+  const pickHazir = (t) => {
+    setHazirOpen(false);
+    setNewTpl(t.id);
+    setNewOpen(true);
+  };
+  const closeNew = () => {
+    setNewOpen(false);
+    setNewTpl("");
+  };
   const [ath, setAth] = useState(""); // Açık sporcu sayfası
   const [revOpen, setRevOpen] = useState(false); // sporcunun Değerlendirme sayfası
   // Program verilebilecek sporcular: uygulamada hesabı olan sporcu ve öğrenciler
@@ -267,8 +284,10 @@ export function FitnessHome() {
 
   // Hazır program: seçili sporcuya tek dokunuş, kaydetmeden önce düzenleme ekranında
   function template(id, f, pre) {
-    const t = TEMPLATES.find((x) => x.id === id);
-    const p = fromTemplate(id, pre.start, pre.times);
+    const t = pre.tpl || TEMPLATES.find((x) => x.id === id);
+    const p0 = fromTemplate(id, pre.start, pre.times, ortak.hazir);
+    // Velora sahibi olmayan hesapta hareketler Velora'nın fotoğraf, animasyon ve açıklamalarıyla gelir
+    const p = p0 && !ortak.velora && ortak.lib ? progWithLib(p0, ortak.lib) : p0;
     if (!t || !p) return;
     const who = pre.for ? { for: pre.for, forName: pre.forName, forAge: f.age || t.forAge || 0, sport: f.sport || t.sport || "", forSex: f.sex || t.forSex || "" } : {};
     setNewOpen(false);
@@ -407,8 +426,12 @@ export function FitnessHome() {
             setNewOpen(true);
           }}
         />
+          <button type="button" onClick={() => setHazirOpen(true)} data-press className="btn btn-secondary mt-3 w-full">
+            Hazır programlar
+          </button>
         </div>
-        <NewProgram key={newOpen ? "o" : "c"} goal={newGoal} athletes={athletes} open={newOpen} onClose={() => setNewOpen(false)} profile={fitProf} onAsk={ask} onBlank={blank} onImport={importProg} onTemplate={template} busy={busy === "ask" || busy === "import"} error={askErr} />
+        <HazirProgramlar open={hazirOpen} onClose={() => setHazirOpen(false)} onPick={pickHazir} orgId={orgId} mine={list || []} />
+        <NewProgram key={newOpen ? `o${newTpl}` : "c"} goal={newGoal} startTpl={newTpl} athletes={athletes} open={newOpen} onClose={closeNew} profile={fitProf} onAsk={ask} onBlank={blank} onImport={importProg} onTemplate={template} busy={busy === "ask" || busy === "import"} error={askErr} />
       </main>
     );
   }
@@ -436,7 +459,9 @@ export function FitnessHome() {
           spreadLib(orgId, [...plans, ...fitOthers]).then((x) => x.progs && reload(false)).catch(() => {});
         }}
       />
-      <NewProgram key={newOpen ? `o${forUid}` : "c"} forUid={forUid} athletes={athletes} open={newOpen} onClose={() => setNewOpen(false)} profile={fitProf} onAsk={ask} onBlank={blank} onImport={importProg} onTemplate={template} busy={busy === "ask" || busy === "import"} error={askErr} />
+      <HazirProgramlar open={hazirOpen} onClose={() => setHazirOpen(false)} onPick={pickHazir} orgId={orgId} mine={list || []} />
+      <VeloraHareketler open={veloraOpen} onClose={() => setVeloraOpen(false)} mineCount={libCount.n} onMine={() => (setVeloraOpen(false), setLibOpen(true))} />
+      <NewProgram key={newOpen ? `o${forUid}${newTpl}` : "c"} forUid={forUid} startTpl={newTpl} athletes={athletes} open={newOpen} onClose={closeNew} profile={fitProf} onAsk={ask} onBlank={blank} onImport={importProg} onTemplate={template} busy={busy === "ask" || busy === "import"} error={askErr} />
       <ProfileSheet key={profOpen ? "o" : "c"} open={profOpen} onClose={() => setProfOpen(false)} value={fitProf} onSave={async (f) => setFitProf(await saveProfile(uid, f))} />
     </>
   );
@@ -500,7 +525,8 @@ export function FitnessHome() {
     <>
       <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title="Fitness">
         {tab === "ath" && <MenuRow icon="cal" title="Gün gün" sub="Sporcuların günlük antrenmanı" onClick={() => (setMenuOpen(false), setDayDate(today), setDayOpen(true))} />}
-        <MenuRow icon="video" title="Hareketler" sub={libCount.n ? `${libCount.n} hareket · ${libCount.v} videolu` : "Fotoğraf ve videolar"} onClick={() => (setMenuOpen(false), setLibOpen(true))} />
+        <MenuRow icon="dumbbell" title="Hazır programlar" sub="Velora'nın hazırladığı programlar" onClick={() => (setMenuOpen(false), setHazirOpen(true))} />
+        <MenuRow icon="video" title="Hareketler" sub={ortak.velora ? (libCount.n ? `${libCount.n} hareket · ${libCount.v} videolu` : "Fotoğraf ve videolar") : "Velora hareketleri ve seninkiler"} onClick={() => (setMenuOpen(false), ortak.velora ? setLibOpen(true) : setVeloraOpen(true))} />
         <MenuRow icon="user" title="Profilim" sub="Boy, kilo, seviye" onClick={() => (setMenuOpen(false), setProfOpen(true))} />
         {(list?.length > 0 || all.length > 0 || fitOthers.length > 0) && (
           <button

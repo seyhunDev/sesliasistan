@@ -286,7 +286,9 @@ function DayPanel({ d, onChange, onDrop }) {
         open={pick}
         onClose={() => setPick(false)}
         onPick={(e) => {
-          set("items", [...items, cleanItem(e.custom ? { ex: "", name: e.name } : { ex: e.id })].filter(Boolean));
+          // Velora hareketi: fotoğraf, animasyon ve açıklamasıyla gelir
+          const v = e.velora ? { name: e.name, ...(e.velora.media?.length ? { media: e.velora.media } : {}), ...(e.velora.yt ? { yt: e.velora.yt } : {}), ...(e.velora.how ? { how: e.velora.how } : {}) } : {};
+          set("items", [...items, cleanItem(e.custom ? { ex: "", name: e.name, ...v } : { ex: e.id, ...v })].filter(Boolean));
           setOpen(items.length);
         }}
       />
