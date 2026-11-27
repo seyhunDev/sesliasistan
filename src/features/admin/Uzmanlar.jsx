@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { addDoc, collection, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
 import { authFetch } from "@/lib/authFetch";
@@ -110,7 +111,7 @@ function UzmanListe({ org, veri, liste, ac, yeni, guncelle }) {
   const ask = useConfirm();
   const toast = useToast();
   const { uzmanlar, istekler } = veri;
-  const bekleyen = istekler.filter((i) => i.durum === "bekliyor" || i.durum === "atandi");
+  const bekleyen = istekler.filter((i) => i.durum === "bekliyor");
   const sayi = (id) => uzmanlar.filter((u) => u.brans === id).length;
   const gruplar = liste.filter((b) => sayi(b.id) && (!sec || sec === b.id));
   const ornek = uzmanlar.filter((u) => u.ornek).length + istekler.filter((i) => i.ornek).length;
@@ -249,6 +250,9 @@ function UzmanDetay({ u, veri, liste, geri, ac, duzenle }) {
   return (
     <div className="space-y-5">
       <Ust geri={geri} baslik={u.ad} alt={[bransAd(u.brans, liste), u.sehir, u.online && "online da çalışır", u.ornek && "örnek"].filter(Boolean).join(" · ")} sag={<button type="button" onClick={duzenle} className="rounded-xl bg-[#1f1f22] px-3 py-2 text-[0.8125rem] font-bold shadow-[0_3px_0_#000] active:translate-y-[2px]">Düzenle</button>} />
+      <Link href={`/settings/admin/uzman/${u.id}`} className="sahne-t flex h-[3.25rem] w-full items-center justify-center rounded-2xl bg-acc text-[1.3rem] text-[#111] shadow-[0_4px_0_#8ea620] transition active:translate-y-[3px]">
+        Uzmanın sayfası
+      </Link>
       <div className="grid grid-cols-3 gap-2">
         {[
           ["Sporcu", dolu, true],
@@ -325,7 +329,19 @@ function IstekDetay({ org, i, veri, liste, geri, guncelle }) {
       toast?.("Kaydedilemedi");
     }
   };
-  const ata = (u) => yaz({ uzmanId: u.id, uzmanUid: u.uid || null, durum: "atandi" }).then(() => toast?.(`${u.ad} atandı`));
+  const [secili, setSecili] = useState("");
+  const [degis, setDegis] = useState(false);
+  const [bekle, setBekle] = useState(false);
+  const secId = secili || (!degis && oner[0]?.u.id) || "";
+  const secU = veri.uzmanlar.find((u) => u.id === secId);
+  const ata = async (u) => {
+    setBekle(true);
+    await yaz({ uzmanId: u.id, uzmanUid: u.uid || null, durum: "atandi" });
+    setBekle(false);
+    setDegis(false);
+    setSecili("");
+    toast?.(`${u.ad} atandı`);
+  };
   const ders = async () => {
     try {
       const res = await authFetch(`/api/uzman-istek?orgId=${encodeURIComponent(org)}&ders=${encodeURIComponent(i.id)}`);
@@ -360,29 +376,67 @@ function IstekDetay({ org, i, veri, liste, geri, guncelle }) {
       </Liste>
       {!["ret", "bitti", "iptal"].includes(i.durum) && (
         <section>
-          <ListHead title="Önerilen uzmanlar" />
-          {oner.length ? (
-            <Liste>
-              {gosterilen.map(({ u, p }) => (
-                <button key={u.id} type="button" onClick={() => ata(u)} className="flex min-h-[3.25rem] w-full items-center gap-3 px-4 py-2 text-left transition active:bg-bg">
+          {atanan && !degis ? (
+            <>
+              <ListHead title="Atanan uzman" />
+              <div className="rounded-[1.25rem] border border-acc bg-card px-4 py-3">
+                <div className="flex items-center gap-2.5">
+                  <Av ad={atanan.ad} />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium">
-                      {u.ad}
-                      {u.id === i.uzmanId && <span className="ml-1.5 text-[0.75rem] font-bold text-acc">atandı</span>}
-                    </span>
-                    <span className="block truncate text-[0.75rem] text-mut">{p.neden.join(" · ")}</span>
+                    <span className="block truncate font-medium">{atanan.ad}</span>
+                    <span className="block truncate text-[0.8125rem] text-mut">{[bransAd(atanan.brans, liste), DURUM[i.durum]].filter(Boolean).join(" · ")}</span>
                   </span>
-                  <span className="sahne-t w-10 shrink-0 text-right text-[1.4rem] text-acc tabular-nums">{p.puan}</span>
-                </button>
-              ))}
-              {oner.length > 3 && !hepsi && (
-                <button type="button" onClick={() => setHepsi(true)} className="block w-full px-4 py-2.5 text-left text-[0.875rem] font-semibold text-mut">
-                  Hepsi ({oner.length})
-                </button>
-              )}
-            </Liste>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <Link href={`/settings/admin/uzman/${atanan.id}`} className="rounded-xl bg-acc px-3.5 py-2 text-[0.8125rem] font-bold text-[#111] shadow-[0_3px_0_#8ea620] active:translate-y-[2px]">
+                    Uzmanın sayfası
+                  </Link>
+                  <button type="button" onClick={() => (setSecili(""), setDegis(true))} className="rounded-xl bg-[#1f1f22] px-3.5 py-2 text-[0.8125rem] font-bold shadow-[0_3px_0_#000] active:translate-y-[2px]">
+                    Değiştir
+                  </button>
+                </div>
+              </div>
+            </>
           ) : (
-            <p className="px-1 text-[0.875rem] text-mut">Bu branşta uygun uzman yok. &quot;+ Uzman&quot; ile ekleyebilirsin.</p>
+            <>
+              <ListHead title="Önerilen uzmanlar" />
+              {oner.length ? (
+                <>
+                  <div role="radiogroup" aria-label="Uzman seç" className="divide-y divide-line overflow-hidden rounded-[1.25rem] border border-line bg-card">
+                    {gosterilen.map(({ u, p }) => {
+                      const on = secId === u.id;
+                      return (
+                        <button key={u.id} type="button" role="radio" aria-checked={on} onClick={() => setSecili(u.id)} className={`flex min-h-[3.25rem] w-full items-center gap-3 px-4 py-2 text-left transition active:bg-bg ${on ? "bg-accbg" : ""}`}>
+                          <span className={`grid size-5 shrink-0 place-items-center rounded-full border-2 ${on ? "border-acc bg-acc" : "border-[#52525b]"}`}>{on && <span className="size-2 rounded-full bg-[#111]" />}</span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate font-medium">{u.ad}</span>
+                            <span className="block truncate text-[0.75rem] text-mut">{p.neden.join(" · ")}</span>
+                          </span>
+                          <span className="sahne-t w-10 shrink-0 text-right text-[1.4rem] text-acc tabular-nums">{p.puan}</span>
+                        </button>
+                      );
+                    })}
+                    {oner.length > 3 && !hepsi && (
+                      <button type="button" onClick={() => setHepsi(true)} className="block w-full px-4 py-2.5 text-left text-[0.875rem] font-semibold text-mut">
+                        Hepsi ({oner.length})
+                      </button>
+                    )}
+                  </div>
+                  {secU && (
+                    <button type="button" disabled={bekle} onClick={() => ata(secU)} className="sahne-t mt-3 h-[3.25rem] w-full rounded-2xl bg-acc text-[1.3rem] text-[#111] shadow-[0_4px_0_#8ea620] transition active:translate-y-[3px] disabled:opacity-50">
+                      {secU.ad} ata
+                    </button>
+                  )}
+                  {degis && (
+                    <button type="button" onClick={() => setDegis(false)} className="mt-1 h-10 w-full text-[0.875rem] font-semibold text-mut">
+                      Vazgeç
+                    </button>
+                  )}
+                </>
+              ) : (
+                <p className="px-1 text-[0.875rem] text-mut">Bu branşta uygun uzman yok. &quot;+ Uzman&quot; ile ekleyebilirsin.</p>
+              )}
+            </>
           )}
         </section>
       )}

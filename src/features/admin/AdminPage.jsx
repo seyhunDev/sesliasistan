@@ -71,7 +71,7 @@ export function AdminPage() {
   const { profile } = useAuth();
   const org = profile?.orgId;
   const { veri, setVeri, hata, yukle } = useAdmin(org);
-  const [sek, setSek] = useState("b");
+  const [sek, setSek] = useState(() => (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("sekme") === "uzman" ? "u" : "b"));
   const bugun = gunOf();
 
   if (profile?.role !== "owner") return null;

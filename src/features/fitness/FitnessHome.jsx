@@ -148,6 +148,21 @@ export function FitnessHome() {
     return () => window.removeEventListener("sa-fit-athletes", onEv);
   }, [athQ, gunQ, router]);
 
+  // Admin › Uzman sayfası "Program hazırla": /fitness?hazirla=<sporcu uid> o sporcu seçili açılır
+  const hazirlaQ = sp.get("hazirla") || "";
+  useEffect(() => {
+    if (!hazirlaQ) return;
+    const ac = () => {
+      setForUid(hazirlaQ);
+      setNewGoal("");
+      setAskErr("");
+      setDayOpen(false);
+      setNewOpen(true);
+    };
+    ac();
+    router.replace("/fitness", { scroll: false });
+  }, [hazirlaQ, router]);
+
   const mine = list ? list.filter((p) => !p.for) : null;
   const prog = activeOf(mine);
   const rows = athleteRows(list || [], fitOthers, athletes, today);
