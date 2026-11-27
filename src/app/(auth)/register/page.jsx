@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Field, PasswordField } from "@/components/ui/Field";
 import { authErrorMessage, register } from "@/lib/auth";
 import { goToSailing, sailingBusy, useSailingReturn } from "@/lib/sailingReturn";
+import { Basvuru } from "@/features/auth/Basvuru";
 
 const SIGNUP = process.env.NEXT_PUBLIC_ALLOW_SIGNUP === "1";
 
@@ -27,18 +28,8 @@ export default function RegisterPage() {
   // kayıt bitince geldiği Sailing sayfasına döner. Profilde via:"sailing" → Sailing'de rolü "kayitli" (sahip değil).
   const sailing = useSailingReturn();
 
-  // Kayıt kapalıyken form yerine bilgi göster
-  if (!SIGNUP && !sailing) {
-    return (
-      <div className={CARD}>
-        <h1 className="text-[1.375rem] font-semibold tracking-tight">Kayıt kapalı</h1>
-        <p className="mt-2 text-[0.9375rem] leading-relaxed text-mut">Yeni hesaplar yönetici tarafından açılıyor. Erişim için yöneticiyle iletişime geç.</p>
-        <Link href="/login" className="mt-6 inline-flex h-12 w-full items-center justify-center rounded-xl bg-acc text-base font-semibold text-white active:scale-[.98]">
-          Girişe dön
-        </Link>
-      </div>
-    );
-  }
+  // Kayıt kapalıyken "Kayıt ol" = tanıtımdaki Katıl başvurusu (Seyhun 2026-11-27); hesabı ana hesap Başvurular'dan açar
+  if (!SIGNUP && !sailing) return <Basvuru />;
 
   if (!sport && !sailing) return <SportPick onDone={setSport} onBack={() => router.push("/login")} />;
 

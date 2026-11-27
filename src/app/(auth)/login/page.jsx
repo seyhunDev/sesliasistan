@@ -5,10 +5,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/Button";
 import { authErrorMessage, login, resetPassword } from "@/lib/auth";
 import { cleanLogin, validLogin } from "@/lib/kinds";
-import { useSailingReturn } from "@/lib/sailingReturn";
 
-// Yeni kayıt yalnızca NEXT_PUBLIC_ALLOW_SIGNUP=1 iken açık
-const SIGNUP = process.env.NEXT_PUBLIC_ALLOW_SIGNUP === "1";
 
 // Yazarken küçük harfe çevir ("I" → "i", Türkçe "ı" değil); boşluk alınmaz
 const typed = (v) => v.replace(/I/g, "i").toLocaleLowerCase("tr-TR").replace(/\s/g, "");
@@ -32,7 +29,6 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [move, setMove] = useState(""); // adım değişince form yandan kayar: "" (ilk açılış) | fwd | back
-  const sailing = useSailingReturn(); // Velora Sailing'den gelen: kayıt her zaman açık
   const ok = validLogin(id);
   const isEmail = id.includes("@");
 
@@ -165,11 +161,10 @@ export default function LoginPage() {
       <Button type="submit" disabled={!ok} className="mt-3.5 h-[3.375rem]">
         Devam
       </Button>
-      {(SIGNUP || sailing) && (
-        <p className="mt-5 text-center text-[0.875rem] text-mut">
-          Hesabın yok mu? <Link href="/register" className="font-semibold text-acc">Kayıt ol</Link>
-        </p>
-      )}
+      {/* Her zaman: kayıt kapalıyken /register başvuru formunu açar (tanıtımdaki Katıl ile aynı) */}
+      <p className="mt-5 text-center text-[0.875rem] text-mut">
+        Hesabın yok mu? <Link href="/register" className="font-semibold text-acc">Kayıt ol</Link>
+      </p>
     </form>
   );
 }
