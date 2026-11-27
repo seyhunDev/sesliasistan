@@ -662,16 +662,20 @@ function talkSt(ptt, last, d, now, to) {
 }
 
 // Son gönderilenin durumu: İletildi (sunucu onayı, tik çizilerek) → Görüldü (ekran gösterdi/çaldı) → 15 sn'de görmeyen Ulaşmadı + Tekrar
-function LastSent({ last, boats, ch, now, onAgain }) {
+// Ulaşmayan gönderim (Seyhun 2026-11-27 "istersem gönderirim, istersem iptal"): kendiliğinden yeniden gitmez; Gönder ya da İptal.
+// Bir dakikadan eskiyse ne zaman gönderildiği yazar.
+function LastSent({ last, boats, ch, now, onAgain, onDrop }) {
   const d = deliveryOf(last && { id: last.id, at: last.at, to: last.to?.dev || "", ok: last.ok }, boats, ch, now);
   if (!last || !d) return null;
   const what = last.kind === "ses" ? `Ses · ${last.dur || 0} sn` : last.text;
   const who = last.to ? `${last.to.name} · ` : "";
+  const age = Math.floor((now - last.at) / 60000);
   return (
     <div className="bzy-sent" data-st={d.state}>
       <p>
         {who}
         {what}
+        {age >= 1 ? <small className="bzy-age"> · {age} dk önce</small> : null}
       </p>
       {d.state === "wait" ? (
         <span className="bzy-st">…</span>
@@ -693,8 +697,11 @@ function LastSent({ last, boats, ch, now, onAgain }) {
       ) : (
         <>
           <span className="bzy-st bad">{d.state === "part" ? `${d.seen}/${d.of} · ${d.missing.join(", ")} görmedi` : "Ulaşmadı"}</span>
-          <button type="button" className="bzy-again" onClick={onAgain}>
-            Tekrar
+          <button type="button" className="bzy-again" onClick={onAgain} data-press>
+            Gönder
+          </button>
+          <button type="button" className="bzy-drop" onClick={onDrop} aria-label="İptal" data-press>
+            İptal
           </button>
         </>
       )}
@@ -1208,7 +1215,7 @@ export function BilgiAdmin() {
             </button>
           </div>
           <div className="bzy-bot" ref={pnl}>
-            {(dl0?.state === "fail" || dl0?.state === "part") && <LastSent last={last} boats={boats} ch={ch} now={now} onAgain={again} />}
+            {(dl0?.state === "fail" || dl0?.state === "part") && <LastSent last={last} boats={boats} ch={ch} now={now} onAgain={again} onDrop={() => (last?.logId && dl0 && markLog(org, last.logId, { st: dl0.state, seen: dl0.seen, of: dl0.of, drop: true }), setLast(null))} />}
             <section className="bzy-pnl" aria-label="Konuşma ve süre">
               <button
                 type="button"

@@ -1013,3 +1013,6 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
   .bzy-kpg { grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr)); }
   .bzy-pga { grid-template-columns: repeat(auto-fill, minmax(5.75rem, 1fr)); }
 }
+/* Ulaşmayan gönderim: Gönder / İptal (Seyhun 2026-11-27) */
+.bzy-drop { flex: none; padding: 0.375rem 0.625rem; border: 1px solid #3a3a40; border-radius: 0.625rem; background: #1f1f22; color: #fff; font-size: 0.8125rem; font-weight: 600; }
+.bzy-age { font-size: 0.75rem; font-weight: 500; color: var(--mut); }
