@@ -4,6 +4,7 @@ import { adminAuth, adminDb, adminReady } from "@/lib/server/admin";
 import { sendTo } from "@/lib/server/pushSend";
 import { basvuruTemizle } from "@/lib/basvuru";
 import { cihazOf } from "@/lib/kullanim";
+import { VELORA_ADMIN } from "@/lib/sharedRace";
 
 export const runtime = "nodejs";
 
@@ -27,6 +28,13 @@ let org = "";
 async function anaHesap(db) {
   if (org) return org;
   if (process.env.TANITIM_ORG) return (org = process.env.TANITIM_ORG);
+  // Velora'nın sahibi (VELORA_ADMIN). Herkese açılınca her antrenör de "owner" olur; yalnız role'e bakmak başvuruyu kaybeder
+  // (açılış testi, 2026-11-27).
+  const sahip = await adminAuth().getUserByEmail(VELORA_ADMIN).catch(() => null);
+  if (sahip) {
+    const p = await db.collection("users").doc(sahip.uid).get();
+    if (p.exists && p.data().role === "owner") return (org = p.data().orgId || sahip.uid);
+  }
   const snap = await db.collection("users").where("role", "==", "owner").limit(5).get();
   if (snap.size === 1) return (org = snap.docs[0].id);
   const first = (process.env.ALLOWED_EMAILS || "").split(",")[0]?.trim();

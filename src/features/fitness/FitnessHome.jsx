@@ -431,7 +431,7 @@ export function FitnessHome() {
           </button>
         </div>
         <HazirProgramlar open={hazirOpen} onClose={() => setHazirOpen(false)} onPick={pickHazir} orgId={orgId} mine={list || []} />
-        <NewProgram key={newOpen ? `o${newTpl}` : "c"} goal={newGoal} startTpl={newTpl} athletes={athletes} open={newOpen} onClose={closeNew} profile={fitProf} onAsk={ask} onBlank={blank} onImport={importProg} onTemplate={template} busy={busy === "ask" || busy === "import"} error={askErr} />
+        <NewProgram key={newOpen ? `o${newTpl}` : "n"} goal={newGoal} startTpl={newTpl} athletes={athletes} open={newOpen} onClose={closeNew} profile={fitProf} onAsk={ask} onBlank={blank} onImport={importProg} onTemplate={template} busy={busy === "ask" || busy === "import"} error={askErr} />
       </main>
     );
   }
@@ -461,8 +461,8 @@ export function FitnessHome() {
       />
       <HazirProgramlar open={hazirOpen} onClose={() => setHazirOpen(false)} onPick={pickHazir} orgId={orgId} mine={list || []} />
       <VeloraHareketler open={veloraOpen} onClose={() => setVeloraOpen(false)} mineCount={libCount.n} onMine={() => (setVeloraOpen(false), setLibOpen(true))} />
-      <NewProgram key={newOpen ? `o${forUid}${newTpl}` : "c"} forUid={forUid} startTpl={newTpl} athletes={athletes} open={newOpen} onClose={closeNew} profile={fitProf} onAsk={ask} onBlank={blank} onImport={importProg} onTemplate={template} busy={busy === "ask" || busy === "import"} error={askErr} />
-      <ProfileSheet key={profOpen ? "o" : "c"} open={profOpen} onClose={() => setProfOpen(false)} value={fitProf} onSave={async (f) => setFitProf(await saveProfile(uid, f))} />
+      <NewProgram key={newOpen ? `o${forUid}${newTpl}` : "n"} forUid={forUid} startTpl={newTpl} athletes={athletes} open={newOpen} onClose={closeNew} profile={fitProf} onAsk={ask} onBlank={blank} onImport={importProg} onTemplate={template} busy={busy === "ask" || busy === "import"} error={askErr} />
+      <ProfileSheet key={profOpen ? "po" : "pc"} open={profOpen} onClose={() => setProfOpen(false)} value={fitProf} onSave={async (f) => setFitProf(await saveProfile(uid, f))} />
     </>
   );
 
@@ -1067,8 +1067,8 @@ function AthletePage({ name, row, athlete, today, busy, onBack, onReview, onNew,
           Vazgeç
         </button>
       </Sheet>
-      {prog && <ContinueSheet key={cont ? "o" : "c"} open={cont} onClose={() => setCont(false)} prog={prog} today={today} onGo={(n, start, weeks) => (setCont(false), onContinue(prog, n, start, weeks))} />}
-      {prog && <GiveSheet key={give ? "o" : "c"} open={give} onClose={() => setGive(false)} others={others} today={today} onGo={(a, start) => (setGive(false), onGive(prog, a, start))} />}
+      {prog && <ContinueSheet key={cont ? "co" : "cc"} open={cont} onClose={() => setCont(false)} prog={prog} today={today} onGo={(n, start, weeks) => (setCont(false), onContinue(prog, n, start, weeks))} />}
+      {prog && <GiveSheet key={give ? "go" : "gc"} open={give} onClose={() => setGive(false)} others={others} today={today} onGo={(a, start) => (setGive(false), onGive(prog, a, start))} />}
     </>
   );
 }
