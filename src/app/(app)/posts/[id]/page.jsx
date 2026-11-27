@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Loading } from "@/components/ui/Loader";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
+import { canSeeAthletes } from "@/features/athletes/access";
 import { PostEditor } from "@/features/posts/PostEditor";
 import { RACE_KEY, freshPost, postFromRace } from "@/features/posts/postModel";
 import { deletePost, loadPhoto, loadPost, savePost, setPostNews } from "@/features/posts/posts";
@@ -23,7 +24,9 @@ export default function PostPage() {
     if (profile && !owner) router.replace("/");
   }, [profile, owner, router]);
   if (!owner || !profile?.orgId || !user) return null;
-  return <Post orgId={profile.orgId} uid={user.uid} />;
+  // "Kulüpten haberler" (Dikili Yelken sitesi, eski kulüp veritabanı): yalnız Seyhun'un ana hesabında (Seyhun 2026-11-27);
+  // diğer ana hesaplarda (Velora'yı kullanan başka kişiler) hiç görünmez
+  return <Post orgId={profile.orgId} uid={user.uid} news={canSeeAthletes(profile.email || user.email)} />;
 }
 
 function fromRace() {
@@ -36,7 +39,7 @@ function fromRace() {
   }
 }
 
-function Post({ orgId, uid }) {
+function Post({ orgId, uid, news }) {
   const { id } = useParams();
   const router = useRouter();
   const toast = useToast();
@@ -84,7 +87,7 @@ function Post({ orgId, uid }) {
       ) : !state ? (
         <Loading label="Gönderi yükleniyor" />
       ) : (
-        <PostEditor title={head} back="/posts" start={state.post} startPhoto={state.photo} photoLost={state.lost} onSave={onSave} onDelete={onDelete} onArchive={onArchive} onNews={(pid, nid) => setPostNews(orgId, pid, nid)} onRaces={() => loadRaces(orgId)} onAthletes={() => loadAthletes()} />
+        <PostEditor title={head} back="/posts" start={state.post} startPhoto={state.photo} photoLost={state.lost} onSave={onSave} onDelete={onDelete} onArchive={onArchive} onNews={news ? (pid, nid) => setPostNews(orgId, pid, nid) : undefined} onRaces={() => loadRaces(orgId)} onAthletes={() => loadAthletes()} />
       )}
     </main>
   );
