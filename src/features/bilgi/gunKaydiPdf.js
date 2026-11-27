@@ -185,7 +185,7 @@ export async function buildGunKaydiPdf(g, fonts) {
           ? (x, top) => {
               const t = e.tag === "off" ? "Kalktı" : e.tag === "fd" ? "FD" : e.tag === "2" ? "2 ceza dönüşü (720°)" : "1 ceza dönüşü (360°)";
               const dx = tag(e.tag, t, x, top);
-              text(e.tag === "off" ? "" : e.tag === "fd" ? "Faux départ" : "Ceza", x + dx, top, f.r, 8.5);
+              text(e.tag === "off" ? "" : e.tag === "fd" ? "Fodepar" : "Ceza", x + dx, top, f.r, 8.5);
             }
           : e.what;
       if (i === 3) return wrap(e.det, f.r, 8.5, max, 3);
