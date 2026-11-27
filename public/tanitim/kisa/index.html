@@ -202,6 +202,9 @@ button{font:inherit;color:inherit}
   .flash{display:none}
   *,*::before{animation-duration:.01ms!important;animation-delay:0s!important;animation-iteration-count:1!important}
 }
+/* Uygulama içi görünüm (?app, Velora ilk girişi 2026-11-27): logo yok, sağ üstte Atla; sonda Katıl/Giriş yerine uygulamaya "bitti" haberi */
+.skip{display:none;border:0;background:var(--lime,#d4ff3a);color:#0f0f11;border-radius:99px;height:34px;padding:0 16px;font:700 .85rem var(--f-text);cursor:pointer}
+.inapp .brand{display:none}.inapp .cnt{margin-left:0;margin-right:auto}.inapp .skip{display:block}
 </style>
 
 </head>
@@ -214,6 +217,7 @@ button{font:inherit;color:inherit}
     <span class="cnt" id="cnt" aria-hidden="true"></span>
     <button type="button" class="pp vo" id="vo" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path class="w1" d="M16 8.5a4.5 4.5 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="w2" d="M18.5 6a8 8 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="x" d="M16 9l5 6M21 9l-5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Seslendirme</span></button>
     <button type="button" class="pp" id="pp" aria-label="Durdur">❚❚</button>
+    <button type="button" class="skip" id="skip">Atla</button>
   </header>
   <main id="scenes"></main>
   <div class="wipe" id="wipe" aria-hidden="true"></div>
@@ -226,6 +230,11 @@ const LOGO='<svg viewBox="0 0 100 100" aria-hidden="true"><rect width="100" heig
 /* Katıl ve giriş adresleri: sitede /tanitim/?k=kisa#katil, örnekte canlı site */
 const SITE=/sesliasistan\.netlify\.app$/.test(location.hostname)?'':'https://sesliasistan.netlify.app';
 const JOIN=SITE+'/tanitim/?k=kisa#katil', LOGIN=SITE+'/';
+/* Uygulama içinde (?app): Velora ilk girişte bu sayfayı tam ekran açar (src/features/onboarding/IlkTanitim.jsx). Atla ya da son sahne
+   uygulamaya "velora-tanitim-bitti" iletisi gönderir; Katıl/Giriş ekranı gösterilmez. İçerik (yazı, ses) yine bu sayfada, tek kaynak. */
+const APP=new URLSearchParams(location.search).has('app');
+let gitti=false;const bitti=()=>{if(gitti)return;gitti=true;try{parent.postMessage({velora:'tanitim-bitti'},location.origin)}catch(e){}};
+if(APP){document.getElementById('app').classList.add('inapp');document.getElementById('skip').addEventListener('click',()=>{hush();bitti()})}
 
 /* Altı özellik. v: kayıt; s–e: kaydın gösterilen bölümü (sn); r: hız. st: adımlar (t = kayıttaki an; y = yazı; say = seslendirme, yoksa yazı okunur).
    Başlıkta *kelime* limon olur. Yazı modunda her adım okunacak kadar ekranda kalır; seslendirmede cümle bitmeden sonraki adıma geçilmez (kayıt bekler). */
@@ -348,6 +357,7 @@ function showStep(s,j){si=j;stepAt=el;s.li.forEach((li,k)=>{li.classList.toggle(
 const minRead=s=>{const x=s.f.st[si];return Math.max(2.3,x.y.replace(/<[^>]+>/g,'').length*.055)};
 function go(n){
   n=Math.max(0,Math.min(S.length-1,n));
+  if(APP&&n===S.length-1){hush();if(cur>=0&&S[cur].video)S[cur].video.pause();bitti();return}
   hush();
   if(cur>=0){const o=S[cur];o.el.classList.remove('on');o.el.setAttribute('aria-hidden','true');if(o.video)o.video.pause()}
   if(cur>=0&&n!==cur){wipe.classList.remove('go');void wipe.offsetWidth;wipe.classList.add('go')}

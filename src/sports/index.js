@@ -23,9 +23,10 @@ export const chosenSport = (profile) => (isSport(profile?.sport) ? profile.sport
 // Seçim yapılana kadar uygulama Sailing gibi çalışır
 export const sportOf = (profile) => chosenSport(profile) || "sailing";
 
-// Seçim ekranı kime çıkar: spor seçmemiş her hesap (ana hesap dahil), kurye hariç.
+// Seçim ekranı kime çıkar: spor seçmemiş ana hesap. Kulübe eklenen kişi (çalışan, aile, sporcu, veli) kulübün sporundadır,
+// ona sorulmaz (2026-11-27; önceden her yeni hesaba "Hangi spor?" çıkıyordu).
 // Profil belgesi henüz gelmediyse (onboarded null) sorulmaz; yoksa seçmiş kişiye bir an görünebilirdi.
-export const needsSport = (profile) => !!profile && profile.onboarded !== null && profile.role !== "courier" && !chosenSport(profile);
+export const needsSport = (profile) => !!profile && profile.onboarded !== null && profile.role === "owner" && !chosenSport(profile);
 
 // Bu sporda bu bölüm var mı ("races", "live"…)
 export const hasPart = (sport, part) => !!SPORTS.find((s) => s.id === (sport || "sailing"))?.parts.includes(part);
