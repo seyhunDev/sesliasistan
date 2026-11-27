@@ -24,6 +24,8 @@ import { ItemCard } from "./ItemCard";
 import { Thread } from "./Thread";
 import { applyRepeat, repeatLabel } from "@/lib/repeat";
 import { PlanActions } from "./PlanActions";
+import { PlanForm, isTypeName } from "./PlanForm";
+import { Sheet, SheetActions, SheetTone } from "@/components/ui/Sheet";
 import { TrainingLog } from "./TrainingLog";
 import { antYonet, canLog } from "@/lib/trainingLog";
 import { canSeeAthletes } from "@/features/athletes/access";
@@ -331,6 +333,41 @@ export function AddSheet({ open, onClose, seed }) {
     );
   }
 
+  // Elle yeni plan: koyu "Sahne" penceresi (Seyhun 2026-11-27 "Yap"; PlanForm). Görev/Not seçilince eski ekran.
+  const newPlan = !edit && turns.length === 0 && !seed?.prefill && (drafts.length ? drafts.length === 1 && drafts[0].type === "plan" : seed?.type === "plan");
+  if (newPlan) {
+    const d0 = drafts[0];
+    const typed = !!d0 && ((!!d0.title.trim() && !isTypeName(d0.title)) || !!d0.place.trim());
+    return (
+      <SheetTone.Provider value="sahne">
+        <Sheet
+          open={open}
+          onClose={shut}
+          title="Yeni plan"
+          mid
+          dirty={typed}
+          footer={
+            pickAssign ? (
+              <AssignAsk
+                members={members}
+                pick={pickAssign}
+                count={1}
+                total={1}
+                onPick={setPickAssign}
+                onSave={saveWith}
+                onBack={() => setPickAssign(null)}
+              />
+            ) : (
+              <SheetActions onCancel={shut} yes="Ekle" onYes={create} disabled={!d0 || !d0.title.trim() || !d0.date} />
+            )
+          }
+        >
+          {d0 && <PlanForm d={d0} onChange={(p) => update(0, p)} onKind={(k) => changeType(0, k)} plans={plans} members={assign || []} />}
+        </Sheet>
+      </SheetTone.Provider>
+    );
+  }
+
   return (
     <Screen voice open={open} onClose={shut} title={title}>
       {/* Üst çubuk (sabit) */}
@@ -574,7 +611,7 @@ function AssignAsk({ members, pick, count, total, onPick, onSave, onBack }) {
               type="button"
               aria-pressed={on}
               onClick={() => toggle(m.uid)}
-              className={`inline-flex items-center gap-1.5 rounded-full py-1.5 pl-1.5 pr-3.5 text-[0.9375rem] font-medium transition active:scale-95 ${on ? "bg-acc text-white" : "bg-card text-fg ring-1 ring-line"}`}
+              className={`inline-flex items-center gap-1.5 rounded-full py-1.5 pl-1.5 pr-3.5 text-[0.9375rem] font-medium transition active:scale-95 ${on ? "bg-acc text-[var(--on-acc)]" : "bg-card text-fg ring-1 ring-line"}`}
             >
               <span className={`grid size-7 place-items-center rounded-full text-[0.75rem] font-semibold ${on ? "bg-white/20" : "bg-acc/10 text-acc"}`}>
                 {on ? <Icon name="check" className="size-4" /> : (m.name || "?")[0]}

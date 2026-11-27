@@ -34,7 +34,8 @@ const typing = () => {
 // Koyu "Sahne" sayfaları (Yönet, Seyhun 2026-11-25 "araçlar beyaz, yazılar okunmuyor"): <SheetTone.Provider value="sahne"> içindeki
 // bütün pencereler koyu açılır (zemin #17171a, beyaz yazı, limon vurgu); her pencereye ayrı ayar gerekmez
 export const SheetTone = createContext("");
-export function Sheet({ open, onClose, title, navy: navyProp, children, footer, dirty, anchor, top, big }) {
+// mid: iPad ve geniş ekranda orta boy pencere (yeni plan: solda tür, sağda bilgiler)
+export function Sheet({ open, onClose, title, navy: navyProp, children, footer, dirty, anchor, top, big, mid }) {
   const sahne = useContext(SheetTone) === "sahne" && !navyProp;
   const navy = navyProp || sahne;
   const zBack = top ? "z-[95]" : "z-40";
@@ -159,7 +160,7 @@ export function Sheet({ open, onClose, title, navy: navyProp, children, footer, 
             aria-label={title}
             data-theme={navy ? "dark" : undefined}
             style={pop ? { position: "absolute", ...(pos || { left: "50%", top: "30%", width: 320 }) } : undefined}
-            className={`${panel} w-full overflow-hidden transition duration-200 ease-out ${pop ? "max-h-[28rem] rounded-[1.25rem] border border-line pb-3 shadow-[0_18px_44px_rgba(11,26,51,.22)]" : `${big ? "max-h-[90dvh] max-w-[min(64rem,100%)]" : "max-h-[85dvh] max-w-[28rem]"} rounded-3xl pb-5 shadow-[0_24px_60px_rgba(0,0,0,.25)]`} ${
+            className={`${panel} w-full overflow-hidden transition duration-200 ease-out ${pop ? "max-h-[28rem] rounded-[1.25rem] border border-line pb-3 shadow-[0_18px_44px_rgba(11,26,51,.22)]" : `${big ? "max-h-[90dvh] max-w-[min(64rem,100%)]" : mid ? "max-h-[90dvh] max-w-[min(46rem,100%)]" : "max-h-[85dvh] max-w-[28rem]"} rounded-3xl pb-5 shadow-[0_24px_60px_rgba(0,0,0,.25)]`} ${
               open ? "pointer-events-auto scale-100 opacity-100" : "scale-[.97] opacity-0"
             }`}
           >
