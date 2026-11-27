@@ -698,6 +698,8 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 .bz-penb small { font-size: clamp(1.125rem, 4.5vw, 1.5rem); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #e4e4e7; }
 .bz-penb b { font: 800 clamp(5rem, 30vw, 10rem)/.85 var(--lv-font-c, "Barlow Condensed"), var(--font-num, system-ui), system-ui, sans-serif; color: var(--pen); }
 .bz-penb[data-k="fd"] b { color: var(--pen-fd); }
+.bz-penb b.pn { font: 800 clamp(3.25rem, 15vw, 6.5rem)/1 var(--sc, system-ui), system-ui, sans-serif; max-width: 9ch; letter-spacing: -.01em; }
+.bz-penb i { font-style: normal; font-size: clamp(1.5rem, 6vw, 2.5rem); font-weight: 700; color: rgba(255, 255, 255, .5); }
 .bz-penb span { font-size: clamp(2rem, 9vw, 3.5rem); font-weight: 800; max-width: 14ch; line-height: 1.1; }
 .bz-penb em { font-style: normal; width: 4.5rem; height: 4.5rem; display: grid; place-items: center; border-radius: 50%; border: 4px solid rgba(255, 255, 255, .25); font: 800 1.75rem/1 var(--font-num, system-ui), system-ui; }
 .bz-pens { position: fixed; left: max(0.75rem, var(--bz-sl)); right: max(0.75rem, var(--bz-sr)); top: calc(var(--bz-st) + 3.25rem); z-index: 30;
@@ -705,6 +707,7 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 .bz-pens[data-k="fd"] { background: var(--pen-fd); color: #111; }
 .bz-pens b { flex: none; font: 800 3rem/1 var(--lv-font-c, "Barlow Condensed"), var(--font-num, system-ui), system-ui, sans-serif; }
 .bz-pens span { font-size: clamp(1.25rem, 5vw, 1.75rem); font-weight: 800; line-height: 1.15; }
+.bz-pens i { margin-left: auto; font-style: normal; font-size: clamp(1rem, 4vw, 1.375rem); font-weight: 700; opacity: .6; }
 @keyframes bz-penin { from { opacity: 0; transform: scale(1.04); } }
 @media (prefers-reduced-motion: reduce) { .bz-penb { animation: none; } }
 
