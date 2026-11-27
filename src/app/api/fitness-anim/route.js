@@ -4,6 +4,7 @@ import { requireUser, unauthorized } from "@/lib/server/auth";
 import { logAiError } from "@/lib/ai/errors";
 import { imageUsage, spendImage } from "@/lib/server/imageUsage";
 import { animPrompt } from "@/lib/fitness/animPrompt";
+import { ANIMS, ANIM_HOST } from "@/lib/fitness/animList";
 
 export const runtime = "nodejs";
 export const maxDuration = 26;
@@ -20,17 +21,54 @@ const S = (v, n) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 const key = () => process.env.GEMINI_API_KEY;
 const hdr = () => ({ "content-type": "application/json", "x-goog-api-key": key() });
 
-async function gate(request, orgId) {
+async function gate(request, orgId, needKey = true) {
   const au = await requireUser(request);
   if (!au.ok) return { res: unauthorized(au) };
   if (au.staff) return { res: bad("Yalnız ana hesap.", 403) };
-  if (!key()) return { res: bad("Yapay zeka anahtarı tanımlı değil.", 503) };
+  if (needKey && !key()) return { res: bad("Yapay zeka anahtarı tanımlı değil.", 503) };
   if (!/^[\w-]{1,80}$/.test(orgId || "")) return { res: bad("Kulüp yok.") };
   const { adminReady, adminDb } = await import("@/lib/server/admin");
   if (!adminReady()) return { res: bad("Sunucu yönetici hesabı yok.", 503) };
   const u = (await adminDb().collection("users").doc(au.uid).get()).data() || {};
   if (u.orgId !== orgId) return { res: bad("Bu kulübün hesabı değilsin.", 403) };
   return { au };
+}
+
+// Videoyu Storage'a yazar (orgs/{org}/fitMedia/{id}), künyesini döner
+async function store(orgId, buf, type) {
+  const mid = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  const bucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
+  const { getStorage } = await import("firebase-admin/storage");
+  const token = randomUUID();
+  const path = `orgs/${orgId}/fitMedia/${mid}`;
+  await getStorage()
+    .bucket(bucket)
+    .file(path)
+    .save(buf, { contentType: type, metadata: { cacheControl: "private, max-age=31536000", metadata: { firebaseStorageDownloadTokens: token } } });
+  const url = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(path)}?alt=media&token=${token}`;
+  return { id: mid, kind: "video", type, size: buf.length, parts: 1, url, a: true };
+}
+
+// Hazır animasyon (animList.js, Higgsfield'da üretildi): { action: "import", orgId, id } → videoyu indirir, Storage'a yazar,
+// künyesini { …, a: true, hf: id } döner; telefon harekete ekler. Yalnız listedeki adresler (başka adres indirilmez).
+async function importAnim(request, body) {
+  const g = await gate(request, body?.orgId, false);
+  if (g.res) return g.res;
+  const item = ANIMS.find((x) => x.id === body?.id);
+  if (!item || !ANIM_HOST.test(item.url)) return bad("Bu animasyon listede yok.");
+  try {
+    const r = await fetch(item.url, { signal: AbortSignal.timeout(15000) });
+    if (!r.ok) throw new Error(`indirme ${r.status}`);
+    const type = (r.headers.get("content-type") || "").split(";")[0].trim();
+    if (!/^video\//.test(type)) throw new Error(`tür ${type}`);
+    const buf = Buffer.from(await r.arrayBuffer());
+    if (buf.length > 20_000_000) return bad("Video çok büyük.", 413);
+    const meta = await store(body.orgId, buf, type);
+    return NextResponse.json({ meta: { ...meta, hf: item.id } });
+  } catch (err) {
+    console.warn("[fitness-anim] hazır animasyon alınamadı", item.id, err?.message?.slice(0, 160));
+    return bad("Animasyon indirilemedi, sonra tekrar dene.", 502);
+  }
 }
 
 export async function POST(request) {
@@ -40,6 +78,7 @@ export async function POST(request) {
   } catch {
     return bad("Geçersiz istek");
   }
+  if (body?.action === "import") return importAnim(request, body);
   const g = await gate(request, body?.orgId);
   if (g.res) return g.res;
   const name = S(body?.name, 80);
@@ -134,18 +173,9 @@ export async function GET(request) {
       buf = Buffer.from(await r.arrayBuffer());
     }
     const type = S(v.mime_type, 40) || "video/mp4";
-    const mid = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
-    const bucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET;
-    const { getStorage } = await import("firebase-admin/storage");
-    const token = randomUUID();
-    const path = `orgs/${orgId}/fitMedia/${mid}`;
-    await getStorage()
-      .bucket(bucket)
-      .file(path)
-      .save(buf, { contentType: type, metadata: { cacheControl: "private, max-age=31536000", metadata: { firebaseStorageDownloadTokens: token } } });
-    const url = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(path)}?alt=media&token=${token}`;
+    const meta = await store(orgId, buf, type);
     const usage = await spendImage(g.au.uid, "fitanim");
-    return NextResponse.json({ done: true, meta: { id: mid, kind: "video", type, size: buf.length, parts: 1, url, a: true }, usage });
+    return NextResponse.json({ done: true, meta, usage });
   } catch (err) {
     logAiError("fitness-anim", "gemini", err);
     return bad("Animasyon alınamadı.", 502);

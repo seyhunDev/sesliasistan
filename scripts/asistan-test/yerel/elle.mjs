@@ -2598,6 +2598,29 @@ group("Fitness hareket kütüphanesi")([
   })],
 ]);
 
+// Hazır hareket animasyonları (animList.js, Higgsfield; 2026-11-27): bir kez alınır, eskisinin yerine geçer
+const HAN = await import("@/lib/fitness/animList");
+group("Fitness hazır animasyonlar")([
+  ["listede adres", F("her animasyonun izinli adresi ve adı var", () => HAN.ANIMS.length > 0 && HAN.ANIMS.every((a) => HAN.ANIM_HOST.test(a.url) && a.name && /^[\w-]+$/.test(a.id)))],
+  ["yalnız kütüphanedeki", F("kütüphanede olmayan harekete animasyon alınmaz", () => {
+    const lib = LB.libAdd(LB.cleanLib(), [{ name: "Sırt çantalı squat" }]).lib;
+    const t = HAN.animTodo(lib);
+    return t.length === 1 && t[0].anim.name === "Sırt çantalı squat";
+  })],
+  ["bir kez", F("alınan animasyon tekrar istenmez, künyesinde kimliği kalır", () => {
+    const a = HAN.ANIMS[0];
+    const P = { id: "p1", kind: "photo", type: "image/jpeg", size: 1, parts: 1 };
+    const V = { id: "v1", kind: "video", type: "video/mp4", size: 2, parts: 1, url: "https://firebasestorage.googleapis.com/v0/b/x/o/v1?alt=media&token=t", hf: a.id };
+    const lib = LB.cleanLib(LB.libSetMedia(LB.cleanLib(), { name: a.name }, { media: HAN.withAnim([P], V) }));
+    const e = LB.libEntry(lib, { name: a.name });
+    return HAN.animTodo(lib, [a]).length === 0 && e.media[0].a === true && e.media[0].hf === a.id && e.media[1].id === "p1";
+  })],
+  ["eskisinin yerine", F("yeni animasyon eskisini çıkarır, fotoğraflar kalır, en çok 3", () => {
+    const m = HAN.withAnim([{ id: "old", kind: "video", a: true }, { id: "p1", kind: "photo" }, { id: "p2", kind: "photo" }, { id: "p3", kind: "photo" }], { id: "new", kind: "video" });
+    return m.length === 3 && m[0].id === "new" && m[0].a && !m.some((x) => x.id === "old");
+  })],
+]);
+
 // Sporcunun antrenman ekranı: tahmini süre, kas grupları, bitirme ancak bütün setler yapılınca
 group("Fitness antrenman ekranı")([
   ["tahmini süre", F("3×10 squat + 3×30 sn plank ≈ 15 dk", () => FMK.estMinutes([{ ex: "squat", kind: "reps", sets: 3, reps: 10, rest: 60 }, { ex: "plank", kind: "time", sets: 3, sec: 30, rest: 45 }]) === 15)],
