@@ -10,7 +10,7 @@ import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { liveHead } from "@/features/liveScreen/fonts";
-import { CLUB_FIELDS, clubIdOf, clubSuggestions, searchClubs } from "@/lib/club";
+import { CLUB_FIELDS, clubIdOf, clubSuggestions, parseClubImport, searchClubs } from "@/lib/club";
 import { VELORA_ADMIN } from "@/lib/sharedRace";
 import { loadSharedAll, loadSharedSheets } from "@/features/athletes/sharedRaces";
 import { loadClubs, removeClub, saveClub, seedDikili } from "@/features/clubs/clubs";
@@ -24,8 +24,8 @@ const Liste = ({ children }) => <div className="divide-y divide-line overflow-hi
 
 // Liste (Dikili kaydı yoksa önce eklenir)
 async function tumu() {
-  const l = await loadClubs({ fresh: true });
-  return (await seedDikili(l)) ? loadClubs({ fresh: true }) : l;
+  await seedDikili().catch(() => {});
+  return loadClubs({ fresh: true });
 }
 
 export function KuluplerSayfasi() {
@@ -48,6 +48,30 @@ function Kulupler() {
   const [q, setQ] = useState("");
   const [form, setForm] = useState(null); // null | { id?, ...alanlar }
   const [oneri, setOneri] = useState(null); // null | "yukleniyor" | [{ name, n }]
+  const [ice, setIce] = useState(false); // "Listeyi içeri al" penceresi
+  const [topluBekle, setTopluBekle] = useState(false);
+
+  // Toplu kayıt: listede olan kulübün adı ezilmez, yalnız federasyon no ve boş il/ilçe dolar
+  const topluKaydet = async (rows) => {
+    setTopluBekle(true);
+    let n = 0;
+    try {
+      for (const r of rows) {
+        const eski = (list || []).find((c) => c.id === r.id);
+        const data = eski
+          ? { ...eski, tfId: r.tfId || eski.tfId || "", city: eski.city || r.city || "", district: eski.district || r.district || "" }
+          : { ...r, tyfName: r.tyfName || r.name.toLocaleUpperCase("tr-TR") };
+        await saveClub(r.id, data);
+        n += 1;
+      }
+      toast(`${n} kulüp kaydedildi`);
+    } catch {
+      toast(n ? `${n} kulüp kaydedildi, kalanı kaydedilemedi` : "Kaydedilemedi");
+    } finally {
+      setTopluBekle(false);
+      setList(await loadClubs({ fresh: true }).catch(() => list));
+    }
+  };
 
   const yukle = useCallback(() => tumu().then(setList, () => setHata(true)), []);
   useEffect(() => {
@@ -118,7 +142,7 @@ function Kulupler() {
         </Liste>
 
         <div className="space-y-2">
-          <p className="px-1 text-[0.8125rem] font-semibold uppercase tracking-[0.06em] text-mut">Yarış sonuçlarından</p>
+          <p className="px-1 text-[0.8125rem] font-semibold uppercase tracking-[0.06em] text-mut">Liste ekle</p>
           {oneri === null ? (
             <button type="button" onClick={bul} className="h-11 w-full rounded-xl border border-line text-[0.9375rem] font-semibold text-acc active:scale-[0.98]">
               Listede olmayan kulüpleri bul
@@ -128,6 +152,7 @@ function Kulupler() {
           ) : !oneri.length ? (
             <p className="px-1 text-[0.9375rem] text-mut">Sonuçlardaki bütün kulüpler listede.</p>
           ) : (
+            <>
             <Liste>
               {oneri.map((o) => (
                 <button key={o.name} type="button" onClick={() => setForm({ name: o.name, tyfName: o.name.toLocaleUpperCase("tr-TR") })} className="flex min-h-[3rem] w-full items-center gap-3 px-4 py-2 text-left active:bg-white/5">
@@ -137,9 +162,25 @@ function Kulupler() {
                 </button>
               ))}
             </Liste>
+            <button
+              type="button"
+              disabled={topluBekle}
+              onClick={async () => {
+                await topluKaydet(oneri.map((o) => ({ id: clubIdOf(o.name), name: o.name })).filter((r) => r.id));
+                setOneri(null);
+              }}
+              className="h-11 w-full rounded-xl border border-line text-[0.9375rem] font-semibold text-acc active:scale-[0.98] disabled:opacity-60"
+            >
+              {topluBekle ? "Ekleniyor…" : `Hepsini ekle (${oneri.length})`}
+            </button>
+            </>
           )}
+          <button type="button" onClick={() => setIce(true)} className="h-11 w-full rounded-xl border border-line text-[0.9375rem] font-semibold text-acc active:scale-[0.98]">
+            Listeyi içeri al
+          </button>
         </div>
       </div>
+      <IceriAl open={ice} list={list} kapat={() => setIce(false)} bekle={topluBekle} al={async (rows) => (await topluKaydet(rows), setIce(false))} />
       <KulupForm
         key={form ? form.id || form.name || "yeni" : "kapali"}
         k={form}
@@ -222,6 +263,33 @@ function KulupForm({ k, list, kapat, bitti }) {
           </div>
         ))}
         {yeni && f.name && <p className="text-[0.8125rem] text-mut">Kimlik: {clubIdOf(f.name)}</p>}
+      </div>
+    </Sheet>
+  );
+}
+
+// Federasyonun resmi listesi (Seyhun 2026-11-27: TYF kulüp numaralarıyla): satır satır "no; ad; il; ilçe" ya da JSON yapıştırılır
+function IceriAl({ open, list, kapat, bekle, al }) {
+  const [t, setT] = useState("");
+  const rows = useMemo(() => parseClubImport(t, list || []), [t, list]);
+  const yeni = rows.filter((r) => !(list || []).some((c) => c.id === r.id)).length;
+  return (
+    <Sheet
+      open={open}
+      onClose={kapat}
+      title="Listeyi içeri al"
+      footer={<SheetActions onCancel={kapat} onYes={() => rows.length && al(rows)} yes={bekle ? "Kaydediliyor…" : `İçeri al (${rows.length})`} disabled={bekle || !rows.length} />}
+    >
+      <div className="space-y-2 pb-2">
+        <label htmlFor="kulup-ice" className="block text-[0.8125rem] font-medium text-mut">
+          Her satıra bir kulüp: no; ad; il; ilçe
+        </label>
+        <textarea id="kulup-ice" value={t} onChange={(e) => setT(e.target.value)} rows={8} className="w-full rounded-xl border border-line bg-[#1f1f22] px-3.5 py-3 text-[0.9375rem] text-fg outline-none focus:border-acc" />
+        {!!rows.length && (
+          <p className="text-[0.8125rem] text-mut">
+            {yeni} yeni, {rows.length - yeni} listede olan (yalnız no ve boş il/ilçe dolar)
+          </p>
+        )}
       </div>
     </Sheet>
   );
