@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUser, unauthorized } from "@/lib/server/auth";
-import { canSeeAthletes } from "@/features/athletes/access";
+import { ownsAthletes } from "@/lib/server/athleteAccess";
 import { ytChannel, ytId } from "@/lib/raceRounds";
 
 export const runtime = "nodejs";
@@ -34,7 +34,7 @@ async function liveIds(ids, key) {
 export async function GET(request) {
   const au = await requireUser(request);
   if (!au.ok) return unauthorized(au);
-  if (!canSeeAthletes(au.email)) return NextResponse.json({ error: "Yetkin yok." }, { status: 403 });
+  if (!(await ownsAthletes(au))) return NextResponse.json({ error: "Yetkin yok." }, { status: 403 });
   const key = process.env.YOUTUBE_API_KEY;
   const urls = [...new Set(new URL(request.url).searchParams.getAll("u").map((u) => u.trim().slice(0, 200)).filter(Boolean))].slice(0, 8);
   if (!key) return NextResponse.json({ key: false, list: urls.map((url) => ({ url, live: null, vid: ytId(url) })) });

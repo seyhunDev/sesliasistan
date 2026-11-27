@@ -74,7 +74,7 @@ export function AdminPage() {
   const [sek, setSek] = useState("b");
   const bugun = gunOf();
 
-  if (profile?.role !== "owner") return null;
+  if (profile?.role !== "owner" || String(profile?.email || "").toLowerCase() !== VELORA_ADMIN) return null;
   const yeni = veri?.basvuru.filter((b) => b.durum === "yeni").length || 0;
   const izinli = veri?.hesap.filter((h) => h.izin) || [];
   return (

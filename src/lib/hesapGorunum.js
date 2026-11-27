@@ -4,6 +4,11 @@
 // (homeActions), Ayarlar (settings/page.jsx) buradaki görünüme göre. Ana hesap Ayarlar'dan "… gibi gör" ile ötekilerin düzenine bakar
 // (features/auth/useHesap.js). Saf fonksiyonlar; Firestore'a dokunmaz.
 import { isAthleteSide } from "./kinds";
+import { VELORA_ADMIN } from "./sharedRace";
+
+// Velora'nın sahibi (Seyhun): Hesaplar (Gmail, banka), Instagram, Admin, kulüp sitesi yalnız onda; Velora herkese açılınca
+// diğer ana hesaplar kendi sporcularını, takvimini, Yönet'ini kullanır (Seyhun 2026-11-27).
+export const isVeloraAdmin = (email) => !!email && String(email).toLowerCase() === VELORA_ADMIN;
 
 export const VIEWS = ["ana", "normal", "sporcu"];
 export const VIEW_LABEL = { ana: "Ana hesap", normal: "Normal kullanıcı", sporcu: "Sporcu" };
@@ -34,7 +39,7 @@ export const tabsOf = (view) => TABS[view] || TABS.ana;
 export const seesMoney = (view) => view === "ana";
 
 // Ana sayfa › İşlemler düğmeleri, gruplu (sıra sabit). o: { staff, owner, money (seesMoney), side (sporcu/öğrenci/veli), parent, athletes (sporcu yetkisi), plain, coach,
-// races (Yarışlar ana sayfada), training, receipts, shop, lessons, fit (antrenörün hazırladığı fitness antrenmanı var) }. Toplantı bir sayfa değil: { id: "meeting" } döner.
+// admin (Velora sahibi; isVeloraAdmin), races (Yarışlar ana sayfada), training, receipts, shop, lessons, fit (antrenörün hazırladığı fitness antrenmanı var) }. Toplantı bir sayfa değil: { id: "meeting" } döner.
 // Dönüş: [{ title, items: [{ href | id, icon, label }] }]; boş grup çıkmaz.
 export function homeActions(o) {
   // Tümü penceresi 6 açılır grup (Seyhun 2026-11-01 "A · Açılır gruplar"): aynı sayfaya giden ikinci düğme yok
@@ -68,7 +73,7 @@ export function homeActions(o) {
     ]],
     ["Para", [
       o.money && o.receipts && { href: "/receipts", icon: "receipt", label: "Fiş / Fatura" },
-      o.money && { href: "/mail", icon: "wallet", label: "Hesaplar" },
+      o.money && o.admin && { href: "/mail", icon: "wallet", label: "Hesaplar" },
     ]],
     ["Hava ve deniz", [
       { href: "/weather", icon: "wind", label: "Hava" }, // bölge haritası rüzgârı da gösterir (eski Rüzgâr düğmesi)
@@ -83,7 +88,7 @@ export function homeActions(o) {
     ]],
     ["Kişiler ve sosyal", [
       !o.staff && { href: "/people/staff", icon: "users", label: "Kişiler" },
-      !o.staff && { href: "/posts", icon: "instagram", label: "Instagram", brand: "instagram", hid: true },
+      !o.staff && o.admin && { href: "/posts", icon: "instagram", label: "Instagram", brand: "instagram", hid: true },
       !o.staff && { href: "/events", icon: "tent", label: "Etkinlikler" },
     ]],
   ];

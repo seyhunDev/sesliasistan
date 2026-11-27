@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUser, unauthorized } from "@/lib/server/auth";
-import { canSeeAthletes } from "@/features/athletes/access";
+import { ownsAthletes } from "@/lib/server/athleteAccess";
 import { adminDb, adminReady } from "@/lib/server/admin";
 import { YT_SCOPES, signState, ytRedirect } from "@/lib/server/ytAuth";
 
@@ -18,7 +18,7 @@ const memo = globalThis.__ytTok || (globalThis.__ytTok = new Map()); // uid → 
 export async function POST(request) {
   const au = await requireUser(request, { free: true });
   if (!au.ok) return unauthorized(au);
-  if (au.staff || !canSeeAthletes(au.email)) return NextResponse.json({ error: "Yalnız ana hesap." }, { status: 403 });
+  if (au.staff || !(await ownsAthletes(au))) return NextResponse.json({ error: "Yalnız ana hesap." }, { status: 403 });
   const id = process.env.YT_CLIENT_ID;
   const secret = process.env.YT_CLIENT_SECRET;
   if (!id || !secret) return NextResponse.json({ error: "YouTube bağlantısı kurulmamış: Netlify'a YT_CLIENT_ID ve YT_CLIENT_SECRET girilmeli.", need: "setup" }, { status: 501 });

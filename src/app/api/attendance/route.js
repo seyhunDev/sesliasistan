@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { countAi } from "@/lib/server/aiUsage";
 import { callGemini, withAiCool } from "@/lib/ai/gemini";
 import { requireUser, unauthorized } from "@/lib/server/auth";
-import { canSeeAthletes } from "@/features/athletes/access";
+import { ownsAthletes } from "@/lib/server/athleteAccess";
 import { logAiError } from "@/lib/ai/errors";
 
 export const runtime = "nodejs";
@@ -55,7 +55,7 @@ async function handle(request) {
   const au = await requireUser(request);
   if (!au.ok) return unauthorized(au);
   countAi(au, "attendance");
-  if (!canSeeAthletes(au.email)) return bad("Yoklama yetkin yok.", 403);
+  if (!(await ownsAthletes(au))) return bad("Yoklama yetkin yok.", 403);
   let body;
   try {
     body = await request.json();

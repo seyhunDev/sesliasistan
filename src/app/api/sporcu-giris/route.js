@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireUser, unauthorized } from "@/lib/server/auth";
 import { adminAuth, adminReady, profileOf } from "@/lib/server/admin";
-import { canSeeAthletes } from "@/features/athletes/access";
+import { ownsAthletes } from "@/lib/server/athleteAccess";
 
 export const runtime = "nodejs";
 
@@ -13,6 +13,6 @@ export async function POST(request) {
   if (!au.ok) return unauthorized(au);
   if (!adminReady()) return NextResponse.json({ error: "Sunucuda Firebase yönetici anahtarı tanımlı değil." }, { status: 503 });
   const me = await profileOf(au.uid);
-  if (me.role !== "owner" || !canSeeAthletes(au.email)) return NextResponse.json({ error: "Bu hesabın sporcuları görme izni yok." }, { status: 403 });
+  if (me.role !== "owner" || !(await ownsAthletes(au))) return NextResponse.json({ error: "Bu hesabın sporcuları görme izni yok." }, { status: 403 });
   return NextResponse.json({ token: await adminAuth().createCustomToken(au.uid) });
 }
