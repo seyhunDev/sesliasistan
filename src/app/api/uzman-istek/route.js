@@ -41,6 +41,8 @@ const goster = (id, d) => ({
   uzmanId: d.uzmanId || null,
   sure: d.sure,
   hedef: d.hedef || "",
+  yas: d.yas || 0,
+  sehir: d.sehir || "",
   ders: d.ders ? { ad: d.ders.ad, type: d.ders.type, size: d.ders.size } : null,
   paylas: d.paylas || { acik: false, turler: [] },
   durum: d.durum || "bekliyor",

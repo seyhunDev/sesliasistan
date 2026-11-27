@@ -7,6 +7,7 @@
   - Yalnız sunucu yazar, kural değişikliği gerekmez. Ders dosyası Storage orgs/{org}/uzmanDers/{id}/; GET ?ders=<id> sunucudan verir.
   - Aynı kişinin açık isteği varken ikincisi açılmaz. Sporcu paylaşımı her an açıp kapatır ya da iptal eder.
   - Ana hesap Program ekle'den, Kimin için'deki sporcu adına açabilir. Sporcunun Fitness sayfasında da "Uzmanla çalış" satırı var.
+- İstekte yaş (biliniyorsa) ve şehir alanları da var (Admin eşleştirmesi için; Program ekle sporcunun yaşını gönderir, şehir henüz bir yerden gelmiyor).
 - Telefonda denenmedi.
 
 ## Sıradaki işler

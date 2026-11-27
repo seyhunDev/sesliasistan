@@ -44,7 +44,7 @@ function Paylas({ value, onChange }) {
   );
 }
 
-export function UzmanIstek({ orgId, forUid = "", forName = "", spor = "" }) {
+export function UzmanIstek({ orgId, forUid = "", forName = "", spor = "", yas = 0, sehir = "" }) {
   const toast = useToast();
   const ask = useConfirm();
   const [list, setList] = useState(null);
@@ -88,7 +88,7 @@ export function UzmanIstek({ orgId, forUid = "", forName = "", spor = "" }) {
           ders = { name: file.name, type: file.type || "application/pdf", data };
         }
       }
-      const r = await authFetch("/api/uzman-istek", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ orgId, for: forUid || undefined, sure, hedef, spor, paylas, ders }) });
+      const r = await authFetch("/api/uzman-istek", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ orgId, for: forUid || undefined, sure, hedef, spor, yas: yas || undefined, sehir: sehir || undefined, paylas, ders }) });
       const j = await r.json().catch(() => ({}));
       if (!r.ok || !j.istek) throw new Error(j.error || "İstek gönderilemedi");
       setList((l) => [j.istek, ...(l || [])]);
