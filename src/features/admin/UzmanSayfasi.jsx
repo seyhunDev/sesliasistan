@@ -108,7 +108,7 @@ export function UzmanSayfasi({ id }) {
     setVeri((v) => {
       const r = f({ uzmanlar: v.uzman ? [v.uzman] : [], istekler: v.istekler, ayar: v.ayar });
       const yeni = r.uzmanlar ? r.uzmanlar.find((x) => x.id === id) || null : v.uzman;
-      if (!yeni) Promise.resolve().then(() => router.replace("/settings/admin?sekme=uzman"));
+      if (!yeni) Promise.resolve().then(() => router.replace("/settings/admin/uzmanlar"));
       return { ...v, uzman: yeni, istekler: r.istekler || v.istekler, ayar: r.ayar || v.ayar };
     });
   const secili = sec && ist.find((i) => i.id === sec);
@@ -154,7 +154,7 @@ export function UzmanSayfasi({ id }) {
   return (
     <SheetTone.Provider value="sahne">
       <main className={cls}>
-        <Ust href="/settings/admin?sekme=uzman" baslik={u?.ad || "Uzman"} tur={u ? "u" : ""} alt={u ? [bransAd(u.brans, liste), u.sehir, u.online && "online", `${doluluk(u.id, ist)}${u.kapasite ? `/${u.kapasite}` : ""} dolu`, u.ornek && "örnek"].filter(Boolean).join(" · ") : " "} />
+        <Ust href="/settings/admin/uzmanlar" baslik={u?.ad || "Uzman"} tur={u ? "u" : ""} alt={u ? [bransAd(u.brans, liste), u.sehir, u.online && "online", `${doluluk(u.id, ist)}${u.kapasite ? `/${u.kapasite}` : ""} dolu`, u.ornek && "örnek"].filter(Boolean).join(" · ") : " "} />
         {hata ? (
           <LoadFail onRetry={yukle} />
         ) : !veri ? (
