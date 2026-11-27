@@ -12,6 +12,7 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { byId, isActive, loadAthletes, useDikili } from "@/features/athletes/data";
 import { DikiliLogin, disconnect, useDikiliUser } from "@/features/athletes/Connect";
+import { useOnVelora } from "@/features/athletes/veloraMem";
 import { Loading } from "@/components/ui/Loader";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useData } from "@/features/data/DataProvider";
@@ -44,6 +45,7 @@ export default function AthletesPage() {
 function AthleteList() {
   const { data, err, reload } = useDikili("list", loadAthletes);
   const user = useDikiliUser();
+  const velora = useOnVelora();
   const [q, setQ] = useState("");
   const [cls, setCls] = useState("");
   const [passive, setPassive] = useState(false);
@@ -288,7 +290,7 @@ function AthleteList() {
             names={{ classes: data.classes || [], coaches: data.coaches || [] }}
             athletes={all}
           />
-          {user && (
+          {user && !velora && (
             <p className="text-center text-[0.75rem] text-mut">
               Kulüp hesabı: {user.email} ·{" "}
               <button onClick={() => disconnect().then(reload)} className="underline underline-offset-2">

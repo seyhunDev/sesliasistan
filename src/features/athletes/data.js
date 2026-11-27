@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { FieldPath, Timestamp, collection, deleteField, doc, getDoc, getDocs, orderBy, query } from "firebase/firestore";
 import { addDoc, deleteDoc, updateDoc, writeBatch } from "@/lib/firebase/write";
 import { dikiliAuth, dikiliDb } from "./dikili";
+import { memDb, memReady, onVelora } from "./veloraMem";
 import { EXPIRY_KEYS } from "@/lib/expiry";
 import { attTakenIn, markAttTaken } from "./attTaken";
 import { todayStr } from "@/lib/utils/format";
@@ -22,15 +23,25 @@ function plain(v) {
 // Yarış evrakında kullanılan ek alanlar (sporcu kartında saklanır, bir kez girilir)
 export const DOC_FIELDS = ["studentSchoolAndClass", "studentSchool", "studentSchoolPlace", "studentNo", "studentClass", "licenseNo", "studentBirthPlace", "studentPhone", "motherName", "fatherName", "parentTc", "parentRelation", "tyfNo", "sailNo"];
 
+// Sporcuların durduğu yer. Taşındıysa (Ayarlar › Sporcuları Velora'ya taşı, Seyhun 2026-11-27) Velora: orgs/{ana hesap}/athletes,
+// sailingClasses, coaches (bellek önbellekli bağlantı, veloraMem.js). Taşınmadıysa eski yol: kulüp projesi (dikili-c7cc8), kulüp girişiyle.
+async function src() {
+  if (await onVelora()) {
+    const org = await memReady();
+    const db = memDb();
+    return { db, velora: true, col: (...p) => collection(db, "orgs", org, ...p), ref: (...p) => doc(db, "orgs", org, ...p), classes: "sailingClasses" };
+  }
+  await dikiliAuth().authStateReady(); // kayıtlı oturum geri yüklenmeden sorgu atılırsa kurallar reddeder
+  const db = dikiliDb();
+  return { db, velora: false, col: (...p) => collection(db, ...p), ref: (...p) => doc(db, ...p), classes: "sailing_classes" };
+}
+
 // Sınıf ve antrenör adları
-async function names(db) {
-  const [cls, coa] = await Promise.all([getDocs(collection(db, "sailing_classes")), getDocs(collection(db, "coaches"))]);
+async function names(S) {
+  const [cls, coa] = await Promise.all([getDocs(S.col(S.classes)), getDocs(S.col("coaches"))]);
   const map = (snap) => snap.docs.map((d) => ({ id: d.id, name: d.data().name || "" }));
   return { classes: map(cls), coaches: map(coa) };
 }
-
-// Kayıtlı oturum geri yüklenmeden sorgu atılırsa kurallar reddeder; önce onu bekle
-const ready = () => dikiliAuth().authStateReady();
 
 // Sayfalar arası geçişte ve sesli komutlarda liste her seferinde yeniden indirilmesin (okuma tasarrufu): birkaç dakika bellekte.
 // Yazınca (forget) silinir; Yenile düğmesi de taze okur.
@@ -46,9 +57,8 @@ export function loadAthletes({ fresh = false } = {}) {
 }
 
 async function fetchAthletes() {
-  await ready();
-  const db = dikiliDb();
-  const [snap, n] = await Promise.all([getDocs(query(collection(db, "athletes"), orderBy("createdAt", "desc"))), names(db)]);
+  const S = await src();
+  const [snap, n] = await Promise.all([getDocs(query(S.col("athletes"), orderBy("createdAt", "desc"))), names(S)]);
   const athletes = snap.docs.map((d) => {
     const a = d.data();
     return plain({
@@ -96,13 +106,13 @@ const dayKey = (date) => [date.slice(0, 4), date.slice(5, 10)]; // "2026-09-29" 
 // changes: { sporcuId: durum | null } (null = işareti kaldır)
 export async function saveAttendance(date, changes) {
   const [y, md] = dayKey(date);
-  const db = dikiliDb();
+  const S = await src();
   const ids = Object.keys(changes);
   for (let i = 0; i < ids.length; i += 400) {
-    const b = writeBatch(db);
+    const b = writeBatch(S.db);
     ids.slice(i, i + 400).forEach((id) => {
       const v = changes[id];
-      b.update(doc(db, "athletes", id), new FieldPath(`attendance_${y}`, md), STATES.includes(v) ? v : deleteField());
+      b.update(S.ref("athletes", id), new FieldPath(`attendance_${y}`, md), STATES.includes(v) ? v : deleteField());
     });
     await b.commit();
   }
@@ -111,8 +121,8 @@ export async function saveAttendance(date, changes) {
 
 // Sporcu bilgilerini güncelle. Sınıf, antrenör ya da durum değiştiyse geçmişe kayıt düşer (kulüp uygulaması gibi).
 export async function updateAthlete(id, before, patch, names) {
-  const db = dikiliDb();
-  const ref = doc(db, "athletes", id);
+  const S = await src();
+  const ref = S.ref("athletes", id);
   const data = { ...patch };
   if ("studentBirthDate" in data) {
     const d = data.studentBirthDate;
@@ -133,14 +143,14 @@ export async function updateAthlete(id, before, patch, names) {
     const lab = (v) => (v === "active" ? "Aktif" : "Pasif");
     logs.push({ type: "status_change", from: lab(before.status), to: lab(patch.status), note: `Durum: ${lab(before.status)} → ${lab(patch.status)}` });
   }
-  for (const l of logs) await addDoc(collection(db, "athletes", id, "history"), { ...l, date: new Date() });
+  for (const l of logs) await addDoc(S.col("athletes", id, "history"), { ...l, date: new Date() });
   forget();
 }
 
 // Boy / kilo ölçümü ekle (m: { d, h, kg }) ya da sil (drop: tarih). Güncel liste sunucudan okunup yazılır.
 export async function saveBody(id, m, drop = "") {
-  await ready();
-  const ref = doc(dikiliDb(), "athletes", id);
+  const S = await src();
+  const ref = S.ref("athletes", id);
   const snap = await getDoc(ref);
   const cur = snap.exists() ? snap.data().body : [];
   const body = drop ? dropBody(cur, drop) : addBody(cur, m);
@@ -152,12 +162,11 @@ export async function saveBody(id, m, drop = "") {
 // Yeni sporcu (kulüp projesine, kulüp uygulamasıyla aynı alanlar). Liste createdAt'e göre sıralandığı için createdAt şart.
 // Dönüş: yeni sporcunun kimliği
 export async function createAthlete(fields) {
-  await ready();
-  const db = dikiliDb();
+  const S = await src();
   const data = { status: "active", currentClassId: "", currentCoachId: "", ...fields, createdAt: new Date() };
   const d = data.studentBirthDate;
   data.studentBirthDate = d ? Timestamp.fromDate(new Date(`${String(d).slice(0, 10)}T12:00:00`)) : null;
-  const ref = await addDoc(collection(db, "athletes"), data);
+  const ref = await addDoc(S.col("athletes"), data);
   forget();
   return ref.id;
 }
@@ -167,21 +176,19 @@ export const setArchived = (a, on, names) => updateAthlete(a.id, a, { status: on
 
 // Sporcuyu kulüp projesinden tamamen siler (geçmiş kayıtları dahil). Geri alınamaz.
 export async function deleteAthlete(id) {
-  await ready();
-  const db = dikiliDb();
-  const hist = await getDocs(collection(db, "athletes", id, "history"));
+  const S = await src();
+  const hist = await getDocs(S.col("athletes", id, "history"));
   for (const h of hist.docs) await deleteDoc(h.ref);
-  await deleteDoc(doc(db, "athletes", id));
+  await deleteDoc(S.ref("athletes", id));
   forget();
 }
 
 export async function loadAthlete(id) {
-  await ready();
-  const db = dikiliDb();
+  const S = await src();
   const [d, hist, n] = await Promise.all([
-    getDoc(doc(db, "athletes", id)),
-    getDocs(query(collection(db, "athletes", id, "history"), orderBy("date", "desc"))),
-    names(db),
+    getDoc(S.ref("athletes", id)),
+    getDocs(query(S.col("athletes", id, "history"), orderBy("date", "desc"))),
+    names(S),
   ]);
   if (!d.exists()) throw Object.assign(new Error("Sporcu bulunamadı."), { code: "not-found" });
   return { athlete: plain({ id: d.id, ...d.data() }), history: hist.docs.map((h) => plain({ id: h.id, ...h.data() })), ...n };
@@ -213,7 +220,8 @@ export function useDikili(key, fn) {
           memo.set(key, d);
           return { d };
         },
-        (e) => ({ e: { code: e?.code || "", text: message(e) } }),
+        // Velora'dayken izin hatası kulüp girişi istemez (o ekran yalnız eski yol için)
+        async (e) => ({ e: { code: e?.code === "permission-denied" && (await onVelora()) ? "velora-denied" : e?.code || "", text: message(e) } }),
       ),
     [key, fn],
   );
