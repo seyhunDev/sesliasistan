@@ -253,7 +253,7 @@ export function FitnessHome() {
   // Hazır program: seçili sporcuya tek dokunuş, kaydetmeden önce düzenleme ekranında
   function template(id, f, pre) {
     const t = TEMPLATES.find((x) => x.id === id);
-    const p = fromTemplate(id, pre.start);
+    const p = fromTemplate(id, pre.start, pre.times);
     if (!t || !p) return;
     const who = pre.for ? { for: pre.for, forName: pre.forName, forAge: f.age || t.forAge || 0, sport: f.sport || t.sport || "", forSex: f.sex || t.forSex || "" } : {};
     setNewOpen(false);

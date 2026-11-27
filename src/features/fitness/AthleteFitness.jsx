@@ -13,6 +13,8 @@ import { STATUS, itemLine, monthStats, myFit, records, statusOf, weekStats } fro
 import { HistoryCard, MonthCard, ProgressCard } from "./FitDashboard";
 import { FitPhoto, WeekBoxes } from "./FitDark";
 import { markStart } from "./guideVoice";
+import { Sheet } from "@/components/ui/Sheet";
+import { UzmanIstek } from "./UzmanIstek";
 
 // Sporcunun Fitness sayfası (salt okunur; Seyhun 2026-10-25 "bizim fitness sayfası gibi"): ana hesabın Sporcular sekmesi gibi baştan sona koyu,
 // üstte salon fotoğrafı. Bugünün antrenmanı büyük yazılır, altında bu hafta (çubuk + Pzt–Paz kutuları) ve tek ana düğme;
@@ -27,6 +29,7 @@ export function AthleteFitness() {
   const { plans } = useData();
   const { openAdd } = useAdd();
   const [more, setMore] = useState(false);
+  const [uzman, setUzman] = useState(false);
   const today = todayStr();
   const mine = myFit(plans, profile.uid);
   const open = (p) => openAdd({ edit: { kind: "plan", id: p.id } });
@@ -142,6 +145,15 @@ export function AthleteFitness() {
           )}
         </div>
       )}
+      {/* Uzmanla çalış (Seyhun 2026-11-27): sporcu bir uzman antrenörden program ister, planlarını paylaşıp paylaşmamayı kendisi seçer */}
+      <section className="relative mt-7">
+        <RowList>
+          <Row onClick={() => setUzman(true)} title="Uzmanla çalış" sub="Programını bir antrenör hazırlasın" />
+        </RowList>
+      </section>
+      <Sheet open={uzman} onClose={() => setUzman(false)} title="Uzmanla çalış">
+        {uzman && <UzmanIstek orgId={profile.orgId} spor="yelken" />}
+      </Sheet>
     </main>
   );
 }

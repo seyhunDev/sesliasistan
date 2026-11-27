@@ -254,10 +254,12 @@ export function templatePhotos(id) {
 }
 
 // Şablondan yeni program (kayıtsız): başlangıç verilen gün, kimin için bilgisi ayrı eklenir
-export function fromTemplate(id, start = "") {
+// times: { dow: "HH:MM" } eklerken seçilen saatler; verilmeyen gün "Tam gün" (saat boş; Seyhun 2026-11-27: PDF'teki saatler
+// herkese uymuyordu). Saatler düzenleme ekranında ve ekledikten sonra da değişir.
+export function fromTemplate(id, start = "", times = {}) {
   const t = TEMPLATES.find((x) => x.id === id);
   if (!t) return null;
   // Her harekete nasıl yapılır anlatımı (templateHow.js)
-  const days = t.prog.days.map((d) => ({ ...d, items: d.items.map((it) => ({ ...HOW[it.name], ...it })) }));
+  const days = t.prog.days.map((d) => ({ ...d, time: /^\d\d:\d\d$/.test(times?.[d.dow] || "") ? times[d.dow] : "", items: d.items.map((it) => ({ ...HOW[it.name], ...it })) }));
   return { ...cleanProgram({ ...t.prog, days, start }), template: t.id };
 }

@@ -2675,6 +2675,7 @@ group("Sporcu boy ve kilo")([
 // Fitness: PDF/metinden içe aktarılan program ayrıntıları ve hazır şablon (model.js, templates.js)
 const FMI = await import("@/lib/fitness/model");
 const FTPL = await import("@/lib/fitness/templates");
+const FUZ = await import("@/lib/fitness/uzmanIstek");
 const FRV = await import("@/lib/fitness/review");
 group("Fitness: program ayrıntıları ve şablon")([
   ["aralık ve yan", F("8–12/yan, 20–30 sn/yan; üst sınır alttan küçükse atılır", () => {
@@ -2720,15 +2721,27 @@ group("Fitness: program ayrıntıları ve şablon")([
     const at = (n) => p.days.find((d) => d.dow === n);
     const [a, b, c] = [at(2), at(4), at(5)];
     const split = a.items.find((x) => x.name === "Sırt çantalı split squat");
-    return p.weeks === 12 && p.days.length === 7 && a.time === "17:45" && a.items.length === 15 && b.items.length === 15 && c.items.length === 12 &&
+    return p.weeks === 12 && p.days.length === 7 && a.time === "" && a.items.length === 15 && b.items.length === 15 && c.items.length === 12 &&
       a.items.every((x) => !x.ex) && split.repsTo === 12 && split.side && split.rest === 75 && split.note.includes("çantaya 1–2 kg") && !/gitar|17\.45/.test(a.note) && !p.forAge &&
       p.phases.length === 6 && p.rules.includes("Trafik ışığı") && FMI.planDrafts(p).length === 84;
   })],
-  ["hazır şablon rutin", F("Pzt 19:00 8 dk reset, Çrş 19:00 nefes ve mobilite, Cmt ve Paz 16:00 yelken sonrası 6 dk; Cuma 2 tur, hareketler arası 20 sn; hazırlıkta uzun dinlenme yok", () => {
+  ["hazır şablon saati", F("varsayılan tam gün (saat boş); eklerken seçilen saat yalnız o güne", () => {
+    const p = FTPL.fromTemplate("yelken-ev-12", "2026-10-19", { 2: "18:30", 4: "bozuk" });
+    const at = (n) => p.days.find((d) => d.dow === n);
+    return at(2).time === "18:30" && at(4).time === "" && p.days.filter((d) => d.time).length === 1 && FTPL.fromTemplate("yelken-ev-12").days.every((d) => !d.time);
+  })],
+  ["uzman isteği", F("süre 1/3/6 (yoksa 3), hedef 300 harf, paylaşım yalnız açıkken ve bilinen türlerle", () => {
+    const a = FUZ.cleanIstek({ sure: 6, hedef: "x".repeat(400), paylas: { acik: true, turler: ["antrenman", "yemek", "sifre"] }, sporcuUid: "baskasi", durum: "kabul" });
+    const b = FUZ.cleanIstek({ sure: 2, paylas: { acik: false, turler: ["antrenman"] } });
+    const c = FUZ.cleanPaylas({ acik: true, turler: [] });
+    return a.sure === 6 && a.hedef.length === 300 && a.brans === "fitness" && a.paylas.acik && a.paylas.turler.join() === "antrenman,yemek" && !("sporcuUid" in a) && !("durum" in a) &&
+      b.sure === 3 && !b.paylas.acik && !b.paylas.turler.length && !c.acik && FUZ.acikMi("bekliyor") && !FUZ.acikMi("iptal") && FUZ.durumYaz("") === "Uzman bekleniyor";
+  })],
+  ["hazır şablon rutin", F("Pzt 8 dk reset, Çrş nefes ve mobilite, Cmt ve Paz yelken sonrası 6 dk (saatler tam gün); Cuma 2 tur, hareketler arası 20 sn; hazırlıkta uzun dinlenme yok", () => {
     const p = FTPL.fromTemplate("yelken-ev-12", "2026-10-19");
     const at = (n) => p.days.find((d) => d.dow === n);
     const fri = at(5).items;
-    return at(1).time === "19:00" && at(1).items.length === 8 && /atletizm/i.test(at(1).note) && at(3).items.length === 5 && at(6).time === "16:00" && at(7).items.length === 6 &&
+    return !at(1).time && at(1).items.length === 8 && /atletizm/i.test(at(1).note) && at(3).items.length === 5 && !at(6).time && at(7).items.length === 6 &&
       fri[0].name === fri[6].name && fri[0].note.startsWith("1. tur") && fri[6].note.startsWith("2. tur") && fri.every((x) => x.sets === 1 && FMI.restAfter(x, true) === 20) &&
       !at(5).time && at(2).items.filter((x) => x.part === "isinma").every((x) => FMI.restAfter(x, true) === 10) && p.rules.includes("Her gün 8 dk reset:");
   })],

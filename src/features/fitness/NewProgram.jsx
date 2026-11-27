@@ -14,6 +14,7 @@ import { useAuth } from "@/features/auth/AuthProvider";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useFitLib } from "./useFitLib";
 import { seedTemplatePhotos } from "./templateSeed";
+import { UzmanIstek } from "./UzmanIstek";
 
 // Seçenek kartlarının simgesi ve kısa açıklaması (yazı model.js'teki listelerden)
 const GOAL_UI = {
@@ -243,7 +244,12 @@ export function ProfileFields({ f, set, withGoal = true, withPlace = true }) {
 // Üç yol: yapay zeka seçimlere göre hazırlar ("ai"), elindeki programı (PDF, fotoğraf, metin) okur ("file"), hazır program ("tpl").
 // onImport({ file, text, ask }, f, pre), onTemplate(id, f, pre): sonuç kaydedilmeden düzenleme ekranında açılır.
 export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, onTemplate, busy, goal, athletes = [], forUid = "", error = "" }) {
-  const [mode, setMode] = useState("ai");
+  // "" = üç yol (Kendim hazırla, Hazır program, Uzmanla çalış); "ai" ve "file" "⋯ Diğer yollar"da (Seyhun 2026-11-27)
+  const [mode, setMode] = useState("");
+  const [others, setOthers] = useState(false);
+  const [tpl, setTpl] = useState("");
+  const [timed, setTimed] = useState(false);
+  const [times, setTimes] = useState({});
   const { profile: me, isOwner } = useAuth();
   const { lib, addMany } = useFitLib();
   const toast = useToast();
@@ -341,7 +347,7 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, o
         setSeed("");
       }
     }
-    onTemplate?.(id, f, pre);
+    onTemplate?.(id, f, { ...pre, times: timed ? times : {} });
   };
   // Eksik seçim: düğmenin üstünde yazar (önceden düğme yalnız soluk kalıyordu)
   const missing = !sorted.length ? "En az bir gün seç." : !f.goal ? "Hedef seç." : !f.place ? "Nerede çalışılacağını seç." : !time ? "Saati seç." : who && !f.age ? "Sporcunun yaşını seç." : "";
@@ -363,7 +369,7 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, o
   const slotName = SLOTS.find(([k]) => k === slot)?.[1];
   const details = [labelOf(PLACES, f.place), labelOf(LEVELS, f.level), `${min} dk`, `${weeks} hafta`, startText === "bugün" ? "" : `${startText} başlar`].filter(Boolean).join(" · ");
   return (
-    <Sheet open={open} onClose={onClose} title="Program hazırla">
+    <Sheet open={open} onClose={onClose} title="Program ekle">
       {athletes.length > 0 && (
         <Box title="Kimin için">
           {who && !picking ? (
@@ -382,18 +388,57 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, o
           )}
         </Box>
       )}
-      {who && (!f.age || ageSrc === "group") && (
+      {who && (mode === "ai" || mode === "tpl") && (!f.age || ageSrc === "group") && (
         <Box title="Yaşı" note="Doğum tarihi yok, yaş grubunu seç">
           {chips(AGE_GROUPS.map(([k]) => [k, k]), group, (k) => (set("age", AGE_GROUPS.find(([x]) => x === k)[1]), setAgeSrc("group")))}
         </Box>
       )}
-      <div className="mt-3 grid grid-cols-3 rounded-2xl bg-bg p-1">
-        {[["ai", "Yapay zeka"], ["file", "PDF / metin"], ["tpl", "Hazır program"]].map(([k, l]) => (
-          <button key={k} type="button" aria-pressed={mode === k} onClick={() => setMode(k)} className={`h-11 rounded-xl text-[0.8125rem] font-semibold transition ${mode === k ? "bg-card text-acc shadow-[0_2px_8px_-4px_rgba(0,0,0,.25)]" : "text-mut"}`}>
-            {l}
+      {mode === "" ? (
+        <>
+          <div className="mt-3 divide-y divide-line overflow-hidden rounded-[1.25rem] border border-line bg-card">
+            {[
+              ["blank", "Kendim hazırla", "Gün gün yaz, sporculara gönder"],
+              ["tpl", "Hazır program", "Örneklerden seç, saati sen ayarla"],
+              ["uzman", "Uzmanla çalış", "Programını bir antrenör hazırlasın"],
+            ].map(([k, l, sub]) => (
+              <button key={k} type="button" disabled={busy} onClick={() => (k === "blank" ? onBlank({ ...pre, time: "" }, f) : setMode(k))} className="flex min-h-16 w-full items-center gap-3 px-3.5 py-3 text-left transition active:bg-bg">
+                <span className="min-w-0 flex-1">
+                  <b className="block text-[1rem] font-semibold">{l}</b>
+                  <small className="block truncate text-[0.8125rem] text-mut">{sub}</small>
+                </span>
+                {k === "uzman" && <span className="rounded-full bg-acc/10 px-2 py-0.5 text-[0.75rem] font-semibold text-acc">Yeni</span>}
+                <Icon name="chev" className="size-4 shrink-0 text-mut" />
+              </button>
+            ))}
+          </div>
+          <button type="button" aria-expanded={others} onClick={() => setOthers(!others)} className="mt-2 h-11 px-1 text-[0.9375rem] font-semibold text-acc">
+            ⋯ Diğer yollar
           </button>
-        ))}
-      </div>
+          {others && (
+            <div className="divide-y divide-line overflow-hidden rounded-[1.25rem] border border-line bg-card">
+              {[
+                ["ai", "Yapay zekayla hazırla"],
+                ["file", "PDF ya da yazıdan oku"],
+              ].map(([k, l]) => (
+                <button key={k} type="button" onClick={() => setMode(k)} className="flex min-h-[3.25rem] w-full items-center justify-between px-3.5 text-left text-[0.9375rem] transition active:bg-bg">
+                  {l}
+                  <Icon name="chev" className="size-4 shrink-0 text-mut" />
+                </button>
+              ))}
+            </div>
+          )}
+        </>
+      ) : (
+        <button type="button" onClick={() => setMode("")} className="mt-3 flex h-10 items-center gap-1 text-[0.9375rem] font-semibold text-acc">
+          <Icon name="chev" className="size-4 rotate-180" />
+          {{ tpl: "Hazır program", uzman: "Uzmanla çalış", ai: "Yapay zekayla hazırla", file: "PDF ya da yazıdan oku" }[mode]}
+        </button>
+      )}
+      {mode === "uzman" && (
+        <div className="mt-2">
+          <UzmanIstek orgId={me?.orgId} forUid={who} forName={whoName} spor={who ? f.sport || "" : ""} />
+        </div>
+      )}
       {mode === "file" && (
         <>
           <Box title="Elindeki program" note="PDF, fotoğraf ya da metin">
@@ -418,21 +463,52 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, o
       {mode === "tpl" && (
         <Box title="Hazır programlar" note={who ? `${whoName} için` : ""}>
           <div className="space-y-2">
-            {TEMPLATES.map((t) => (
-              <div key={t.id} className="rounded-2xl bg-bg p-3">
-                <b className="block text-[0.9375rem] font-semibold">{t.title}</b>
-                <small className="mt-0.5 block text-[0.8125rem] leading-snug text-mut">{t.sub}</small>
-                <Button className="mt-2.5" loading={busy} disabled={!!seed} onClick={() => addTpl(t.id)}>
-                  <Icon name="plus" className="size-5" />
-                  {seed || "Örnek programı ekle"}
-                </Button>
-              </div>
-            ))}
+            {TEMPLATES.map((t) => {
+              const on = tpl === t.id;
+              return (
+                <div key={t.id} className={`rounded-2xl p-3 ${on ? "bg-acc/[.07] ring-1 ring-acc" : "bg-bg"}`}>
+                  <button type="button" aria-pressed={on} onClick={() => setTpl(on ? "" : t.id)} className="block w-full text-left">
+                    <b className="block text-[0.9375rem] font-semibold">{t.title}</b>
+                    <small className="mt-0.5 block text-[0.8125rem] leading-snug text-mut">{t.sub}</small>
+                  </button>
+                  {on && (
+                    <div className="mt-3">
+                      <small className="mb-1.5 block text-[0.75rem] font-semibold text-mut">Saat</small>
+                      <div className="grid grid-cols-2 rounded-xl bg-card p-[3px]">
+                        {[
+                          [false, "Tam gün"],
+                          [true, "Saat seç"],
+                        ].map(([k, l]) => (
+                          <button key={l} type="button" aria-pressed={timed === k} onClick={() => setTimed(k)} className={`h-10 rounded-[0.625rem] text-[0.9375rem] transition ${timed === k ? "bg-acc text-white font-semibold" : "text-mut"}`}>
+                            {l}
+                          </button>
+                        ))}
+                      </div>
+                      {timed ? (
+                        <div className="mt-2 space-y-1.5">
+                          {[...new Set(t.prog.days.map((d) => d.dow))].map((dow) => (
+                            <label key={dow} className="flex h-10 items-center justify-between rounded-xl bg-card px-3">
+                              <span className="text-[0.875rem]">{DOW_LONG[dow]}</span>
+                              <span className="flex items-center gap-2">
+                                {!times[dow] && <span className="text-[0.875rem] text-mut">Tam gün</span>}
+                                <input type="time" value={times[dow] || ""} onChange={(e) => setTimes((x) => ({ ...x, [dow]: e.target.value }))} aria-label={`${DOW_LONG[dow]} saati`} className={`appearance-none bg-transparent text-right text-[0.9375rem] font-semibold outline-none ${times[dow] ? "" : "w-8 opacity-40"}`} />
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-1.5 text-[0.75rem] text-mut">Gün içinde boş olunca yapılır.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
-          <p className="mt-2 text-[0.75rem] leading-snug text-mut">Program düzenleme ekranında açılır; günleri, saati ve hareketleri değiştirip kaydedersin.</p>
+          <p className="mt-2 text-[0.75rem] leading-snug text-mut">Ekledikten sonra da her günün saati değişir.</p>
         </Box>
       )}
-      {mode !== "ai" && (
+      {(mode === "file" || (mode === "tpl" && tpl)) && (
         <Box title="Başlangıç">
           <label className="flex h-11 items-center justify-between rounded-xl bg-bg px-3">
             <span className="text-[0.875rem] text-mut">İlk hafta</span>
@@ -509,6 +585,13 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, o
           <p role="alert" className="mb-2 rounded-xl bg-red-50 px-3 py-2 text-[0.8125rem] font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">
             {(mode === "ai" && missing) || error}
           </p>
+        )}
+        {mode === "tpl" && tpl && (
+          <div className="pb-2">
+            <Button loading={busy} disabled={!!seed} onClick={() => addTpl(tpl)}>
+              {seed || "Programı ekle"}
+            </Button>
+          </div>
         )}
         {mode === "file" && (
           <div className="flex flex-col gap-1 pb-2">
