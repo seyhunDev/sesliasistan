@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUser, unauthorized } from "@/lib/server/auth";
-import { DERS_MAX, DERS_TUR, acikMi, cleanIstek, cleanPaylas } from "@/lib/fitness/uzmanIstek";
+import { DERS_MAX, DERS_TUR, acikMi, cleanIstek, cleanPaylas, uzmanBag } from "@/lib/fitness/uzmanIstek";
 
 export const runtime = "nodejs";
 export const maxDuration = 26;
@@ -10,6 +10,8 @@ export const maxDuration = 26;
 // POST { orgId, for?, sure, hedef, spor?, paylas: { acik, turler }, ders?: { name, type, data (base64) } } → { istek }
 // GET ?orgId=&for= → kişinin istekleri; GET ?orgId=&ders=<id> → ders programı dosyası (sporcu, açan ya da ana hesap)
 // PATCH { orgId, id, paylas?, iptal? } → paylaşımı aç/kapat ya da isteği iptal et
+// PATCH { orgId, id, ata: uzmanId } / { bitir: true } (yalnız ana hesap) → uzman atanır (başlar) ya da biter; sporcunun
+//   users/{uid}.fitUzman ve fitUzmanGecmis alanları da yazılır (lib/fitness/uzmanIstek.js uzmanBag)
 const bad = (error, status = 400) => NextResponse.json({ error }, { status });
 const ID = /^[\w-]{1,80}$/;
 
@@ -40,6 +42,8 @@ const goster = (id, d) => ({
   brans: d.brans,
   uzmanId: d.uzmanId || null,
   sure: d.sure,
+  bas: d.bas || "",
+  bit: d.bit || "",
   hedef: d.hedef || "",
   yas: d.yas || 0,
   sehir: d.sehir || "",
@@ -131,6 +135,30 @@ export async function PATCH(request) {
   const up = { guncel: FieldValue.serverTimestamp() };
   if (body.paylas) up.paylas = cleanPaylas(body.paylas);
   if (body.iptal === true && acikMi(d.durum)) up.durum = "iptal";
+  const bugun = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Istanbul" });
+  // Sporcunun kaydı (örnek isteklerde hesap yok: yazılmaz)
+  const sporcu = d.sporcuUid && ID.test(d.sporcuUid) ? g.db.collection("users").doc(d.sporcuUid) : null;
+  const sporcuVar = sporcu ? (await sporcu.get()).exists : false;
+  const bitir = async (eski) => {
+    if (!sporcuVar) return;
+    const s = (await sporcu.get()).data() || {};
+    const b = s.fitUzman;
+    if (b?.istek !== body.id && !eski) return;
+    await sporcu.update({ fitUzman: FieldValue.delete(), ...(b?.id ? { fitUzmanGecmis: FieldValue.arrayUnion({ ...b, bitti: bugun }) } : {}) });
+  };
+  if (typeof body.ata === "string") {
+    if (!g.owner || !ID.test(body.ata) || !acikMi(d.durum)) return bad("Atanamadı.", 403);
+    const u = await g.db.collection("orgs").doc(body.orgId).collection("uzmanlar").doc(body.ata).get();
+    if (!u.exists) return bad("Uzman bulunamadı.", 404);
+    const bas = d.uzmanId === body.ata && d.bas ? d.bas : bugun;
+    const bag = uzmanBag({ id: u.id, ...u.data() }, { id: body.id, sure: d.sure }, bas);
+    Object.assign(up, { uzmanId: u.id, uzmanUid: u.data().uid || null, durum: "atandi", bas: bag.bas, bit: bag.bit });
+    if (sporcuVar) await sporcu.update({ fitUzman: bag });
+  } else if (body.bitir === true) {
+    if (!g.owner) return bad("Yetkin yok.", 403);
+    Object.assign(up, { durum: "bitti", bitti: bugun });
+    await bitir(false);
+  } else if (up.durum === "iptal" && d.uzmanId) await bitir(false);
   await ref.update(up);
   return NextResponse.json({ istek: goster(body.id, { ...d, ...up, at: d.at }) });
 }

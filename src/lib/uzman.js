@@ -25,7 +25,7 @@ export const YASLAR = [
 export const yasGrubu = (yas) => (!(yas > 0) ? "" : yas <= 12 ? "cocuk" : yas <= 17 ? "genc" : "yetiskin");
 export const SURELER = [1, 3, 6];
 export const DURUM = {
-  bekliyor: "Uzman bekleniyor", atandi: "Atandı", kabul: "Sürüyor", ret: "Reddedildi", bitti: "Bitti", iptal: "İptal",
+  bekliyor: "Uzman bekleniyor", atandi: "Sürüyor", kabul: "Sürüyor", ret: "Reddedildi", bitti: "Bitti", iptal: "İptal",
 };
 export const PAYLAS_AD = { antrenman: "antrenman", yelken: "yelken", yemek: "yemek", yaris: "yarış", tatil: "tatil" };
 export const AKTIF_DURUM = ["atandi", "kabul"];

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { collection, doc, getDoc, getDocs, query, serverTimestamp, updateDoc, where } from "firebase/firestore";
+import { collection, doc, getDoc, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase/clientApp";
 import { authFetch } from "@/lib/authFetch";
 import { BackButton } from "@/components/ui/BackButton";
@@ -12,11 +12,12 @@ import { LoadFail } from "@/components/ui/LoadFail";
 import { ListLoading } from "@/components/ui/Loader";
 import { SheetTone } from "@/components/ui/Sheet";
 import { useToast } from "@/components/ui/ToastProvider";
+import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useData } from "@/features/data/DataProvider";
 import { liveHead } from "@/features/liveScreen/fonts";
 import { loadPrograms } from "@/features/fitness/fitnessData";
-import { DURUM, PAYLAS_AD, bransAd, branslar as bransListesi, doluluk, paylasilanPlanlar, sporAd, sporcuTakip, uzmanOzet, yasAd } from "@/lib/uzman";
+import { AKTIF_DURUM, DURUM, PAYLAS_AD, bransAd, branslar as bransListesi, doluluk, paylasilanPlanlar, sporAd, sporcuTakip, uzmanOzet, yasAd } from "@/lib/uzman";
 import { todayStr } from "@/lib/utils/format";
 import { Av, Etiket, UzmanForm } from "./Uzmanlar";
 
@@ -26,6 +27,7 @@ import { Av, Etiket, UzmanForm } from "./Uzmanlar";
 // gönderdikleri (hedef, paylaştığı planlar, ders programı). "Program hazırla" Fitness'in ortak program penceresini o sporcuyla
 // açar. Şimdilik ana hesap görür; ileride uzman kendi girişiyle (uzmanlar.uid, istek.uzmanUid; kurallar hazır).
 
+const kisaGun = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
 const gunYaz = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "short" });
 const GUN = ["Pt", "Sa", "Ça", "Pe", "Cu", "Ct", "Pz"];
 const ST = { done: ["Yaptı", "text-ok"], skip: ["Atladı", "text-mut"], missed: ["Yapmadı", "text-[#ff6b6b]"], today: ["Bugün", "text-acc"], next: ["Sırada", "text-mut"] };
@@ -121,12 +123,11 @@ export function UzmanSayfasi({ id }) {
       </main>
     );
   }
-  const yeni = ist.filter((i) => i.durum === "atandi");
-  const suren = ist.filter((i) => i.durum === "kabul");
+  // Atamak başlatmaktır (2026-11-27): atanan ve eski "kabul" olanlar birlikte "Sporcuları"
+  const suren = ist.filter((i) => AKTIF_DURUM.includes(i.durum));
   const biten = ist.filter((i) => i.durum === "bitti");
   const satir = (i) => {
     const t = sporcuTakip(i, fitOthers, veri.programlar, bugun);
-    const yeniMi = i.durum === "atandi";
     return (
       <button key={i.id} type="button" onClick={() => setSec(i.id)} className="flex min-h-[3.75rem] w-full items-center gap-2.5 px-4 py-2.5 text-left transition active:bg-bg">
         <Av ad={i.sporcuAd} tur="s" />
@@ -137,9 +138,7 @@ export function UzmanSayfasi({ id }) {
           </span>
           {t.plan > 0 && <Bar v={t.yapti / t.plan} kotu={t.yapmadi > 0} />}
         </span>
-        {yeniMi ? (
-          <span className="shrink-0 rounded-full bg-acc px-2 py-0.5 text-[0.6875rem] font-bold text-[#111]">Yeni</span>
-        ) : !t.prog ? (
+        {i.durum === "bitti" ? null : !t.prog ? (
           <span className="shrink-0 rounded-full bg-accbg px-2 py-0.5 text-[0.6875rem] font-bold text-acc">Program yok</span>
         ) : t.plan ? (
           <span className={`shrink-0 text-[0.875rem] font-semibold tabular-nums ${t.yapmadi ? "text-[#ff6b6b]" : "text-mut"}`}>
@@ -175,14 +174,6 @@ export function UzmanSayfasi({ id }) {
                 </div>
               ))}
             </div>
-            {yeni.length > 0 && (
-              <section>
-                <ListHead title="Yeni gelen sporcular" count={yeni.length} />
-                <Kart className="border-acc">
-                  {yeni.map(satir)}
-                </Kart>
-              </section>
-            )}
             <section>
               <ListHead title="Sporcuları" count={suren.length} />
               {suren.length ? (
@@ -190,7 +181,7 @@ export function UzmanSayfasi({ id }) {
                   {suren.map(satir)}
                 </Kart>
               ) : (
-                <p className="rounded-[1.25rem] border border-line bg-card px-4 py-5 text-center text-[0.9375rem] text-mut">{yeni.length ? "Yeni gelen sporcuyu açıp kabul et." : "Henüz sporcusu yok."}</p>
+                <p className="rounded-[1.25rem] border border-line bg-card px-4 py-5 text-center text-[0.9375rem] text-mut">Henüz sporcusu yok.</p>
               )}
             </section>
             {biten.length > 0 && (
@@ -245,15 +236,21 @@ function Sporcu({ org, i, uzman, programlar, plans, bugun, geri, guncelle }) {
   const [paylasAcik, setPaylasAcik] = useState(false);
   const t = useMemo(() => sporcuTakip(i, plans, programlar, bugun), [i, plans, programlar, bugun]);
   const paylasilan = useMemo(() => paylasilanPlanlar(tumPlanlar, i.sporcuUid, i.paylas, bugun), [tumPlanlar, i.sporcuUid, i.paylas, bugun]);
-  const yaz = async (f, msg) => {
-    guncelle(i.id, f);
-    try {
-      await updateDoc(doc(db, "orgs", org, "uzmanIstekleri", i.id), { ...f, guncel: serverTimestamp() });
-      msg && toast?.(msg);
-    } catch {
-      toast?.("Kaydedilemedi");
-    }
-  };
+  const ask = useConfirm();
+  const aktif = AKTIF_DURUM.includes(i.durum);
+  // Bitir: sunucu isteği kapatır, sporcunun uzmanını geçmişe taşır (fitUzmanGecmis)
+  const bitir = () =>
+    ask({
+      title: "Uzmanla çalışma bitsin mi?",
+      text: `${i.sporcuAd || "Sporcu"} artık ${uzman?.ad || "bu uzman"} ile çalışmıyor görünür. Programı ve antrenmanları kalır.`,
+      yes: "Bitir",
+      run: async () => {
+        const r = await authFetch("/api/uzman-istek", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ orgId: org, id: i.id, bitir: true }) });
+        if (!r.ok) return toast?.("Bitirilemedi");
+        guncelle(i.id, { durum: "bitti", bitti: bugun });
+        toast?.("Uzmanla çalışma bitti");
+      },
+    });
   const ders = async () => {
     try {
       const res = await authFetch(`/api/uzman-istek?orgId=${encodeURIComponent(org)}&ders=${encodeURIComponent(i.id)}`);
@@ -265,17 +262,36 @@ function Sporcu({ org, i, uzman, programlar, plans, bugun, geri, guncelle }) {
       toast?.("Ders programı açılamadı");
     }
   };
-  const hazirla = i.sporcuUid ? `/fitness?hazirla=${encodeURIComponent(i.sporcuUid)}` : "";
+  const hazirla = i.sporcuUid && !i.ornek ? `/settings/admin/uzman/${uzman?.id}/program/${i.id}` : "";
   return (
     <>
-      <Ust geri={geri} baslik={i.sporcuAd || "Sporcu"} tur="s" alt={[uzman?.ad && `Uzmanı ${uzman.ad}`, i.sure && `${i.sure} ay`, i.durum !== "kabul" && DURUM[i.durum]].filter(Boolean).join(" · ")} />
+      <Ust geri={geri} baslik={i.sporcuAd || "Sporcu"} tur="s" alt={[i.yas && `${i.yas} yaş`, i.spor && sporAd(i.spor === "sailing" ? "yelken" : i.spor)].filter(Boolean).join(" · ")} />
       <div className="space-y-5">
+        <Kart>
+          <div className="flex items-center gap-2.5 px-4 py-3">
+            <Av ad={uzman?.ad} tur="u" />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-medium">{aktif ? `${uzman?.ad || "Uzman"} ile çalışıyor` : `${uzman?.ad || "Uzman"} ile çalıştı`}</span>
+              <span className="block truncate text-[0.8125rem] text-mut">
+                {aktif
+                  ? [i.bas && `${kisaGun(i.bas)}'tan beri`, i.sure && `${i.sure} ay`, i.bit && `bitiş ${kisaGun(i.bit)}`].filter(Boolean).join(" · ")
+                  : [DURUM[i.durum], i.bitti && kisaGun(i.bitti)].filter(Boolean).join(" · ")}
+              </span>
+            </span>
+          </div>
+        </Kart>
         <section>
           <ListHead title="Program" />
           <Kart>
             {t.prog ? (
               <div className="px-4 py-3">
                 <p className="truncate font-medium">{t.prog.title || "Program"}</p>
+                {t.prog.by?.ad && (
+                  <p className="mt-1 flex items-center gap-1.5 text-[0.8125rem] text-fg2">
+                    <span className="rounded-md bg-acc/15 px-1.5 py-px text-[0.625rem] font-bold tracking-[0.06em] text-acc">HAZIRLAYAN</span>
+                    {t.prog.by.ad}
+                  </p>
+                )}
                 <p className="truncate text-[0.8125rem] text-mut">
                   {[`${t.prog.weeks} hafta`, t.prog.days?.length && `haftada ${t.prog.days.length} gün`, t.hafta && (t.hafta.n === 0 ? "henüz başlamadı" : t.hafta.n > t.hafta.of ? "bitti" : `şu an hafta ${t.hafta.n}`)].filter(Boolean).join(" · ")}
                 </p>
@@ -359,31 +375,20 @@ function Sporcu({ org, i, uzman, programlar, plans, bugun, geri, guncelle }) {
             )}
           </Kart>
         </section>
-        <div className="flex gap-2">
-          {i.durum === "atandi" && (
-            <button type="button" onClick={() => yaz({ durum: "kabul" }, "Sporcu kabul edildi")} className={dugme(true)}>
-              Kabul et
-            </button>
-          )}
-          {i.durum !== "atandi" &&
-            (hazirla ? (
-              <Link href={hazirla} className={dugme(true)}>
-                {t.prog ? "Yeni program" : "Program hazırla"}
+        {aktif && (
+          <div>
+            {hazirla ? (
+              <Link href={hazirla} className="sahne-t flex h-[3.25rem] w-full items-center justify-center rounded-2xl bg-acc text-[1.3rem] text-[#111] shadow-[0_4px_0_#8ea620] transition active:translate-y-[3px]">
+                {t.prog ? "Yeni program hazırla" : "Program hazırla"}
               </Link>
             ) : (
-              <span className={`${dugme(true)} opacity-40`}>Program hazırla</span>
-            ))}
-          {i.durum === "kabul" && (
-            <button type="button" onClick={() => yaz({ durum: "bitti" }, "Bitti olarak işaretlendi")} className={dugme(false)}>
-              Bitir
+              <p className="text-center text-[0.875rem] text-mut">Örnek sporcuya program hazırlanamaz.</p>
+            )}
+            <button type="button" onClick={bitir} className="mt-2 flex h-11 w-full items-center justify-center text-[0.875rem] font-semibold text-mut">
+              ⋯ Uzmanla çalışmayı bitir
             </button>
-          )}
-          {i.durum === "bitti" && (
-            <button type="button" onClick={() => yaz({ durum: "kabul" })} className={dugme(false)}>
-              Yeniden başlat
-            </button>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </>
   );

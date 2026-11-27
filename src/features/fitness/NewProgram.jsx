@@ -243,7 +243,12 @@ export function ProfileFields({ f, set, withGoal = true, withPlace = true }) {
 // athletes: [{ uid, name }] (yalnız ana hesapta, hesabı olan sporcular); forUid: sporcunun sayfasından açıldıysa seçili sporcu
 // Üç yol: yapay zeka seçimlere göre hazırlar ("ai"), elindeki programı (PDF, fotoğraf, metin) okur ("file"), hazır program ("tpl").
 // onImport({ file, text, ask }, f, pre), onTemplate(id, f, pre): sonuç kaydedilmeden düzenleme ekranında açılır.
-export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, onTemplate, busy, goal, athletes = [], forUid = "", error = "" }) {
+// Uzmanın "Program hazırla" sayfası (Admin › Uzmanlar, 2026-11-27): inline (pencere değil sayfada), uzmanAd (Uzmanla çalış yok,
+// sporcu değişmez), ek (sporcunun hedefi ve dolu günleri yapay zekaya), hafta (istek süresinden)
+function Duz({ children }) {
+  return <div className="pb-6">{children}</div>;
+}
+export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, onTemplate, busy, goal, athletes = [], forUid = "", error = "", inline = false, uzmanAd = "", ek = "", hafta = 0 }) {
   // "" = üç yol (Kendim hazırla, Hazır program, Uzmanla çalış); "ai" ve "file" "⋯ Diğer yollar"da (Seyhun 2026-11-27)
   const [mode, setMode] = useState("");
   const [others, setOthers] = useState(false);
@@ -260,7 +265,7 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, o
   const [days, setDays] = useState([1, 3, 5]);
   const [slot, setSlot] = useState("sabah");
   const [time, setTime] = useState("07:00");
-  const [weeks, setWeeks] = useState(4);
+  const [weeks, setWeeks] = useState(hafta || 4);
   const [min, setMin] = useState(45);
   const [start, setStart] = useState(todayStr());
   const [more, setMore] = useState(false);
@@ -329,6 +334,7 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, o
       f.avoid && `Kaçınılacak: ${f.avoid}.`,
       who && f.age && (ageSrc === "group" ? `Sporcu ${group} yaş grubunda.` : `Sporcu ${f.age} yaşında.`),
       who && f.sport && `Spor: ${labelOf(SPORTS, f.sport)}. Program bu spora yardımcı olsun.`,
+      ek,
     ]
       .filter(Boolean)
       .join(" ");
@@ -365,11 +371,12 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, o
 
   // Tek ekran: kimin için (sporcu seçiliyse tek satır), ne için, günler ve saat; yer, süre, hafta, seviye kapalı "Ayrıntılar"da
   const [picking, setPicking] = useState(!forUid);
+  const Kap = inline ? Duz : Sheet;
   const initials = (s) => s.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join("").toLocaleUpperCase("tr-TR");
   const slotName = SLOTS.find(([k]) => k === slot)?.[1];
   const details = [labelOf(PLACES, f.place), labelOf(LEVELS, f.level), `${min} dk`, `${weeks} hafta`, startText === "bugün" ? "" : `${startText} başlar`].filter(Boolean).join(" · ");
   return (
-    <Sheet open={open} onClose={onClose} title="Program ekle">
+    <Kap open={open} onClose={onClose} title="Program ekle">
       {athletes.length > 0 && (
         <Box title="Kimin için">
           {who && !picking ? (
@@ -379,9 +386,11 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, o
                 <b className="block truncate text-[1rem] font-semibold">{whoName}</b>
                 <small className="block truncate text-[0.8125rem] text-mut">{[f.age ? `${f.age} yaş` : "", labelOf(SPORTS, f.sport)].filter(Boolean).join(" · ")}</small>
               </span>
-              <button type="button" onClick={() => setPicking(true)} data-press className="btn btn-text btn-sm shrink-0 text-acc">
-                Değiştir
-              </button>
+              {!uzmanAd && (
+                <button type="button" onClick={() => setPicking(true)} data-press className="btn btn-text btn-sm shrink-0 text-acc">
+                  Değiştir
+                </button>
+              )}
             </div>
           ) : (
             chips([["", "Ben"], ...athletes.map((a) => [a.uid, a.name])], who, (id) => (pickWho(id), setPicking(!id)))
@@ -396,11 +405,19 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, o
       {mode === "" ? (
         <>
           <div className="mt-3 divide-y divide-line overflow-hidden rounded-[1.25rem] border border-line bg-card">
-            {[
-              ["blank", "Kendim hazırla", "Gün gün yaz, sporculara gönder"],
-              ["tpl", "Hazır program", "Örneklerden seç, saati sen ayarla"],
-              ["uzman", "Uzmanla çalış", "Programını bir antrenör hazırlasın"],
-            ].map(([k, l, sub]) => (
+            {(uzmanAd
+              ? [
+                  ["ai", "Yapay zekayla hazırla", "Hedefe ve dolu günlere göre"],
+                  ["tpl", "Hazır program", "Örneklerden seç, saati ayarla"],
+                  ["blank", "Kendim hazırla", "Gün gün yaz"],
+                  ["file", "PDF ya da yazıdan oku", "Elindeki programı yükle"],
+                ]
+              : [
+                  ["blank", "Kendim hazırla", "Gün gün yaz, sporculara gönder"],
+                  ["tpl", "Hazır program", "Örneklerden seç, saati sen ayarla"],
+                  ["uzman", "Uzmanla çalış", "Programını bir antrenör hazırlasın"],
+                ]
+            ).map(([k, l, sub]) => (
               <button key={k} type="button" disabled={busy} onClick={() => (k === "blank" ? onBlank({ ...pre, time: "" }, f) : setMode(k))} className="flex min-h-16 w-full items-center gap-3 px-3.5 py-3 text-left transition active:bg-bg">
                 <span className="min-w-0 flex-1">
                   <b className="block text-[1rem] font-semibold">{l}</b>
@@ -411,9 +428,11 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, o
               </button>
             ))}
           </div>
+          {!uzmanAd && (
           <button type="button" aria-expanded={others} onClick={() => setOthers(!others)} className="mt-2 h-11 px-1 text-[0.9375rem] font-semibold text-acc">
             ⋯ Diğer yollar
           </button>
+          )}
           {others && (
             <div className="divide-y divide-line overflow-hidden rounded-[1.25rem] border border-line bg-card">
               {[
@@ -614,6 +633,6 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, o
         </div>
         )}
       </div>
-    </Sheet>
+    </Kap>
   );
 }
