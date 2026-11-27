@@ -227,6 +227,14 @@ service cloud.firestore {
           allow read, write: if isStaff(orgId) && request.auth.uid == uid;
         }
       }
+      // Uzman antrenörler (Admin › Uzmanlar, 2026-11-27): yalnız ana hesap yazar (yukarıdaki kural); sporcu istekleri sunucudan
+      // (/api/uzman-istek). İleride uzmanın kendi girişi: kendi kaydını ve kendine atanan istekleri yalnız okur (uid / uzmanUid).
+      match /uzmanlar/{id} {
+        allow read: if signedIn() && resource.data.get("uid", "") == request.auth.uid;
+      }
+      match /uzmanIstekleri/{id} {
+        allow read: if signedIn() && resource.data.get("uzmanUid", "") == request.auth.uid;
+      }
       // Kurye: bugünün siparişleri ve yemek ayarı (kurye listesi), yalnız okuma
       match /yemekSiparisler/{id} {
         allow read: if isCourier(orgId);
