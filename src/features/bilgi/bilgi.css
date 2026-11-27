@@ -680,8 +680,8 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 :root { --pen: #ff5a3c; --pen-fd: #ffd60a; }
 .bzy-pens { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
 .bzy-pens button { height: 5.25rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.3rem; border: 1px solid var(--line, #2e2e33); border-radius: 1rem; background: var(--fill, #1f1f22); color: var(--fg); }
-.bzy-pens b { font: 800 2rem/1 var(--sc, system-ui); }
-.bzy-pens small { font-size: 0.75rem; font-weight: 600; color: var(--mut); }
+.bzy-pens b { font: 800 1.125rem/1.1 var(--sc, system-ui); text-align: center; }
+.bzy-pens small { font-size: 0.75rem; font-weight: 600; color: var(--mut); opacity: .7; font-variant-numeric: tabular-nums; }
 .bzy-pens button[aria-checked="true"] { border-color: var(--pen); background: rgba(255, 90, 60, .14); }
 .bzy-pens button[data-k="fd"][aria-checked="true"] { border-color: var(--pen-fd); background: rgba(255, 214, 10, .12); }
 .bzy-pen { font: 800 0.75rem/1 var(--lv-font-c, "Barlow Condensed"), var(--font-num, system-ui), system-ui, sans-serif; font-style: normal; letter-spacing: .03em; padding: 0.1875rem 0.3125rem; border-radius: 0.3125rem; background: var(--pen); color: #fff; }
@@ -963,6 +963,10 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 .bzy-pgp .bzy-sqb { aspect-ratio: .85; max-height: none; border: 0; background: var(--pen, #ff5a3c); }
 .bzy-pgp .bzy-sqb small { color: rgba(255, 255, 255, .88); }
 .bzy-pgp .bzy-sqb b { font-size: 2.5rem; }
+/* Ceza adı (Seyhun 2026-11-27): "1 ceza dönüşü" iki satıra sığar, derece üstte küçük ve soluk */
+.bzy-pgp .bzy-pn b { font-size: 1.375rem; line-height: 1.05; white-space: normal; text-transform: none; }
+.bzy-pgp .bzy-pn small { letter-spacing: .02em; opacity: .75; }
+.bzy-penc b.pn { font-size: 1.625rem; line-height: 1.05; text-align: center; }
 .bzy-pgp .bzy-sqb[data-k="fd"] { background: #ffd60a; color: #111; }
 .bzy-pgp .bzy-sqb[data-k="fd"] small { color: #5b4a00; }
 .bzy-pgp .bzy-sqb:disabled { opacity: .35; }
