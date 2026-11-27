@@ -16,3 +16,8 @@
 ## Asistan
 
 - Sabit metinli sesler (tanıtım vb.) çalışırken üretilmez; derlemede Storage önbelleğinden dosyaya yazılır. Storage açılmazsa hiç üretilmez (her yayında yeniden ücret olmasın).
+
+## Asistan (Gemini sesi, 3. PR)
+
+- Yayın günlüğü: 29 tanıtım sesinin hepsi Chirp geldi, yani canlıda Gemini sesi hiç çalışmıyordu (fitness dahil). Velora Sailing'deki gibi Cloud TTS yolu anahtarı kabul etmiyor; `lib/server/tts.js` artık reddedilince Vertex AI generateContent yolunu dener (GEMINI_TTS_KEY, servis hesabına bağlı anahtar "velora-ses-anahtar", kısıtlaması Agent Platform API). Vertex WAV döner; Storage önbelleği türünü (contentType) saklar. Tanıtım derlemesi WAV'ı ffmpeg ile MP3 yapar; Chirp sesi 1 saatten eskiyse her yayında yeniden dener.
+- Netlify'da GEMINI_TTS_KEY olmalı (değeri velora-ses-anahtar). Seyhun ekleyecek/kontrol edecek.
