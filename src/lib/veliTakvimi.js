@@ -61,13 +61,21 @@ export function raceDays(p, e) {
   const end = p.endDate && p.endDate >= p.date ? p.endDate : p.date;
   return { date: shiftDay(p.date, -pre), endDate: shiftDay(end, post) };
 }
-export function parentRaces(plans = [], months = [], sel = null, ext = {}) {
+// real {raceId: {startDate, endDate}}: yarış kaydındaki asıl yarış günleri (Seyhun 2026-11-27). Yarış planı yolculuk yazıldıysa
+// gidiş–dönüş günlerini kapsar; PDF'te asıl yarış günleri gösterilir, plan tarihi yalnız yarış kaydı yoksa kullanılır.
+export function realDates(p, real) {
+  const r = p?.raceId && real?.[p.raceId];
+  if (!r?.startDate) return p;
+  return { ...p, date: r.startDate, endDate: r.endDate && r.endDate >= r.startDate ? r.endDate : r.startDate };
+}
+export function parentRaces(plans = [], months = [], sel = null, ext = {}, real = {}) {
   const s = [...months].sort();
   if (!s.length) return [];
   const from = `${s[0]}-01`;
   const to = `${s.at(-1)}-31`;
   return plans
     .filter((p) => isRacePlan(p, plans) && audIncludes(sel, p.aud))
+    .map((p) => realDates(p, real))
     .map((p) => ({ ...p, ...raceDays(p, ext?.[p.id]), plan: { date: p.date, endDate: p.endDate || p.date } }))
     .filter((p) => p.date <= to && p.endDate >= from)
     .sort((a, b) => a.date.localeCompare(b.date));

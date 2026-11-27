@@ -8,3 +8,4 @@
 
 ## Tasarım
 - Veliye giden PDF önce telefon için: ay başına bir sayfa, saat hücrede.
+- Yarış günleri (Seyhun 2026-11-27): PDF'te asıl yarış günleri yarış kaydından (`startDate`/`endDate`, `realDates`); yarış planı yolculuk yazıldıysa gidiş–dönüşü kapsadığı için PDF'te 1 gün kayık görünüyordu. Kayıt yoksa plan tarihi. Önce/Sonra ekstra gün yine elle.

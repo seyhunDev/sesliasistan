@@ -3576,6 +3576,12 @@ group("Toplu eklemeler listesi")([
 ]);
 
 group("Veli takvimi: yalnız yarış ve antrenman")([
+  ["asıl yarış günleri", F("plan gidiş–dönüş 2–9 Ara, yarış 3–8 Ara → PDF 3–8", () => {
+    const p = { id: "p", raceId: "x", title: "Kupa", date: "2026-12-02", endDate: "2026-12-09", cat: "Yarış" };
+    const r = TBV.parentRaces([p], ["2026-12"], null, {}, { x: { startDate: "2026-12-03", endDate: "2026-12-08" } })[0];
+    const n = TBV.parentRaces([p], ["2026-12"])[0];
+    return r.date === "2026-12-03" && r.endDate === "2026-12-08" && n.date === "2026-12-02";
+  })],
   ["saatler dönemle", F("okulda 15:30, tatilde 10:00: satırda tarih aralığı", () => {
     const sch = ["2026-12-01", "2026-12-02", "2026-12-08", "2026-12-09", "2027-01-12", "2027-01-13"].map((date) => ({ date, time: "15:30", cat: "Antrenman" }));
     const hol = ["2027-01-26", "2027-01-27", "2027-02-02", "2027-02-03"].map((date) => ({ date, time: "10:00", cat: "Antrenman" }));

@@ -1,7 +1,7 @@
 "use client";
 
 import "./toplu.css";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Sheet, SheetActions, SheetTone } from "@/components/ui/Sheet";
 import { PdfViewer } from "@/components/ui/PdfViewer";
 import { useData } from "@/features/data/DataProvider";
@@ -43,7 +43,21 @@ export function VeliTakvimi({ open, onClose, month, prefill }) {
   const flip = (m) => put({ months: f.months.includes(m) ? f.months.filter((x) => x !== m) : [...f.months, m] });
   const months = useMemo(() => [...f.months].sort(), [f.months]);
   const n = useMemo(() => parentTrainings(plans, months).length, [plans, months]);
-  const races = useMemo(() => parentRaces(plans, months, null, f.ext), [plans, months, f.ext]);
+  // Asıl yarış günleri yarış kayıtlarından (plan gidiş–dönüşü kapsayabilir)
+  const [real, setReal] = useState({});
+  const orgId = profile?.orgId || profile?.uid;
+  useEffect(() => {
+    if (!open || !orgId) return;
+    let on = true;
+    import("@/features/athletes/races")
+      .then((m) => m.loadRaces(orgId))
+      .then((list) => on && setReal(Object.fromEntries(list.filter((r) => r.startDate).map((r) => [r.id, { startDate: r.startDate, endDate: r.endDate || "" }]))))
+      .catch(() => {});
+    return () => {
+      on = false;
+    };
+  }, [open, orgId]);
+  const races = useMemo(() => parentRaces(plans, months, null, f.ext, real), [plans, months, f.ext, real]);
   // Ekstra gün yalnız PDF içindir, yarış planı değişmez
   const bump = (id, k, d) => put({ ext: { ...f.ext, [id]: { ...cleanExt(f.ext[id]), [k]: cleanExt({ [k]: cleanExt(f.ext[id])[k] + d })[k] } } });
   const nRace = races.length;
@@ -59,7 +73,7 @@ export function VeliTakvimi({ open, onClose, month, prefill }) {
   };
   const load = useCallback(async () => {
     // Telefon (varsayılan, Seyhun 2026-11-27: WhatsApp'tan telefonda açılıyor): her ay ayrı uzun sayfa; A4: yazdırmak için
-    const opts = { plans, months, title: f.title.trim(), note: f.note.trim(), ext: f.ext };
+    const opts = { plans, months, title: f.title.trim(), note: f.note.trim(), ext: f.ext, real };
     const [{ loadFonts }] = await Promise.all([import("@/features/athletes/raceDocs")]);
     if (f.size === "a4") return (await import("./veliPdf")).buildParentPdf(opts, await loadFonts());
     return (await import("./veliPdfTelefon")).buildPhonePdf(opts, await loadFonts());
