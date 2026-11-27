@@ -205,7 +205,6 @@ const CH=[
   {k:'toplu',type:'v',v:'toplu',rate:1.5,say:'Antrenmanı oluştur, tek seferde'},
   {k:'yaris',type:'v',v:'yaris',rate:1.2,say:'Yarışı federasyondan ekle'},
   {k:'yonet',type:'v',v:'yonet',rate:1.25,say:'Denizde Yönet: süre, ses, ceza'},
-  {k:'ekran',type:'v',v:'ekran',rate:1.4,say:'Teknedeki sporcu ekranı'},
   {k:'etiket',type:'v',v:'etiket',rate:1.1,say:'Video çek, sporcuyu etiketle'},
   {k:'hava',type:'v',v:'hava',rate:1,say:'Saat saat rüzgâr ve planlar'},
   {k:'gun',type:'v',v:'gun',rate:1.15,say:'Gün kaydı tek sayfada'},
@@ -232,7 +231,7 @@ CH.forEach((c,i)=>{
     s.innerHTML=`<div class="box"><div class="sea"><svg preserveAspectRatio="xMidYMid slice" aria-hidden="true"></svg><div class="vign"></div>
       <div class="hero${c.out?' out':''}">${c.out?'':'<span class="kick">Velora\'da bir gün</span>'}<div class="mark"><span class="ring r1"></span><span class="ring r2"></span>${LOGO}</div>
       <h2 class="wm" aria-label="Velora"><span class="w1"></span></h2>
-      ${c.out?'<ul class="pills"><li>Takvim</li><li>Yarış</li><li>Yönet</li><li>Sporcu ekranı</li><li>Video</li><li>Hava</li><li>Gün kaydı</li><li>Yoklama</li><li>Fitness</li><li>Simülatör</li></ul>':''}
+      ${c.out?'<ul class="pills"><li>Takvim</li><li>Yarış</li><li>Yönet</li><li>Video</li><li>Hava</li><li>Gün kaydı</li><li>Yoklama</li><li>Fitness</li><li>Simülatör</li></ul>':''}
       <p class="tag">Antrenör, sporcu ve tekne tek uygulamada.</p></div></div></div>`;
   }else if(c.type==='v'){
     s.innerHTML=`<div class="full">${vid(c)}</div>`;
