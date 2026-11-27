@@ -55,7 +55,7 @@ export async function buildParentPdf({ plans, months, title = "", note = "", rea
     page = pdf.addPage([W, H]);
     if (logo) page.drawImage(logo, { x: L, y: H - 78, width: 44, height: 44 });
     const hx = logo ? L + 54 : L;
-    text(CLUB.name, hx, 50, f.b, 10, { color: MUT });
+    text(CLUB.upper, hx, 50, f.b, 10, { color: MUT });
     text("Antrenman Takvimi", hx, 72, f.b, 20);
     text(period, R, 72, f.b, 13, { align: "right" });
     if (sub) text(sub, R, 52, f.r, 10, { align: "right", color: MUT, max: 220 });

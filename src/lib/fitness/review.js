@@ -3,6 +3,7 @@
 //   unit: "saat" gibi birim, "/ 2" (en çok 2) ya da "Evet / Hayır"
 // Kayıt: orgs/{org}/fitReviews/{sporcu}_{pazartesi} { for, forName, prog, week, rows [{ label, goal, unit, v }], ask [{ q, a }], note, createdAt, updatedAt }
 // Liste kayda kopyalanır: program sonra değişse de eski haftanın değerlendirmesi aynı kalır.
+import { CLUB as KULUP } from "../club";
 import { DOWS, STATUS, addDays, cleanTrack, dowOf, fitPlans, mondayOf, resRows, statusOf } from "./model";
 
 export { cleanTrack };
@@ -111,8 +112,8 @@ function reviewHtml(r) {
   return `<h2>Değerlendirme · ${esc(weekLabel(r.week))}</h2>${rows ? `<table><tr class="th"><td>Gösterge</td><td>Hedef</td><td>Haftalık kayıt</td></tr>${rows}</table>` : ""}${ask ? `<h3>Pazar geri bildirimi</h3>${ask}` : ""}${r.note ? `<h3>Antrenör notu</h3><p>${esc(r.note).replace(/\n/g, "<br>")}</p>` : ""}`;
 }
 
-export const CLUB = "Dikili Yelken Spor Kulübü";
-export const CLUB_LOGO = "/club-logo.png";
+// Rapor başlığı kullanıcının kulübünden (lib/club.js); kulüpsüzde logo ve ad yok
+
 
 // Rapor (uygulama içinde önizlenir ve yazdırılır): kulüp başlığı ve logosu, sporcu, program, hafta, antrenör; seçilen bölümler; imza.
 // pick { week, all, review } (en az biri). plans: sporcunun fitness planları. Biçim REPORT_CSS (yalnız .fr içinde geçerli).
@@ -130,7 +131,7 @@ export function reportHtml({ name, prog, plans = [], review, week, pick = {}, to
     .filter(([, v]) => v)
     .map(([k, v]) => `<div><small>${esc(k)}</small><b>${esc(v)}</b></div>`)
     .join("");
-  return `<header><img src="${CLUB_LOGO}" alt=""><div><b>${esc(CLUB.toLocaleUpperCase("tr-TR"))}</b><span>Sporcu antrenman raporu</span></div><time>${esc(dm(today))} ${esc(today.slice(0, 4))}</time></header>
+  return `<header>${KULUP.logo ? `<img src="${esc(KULUP.logo)}" alt="">` : ""}<div><b>${esc(KULUP.upper)}</b><span>Sporcu antrenman raporu</span></div><time>${esc(dm(today))} ${esc(today.slice(0, 4))}</time></header>
 <section class="info">${info}</section>${parts.join("")}
 <footer><div><span>Antrenör</span><b>${esc(coach) || "&nbsp;"}</b><i>İmza</i></div><div><span>Sporcu / Veli</span><b>${esc(name) || "&nbsp;"}</b><i>İmza</i></div></footer>`;
 }

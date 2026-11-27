@@ -27,6 +27,7 @@ import { useRouter } from "next/navigation";
 import { ProfilePhoto } from "@/features/people/ProfilePhoto";
 import { liveHead } from "@/features/liveScreen/fonts";
 import { AdminRow } from "@/features/admin/AdminPage";
+import { ClubRow } from "@/features/clubs/ClubRow";
 import { KullanimRow } from "@/features/kullanim/KullanimKaydi";
 
 // Sahne üst (2026-11-26, uygulamanın koyu dili): geri, dar büyük AYARLAR, altında ad · hesap türü, sağda fotoğraf
@@ -114,6 +115,7 @@ function PersonSettings({ profile, n }) {
           {(kind === "athlete" || kind === "student") && <TekneKimRow />}
         </Sec>
         <Sec title="Hesap">
+          {(kind === "staff" || kind === "family" || kind === "other") && <ClubRow />}
           <PasswordRow />
           <FaceIdRow />
           <KullanimRow />
@@ -200,6 +202,7 @@ export default function SettingsPage() {
         </Sec>
 
         <Sec title="Hesap">
+          <ClubRow />
           <PasswordRow />
           <FaceIdRow />
           <KullanimRow />

@@ -1,3 +1,4 @@
+import { clubSign } from "./club";
 // Aidat hatırlatması (saf fonksiyonlar, test edilir). Son ödeme günü (varsayılan ayın 10'u) geçince bu ay aidatı
 // ödenmemiş ya da eksik ödenmiş sporcuların velilerine: uygulamada hesabı olan veliye bildirim, diğerlerine hazır
 // WhatsApp metni. Gönderme her zaman ana hesabın dokunuşuyla (Aidatlar › "N sporcu ödemedi · velilere hatırlat").
@@ -41,7 +42,7 @@ export function unpaidRoster(cfg = {}, month = {}, ym = "") {
 const owed = (x, ym) => (x.state === "part" ? `${monthName(ym)} aidatının ${TL(x.rest)}'si` : `${monthName(ym)} aidatı (${TL(x.fee)})`);
 
 // WhatsApp metni (gönderen ana hesap; veli telefonuyla wa.me)
-export function remindText(x, ym, club = "Dikili Yelken Spor Kulübü") {
+export function remindText(x, ym, club = clubSign()) {
   return `Merhaba, ${first(x.a.studentName)} için ${owed(x, ym)} henüz hesabımıza ulaşmadı. Ödediyseniz bu mesajı dikkate almayın. Teşekkürler.${club ? ` ${club}` : ""}`;
 }
 // Uygulamadaki veliye bildirim

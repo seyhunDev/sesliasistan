@@ -15,6 +15,7 @@ import { Row } from "@/features/settings/ui";
 import { telGoster } from "@/lib/basvuru";
 import { gunEkle, gunOf, gunlukKisi, sonGunlerde, sureYaz } from "@/lib/kullanim";
 import { Hatalar } from "./Hatalar";
+import { VELORA_ADMIN } from "@/lib/sharedRace";
 
 // Ayarlar › Admin (yalnız ana hesap; Seyhun 2026-11-26 "yap", örnek project-files/admin-sayfasi/ornek.html):
 // Başvurular (tanıtımdaki "Velora'ya katıl" formu, /api/basvuru) ve Kullanım (izin veren hesaplar; lib/kullanim.js).
@@ -98,8 +99,9 @@ export function AdminPage() {
             <Kutu ad="Bugün giren" n={izinli.filter((h) => sonGunlerde(h, bugun, 1)).length} />
             <Kutu ad="7 gün" n={izinli.filter((h) => sonGunlerde(h, bugun, 7)).length} />
           </div>
-          <div className="overflow-hidden rounded-[1.25rem] border border-line bg-card">
+          <div className="divide-y divide-line overflow-hidden rounded-[1.25rem] border border-line bg-card">
             <UzmanlarRow org={org} />
+            {String(profile?.email || "").toLowerCase() === VELORA_ADMIN && <Row title="Kulüpler" href="/settings/admin/kulupler" />}
           </div>
           <div className="grid grid-cols-3 gap-1 rounded-2xl border border-line bg-card p-1" role="tablist">
             {[

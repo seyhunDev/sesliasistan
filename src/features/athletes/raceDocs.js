@@ -1,3 +1,4 @@
+import { CLUB } from "@/lib/club";
 // Yarış evrakı: kulübün GSİM'e verdiği 4 belgeyi seçilen sporculara göre PDF olarak üretir.
 // Düzen, kulübün kullandığı örneklerle aynıdır (A4, Times/Arial ölçülü Liberation yazı tipleri).
 // 1) Okul izni yazısı  2) EK-2 Kafile Onayı  3) Seyahat dilekçesi  4) EK-3/D Veli İzin Belgesi (sporcu başına)
@@ -25,16 +26,8 @@ export const DOC_DEFAULT = DOCS.map(([k]) => k).filter((k) => k !== "club");
 // Kayıtlı seçimi temizler (bilinmeyen anahtar atılır, DOCS sırasında); hiç seçim yoksa null
 export const cleanDocs = (v) => (Array.isArray(v) ? DOCS.map(([k]) => k).filter((k) => v.includes(k)) : null);
 
-// Kulübün antet bilgileri (kulüp izin yazısının üst ve alt bilgisi)
-export const CLUB = {
-  name: "DİKİLİ YELKEN SPOR KULÜBÜ",
-  web: "www.dikiliyelken.com",
-  mail: "bilgi@dikiliyelken.com",
-  phone: "(533) 470 78 73",
-  address: "Cumhuriyet Mahallesi, Bankacılar Sitesi, 370 SK. No: 28  Dikili / İZMİR",
-  // TYF kayıtlarındaki adı (katılım bildirim formu)
-  tyfName: "DİKİLİ YELKEN VE KANO SPOR KULÜBÜ",
-};
+// Kulübün antet bilgileri: kullanıcının kulübünden (lib/club.js, clubs/{id}; Seyhun 2026-11-27). Kulüpsüzde boş.
+export { CLUB };
 
 // Antrenör bilgileri (ana hesabın profilinde users/{uid}.coach; bir kez girilir, her yarışta hazır gelir)
 export const COACH_FIELDS = [
@@ -693,15 +686,15 @@ function letterhead(page, p, f, L, R) {
   if (f.logo) page.drawImage(f.logo, { x: L, y: H - 92, width: 58, height: 58 });
   else page.drawSvgPath("M 15 0 L 15 34 L 0 34 Z M 18 4 L 18 34 L 34 34 Z M -2 38 L 36 38 Q 34 44 28 45 L 4 45 Q 0 44 -2 38 Z", { x: L, y: H - 44, color: navy });
   const nx = L + (f.logo ? 70 : 48);
-  tx(CLUB.name, nx, 64, f.serifB, 19, "left");
-  tx("Dikili / İZMİR", nx, 80, f.serif, 10.5, "left", GRAY);
+  tx(CLUB.upper, nx, 64, f.serifB, 19, "left");
+  tx(CLUB.place, nx, 80, f.serif, 10.5, "left", GRAY);
   page.drawRectangle({ x: L, y: H - 102, width: R - L, height: 1.6, color: navy });
   page.drawRectangle({ x: L, y: H - 105.5, width: R - L, height: 0.5, color: navy });
   // Alt bilgi
   page.drawRectangle({ x: L, y: H - 770, width: R - L, height: 0.5, color: navy });
   page.drawRectangle({ x: L, y: H - 773.5, width: R - L, height: 1.6, color: navy });
-  tx(CLUB.name, W / 2, 790, f.sansB, 9, "center");
-  tx(`${CLUB.web}   ·   ${CLUB.mail}   ·   ${CLUB.phone}`, W / 2, 803, f.sans, 8.5, "center", GRAY);
+  tx(CLUB.upper, W / 2, 790, f.sansB, 9, "center");
+  tx([CLUB.web, CLUB.mail, CLUB.phone].filter(Boolean).join("   ·   "), W / 2, 803, f.sans, 8.5, "center", GRAY);
   tx(CLUB.address, W / 2, 815, f.sans, 8.5, "center", GRAY);
 }
 
@@ -1031,14 +1024,17 @@ export function clubInfo(r) {
   };
 }
 
-// Tarayıcıda yazı tiplerini ve kulüp logosunu getirir (bir kez)
-export const LOGO = "/club-logo.png";
+// Tarayıcıda yazı tiplerini ve kulüp logosunu getirir (bir kez; kulübün logosu değişirse yeniden). Logosuz kulüpte logo yok.
+export const LOGO = () => CLUB.logo;
 // TYF formlarındaki federasyon ve bakanlık logoları (örnek formlardan, saydam PNG)
 export const FORM_LOGOS = { tyf: "/forms/tyf-logo.png", gsb: "/forms/gsb-logo.png" };
 let fontCache = null;
+let fontLogo = "";
 export function loadFonts() {
+  if (fontLogo !== LOGO()) fontCache = null;
+  fontLogo = LOGO();
   fontCache ||= Promise.all(
-    [...Object.entries(FONT_FILES).map(([k, file]) => [k, `/fonts/${file}`]), ["logo", LOGO], ...Object.entries(FORM_LOGOS)].map(async ([k, url]) => {
+    [...Object.entries(FONT_FILES).map(([k, file]) => [k, `/fonts/${file}`]), ...(fontLogo ? [["logo", fontLogo]] : []), ...Object.entries(FORM_LOGOS)].map(async ([k, url]) => {
       const res = await fetch(url);
       if (!res.ok) throw new Error("Belge dosyaları alınamadı.");
       return [k, new Uint8Array(await res.arrayBuffer())];

@@ -53,7 +53,7 @@ export async function buildPhonePdf({ plans, months, title = "", note = "", real
     // Antet
     if (logo) page.drawImage(logo, { x: L, y: H - 52, width: 30, height: 30 });
     const hx = logo ? L + 38 : L;
-    text(CLUB.name, hx, 35, f.b, 9, { color: MUT, max: R - hx });
+    text(CLUB.upper, hx, 35, f.b, 9, { color: MUT, max: R - hx });
     if (title) text(title, hx, 47, f.r, 9, { color: MUT, max: R - hx });
     text(mo.title, L, 92, f.b, 28);
     text([`${mo.count} antrenman`, mo.races && `${mo.races} yarış`].filter(Boolean).join(" · "), R, 90, f.r, 11, { align: "right", color: MUT });

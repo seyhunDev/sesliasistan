@@ -34,6 +34,7 @@ import { NewVersionBar } from "@/features/pwa/NewVersionBar";
 import { Onboarding } from "@/features/onboarding/Onboarding";
 import { TryAssistant } from "@/features/onboarding/TryAssistant";
 import { SportGate } from "@/sports/SportGate";
+import { ClubGate } from "@/features/clubs/ClubGate";
 import { installTrail } from "@/lib/navTrail";
 import { NavProgress } from "@/components/ui/NavProgress";
 import { OpenTimer } from "@/components/ui/OpenTimer";
@@ -113,6 +114,7 @@ export default function AppLayout({ children }) {
                   {!live && <Onboarding />}
                   {!live && <TryAssistant />}
                   {!live && <SportGate />}
+                  {!live && <ClubGate />}
                   <TimerSound />
                   <BilgiSync />
                   <AntTemizle />
