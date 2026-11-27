@@ -1,8 +1,8 @@
-Commit: 9e6cea7 · Hava sayfası Sahne tasarımına geçti (#1619)
-Zaman: 2026-11-27-1050 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/45959157413
+Commit: 1d2f45d · Tanıtım: simülatör sahneleri yeni Velora Sailing tasarımıyla (#1620)
+Zaman: 2026-11-27-1116 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/45962035303
 
-TAM TEST · 27.11.2026 10:32:51
+TAM TEST · 27.11.2026 10:57:51
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -21,7 +21,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1291/1315 geçti · 24 kalan · 1065 sn
+SONUÇ: 1291/1315 geçti · 24 kalan · 1124 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
