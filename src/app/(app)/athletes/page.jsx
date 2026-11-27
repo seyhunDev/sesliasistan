@@ -172,7 +172,7 @@ function AthleteList() {
             </button>
           </div>
           {list.length === 0 ? (
-            <p className="mt-4 text-center text-[0.875rem] text-mut">Eşleşen sporcu yok</p>
+            <p className="mt-4 text-center text-[0.875rem] text-mut">{all.length ? "Eşleşen sporcu yok" : "Henüz sporcu yok"}</p>
           ) : (
             <ul className="card-grid divide-y divide-line overflow-hidden rounded-[1.25rem] border border-line bg-card">
               {list.map((a) => {

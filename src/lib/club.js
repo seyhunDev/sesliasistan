@@ -8,7 +8,7 @@ export const CLUB_FIELDS = [
   ["name", "Kulüp adı"],
   ["short", "Kısa ad (DYK)"],
   ["tyfName", "TYF kaydındaki adı"],
-  ["tfId", "Federasyon kulüp no"],
+  ["tfId", "GSB kulüp no"],
   ["city", "İli"],
   ["district", "İlçesi"],
   ["web", "Web sitesi"],
@@ -61,22 +61,22 @@ export const clubIdOf = (name) =>
     .join("-")
     .slice(0, 60);
 
-// Toplu içeri alma (Admin › Kulüpler › Listeyi içeri al; TYF resmi listesi gelince): JSON dizi ya da satır satır
-// "no; ad; il; ilçe" (ayraç ; ya da sekme). Dönüş [{ id, name, tfId, city, district }]; adı olmayan satır atılır.
+// Toplu içeri alma (Admin › Kulüpler › Listeyi içeri al; TYF portalındaki kulüp listesi, kimlik "GSB Kulüp No" 01-01-00118): JSON dizi
+// ({ gsb|tfId|no, name|ad, il, ilce }) ya da satır satır "no; ad; il; ilçe" (ayraç ; ya da sekme; no yoksa "ad; il; ilçe"). Dönüş [{ id, name, tfId, city, district }]; adı olmayan satır atılır.
 // Aynı federasyon no ya da aynı ad listede varsa o kaydın kimliği kullanılır (üstüne yazılır, kopya açılmaz).
 export function parseClubImport(text, list = []) {
   const t = String(text || "").trim();
   let rows = [];
   if (t.startsWith("[")) {
     try {
-      rows = JSON.parse(t).map((r) => ({ tfId: r.tfId ?? r.id ?? r.no, name: r.name ?? r.ad, city: r.city ?? r.il, district: r.district ?? r.ilce }));
+      rows = JSON.parse(t).map((r) => ({ tfId: r.gsb ?? r.tfId ?? r.no, name: r.name ?? r.ad, city: r.city ?? r.il, district: r.district ?? r.ilce }));
     } catch {
       return [];
     }
   } else
     rows = t.split(/\r?\n/).map((l) => {
       const p = l.split(/;|\t/).map((x) => x.trim());
-      return /^\d+$/.test(p[0] || "") ? { tfId: p[0], name: p[1], city: p[2], district: p[3] } : { name: p[0], city: p[1], district: p[2] };
+      return /^\d[\d-]*$/.test(p[0] || "") ? { tfId: p[0], name: p[1], city: p[2], district: p[3] } : { name: p[0], city: p[1], district: p[2] };
     });
   const byTf = new Map((list || []).filter((c) => c.tfId).map((c) => [String(c.tfId), c.id]));
   const byKey = new Map((list || []).flatMap((c) => [[clubKey(c.name), c.id], [clubKey(c.tyfName), c.id]]).filter(([k]) => k));

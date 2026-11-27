@@ -154,6 +154,7 @@ export default function SettingsPage() {
   if (h.preview) return <PersonSettings profile={{ ...profile, role: "staff", kind: h.kind, coach: false }} n={n} />;
   if (profile.role !== "owner") return <PersonSettings profile={profile} n={n} />;
 
+  // Herkese açık uygulama (2026-11-27): Durum (uygulamanın Gemini/Firebase/Netlify harcaması) ve Geliştirici yalnız Velora ana hesabında.
   // Yeni düzen (örnek velora-tarama/ayarlar.html, Seyhun 2026-11-25 "yap"; 2026-11-26 grafikli Durum, dik iPad 52rem + 2 sütun): en üstte Durum kartları; Kişiler ve hesaplar ayrı grup;
   // Geliştirici en altta, sürüm sayfanın sonunda tek satır. Kalkanlar (gizli, silinmedi): Ana sayfada yarışlar / yarış kısayolu
   // (yarışlar artık hep görünür), ayrı Yapay zeka kullanımı, Açılış süresi, Telefondaki veriler ve Yayın satırları (kartlara taşındı).
@@ -163,7 +164,7 @@ export default function SettingsPage() {
     <main className={`sahne-pg ${liveHead.variable} wide mx-auto max-w-[30rem] px-5 md:max-w-[52rem] md:px-8 pb-[calc(3rem+env(safe-area-inset-bottom))]`}>
       <Top profile={profile} label="Ana hesap" />
       <Body>
-        <Durum />
+        {admin && <Durum />}
 
         <Sec title="Görünüm">
           <SizeRow />
@@ -209,6 +210,7 @@ export default function SettingsPage() {
           <Row title="Çıkış yap" danger onClick={() => logout()} />
         </Sec>
 
+        {admin && (
         <Sec title="Geliştirici">
           <Row title="Testler" href="/settings/tests" />
           <AndroidApkRow />
@@ -224,6 +226,7 @@ export default function SettingsPage() {
             </Group>
           </SheetRow>
         </Sec>
+        )}
 
         {ver && <p className="pb-2 text-center text-[0.75rem] text-mut">Sürüm {ver}</p>}
       </Body>

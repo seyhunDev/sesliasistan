@@ -9,3 +9,8 @@
 
 - TYF'nin resmi kulüp numaraları bulunursa "Listeyi içeri al" ile girilecek.
 - Yalnız hazır listede olan (veritabanı kaydı olmayan) kulübü Admin'den silmek bir şey değiştirmez; gerekirse "gizle" eklenir.
+
+## Nerede kaldım (2)
+
+- Yeni kullanıcı denetimi (yerel emülatörde uçtan uca): kayıt, tanıtım, kulüp sorusu, plan ekleme, sporcu ekleme, sporcuya hesap açma, sporcu girişi çalışıyor. Düzeltilenler: normal kullanıcının Ayarlar'ında Durum (uygulamanın harcamaları) ve Geliştirici bölümü yok (yalnız Velora ana hesabı); boş sporcu listesinde "Henüz sporcu yok"; sporcu ekleme yazılarında "kulüp" yerine "sporcu listen".
+- Kulüp no alanı "GSB kulüp no" (TYF portalı, biçim 01-01-00118); Listeyi içeri al bu biçimi ve JSON'da `gsb` alanını tanır.
