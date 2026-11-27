@@ -308,7 +308,7 @@ function PtRow({ label, pt, manual, onSave, onAuto, offLabel = "Otomatik" }) {
     setOpen(false);
   };
   return (
-    <div className="bzy-pt">
+    <div className="bzy-pkr">
       <button type="button" className="bzy-fr" onClick={() => (setV(fmtPt(pt)), setOpen((x) => !x))}>
         <b>{label}</b>
         <span className={`num${pt && !manual && onAuto ? " auto" : ""}`}>{pt ? fmtPt(pt) : "—"}</span>
