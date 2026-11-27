@@ -1151,7 +1151,7 @@ export function BilgiAdmin() {
   const names = [...new Set([antAd, yaris.data?.race?.name?.slice(0, 30), "Antrenman"].filter(Boolean))];
   return (
     <main className="bzy-app" aria-label="Bilgi ekranı yönetimi" data-open={open && !izK ? "1" : undefined} data-mini={mini ? "1" : undefined}>
-      <TekneMap boats={izK ? iz.boats : liveBoats} tracks={izK ? iz.tracks : null} course={course.has ? course : null} talk={izK ? "" : talk?.dev || ""} full api={mapApi} onPen={izK ? null : unPen} />
+      <TekneMap boats={izK ? iz.boats : liveBoats} tracks={izK ? iz.tracks : null} course={course.has ? course : null} talk={izK ? "" : talk?.dev || ""} full api={mapApi} onPen={izK ? null : unPen} me={!izK} wind={Number.isFinite(b?.parkur?.wind) ? b.parkur.wind : null} />
       {izK && <IzPanel k={izK} iz={iz} onClose={() => setIzK(null)} />}
       {!izK && talk && !liveBoats.some((x) => x.id === talk.dev && Number.isFinite(x.lat)) && (
         <div className="bzy-talk" role="status">

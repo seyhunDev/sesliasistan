@@ -1013,3 +1013,27 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
   .bzy-kpg { grid-template-columns: repeat(auto-fill, minmax(7rem, 1fr)); }
   .bzy-pga { grid-template-columns: repeat(auto-fill, minmax(5.75rem, 1fr)); }
 }
+
+/* Yönet haritası tekneler (Seyhun 2026-11-27, örnek MMDJDf6thqn7VwVuhefoLg): nokta yerine Optimist çizimi, yönüne dönük; teknenin ortası
+   konumda (alttaki negatif pay). Uzaklaşınca (.sm) yönlü küçük ok, ad yalnız cezalı ya da konuşan teknede. Sen: büyük beyaz bot, mavi halka. */
+.tkm-b { display: none; }
+.tkm.boat > i { display: none; }
+.tkm.boat .tkm-b { display: block; position: relative; width: 3.25rem; height: 3.25rem; margin-bottom: -1.625rem; border-radius: 999px; transform-origin: 50% 50%; }
+.tkm-b svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.tkm.boat.old .tkm-b { filter: grayscale(1); }
+.tkm.boat[data-pen]:not([data-pen=""]) .tkm-b { background: rgba(255, 90, 60, .3); }
+.tkm.boat[data-pen="fd"] .tkm-b { background: rgba(255, 214, 10, .3); }
+.tkm.boat.talk .tkm-b::after { content: ""; position: absolute; inset: -0.25rem; border-radius: 999px; border: 3px solid var(--lime, #16a34a); animation: bz-pr 1.2s ease-out infinite; }
+.tkm.boat.sm .tkm-b { width: 1.125rem; height: 1.125rem; margin-bottom: -0.5625rem; filter: drop-shadow(0 0 1px #fff) drop-shadow(0 0 1px #fff); }
+.tkm.boat.sm .tkm-b svg { display: none; }
+.tkm.boat.sm .tkm-b::before { content: ""; position: absolute; inset: 0; background: var(--bc, #5b8cff); clip-path: polygon(50% 0, 92% 92%, 50% 70%, 8% 92%); }
+.tkm.boat.sm[data-pen]:not([data-pen=""]) .tkm-b::before { background: var(--pen, #ff5a3c); }
+.tkm.boat.sm[data-pen=""]:not(.talk) .tkm-l, .tkm.boat.sm:not([data-pen]):not(.talk) .tkm-l { display: none; }
+.tkm-me { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; pointer-events: none; z-index: 6; }
+.tkm-me .tkm-l { background: #2f7dff; color: #fff; }
+.tkm-mr { position: relative; display: grid; place-items: center; width: 4.25rem; height: 4.25rem; margin-bottom: -2.125rem; border-radius: 999px; background: rgba(47, 125, 255, .14); border: 1.5px solid rgba(47, 125, 255, .55); }
+.tkm-mr::after { content: ""; position: absolute; inset: -0.125rem; border-radius: 999px; border: 2.5px solid #2f7dff; animation: bz-pr 2s ease-out infinite; }
+.tkm-mb { display: block; width: 1.75rem; height: 3.25rem; transform-origin: 50% 50%; }
+.tkm-mb svg { display: block; width: 100%; height: 100%; }
+.tkm-me.sm .tkm-mr { width: 2.75rem; height: 2.75rem; margin-bottom: -1.375rem; }
+.tkm-me.sm .tkm-mb { width: 1.125rem; height: 2.125rem; }
