@@ -15,6 +15,8 @@ import { saveLib, similarGroups } from "./fitnessData";
 import { useFitLib } from "./useFitLib";
 import { PosterImport } from "./PosterImport";
 import { FitModels } from "./FitModels";
+import { animTodo, withAnim } from "@/lib/fitness/animList";
+import { authFetch } from "@/lib/authFetch";
 
 // Hareketler: kulübün hareket kütüphanesi (programlarda geçen her hareket bir kez, numarasıyla). Harekete eklenen
 // fotoğraf, video ve YouTube bağlantısı o hareketin geçtiği bütün programlarda ve sporcuların antrenmanlarında görünür.
@@ -32,6 +34,29 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
   const [pick, setPick] = useState(false);
   const [only, setOnly] = useState("");
   const [poster, setPoster] = useState(false); // Afişten: bir afişten her hareketin fotoğrafı
+  const [animBusy, setAnimBusy] = useState(""); // Animasyonlar: hazır animasyonları al (animList.js)
+  // Hazır animasyonlar (Higgsfield, animList.js): sunucu indirip Storage'a yazar, harekete animasyon olarak eklenir; alınan tekrar alınmaz
+  const animTodoList = useMemo(() => animTodo(lib), [lib]);
+  const takeAnims = async () => {
+    const todo = animTodoList;
+    if (!todo.length || animBusy || !orgId) return;
+    if (!(await confirmAsk({ title: `${todo.length} animasyon alınsın mı?`, text: "Hazır hareket videoları ilgili hareketlere eklenir; eski animasyonun yerine geçer.", yes: "Al", danger: false }))) return;
+    let ok = 0;
+    for (const [i, { it, anim }] of todo.entries()) {
+      setAnimBusy(`${i + 1}/${todo.length}`);
+      try {
+        const r = await authFetch("/api/fitness-anim", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "import", orgId, id: anim.id }) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok || !j.meta) throw new Error(j.error || "Animasyon alınamadı");
+        await setMedia(it, (cur) => ({ yt: cur.yt, media: withAnim(cur.media, j.meta) }));
+        ok++;
+      } catch (x) {
+        toast(`${anim.name}: ${x instanceof TypeError ? "bağlantı kurulamadı" : x.message}`);
+      }
+    }
+    setAnimBusy("");
+    if (ok) toast(`${ok} animasyon eklendi`);
+  };
   useEffect(() => {
     if (!open) return undefined;
     const prev = document.body.style.overflow;
@@ -167,7 +192,7 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
             <Icon name="plus" className="size-6" />
           </button>
         </div>
-        <div className="mt-2 flex gap-2">
+        <div className="mt-2 flex flex-wrap gap-2">
           {[
             ["", `Hepsi ${all.length}`],
             ["v", "Fotoğraflı"],
@@ -183,6 +208,11 @@ export function ExerciseLibrary({ open, onClose, orgId, progs = [] }) {
           <button type="button" onClick={() => setPoster(true)} className="h-9 rounded-full bg-card px-3.5 text-[0.8125rem] font-semibold text-acc ring-1 ring-line">
             Afişten
           </button>
+          {(animTodoList.length > 0 || animBusy) && (
+            <button type="button" disabled={!!animBusy} onClick={takeAnims} className="h-9 rounded-full bg-acc px-3.5 text-[0.8125rem] font-semibold text-white">
+              {animBusy || `Animasyonlar ${animTodoList.length}`}
+            </button>
+          )}
         </div>
       </div>
       <div className="mx-auto max-w-[30rem] px-4 pb-[max(2rem,env(safe-area-inset-bottom))]">
