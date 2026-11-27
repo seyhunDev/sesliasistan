@@ -275,7 +275,7 @@ export function WindChart({ rows, nowH, onOpen, obs = [], radar = null }) {
             const col = b.obs ? "var(--wx-obs)" : windColor((b.wind + b.gust) / 2);
             return (
               <span key={b.h} className="flex min-w-0 flex-1 flex-col items-center">
-                <b className="num flex items-center gap-1 text-[0.8125rem] font-semibold" style={{ color: col }}>
+                <b className="num flex items-center gap-0.5 whitespace-nowrap text-[clamp(0.6875rem,3.1vw,0.8125rem)] font-semibold" style={{ color: col }}>
                   <WindArrow dir={b.dir} size={13} color={col} />
                   {Math.round(b.wind)}–{Math.round(b.gust)}
                 </b>
