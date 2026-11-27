@@ -8,7 +8,7 @@ import { Sheet } from "@/components/ui/Sheet";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { canSeeAthletes } from "@/features/athletes/access";
 import { dikiliAuth, dikiliDb } from "@/features/athletes/dikili";
-import { DikiliLogin, useDikiliUser } from "@/features/athletes/Connect";
+import { DikiliLogin } from "@/features/athletes/Connect";
 import { authFetch } from "@/lib/authFetch";
 import { COPY_CHUNK, athleteDigest, docDigest, encodeValue } from "@/lib/athleteCopy";
 import { Row } from "./ui";
@@ -62,9 +62,11 @@ function List({ title, items }) {
   ) : null;
 }
 
-export function MoveAthletesRow() {
+// link: Sporcular sayfasının altındaki küçük yazı düğmesi (Ayarlar'da satır). Kulüp oturumu sorulmaz: sporcular hangi yoldan
+// okunabiliyorsa (Sporcular sayfası açılıyorsa) taşıma da öyle okur; kulüp girişi yalnız okuma izni yoksa çıkar.
+export function MoveAthletesRow({ link = false }) {
   const { profile } = useAuth();
-  const club = useDikiliUser();
+  const [needLogin, setNeedLogin] = useState(false);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState("");
@@ -78,6 +80,7 @@ export function MoveAthletesRow() {
     setBusy(true);
     setErr("");
     setRes(null);
+    setNeedLogin(false);
     try {
       const data = await readClub(setStep);
       if (copy) {
@@ -95,7 +98,8 @@ export function MoveAthletesRow() {
         setDone(true);
       }
     } catch (e) {
-      setErr(e?.code === "permission-denied" ? "Kulüp hesabının sporcuları okuma izni yok." : e?.message || "Taşınamadı.");
+      if (e?.code === "permission-denied") setNeedLogin(true);
+      else setErr(e?.message || "Taşınamadı.");
     } finally {
       setBusy(false);
       setStep("");
@@ -106,13 +110,19 @@ export function MoveAthletesRow() {
 
   return (
     <>
-      <Row title="Sporcuları Velora'ya taşı" onClick={() => setOpen(true)} chevron />
+      {link ? (
+        <button type="button" onClick={() => setOpen(true)} className="underline underline-offset-2">
+          {"Velora'ya taşı"}
+        </button>
+      ) : (
+        <Row title="Sporcuları Velora'ya taşı" onClick={() => setOpen(true)} chevron />
+      )}
       <Sheet open={open} onClose={() => !busy && setOpen(false)} title="Sporcuları Velora'ya taşı">
         <div className="space-y-3 pb-2">
           {velora && !done ? (
             <p className="px-1 py-3 text-[0.9375rem]">{"Sporcular Velora'da. Ekleme, düzenleme ve yoklama buradan yapılır. Kulüpteki eski veri yedek olarak duruyor."}</p>
-          ) : club === null ? (
-            <DikiliLogin />
+          ) : needLogin ? (
+            <DikiliLogin onDone={() => run(true)} />
           ) : (
             <>
               <p className="px-1 text-[0.875rem] text-mut">{"Kulüpteki sporcular, geçmişleri, sınıflar ve antrenörler Velora'ya kopyalanır. Kulüpte hiçbir şey silinmez."}</p>
@@ -136,10 +146,10 @@ export function MoveAthletesRow() {
                 <p className="px-1 text-[0.9375rem] font-medium text-ok">{"Sporcular artık Velora'da. Bundan sonra her şey buradan yapılır."}</p>
               ) : (
                 <>
-                  <button type="button" disabled={busy || club === undefined} onClick={() => run(true)} data-press className="btn btn-primary h-12 w-full">
+                  <button type="button" disabled={busy} onClick={() => run(true)} data-press className="btn btn-primary h-12 w-full">
                     {res ? "Yeniden taşı" : "Taşı"}
                   </button>
-                  <button type="button" disabled={busy || club === undefined} onClick={() => run(false)} data-press className="btn btn-secondary h-11 w-full">
+                  <button type="button" disabled={busy} onClick={() => run(false)} data-press className="btn btn-secondary h-11 w-full">
                     Yalnız karşılaştır
                   </button>
                 </>
