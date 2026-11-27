@@ -436,7 +436,7 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, o
       )}
       {mode === "uzman" && (
         <div className="mt-2">
-          <UzmanIstek orgId={me?.orgId} forUid={who} forName={whoName} spor={who ? f.sport || "" : ""} />
+          <UzmanIstek orgId={me?.orgId} forUid={who} forName={whoName} spor={who ? f.sport || "" : ""} yas={Number(f.age) || 0} />
         </div>
       )}
       {mode === "file" && (

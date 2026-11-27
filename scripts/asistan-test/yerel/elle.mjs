@@ -2734,7 +2734,7 @@ group("Fitness: program ayrıntıları ve şablon")([
     const a = FUZ.cleanIstek({ sure: 6, hedef: "x".repeat(400), paylas: { acik: true, turler: ["antrenman", "yemek", "sifre"] }, sporcuUid: "baskasi", durum: "kabul" });
     const b = FUZ.cleanIstek({ sure: 2, paylas: { acik: false, turler: ["antrenman"] } });
     const c = FUZ.cleanPaylas({ acik: true, turler: [] });
-    return a.sure === 6 && a.hedef.length === 300 && a.brans === "fitness" && a.paylas.acik && a.paylas.turler.join() === "antrenman,yemek" && !("sporcuUid" in a) && !("durum" in a) &&
+    return a.sure === 6 && a.hedef.length === 300 && a.brans === "fitness" && a.paylas.acik && a.paylas.turler.join() === "antrenman,yemek" && !("sporcuUid" in a) && !("durum" in a) && !("yas" in a) && FUZ.cleanIstek({ yas: "12", sehir: " İzmir " }).yas === 12 && FUZ.cleanIstek({ sehir: " İzmir " }).sehir === "İzmir" && !("yas" in FUZ.cleanIstek({ yas: 200 })) &&
       b.sure === 3 && !b.paylas.acik && !b.paylas.turler.length && !c.acik && FUZ.acikMi("bekliyor") && !FUZ.acikMi("iptal") && FUZ.durumYaz("") === "Uzman bekleniyor";
   })],
   ["hazır şablon rutin", F("Pzt 8 dk reset, Çrş nefes ve mobilite, Cmt ve Paz yelken sonrası 6 dk (saatler tam gün); Cuma 2 tur, hareketler arası 20 sn; hazırlıkta uzun dinlenme yok", () => {

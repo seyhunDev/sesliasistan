@@ -36,7 +36,10 @@ export function cleanPaylas(p) {
 // İstemciden gelen alanlar: yalnız bunlar kabul edilir, gerisi sunucuda (sporcuUid, by, durum, zaman)
 export function cleanIstek(b) {
   const sure = SURELER.includes(Number(b?.sure)) ? Number(b.sure) : 3;
-  return { brans: "fitness", spor: S(b?.spor, 24), sure, hedef: S(b?.hedef, 300), paylas: cleanPaylas(b?.paylas) };
+  // yas ve sehir yalnız biliniyorsa (Admin'deki eşleştirme puanı kullanır; 12 ve altına çocukla çalışan uzman)
+  const yas = Math.round(Number(b?.yas));
+  const sehir = S(b?.sehir, 40);
+  return { brans: "fitness", spor: S(b?.spor, 24), sure, hedef: S(b?.hedef, 300), paylas: cleanPaylas(b?.paylas), ...(yas >= 5 && yas <= 90 ? { yas } : {}), ...(sehir ? { sehir } : {}) };
 }
 
 export const durumYaz = (d) => DURUMLAR[d] || DURUMLAR.bekliyor;
