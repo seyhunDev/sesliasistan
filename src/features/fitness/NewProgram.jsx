@@ -10,6 +10,7 @@ import { AGE_GROUPS, DOWS, DOW_LONG, GOALS, LEVELS, PLACES, SPORTS, ageFrom, age
 import { bmiOf, bmiText } from "@/lib/fitness/forecast";
 import { todayStr } from "@/lib/utils/format";
 import { TEMPLATES } from "@/lib/fitness/templates";
+import { useOrtak } from "./useOrtak";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useFitLib } from "./useFitLib";
@@ -248,11 +249,14 @@ export function ProfileFields({ f, set, withGoal = true, withPlace = true }) {
 function Duz({ children }) {
   return <div className="pb-6">{children}</div>;
 }
-export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, onTemplate, busy, goal, athletes = [], forUid = "", error = "", inline = false, uzmanAd = "", ek = "", hafta = 0 }) {
+export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, onTemplate, busy, goal, athletes = [], forUid = "", error = "", startTpl = "", inline = false, uzmanAd = "", ek = "", hafta = 0 }) {
   // "" = üç yol (Kendim hazırla, Hazır program, Uzmanla çalış); "ai" ve "file" "⋯ Diğer yollar"da (Seyhun 2026-11-27)
-  const [mode, setMode] = useState("");
+  const [mode, setMode] = useState(startTpl ? "tpl" : "");
   const [others, setOthers] = useState(false);
-  const [tpl, setTpl] = useState("");
+  const [tpl, setTpl] = useState(startTpl);
+  // Hazır programlar: koddakiler + Velora'nın yayınladıkları (herkes görür; useOrtak)
+  const ortak = useOrtak();
+  const tplList = ortak.hazir;
   const [timed, setTimed] = useState(false);
   const [times, setTimes] = useState({});
   const { profile: me, isOwner } = useAuth();
@@ -342,7 +346,8 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, o
   // Hazır program: önce hareket fotoğrafları kütüphaneye (yalnız fotoğrafı olmayanlar), sonra düzenleme ekranı
   const addTpl = async (id) => {
     if (seed) return;
-    if (isOwner) {
+    // Fotoğraflar yalnız Velora sahibinin kütüphanesine yüklenir; diğerleri Velora hareketlerinin fotoğrafını kullanır
+    if (isOwner && ortak.velora && TEMPLATES.some((t) => t.id === id)) {
       try {
         const r = await seedTemplatePhotos({ id, orgId: me?.orgId, lib, addMany, onProg: setSeed });
         const n = r.added + r.drawn;
@@ -353,7 +358,7 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, o
         setSeed("");
       }
     }
-    onTemplate?.(id, f, { ...pre, times: timed ? times : {} });
+    onTemplate?.(id, f, { ...pre, times: timed ? times : {}, tpl: tplList.find((t) => t.id === id) });
   };
   // Eksik seçim: düğmenin üstünde yazar (önceden düğme yalnız soluk kalıyordu)
   const missing = !sorted.length ? "En az bir gün seç." : !f.goal ? "Hedef seç." : !f.place ? "Nerede çalışılacağını seç." : !time ? "Saati seç." : who && !f.age ? "Sporcunun yaşını seç." : "";
@@ -482,7 +487,7 @@ export function NewProgram({ open, onClose, profile, onAsk, onBlank, onImport, o
       {mode === "tpl" && (
         <Box title="Hazır programlar" note={who ? `${whoName} için` : ""}>
           <div className="space-y-2">
-            {TEMPLATES.map((t) => {
+            {tplList.map((t) => {
               const on = tpl === t.id;
               return (
                 <div key={t.id} className={`rounded-2xl p-3 ${on ? "bg-acc/[.07] ring-1 ring-acc" : "bg-bg"}`}>

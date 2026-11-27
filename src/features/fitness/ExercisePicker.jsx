@@ -6,11 +6,17 @@ import { Sheet } from "@/components/ui/Sheet";
 import { EQUIP, EXERCISES, GROUPS, fold } from "@/lib/fitness/exercises";
 import { isCustomKey, libList, nameKey } from "@/lib/fitness/library";
 import { useFitLib } from "./useFitLib";
+import { useOrtak } from "./useOrtak";
 
 // Hareket seç: arama + kas grubu; dokununca seçilir. Liste uygulamanın içinde + kulübün kendi hareketleri (kütüphane).
 // Bulunamazsa yazılan adla yeni hareket eklenir (kütüphaneye numarasıyla girer). onPick({ id, name, custom })
 export function ExercisePicker({ open, onClose, onPick }) {
   const { lib } = useFitLib();
+  // Velora sahibi olmayan hesapta iki sekme (Seyhun 2026-11-27): Velora'nın hareketleri (fotoğraf, animasyon, açıklamayla) ve Benim
+  const ortak = useOrtak();
+  const vList = ortak.velora ? [] : libList(ortak.lib).filter((e) => e.media?.length || e.how);
+  const [tab, setTab] = useState("v");
+  const velora = vList.length > 0 && tab === "v";
   const [q, setQ] = useState("");
   const [g, setG] = useState("");
   const f = fold(q);
@@ -43,6 +49,26 @@ export function ExercisePicker({ open, onClose, onPick }) {
         <Icon name="search" className="size-4 text-mut" />
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Ara: squat, şınav, plank…" className="h-11 w-full min-w-0 bg-transparent text-[0.9375rem] outline-none" />
       </label>
+      {vList.length > 0 && (
+        <div className="mt-3 grid grid-cols-2 rounded-xl bg-bg p-[3px]">
+          {[
+            ["v", "Velora hareketleri"],
+            ["b", "Benim"],
+          ].map(([k, l]) => (
+            <button key={k} type="button" aria-pressed={tab === k} onClick={() => setTab(k)} className={`h-10 rounded-[0.625rem] text-[0.875rem] font-semibold ${tab === k ? "bg-acc text-[#111]" : "text-mut"}`}>
+              {l}
+            </button>
+          ))}
+        </div>
+      )}
+      {velora ? (
+        <ul className="mt-2 divide-y divide-line">
+          {vList
+            .filter((e) => !f || fold(e.name).includes(f) || nameKey(e.name) === nk)
+            .map((e) => row(`v${e.key}`, e.name, [e.media?.some((m) => m.kind === "photo") && "fotoğraf", e.media?.some((m) => m.a) && "animasyon", e.how && "açıklama"].filter(Boolean).join(", "), 0, { id: e.ex || "", name: e.name, custom: !e.ex, velora: e }))}
+        </ul>
+      ) : (
+      <>
       <div className="-mx-5 mt-3 flex gap-2 overflow-x-auto px-5 pb-1 [scrollbar-width:none]">
         {["", ...GROUPS].map((x) => (
           <button key={x || "all"} type="button" onClick={() => setG(x)} className={`shrink-0 rounded-full px-3 py-1.5 text-[0.8125rem] font-medium ${g === x ? "bg-acc text-white" : "bg-bg"}`}>
@@ -66,6 +92,8 @@ export function ExercisePicker({ open, onClose, onPick }) {
         {list.map((e) => row(e.id, e.name, `${e.group} · ${EQUIP[e.equip]}`, nos[e.id]?.no, e))}
         {!list.length && !own.length && !q.trim() && <li className="py-6 text-center text-[0.875rem] text-mut">Bulunamadı</li>}
       </ul>
+      </>
+      )}
     </Sheet>
   );
 }
