@@ -205,6 +205,36 @@ button{font:inherit;color:inherit}
 /* Uygulama içi görünüm (?app, Velora ilk girişi 2026-11-27): logo yok, sağ üstte Atla; sonda Katıl/Giriş yerine uygulamaya "bitti" haberi */
 .skip{display:none;border:0;background:var(--lime,#d4ff3a);color:#0f0f11;border-radius:99px;height:34px;padding:0 16px;font:700 .85rem var(--f-text);cursor:pointer}
 .inapp .brand{display:none}.inapp .cnt{margin-left:0;margin-right:auto}.inapp .skip{display:block}
+
+/* Yerleşim 2 (Seyhun 2026-11-27): üstte yalnız başlık, cihaz büyük; logo solda altta büyük ve soluk (zemine gömülü);
+   ilerleme çizgisi, ses ve durdur altta tek sırada. */
+.top{top:auto;bottom:0;align-items:flex-end;gap:10px;padding:0 var(--gr) calc(10px + env(safe-area-inset-bottom,0px)) var(--gx)}
+.top .seg{position:static;flex:1;min-width:0;padding:0 6px 13px 0;align-self:center}
+.top .seg button{padding-top:6px}
+.cnt{display:none}
+.vo{margin-left:0}
+.brand{position:absolute;z-index:-1;left:calc(var(--gx) - 1.5vmin);bottom:calc(46px + env(safe-area-inset-bottom,0px));display:flex;align-items:center;gap:1.2vmin;font:800 clamp(3.4rem,11vmin,7.5rem)/.8 var(--f-head);letter-spacing:.02em;text-transform:uppercase;color:#fff;opacity:.07;pointer-events:none;transition:opacity .6s}
+.brand svg{width:clamp(4rem,13vmin,8.5rem);height:auto;aspect-ratio:1;border-radius:24%;box-shadow:none;filter:grayscale(1) contrast(1.4)}
+.app.edge .brand{opacity:0}
+.app.edge .top .seg{visibility:hidden}
+.ft{padding-top:calc(clamp(18px,4vh,40px) + env(safe-area-inset-top,0px));padding-bottom:calc(56px + env(safe-area-inset-bottom,0px))}
+.ft .tx{align-self:start;padding-top:clamp(0px,6vh,64px)}
+@media (orientation:portrait){
+  .ft{padding-top:calc(14px + env(safe-area-inset-top,0px));gap:clamp(10px,1.8vh,20px)}
+  .ft .tx{padding-top:0}
+  .kk{display:none}
+  .tx h2{margin-top:0}
+  .ft .stage{align-self:stretch}
+}
+@media (orientation:portrait) and (max-width:700px){
+  .tx h2{font-size:clamp(2rem,9vw,3.6rem)}
+  .steps{margin-top:8px;min-height:2.9em}
+  .steps li{grid-template-columns:1fr;font-size:.92rem;line-height:1.35;color:#b4b4ba}
+  .steps li b{display:none}
+  .steps li span{padding-top:0}
+  .ghost{display:none}
+}
+.inapp .brand{display:none}
 </style>
 
 </head>
@@ -212,8 +242,9 @@ button{font:inherit;color:inherit}
 <div class="app" id="app" lang="tr">
   <div class="wind" aria-hidden="true"></div>
   <div class="glow" id="glow" aria-hidden="true"></div>
+    <div class="brand" aria-hidden="true"><svg viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" rx="23" fill="#0f0f11"/><circle cx="50" cy="52" r="30" fill="#d4ff3a"/><path d="M26 19 L35.6 19 C 42 35, 46 47.8, 50 55.8 L59.6 19 L74 19 L56.4 67 L43.6 67 Z" fill="#0f0f11"/></svg><span>Velora</span></div>
   <header class="top">
-    <div class="brand"><svg viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" rx="23" fill="#0f0f11"/><circle cx="50" cy="52" r="30" fill="#d4ff3a"/><path d="M26 19 L35.6 19 C 42 35, 46 47.8, 50 55.8 L59.6 19 L74 19 L56.4 67 L43.6 67 Z" fill="#0f0f11"/></svg><span>Velora</span></div>
+    <nav class="seg" id="seg" aria-label="Özellikler"></nav>
     <span class="cnt" id="cnt" aria-hidden="true"></span>
     <button type="button" class="pp vo" id="vo" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path class="w1" d="M16 8.5a4.5 4.5 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="w2" d="M18.5 6a8 8 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="x" d="M16 9l5 6M21 9l-5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Seslendirme</span></button>
     <button type="button" class="pp" id="pp" aria-label="Durdur">❚❚</button>
@@ -221,7 +252,6 @@ button{font:inherit;color:inherit}
   </header>
   <main id="scenes"></main>
   <div class="wipe" id="wipe" aria-hidden="true"></div>
-  <nav class="seg" id="seg" aria-label="Özellikler"></nav>
 </div>
 
 <script>
@@ -263,12 +293,13 @@ const F=[
     {t:0,y:'Bugünün rüzgârı saat saat: hız, yön, yağmur.',say:'Bugünün rüzgârı saat saat: hızı, yönü ve yağmur.'},
     {t:3,y:'Bir güne dokun, o günün havası açılsın.',say:'Bir güne dokun; o günün havası açılır.'},
     {t:5,y:'O günün planları hemen altında.',say:'O günün planları da hemen altında.'}]},
-  {k:'Fitness',v:'fit',s:0,e:17.1,r:1.5,h:'Sporcuya *fitness* programı.',st:[
+  {k:'Fitness',v:'fit',s:0,e:25.1,r:1.5,h:'Sporcuya *fitness* programı.',st:[
     {t:0.3,y:'Sporcunu seç, + Program\'a dokun.',say:'Sporcunu seç ve program ekle.'},
-    {t:3.8,y:'Hazır programı seç ya da yapay zekayla hazırla.',say:'Hazır bir program seç, ya da yapay zekayla hazırlat.'},
-    {t:5.6,y:'Program açılır: günler, saatler ve hareketler hazır.',say:'Program açılır; günler, saatler ve hareketler hazır.'},
-    {t:10.4,y:'Kaydet: bütün antrenmanlar sporcunun takvimine gider.',say:'Kaydet; bütün antrenmanlar sporcunun takvimine gider.'},
-    {t:13.6,y:'Sporcunun haftasını gün gün takip et.'}]},
+    {t:4.2,y:'Uzmanla çalış: programı uzman antrenör hazırlar, planlarını paylaşmayı sporcu seçer.',say:'Dilersen uzman bir antrenörle çalış; sporcu, planlarını paylaşıp paylaşmayacağını kendisi seçer.'},
+    {t:9.8,y:'Ya da hazır programı seç: saat tam gün ya da gün gün.',say:'Ya da hazır bir program seç; saat tam gün, istersen gün gün.'},
+    {t:14.2,y:'Program açılır: günler, saatler ve hareketler hazır.',say:'Program açılır; günler, saatler ve hareketler hazır.'},
+    {t:18.2,y:'Kaydet: bütün antrenmanlar sporcunun takvimine gider.',say:'Kaydet; bütün antrenmanlar sporcunun takvimine gider.'},
+    {t:21.4,y:'Sporcunun haftasını gün gün takip et.'}]},
   {k:'Sporcu',v:'sporcu',s:0,e:19.1,r:1.4,h:'Sporcu *kendi* *ekranından* takip eder.',st:[
     {t:0,y:'Sporcu uygulamayı açar: bugünün antrenmanı en üstte.',say:'Sporcu uygulamayı açtığında, bugünün antrenmanı en üstte.'},
     {t:5.6,y:'Haftasını gün gün görür, her günün hareketleri hazır.',say:'Haftasını gün gün görür; her günün hareketleri hazır.'},
