@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<base href="/tanitim/">
+<title>Velora Kısa Tanıtım</title>
+<meta name="description" content="Velora'nın yedi özelliği bir dakikada: antrenman, yarış, denizde yönetim, video, hava, fitness ve simülatör.">
+<meta property="og:title" content="Velora Kısa Tanıtım">
+<meta property="og:description" content="Velora'nın yedi özelliği bir dakikada: antrenman, yarış, denizde yönetim, video, hava, fitness ve simülatör.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#0b0b0c">
+<link rel="icon" href="/favicon.ico">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Velora kısa tanıtım (Seyhun 2026-11-27 "5-6 özellik, kısa, modern, profesyonel"). Sahne dili: siyah zemin, limon vurgu, dar kalın başlık. Tek koyu görünüm (bilerek). */
+:root{
+  --bg:#09090a; --card:#151517; --line:#26262a; --fg:#f4f4f2; --mut:#a2a2a8; --lime:#d4ff3a; --ink:#0f0f11;
+  --f-head:"Barlow Condensed","Arial Narrow",Impact,sans-serif; --f-text:Inter,-apple-system,"Segoe UI",system-ui,sans-serif;
+  --gx:max(16px,env(safe-area-inset-left,0px)); --gr:max(16px,env(safe-area-inset-right,0px));
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{overflow:hidden;background:var(--bg);color:var(--fg);font-family:var(--f-text);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+
+.app{position:relative;height:100%;overflow:hidden;isolation:isolate}
+/* rüzgâr çizgileri: arka planda yavaşça akan ince çizgiler */
+.wind{position:absolute;inset:-20%;z-index:-2;opacity:.55;background:
+  repeating-linear-gradient(115deg,transparent 0 46px,rgba(255,255,255,.028) 46px 47px),
+  repeating-linear-gradient(115deg,transparent 0 140px,rgba(212,255,58,.035) 140px 141px);
+  animation:wind 30s linear infinite}
+@keyframes wind{to{transform:translate3d(-141px,-66px,0)}}
+.glow{position:absolute;z-index:-1;width:70vmax;height:70vmax;right:-18vmax;top:-10vmax;border-radius:50%;background:radial-gradient(closest-side,rgba(212,255,58,.10),transparent 70%);transition:transform 1.4s cubic-bezier(.2,.8,.2,1)}
+
+/* üst çubuk */
+.top{position:absolute;z-index:5;left:0;right:0;top:0;display:flex;align-items:center;gap:12px;padding:calc(12px + env(safe-area-inset-top,0px)) var(--gr) 0 var(--gx)}
+.brand{display:flex;align-items:center;gap:10px;font:800 1.35rem/1 var(--f-head);letter-spacing:.04em;text-transform:uppercase}
+.brand svg{width:28px;height:28px;border-radius:8px;box-shadow:0 0 0 1px #2a2a2e}
+.cnt{margin-left:auto;margin-right:4px;font:700 1.05rem/1 var(--f-head);letter-spacing:.08em;color:var(--mut);font-variant-numeric:tabular-nums;transition:opacity .4s}
+.cnt b{color:var(--fg)}
+.pp{border:0;background:#19191b;box-shadow:inset 0 0 0 1px #2c2c31;border-radius:99px;height:34px;min-width:34px;padding:0 12px;font:600 .8rem var(--f-text);cursor:pointer}
+.pp:focus-visible,.seg button:focus-visible,.cta a:focus-visible,.again:focus-visible{outline:2px solid var(--lime);outline-offset:3px}
+
+/* alt bölüm çizgisi */
+.seg{position:absolute;z-index:5;left:0;right:0;bottom:0;display:flex;gap:6px;padding:0 var(--gr) calc(12px + env(safe-area-inset-bottom,0px)) var(--gx);transition:opacity .5s}
+.seg button{flex:1;min-width:0;border:0;background:none;padding:8px 0 0;cursor:pointer;text-align:left;display:flex;flex-direction:column;gap:7px}
+.seg span{display:block;position:relative;height:3px;border-radius:99px;background:#2a2a2e;overflow:hidden}
+.seg span i{position:absolute;inset:0 auto 0 0;width:0;background:var(--lime)}
+.seg .done span i{width:100%;background:#7d8f39}
+.seg small{font:600 .72rem/1 var(--f-text);letter-spacing:.06em;text-transform:uppercase;color:#6c6c72;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:color .3s}
+.seg .cur small{color:var(--fg)}
+@media (max-width:46rem){.seg small{display:none}}
+.app.edge .seg,.app.edge .cnt{opacity:0;pointer-events:none}
+
+/* sahneler */
+.sc{position:absolute;inset:0;visibility:hidden;pointer-events:none}
+.sc.on{visibility:visible;pointer-events:auto}
+
+/* açılış: kelimeler tek tek, sonra logo */
+.intro{display:grid;place-items:center;text-align:center}
+.flash{position:absolute;inset:0;display:grid;place-items:center}
+.flash b{grid-area:1/1;font:800 clamp(4rem,19vmin,12rem)/.9 var(--f-head);text-transform:uppercase;letter-spacing:.005em;opacity:0}
+.flash b.l{color:var(--lime)}
+.on .flash b{animation:fl .62s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(.2s + var(--j)*.6s)}
+.on .flash b:last-child{animation:fl2 1.25s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(.2s + var(--j)*.6s)}
+@keyframes fl{0%{opacity:0;transform:translateY(.25em) scale(.96);filter:blur(8px)}25%{opacity:1;transform:none;filter:none}80%{opacity:1}100%{opacity:0;transform:scale(1.04)}}
+@keyframes fl2{0%{opacity:0;transform:translateY(.25em);filter:blur(8px)}20%{opacity:1;transform:none;filter:none}78%{opacity:1}100%{opacity:0;transform:scale(1.06);filter:blur(4px)}}
+.logo{display:flex;flex-direction:column;align-items:center;gap:clamp(12px,2.4vh,22px);padding:0 24px}
+.logo .mk{width:clamp(72px,13vmin,124px);aspect-ratio:1;opacity:0}
+.logo .mk svg{width:100%;height:100%;border-radius:24%;box-shadow:0 20px 60px rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.1),0 0 80px rgba(212,255,58,.18)}
+.logo h1{margin:0;font:800 clamp(3.4rem,14vmin,8.5rem)/.85 var(--f-head);text-transform:uppercase;letter-spacing:.02em;display:flex}
+.logo h1 i{font-style:normal;display:inline-block;opacity:0}
+.logo p{margin:0;font:500 clamp(1rem,2.6vmin,1.4rem)/1.35 var(--f-text);color:#cfcfd3;opacity:0}
+.on .logo .mk{animation:mk 1s 2.75s cubic-bezier(.2,.9,.3,1.25) both}
+.on .logo h1 i{animation:ltr .6s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(3.05s + var(--j)*50ms)}
+.on .logo p{animation:up .7s 3.7s ease both}
+@keyframes mk{0%{opacity:0;transform:scale(.4) rotate(-14deg)}100%{opacity:1;transform:none}}
+@keyframes ltr{0%{opacity:0;transform:translateY(.5em);filter:blur(6px)}100%{opacity:1;transform:none;filter:none}}
+@keyframes up{0%{opacity:0;transform:translateY(12px)}100%{opacity:1;transform:none}}
+
+/* özellik sahnesi */
+.ft{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.7fr);align-items:center;gap:clamp(20px,4vw,64px);padding:calc(64px + env(safe-area-inset-top,0px)) var(--gr) calc(58px + env(safe-area-inset-bottom,0px)) calc(var(--gx) + clamp(0px,2vw,28px))}
+.tx{position:relative;min-width:0}
+.ghost{position:absolute;left:-.06em;top:50%;transform:translateY(-58%);z-index:-1;font:800 clamp(10rem,30vmin,22rem)/.8 var(--f-head);color:transparent;-webkit-text-stroke:1.5px rgba(255,255,255,.07);letter-spacing:-.02em;pointer-events:none;user-select:none}
+.on .ghost{animation:gh 7s ease-out both}
+@keyframes gh{0%{opacity:0;transform:translate(-30px,-58%)}15%{opacity:1}100%{opacity:1;transform:translate(0,-58%)}}
+.kk{display:inline-flex;align-items:center;gap:10px;font:700 .78rem/1 var(--f-text);letter-spacing:.18em;text-transform:uppercase;color:var(--lime)}
+.kk::before{content:"";width:26px;height:2px;background:var(--lime);transform-origin:left;transform:scaleX(0)}
+.on .kk::before{animation:sx .6s .15s cubic-bezier(.2,.8,.2,1) both}
+@keyframes sx{to{transform:none}}
+.tx h2{margin:14px 0 0;font:800 clamp(2.3rem,4.5vw,5rem)/.92 var(--f-head);text-transform:uppercase;letter-spacing:.005em;text-wrap:balance}
+.tx h2 .w{display:inline-block;overflow:hidden;vertical-align:top;padding-bottom:.04em}
+.tx h2 .w>span{display:inline-block;transform:translateY(105%)}
+.tx h2 em{font-style:normal;color:var(--lime)}
+.on .tx h2 .w>span{animation:wu .7s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(.25s + var(--j)*70ms)}
+@keyframes wu{to{transform:none}}
+.tx p{margin:16px 0 0;max-width:30rem;font:500 clamp(.98rem,1.5vw,1.15rem)/1.5 var(--f-text);color:#c9c9ce;opacity:0}
+.on .tx p{animation:up .7s .8s ease both}
+.chips{list-style:none;margin:20px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+.chips li{font:600 .85rem var(--f-text);padding:.5em .95em;border-radius:99px;background:#151517;box-shadow:inset 0 0 0 1px #2c2c31;color:#e8e8ea;opacity:0}
+.chips li:first-child{background:rgba(212,255,58,.1);box-shadow:inset 0 0 0 1px rgba(212,255,58,.4)}
+.on .chips li{animation:up .5s both;animation-delay:calc(1.1s + var(--j)*.12s)}
+
+/* cihaz: ölçüyü JS verir */
+.stage{position:relative;min-width:0;height:100%;display:grid;place-items:center;perspective:1600px}
+.dev{position:relative;background:#050506;box-shadow:0 0 0 1.5px #2e2e33,0 50px 90px -30px rgba(0,0,0,.95),0 0 120px -20px rgba(212,255,58,.12);opacity:0;transform:translateX(60px) rotateY(-14deg) scale(.96);transform-origin:left center}
+.on .dev{animation:dv 1.1s .1s cubic-bezier(.2,.8,.2,1) both,drift 8s 1.2s ease-in-out both}
+@keyframes dv{to{opacity:1;transform:rotateY(-5deg)}}
+@keyframes drift{from{transform:rotateY(-5deg)}to{transform:rotateY(-1deg) translateY(-6px)}}
+.dev.pd{border-radius:3.4%/4.9%}
+.dev.ph{border-radius:13%/6%}
+.dev .scr{position:relative;width:100%;height:100%;overflow:hidden;background:#0b0b0c}
+.dev.pd .scr{border-radius:1.6%/2.3%}
+.dev.ph .scr{border-radius:10%/4.7%}
+.dev video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.dev .bar{position:absolute;left:0;right:0;bottom:-18px;height:2px;border-radius:2px;background:#1d1d20;overflow:hidden}
+
+/* telefon dik: yazı üstte, cihaz altta */
+@media (orientation:portrait){
+  .ft{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);align-items:start;gap:clamp(14px,2.6vh,28px);padding-top:calc(58px + env(safe-area-inset-top,0px));padding-left:var(--gx)}
+  .tx h2{font-size:clamp(2.3rem,10.5vw,4.6rem)}
+  .tx p{margin-top:10px;font-size:clamp(.92rem,3.6vw,1.1rem)}
+  .chips{margin-top:12px}
+  .ghost{font-size:clamp(8rem,38vw,16rem);right:-.04em;left:auto}
+  .dev{transform-origin:center bottom;transform:translateY(50px) rotateX(10deg) scale(.96)}
+  @keyframes dv{to{opacity:1;transform:rotateX(3deg)}}
+  @keyframes drift{from{transform:rotateX(3deg)}to{transform:rotateX(0) translateY(-4px)}}
+}
+@media (orientation:portrait) and (max-width:700px){.chips{display:none}}
+@media (max-height:30rem){.chips{display:none}.tx p{display:none}}
+
+
+/* adımlar: kayıtla eş zamanlı, o anki adım parlak */
+.steps{list-style:none;margin:22px 0 0;padding:0;display:flex;flex-direction:column;gap:10px;max-width:30rem}
+.steps li{display:grid;grid-template-columns:30px 1fr;gap:12px;align-items:start;font:500 clamp(.95rem,1.45vw,1.12rem)/1.4 var(--f-text);color:#6f6f76;transition:color .35s,opacity .35s;opacity:0}
+.on .steps li{animation:up .5s both;animation-delay:calc(.7s + var(--j,0)*.08s)}
+.steps li b{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font:800 1rem/1 var(--f-head);background:#1b1b1e;box-shadow:inset 0 0 0 1px #2e2e33;color:#8b8b92;transition:background .35s,color .35s}
+.steps li span{padding-top:4px}
+.steps li.now{color:var(--fg)}
+.steps li.now b{background:var(--lime);color:var(--ink);box-shadow:0 0 0 5px rgba(212,255,58,.14)}
+.steps li.past{color:#9a9aa0}
+.steps li.past b{background:#26281d;color:var(--lime);box-shadow:none}
+/* telefon dik: yalnız o anki adım, kart gibi */
+@media (orientation:portrait) and (max-width:700px){
+  .steps{margin-top:12px;min-height:3.4em}
+  .steps li{display:none}
+  .steps li.now{display:grid;animation:cap .45s both}
+}
+@keyframes cap{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+/* seslendirme açıkken yazılar gider, ses anlatır */
+.app.voice .steps{display:none}
+.eq{display:none;gap:2px;align-items:flex-end;height:12px;margin-left:4px}
+.eq i{width:3px;height:30%;background:var(--lime);border-radius:2px}
+.app.voice .eq{display:inline-flex}
+.app.voice.talk .eq i{animation:eq .9s ease-in-out infinite}
+.eq i:nth-child(2){animation-delay:-.3s!important}.eq i:nth-child(3){animation-delay:-.6s!important}.eq i:nth-child(4){animation-delay:-.15s!important}
+@keyframes eq{0%,100%{height:25%}50%{height:100%}}
+.vo{display:inline-flex;align-items:center;gap:6px;margin-left:auto}
+.vo+.pp{margin-left:0}
+.vo svg{width:18px;height:18px}
+.vo .w1,.vo .w2{display:none}
+.vo[aria-pressed="true"]{background:var(--lime);color:var(--ink);box-shadow:none}
+.vo[aria-pressed="true"] .w1,.vo[aria-pressed="true"] .w2{display:inline}
+.vo[aria-pressed="true"] .x{display:none}
+@media (max-width:420px){.vo span{display:none}}
+
+/* geçiş: limon çizgi ekranı süpürür */
+.wipe{position:absolute;inset:0;z-index:4;pointer-events:none;background:linear-gradient(90deg,transparent 0 40%,var(--lime) 40% 41%,rgba(212,255,58,.12) 41% 60%,transparent 60%);transform:translateX(-100%)}
+.wipe.go{animation:wp .75s cubic-bezier(.6,0,.3,1) both}
+@keyframes wp{to{transform:translateX(100%)}}
+
+/* kapanış */
+.out{display:grid;place-items:center;text-align:center;padding:24px var(--gr) 24px var(--gx);overflow:auto}
+.out .in{display:flex;flex-direction:column;align-items:center;gap:clamp(12px,2.4vh,22px);max-width:46rem}
+.out .mk{width:clamp(64px,11vmin,104px);aspect-ratio:1;opacity:0}
+.out .mk svg{width:100%;height:100%;border-radius:24%;box-shadow:0 0 0 1px rgba(255,255,255,.1),0 0 80px rgba(212,255,58,.2)}
+.out h2{margin:0;font:800 clamp(3rem,11vmin,7.4rem)/.88 var(--f-head);text-transform:uppercase;text-wrap:balance}
+.out h2 em{font-style:normal;color:var(--lime)}
+.out .sub{margin:0;color:#cfcfd3;font:500 clamp(1rem,2.4vmin,1.3rem)/1.4 var(--f-text)}
+.out .list{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-wrap:wrap;justify-content:center;gap:6px 18px;font:700 clamp(.9rem,2vmin,1.1rem)/1 var(--f-head);letter-spacing:.1em;text-transform:uppercase;color:#8d8d93}
+.out .list li{display:flex;align-items:center;gap:8px}
+.out .list li::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--lime)}
+.cta{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;margin-top:8px}
+.cta a{display:inline-flex;align-items:center;justify-content:center;gap:10px;height:58px;padding:0 28px;border-radius:16px;text-decoration:none;font:800 1.35rem/1 var(--f-head);text-transform:uppercase;letter-spacing:.03em;transition:transform .08s,box-shadow .08s}
+.cta .b1{background:var(--lime);color:var(--ink);box-shadow:0 5px 0 #8ea620,0 0 50px rgba(212,255,58,.35);animation:pulse 2.4s 1.5s ease-in-out infinite}
+.cta .b1:active{transform:translateY(4px);box-shadow:0 1px 0 #8ea620}
+.cta .b2{background:#19191b;color:var(--fg);box-shadow:inset 0 0 0 1.5px #34343a,0 5px 0 #000}
+.cta .b2:active{transform:translateY(4px);box-shadow:inset 0 0 0 1.5px #34343a,0 1px 0 #000}
+@keyframes pulse{0%,100%{box-shadow:0 5px 0 #8ea620,0 0 40px rgba(212,255,58,.25)}50%{box-shadow:0 5px 0 #8ea620,0 0 70px rgba(212,255,58,.55)}}
+.again{margin-top:4px;background:none;border:0;color:#b9b9be;font:600 .9rem var(--f-text);text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:6px}
+.out .in>*{opacity:0}
+.out.on .mk{animation:mk 1s .2s cubic-bezier(.2,.9,.3,1.25) both}
+.out.on .in>*:not(.mk){animation:up .7s both;animation-delay:calc(.45s + var(--j)*.15s)}
+
+@media (prefers-reduced-motion:reduce){
+  .wind{animation:none}.wipe{display:none}
+  .flash{display:none}
+  *,*::before{animation-duration:.01ms!important;animation-delay:0s!important;animation-iteration-count:1!important}
+}
+</style>
+
+</head>
+<body>
+<div class="app" id="app" lang="tr">
+  <div class="wind" aria-hidden="true"></div>
+  <div class="glow" id="glow" aria-hidden="true"></div>
+  <header class="top">
+    <div class="brand"><svg viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" rx="23" fill="#0f0f11"/><circle cx="50" cy="52" r="30" fill="#d4ff3a"/><path d="M26 19 L35.6 19 C 42 35, 46 47.8, 50 55.8 L59.6 19 L74 19 L56.4 67 L43.6 67 Z" fill="#0f0f11"/></svg><span>Velora</span></div>
+    <span class="cnt" id="cnt" aria-hidden="true"></span>
+    <button type="button" class="pp vo" id="vo" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor"/><path class="w1" d="M16 8.5a4.5 4.5 0 0 1 0 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="w2" d="M18.5 6a8 8 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path class="x" d="M16 9l5 6M21 9l-5 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Seslendirme</span></button>
+    <button type="button" class="pp" id="pp" aria-label="Durdur">❚❚</button>
+  </header>
+  <main id="scenes"></main>
+  <div class="wipe" id="wipe" aria-hidden="true"></div>
+  <nav class="seg" id="seg" aria-label="Özellikler"></nav>
+</div>
+
+<script>
+(function(){
+const LOGO='<svg viewBox="0 0 100 100" aria-hidden="true"><rect width="100" height="100" rx="23" fill="#0f0f11"/><circle cx="50" cy="52" r="30" fill="#d4ff3a"/><path d="M26 19 L35.6 19 C 42 35, 46 47.8, 50 55.8 L59.6 19 L74 19 L56.4 67 L43.6 67 Z" fill="#0f0f11"/></svg>';
+/* Katıl ve giriş adresleri: sitede /tanitim/?k=kisa#katil, örnekte canlı site */
+const SITE=/sesliasistan\.netlify\.app$/.test(location.hostname)?'':'https://sesliasistan.netlify.app';
+const JOIN=SITE+'/tanitim/?k=kisa#katil', LOGIN=SITE+'/';
+
+/* Altı özellik. v: kayıt; s–e: kaydın gösterilen bölümü (sn); r: hız. st: adımlar (t = kayıttaki an; y = yazı; say = seslendirme, yoksa yazı okunur).
+   Başlıkta *kelime* limon olur. Yazı modunda her adım okunacak kadar ekranda kalır; seslendirmede cümle bitmeden sonraki adıma geçilmez (kayıt bekler). */
+const F=[
+  {k:'Antrenman',v:'toplu',s:0,e:10.6,r:1.4,h:'Antrenmanları *tek* seferde kur.',st:[
+    {t:0,y:'Takvimde + ile Toplu antrenman\'ı aç.',say:'Takvimde artıya dokun ve toplu antrenmanı seç.'},
+    {t:3,y:'Ayları ve günleri seç: hafta sonu, hafta içi ya da istediğin günler.'},
+    {t:5.4,y:'Grubu ve saati belirle.'},
+    {t:7,y:'Tek dokunuş: 10 antrenman takvime eklendi.',say:'Tek dokunuşla on antrenman takvime eklenir.'}]},
+  {k:'Yarış',v:'yaris',s:0.4,e:18,r:1.8,h:'Duyurulan yarışı *tek* dokunuşla ekle.',st:[
+    {t:0.5,y:'Yarışlar\'da + ile duyurulan yarışları aç.',say:'Yarışlar sayfasında artıya dokun; duyurulan yarışlar listelenir.'},
+    {t:3.4,y:'Yarışını ve sınıfını bul, Ekle\'ye dokun.',say:'Yarışını ve sınıfını bul, ekle\'ye dokun.'},
+    {t:9,y:'Yarış sayfası hazır: kalan gün ve yapılacaklar.',say:'Yarış sayfası hazır. Kaç gün kaldığı ve yapılacaklar burada.'},
+    {t:13,y:'Gereken evraklar tek listede, tamamladıkça işaretle.',say:'Gereken evraklar tek listede; tamamladıkça işaretle.'}]},
+  {k:'Denizde',v:'yonet',s:0,e:20.5,r:2,h:'Antrenmanı *denizden* yönet.',st:[
+    {t:0.3,y:'Start süresini tek dokunuşla başlat.'},
+    {t:4.6,y:'Basılı tut, konuş: sesin bütün sporculara gider.',say:'Basılı tut ve konuş; sesin bütün sporculara gider.'},
+    {t:10.6,y:'Sık kullandığın mesajlar hazır: seç, gönder.',say:'Sık kullandığın mesajlar hazır; seç ve gönder.'},
+    {t:15.4,y:'Sporcuyu seç, cezayı ver: 360° anında ona gider.',say:'Sporcuyu seç ve cezasını ver. Üç yüz altmış derece, anında ona gider.'}]},
+  {k:'Video',v:'etiket',s:0,e:11.4,r:1.5,h:'Videoyu *sporcuyla* eşleştir.',st:[
+    {t:0.3,y:'Sporcuyu seç, Video\'ya dokun.',say:'Sporcuyu seç ve videoya dokun.'},
+    {t:4.6,y:'Videoda kimler var? Sporcuları işaretle.'},
+    {t:7.4,y:'Manevrayı etiketle: orsa, start, dönüş.'},
+    {t:9.8,y:'Galeriye kaydet, etiketleriyle birlikte.',say:'Galeriye kaydet; video etiketleriyle birlikte saklanır.'}]},
+  {k:'Hava',v:'hava',s:0,e:8.9,r:1,h:'Rüzgârı *saat* *saat* gör.',st:[
+    {t:0,y:'Bugünün rüzgârı saat saat: hız, yön, yağmur.',say:'Bugünün rüzgârı saat saat: hızı, yönü ve yağmur.'},
+    {t:3,y:'Bir güne dokun, o günün havası açılsın.',say:'Bir güne dokun; o günün havası açılır.'},
+    {t:5,y:'O günün planları hemen altında.',say:'O günün planları da hemen altında.'}]},
+  {k:'Fitness',v:'fit',s:0,e:11,r:1.2,h:'Fitness *adım* *adım.*',st:[
+    {t:0,y:'Günün programı hazır: hareketler, setler ve tekrarlar.',say:'Günün fitness programı hazır: hareketler, setler ve tekrarlar.'},
+    {t:2,y:'Antrenmana başla: süre, hareket ve set sayısı bir bakışta.',say:'Antrenmana başla; süre, hareket ve set sayısı bir bakışta.'},
+    {t:4.6,y:'Her harekette görsel, nasıl yapılır ve tekrar sayısı.',say:'Her harekette görsel, nasıl yapıldığı ve tekrar sayısı var.'},
+    {t:8,y:'Seti bitir, sıradaki hareket gelsin.',say:'Seti bitir; sıradaki hareket gelir.'}]},
+  {k:'Simülatör',v:'simulator',s:0.3,e:45,r:2.4,h:'Denize çıkmadan *taktik* çalış.',st:[
+    {t:0.3,y:'Senaryolar ana sayfada: birini seç, İzle\'ye dokun.',say:'Senaryolar ana sayfada. Birini seç ve izle\'ye dokun.'},
+    {t:5.6,y:'Tekneler adım adım ilerler; her adımda ne ve neden yapıldığını oku.',say:'Tekneler adım adım ilerler. Her adımda ne yapıldığını ve nedenini okursun.'},
+    {t:18,y:'Kendi taktiğini çiz: tekneleri koy, rotayı çiz.',say:'Kendi taktiğini çiz: tekneleri koy, rotalarını çiz.'},
+    {t:33.6,y:'Oynat: tekneler çizdiğin rotada gider.',say:'Oynat; tekneler çizdiğin rotada ilerler.'}]},];
+const N=F.length, INTRO=4.9;
+const SAY_IN='Antrenör, sporcu ve tekne. Hepsi tek uygulamada: Velora.';
+const SAY_OUT='Sezona hazır mısın? Velora\'ya hemen katıl.';
+
+const MODE=()=>(innerWidth<700&&innerHeight>innerWidth?'t':'i');
+let mode=MODE();
+const AR={t:390/844,i:1180/820};
+const $=s=>document.querySelector(s);
+const root=$('#scenes'),seg=$('#seg'),cnt=$('#cnt'),app=$('#app'),wipe=$('#wipe'),glow=$('#glow'),pp=$('#pp'),vo=$('#vo');
+const words=(h)=>h.split(' ').map((w,j)=>{const lime=/^\*.*\*[.,]?$/.test(w);const t=w.replace(/\*/g,'');return `<span class="w" style="--j:${j}"><span>${lime?`<em>${t.replace(/[.,]$/,'')}</em>${/[.,]$/.test(t)?t.slice(-1):''}`:t}</span></span>`}).join(' ');
+
+/* sahneleri kur */
+const S=[];
+const intro=document.createElement('section');intro.className='sc intro';
+intro.innerHTML=`<div class="flash" aria-hidden="true">${['Antrenör.','Sporcu.','Tekne.','Tek uygulama.'].map((w,j)=>`<b style="--j:${j}" class="${j===3?'l':''}">${w}</b>`).join('')}</div>
+  <div class="logo"><div class="mk">${LOGO}</div><h1 aria-label="Velora">${[...'Velora'].map((c,j)=>`<i style="--j:${j}">${c}</i>`).join('')}</h1><p>Kulübün tek uygulamada.</p></div>`;
+root.append(intro);S.push({el:intro,d:INTRO,say:SAY_IN});
+
+F.forEach((f,i)=>{
+  const el=document.createElement('section');el.className='sc ft';el.setAttribute('aria-label',f.k);
+  el.innerHTML=`<div class="tx"><span class="ghost" aria-hidden="true">0${i+1}</span><span class="kk">${f.k}<span class="eq" aria-hidden="true"><i></i><i></i><i></i><i></i></span></span><h2>${words(f.h)}</h2>
+    <ol class="steps" aria-live="polite">${f.st.map((x,j)=>`<li><b>${j+1}</b><span>${x.y}</span></li>`).join('')}</ol></div>
+    <div class="stage"><div class="dev"><div class="scr"><video muted playsinline preload="auto" disablepictureinpicture aria-label="${f.k} ekran kaydı"></video></div></div></div>`;
+  root.append(el);
+  S.push({el,f,i,video:el.querySelector('video'),dev:el.querySelector('.dev'),stage:el.querySelector('.stage'),li:[...el.querySelectorAll('.steps li')]});
+});
+
+const out=document.createElement('section');out.className='sc out';
+out.innerHTML=`<div class="in"><div class="mk">${LOGO}</div>
+  <h2 style="--j:0">Sezona <em>hazır</em> mısın?</h2>
+  <p class="sub" style="--j:1">Antrenör, sporcu ve tekne tek uygulamada.</p>
+  <ul class="list" style="--j:2">${F.map(f=>`<li>${f.k}</li>`).join('')}</ul>
+  <div class="cta" style="--j:3"><a class="b1" href="${JOIN}">Hemen katıl →</a><a class="b2" href="${LOGIN}">Giriş yap</a></div>
+  <button type="button" class="again" style="--j:4">Yeniden izle</button></div>`;
+root.append(out);S.push({el:out,d:Infinity,say:SAY_OUT});
+out.querySelector('.again').addEventListener('click',()=>go(0));
+
+/* alt çizgi */
+F.forEach((f,i)=>{const b=document.createElement('button');b.type='button';b.innerHTML=`<span><i></i></span><small>${f.k}</small>`;b.setAttribute('aria-label',f.k);b.addEventListener('click',()=>go(i+1));seg.append(b)});
+const segB=[...seg.children];
+
+/* video kaynağı: telefonda dik ise telefon kaydı, değilse iPad kaydı */
+function setSrc(){S.forEach(s=>{if(!s.f)return;s.dev.classList.toggle('ph',mode==='t');s.dev.classList.toggle('pd',mode==='i');const want=`${s.f.v}-${mode}.mp4`;if(!s.video.src.endsWith(want)){s.video.src=want;s.video.load()}})}
+function fit(){S.forEach(s=>{if(!s.f)return;const ar=AR[mode],bf=mode==='t'?.035:.022;const W=s.stage.clientWidth,H=s.stage.clientHeight-28;if(!W||!H)return;let sw=W/(1+2*bf);if(sw/ar+2*bf*sw>H)sw=H/(1/ar+2*bf);const b=Math.round(sw*bf);s.dev.style.padding=b+'px';s.dev.style.width=Math.round(sw+2*b)+'px';s.dev.style.height=Math.round(sw/ar+2*b)+'px'})}
+
+/* seslendirme: başta kapalı; açılınca yazılar gider, ses anlatır. Cihazın Türkçe sesi kullanılır. */
+const SS=window.speechSynthesis;let voice=false,trVoice=null,talking=false,talkEnd=0;
+function pickVoice(){if(!SS)return;const vs=SS.getVoices().filter(v=>/^tr/i.test(v.lang));trVoice=vs.find(v=>/premium|enhanced|natural|neural|google/i.test(v.name))||vs.find(v=>/yelda|emel|filiz|seda/i.test(v.name))||vs[0]||null}
+if(SS){pickVoice();SS.addEventListener&&SS.addEventListener('voiceschanged',pickVoice)}
+/* Sitede doğal ses: /api/tanitim-ses (Gemini, bir kez üretilip saklanır). Örnek sayfada ya da ses gelmezse cihazın sesi. */
+const NAT=SITE==='';const au=NAT?new Audio():null;let auId='';
+if(au){au.preload='auto';au.addEventListener('loadedmetadata',()=>{if(talking&&isFinite(au.duration))talkEnd=el+au.duration+.6});
+  au.addEventListener('ended',()=>{talking=false;app.classList.remove('talk')});
+  au.addEventListener('error',()=>{if(talking&&auId)devSpeak(TXT[auId]||'')})}
+const sesUrl=id=>'/api/tanitim-ses?id='+encodeURIComponent(id);
+const warm=id=>{if(NAT&&id)fetch(sesUrl(id)).catch(()=>{})};
+const TXT={};
+function devSpeak(t){auId='';if(!SS||!t){talking=false;app.classList.remove('talk');return}SS.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='tr-TR';if(trVoice)u.voice=trVoice;u.rate=1.02;
+  talking=true;app.classList.add('talk');talkEnd=el+t.length*.085+1.2; /* onend gelmezse yedek süre */
+  u.onend=u.onerror=()=>{if(u===cu){talking=false;app.classList.remove('talk')}};cu=u;SS.speak(u)}
+function speak(t,id){if(!voice||!t)return;TXT[id]=t;
+  if(au&&id){if(SS)SS.cancel();auId=id;talking=true;app.classList.add('talk');talkEnd=el+15;au.src=sesUrl(id);const p=au.play();p&&p.catch(()=>devSpeak(t));return}
+  devSpeak(t)}
+function hush(){if(SS)SS.cancel();if(au){au.pause();auId=''}talking=false;app.classList.remove('talk')}
+let cu=null;
+const quiet=()=>!talking||el>talkEnd;
+
+let cur=-1,t0=0,el=0,paused=false,si=-1,stepAt=0;
+function showStep(s,j){si=j;stepAt=el;s.li.forEach((li,k)=>{li.classList.toggle('now',k===j);li.classList.toggle('past',k<j)});const x=s.f.st[j];speak(x.say||x.y,s.f.v+'-'+(j+1));if(voice){const n=s.f.st[j+1];warm(n?s.f.v+'-'+(j+2):'')}}
+const minRead=s=>{const x=s.f.st[si];return Math.max(2.3,x.y.length*.055)};
+function go(n){
+  n=Math.max(0,Math.min(S.length-1,n));
+  hush();
+  if(cur>=0){const o=S[cur];o.el.classList.remove('on');o.el.setAttribute('aria-hidden','true');if(o.video)o.video.pause()}
+  if(cur>=0&&n!==cur){wipe.classList.remove('go');void wipe.offsetWidth;wipe.classList.add('go')}
+  cur=n;const s=S[n];el=0;t0=performance.now();si=-1;
+  s.el.classList.remove('on');void s.el.offsetWidth;s.el.classList.add('on');s.el.removeAttribute('aria-hidden');
+  app.classList.toggle('edge',n===0||n===S.length-1);
+  cnt.innerHTML=s.f?`<b>0${s.i+1}</b> / 0${N}`:'';
+  segB.forEach((b,i)=>{b.classList.toggle('done',i+1<n);b.classList.toggle('cur',i+1===n);b.querySelector('i').style.width=i+1<n?'100%':'0'});
+  glow.style.transform=s.f?`translate(${(s.i%2?-1:1)*-6}vmax,${s.i*3}vmax)`:'none';
+  if(s.video){fit();const v=s.video;v.playbackRate=s.f.r;try{v.currentTime=s.f.s}catch(e){};showStep(s,0);if(!paused){const p=v.play();if(p)p.catch(()=>{})}}
+  else if(s.say&&!paused)speak(s.say,n===0?'giris':'son');
+}
+function tick(now){
+  const s=S[cur],dt=(now-t0)/1000;t0=now;
+  if(s&&!paused){
+    el+=dt;
+    if(s.f){
+      const v=s.video,f=s.f,ct=v.currentTime,nx=f.st[si+1];
+      const ready=voice?quiet()&&el-stepAt>.6:el-stepAt>=minRead(s);
+      const at=nx?ct>=nx.t:(ct>=f.e-.05||v.ended);
+      if(at){if(!ready){if(!v.paused)v.pause()}else if(nx){showStep(s,si+1);if(v.paused&&!v.ended)v.play().catch(()=>{})}else{go(cur+1);requestAnimationFrame(tick);return}}
+      else if(v.paused&&!v.ended&&v.readyState>2)v.play().catch(()=>{});
+      segB[s.i].querySelector('i').style.width=Math.min(100,Math.max(0,(ct-f.s)/(f.e-f.s)*100))+'%';
+    }else if(isFinite(s.d)){
+      if(el>=s.d&&(!voice||quiet()))go(cur+1);
+    }
+  }
+  requestAnimationFrame(tick);
+}
+function setPause(p){paused=p;pp.textContent=p?'▶':'❚❚';pp.setAttribute('aria-label',p?'Oynat':'Durdur');const v=S[cur]&&S[cur].video;if(v){p?v.pause():v.play().catch(()=>{})}
+  if(voice){if(au&&auId){p?au.pause():au.play().catch(()=>{})}else if(SS){p?SS.pause():SS.resume()}}
+  document.querySelectorAll('.sc.on *').forEach(x=>x.style.animationPlayState=p?'paused':'')}
+pp.addEventListener('click',()=>setPause(!paused));
+vo.addEventListener('click',()=>{voice=!voice;vo.setAttribute('aria-pressed',voice);vo.querySelector('span').textContent=voice?'Ses açık':'Seslendirme';app.classList.toggle('voice',voice);if(paused)setPause(false);requestAnimationFrame(fit);
+  /* iPhone sesi yalnız dokunuşla başlatır: bu sahneyi şimdi yeniden başlat */
+  go(cur);if(!voice)hush()});
+addEventListener('keydown',e=>{if(e.key==='ArrowRight')go(cur+1);else if(e.key==='ArrowLeft')go(cur-1);else if(e.key===' '&&e.target===document.body){e.preventDefault();setPause(!paused)}});
+/* kaydırarak ileri/geri */
+let sx=null,sy=0;
+root.addEventListener('touchstart',e=>{sx=e.touches[0].clientX;sy=e.touches[0].clientY},{passive:true});
+root.addEventListener('touchend',e=>{if(sx==null)return;const dx=e.changedTouches[0].clientX-sx,dy=e.changedTouches[0].clientY-sy;sx=null;if(Math.abs(dx)>50&&Math.abs(dx)>Math.abs(dy)*1.3)go(cur+(dx<0?1:-1))},{passive:true});
+let rz;addEventListener('resize',()=>{clearTimeout(rz);rz=setTimeout(()=>{const m=MODE();if(m!==mode){mode=m;setSrc();const s=S[cur];if(s.video){s.video.playbackRate=s.f.r;s.video.currentTime=s.f.s;showStep(s,0);s.video.play().catch(()=>{})}}fit()},120)});
+
+setSrc();go(0);requestAnimationFrame(t=>{t0=t;requestAnimationFrame(tick)});
+})();
+</script>
+
+</body>
+</html>

@@ -284,7 +284,7 @@ document.querySelectorAll('.pills li').forEach((li,i)=>li.style.setProperty('--j
   f.tel.addEventListener('input',()=>{const raw=f.tel.value;const d=dig(raw);if(!/^\s*\+/.test(raw)&&d[0]!=='0'&&!(d.startsWith('90')&&d.length>10))f.tel.value=fmt(d.slice(0,10));if(seen.tel||dig(f.tel.value)[0]==='0'||/^\s*\+/.test(raw))show('tel',true)});
   ['ad','tel','mail','kulup'].forEach(n=>{f[n].addEventListener('blur',()=>{if(f[n].value.trim()){seen[n]=1;show(n,true)}});if(n!=='tel')f[n].addEventListener('input',()=>{if(seen[n])show(n,true)})});
   f.querySelector('.ag').addEventListener('click',()=>go(0));
-  const KAYNAK=/[?&]k=simulator\b/.test(location.search)?'Simülatör tanıtımı':'Tanıtım';
+  const KAYNAK=/[?&]k=simulator\b/.test(location.search)?'Simülatör tanıtımı':/[?&]k=kisa\b/.test(location.search)?'Kısa tanıtım':'Tanıtım';
   const gen=f.querySelector('.gen'),btn=f.querySelector('.go');
   f.addEventListener('submit',async e=>{e.preventDefault();if(btn.disabled)return;let first=null;gen.hidden=true;
     for(const n of ['ad','tel','mail','kulup']){seen[n]=1;if(!show(n,true)&&!first)first=f[n]}
