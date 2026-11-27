@@ -502,8 +502,8 @@ function PttTile({ to, ptt, now }) {
   return (
     <div className="bzy-ptw">
       {rec && (
-        <button type="button" className="bzy-ptx" onClick={ptt.cancel} data-press>
-          ✕ Vazgeç
+        <button type="button" className="bzy-ptx" onClick={ptt.cancel} aria-label="Vazgeç" data-press>
+          ✕<span> Vazgeç</span>
         </button>
       )}
       <button
