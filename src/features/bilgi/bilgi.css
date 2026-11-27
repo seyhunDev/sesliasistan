@@ -920,8 +920,8 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 /* Konuşurken kırmızı + yuvarlak Gönder, köşede Vazgeç (Seyhun 2026-11-26; Yönet ve sporcu ekranı aynı) */
 .bz .bz-tt[data-st="rec"], .bz.bz-day .bz-tt[data-st="rec"] { background: #dc2626; color: #fff; box-shadow: 0 0 0 0.375rem rgba(220, 38, 38, .3), 0 8px 24px rgba(0, 0, 0, .35); animation: bz-ttr 1.2s ease-in-out infinite; }
 @keyframes bz-ttr { 50% { box-shadow: 0 0 0 0.75rem rgba(220, 38, 38, .15), 0 8px 24px rgba(0, 0, 0, .35); } }
-.bz-go, .bzy-go { position: absolute; right: 0.75rem; bottom: 0.75rem; width: 3rem; height: 3rem; border-radius: 50%; display: grid; place-items: center; background: #fff; color: #dc2626; box-shadow: 0 3px 10px rgba(0, 0, 0, .3); }
-.bz-go svg, .bzy-go svg { width: 1.375rem; height: 1.375rem; margin-left: 0.125rem; }
+.bz-send, .bzy-go { position: absolute; right: 0.75rem; bottom: 0.75rem; width: 3rem; height: 3rem; border-radius: 50%; display: grid; place-items: center; background: #fff; color: #dc2626; box-shadow: 0 3px 10px rgba(0, 0, 0, .3); }
+.bz-send svg, .bzy-go svg { width: 1.375rem; height: 1.375rem; margin-left: 0.125rem; }
 .bz-ttx { position: absolute; z-index: 3; right: calc(var(--bz-pr) + 0.5rem); bottom: calc(var(--bz-sb) + 1rem + var(--bz-tw) - 2.5rem); height: 2rem; padding: 0 0.75rem; border: 0; border-radius: 999px; background: rgba(0, 0, 0, .35); color: #fff; font-size: 0.75rem; font-weight: 800; }
 .bzy-ptw { position: relative; min-width: 0; display: grid; }
 .bzy-ptx { position: absolute; z-index: 2; right: 0.5rem; top: 0.5rem; height: 2rem; padding: 0 0.75rem; border: 0; border-radius: 999px; background: rgba(0, 0, 0, .35); color: #fff; font-size: 0.75rem; font-weight: 800; }
@@ -1080,3 +1080,9 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 .bzy-pk .bzy-seg { background: rgba(255, 255, 255, .08); }
 .bzy-pk .bzy-seg button { color: #a1a1aa; }
 .bzy-pk .bzy-seg button[aria-pressed="true"] { background: #fff; color: #111; }
+
+/* Sporcu ekranı kanal kapalı (Seyhun 2026-11-27): yalnız "Kanal açık değil" ve kısa açıklama. Gönder dairesi .bz-send oldu (eskiden .bz-go
+   idi; katılma kartının tam ekran örtüsüyle aynı sınıftı, örtü köşede küçük beyaz daireye dönüyordu). */
+.bz-none { display: grid; gap: 0.5rem; max-width: 20rem; }
+.bz-none b { font-size: 1.375rem; font-weight: 800; color: #fff; }
+.bz-none span { font-size: 0.9375rem; font-weight: 500; line-height: 1.4; color: #a1a1aa; }

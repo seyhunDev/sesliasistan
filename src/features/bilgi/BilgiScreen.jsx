@@ -441,7 +441,14 @@ function StartCard({ onGo, onClose, kanal, why = "", acct = null, uid = "" }) {
     return (
       <div className="bz-go navy sahne">
         {x}
-        <div className="bz-card bz-none">{WHY[why] || "Kanal açık değil"}</div>
+        <div className="bz-card bz-none" role="status">
+          {WHY[why] || (
+            <>
+              <b>Kanal açık değil</b>
+              <span>Antrenörün kanalı açtığında bu ekran kendiliğinden hazır olur.</span>
+            </>
+          )}
+        </div>
       </div>
     );
   return (
@@ -737,7 +744,7 @@ function TalkTile({ ptt, now }) {
       )}
       <em>{rec ? (left <= 10 ? `${left} sn kaldı` : "Gönder") : "Antrenöre"}</em>
       {rec && (
-        <span className="bz-go" aria-hidden="true">
+        <span className="bz-send" aria-hidden="true">
           <svg viewBox="0 0 24 24" fill="currentColor">
             <path d="M3.4 20.4 21 12 3.4 3.6v6.6L15 12 3.4 13.8z" />
           </svg>
