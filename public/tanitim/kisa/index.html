@@ -65,8 +65,11 @@ button{font:inherit;color:inherit}
 .flash{position:absolute;inset:0;display:grid;place-items:center}
 .flash b{grid-area:1/1;font:800 clamp(4rem,19vmin,12rem)/.9 var(--f-head);text-transform:uppercase;letter-spacing:.005em;opacity:0}
 .flash b.l{color:var(--lime)}
-.on .flash b{animation:fl .62s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(.2s + var(--j)*.6s)}
-.on .flash b:last-child{animation:fl2 1.25s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(.2s + var(--j)*.6s)}
+/* Açılış yazıları seslendirmeyle eş (Seyhun 2026-11-28 "yazılar çok hızlı, ses geç/erken olmasın"): gecikme ve süreler JS'te (introPlan),
+   cümledeki kelimenin yerine göre; ses açıksa ses gerçekten çalmaya başlayana kadar sahne bekler (.hold). */
+.on .flash b{animation:fl var(--du,1.1s) cubic-bezier(.2,.8,.2,1) both;animation-delay:var(--de,0s)}
+.on .flash b:last-child{animation-name:fl2}
+.intro.hold *{animation-play-state:paused!important}
 @keyframes fl{0%{opacity:0;transform:translateY(.25em) scale(.96);filter:blur(8px)}25%{opacity:1;transform:none;filter:none}80%{opacity:1}100%{opacity:0;transform:scale(1.04)}}
 @keyframes fl2{0%{opacity:0;transform:translateY(.25em);filter:blur(8px)}20%{opacity:1;transform:none;filter:none}78%{opacity:1}100%{opacity:0;transform:scale(1.06);filter:blur(4px)}}
 .logo{display:flex;flex-direction:column;align-items:center;gap:clamp(12px,2.4vh,22px);padding:0 24px}
@@ -75,9 +78,9 @@ button{font:inherit;color:inherit}
 .logo h1{margin:0;font:800 clamp(3.4rem,14vmin,8.5rem)/.85 var(--f-head);text-transform:uppercase;letter-spacing:.02em;display:flex}
 .logo h1 i{font-style:normal;display:inline-block;opacity:0}
 .logo p{margin:0;font:500 clamp(1rem,2.6vmin,1.4rem)/1.35 var(--f-text);color:#cfcfd3;opacity:0}
-.on .logo .mk{animation:mk 1s 2.75s cubic-bezier(.2,.9,.3,1.25) both}
-.on .logo h1 i{animation:ltr .6s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(3.05s + var(--j)*50ms)}
-.on .logo p{animation:up .7s 3.7s ease both}
+.on .logo .mk{animation:mk 1s var(--lg,5.6s) cubic-bezier(.2,.9,.3,1.25) both}
+.on .logo h1 i{animation:ltr .6s cubic-bezier(.2,.8,.2,1) both;animation-delay:calc(var(--lg,5.6s) + .3s + var(--j)*50ms)}
+.on .logo p{animation:up .7s calc(var(--lg,5.6s) + .95s) ease both}
 @keyframes mk{0%{opacity:0;transform:scale(.4) rotate(-14deg)}100%{opacity:1;transform:none}}
 @keyframes ltr{0%{opacity:0;transform:translateY(.5em);filter:blur(6px)}100%{opacity:1;transform:none;filter:none}}
 @keyframes up{0%{opacity:0;transform:translateY(12px)}100%{opacity:1;transform:none}}
@@ -342,7 +345,7 @@ const F=[
     {t:0,y:'Bugünün rüzgârı saat saat: hız, yön, yağmur.',say:'Bugünün rüzgârı saat saat: hızı, yönü ve yağmur.'},
     {t:3,y:'Bir güne dokun, o günün havası açılsın.',say:'Bir güne dokun; o günün havası açılır.'},
     {t:5,y:'O günün planları hemen altında.',say:'O günün planları da hemen altında.'}]}];
-const N=F.length, INTRO=4.9;
+const N=F.length;let INTRO=8.2;
 const SAY_IN='Antrenör, sporcu ve tekne. Hepsi tek uygulamada: Velora.';
 const SAY_OUT='Sezona hazır mısın? Velora\'ya hemen katıl.';
 
@@ -359,6 +362,18 @@ const intro=document.createElement('section');intro.className='sc intro';
 intro.innerHTML=`<div class="flash" aria-hidden="true">${['Antrenör.','Sporcu.','Tekne.','Tek uygulama.'].map((w,j)=>`<b style="--j:${j}" class="${j===3?'l':''}">${w}</b>`).join('')}</div>
   <div class="logo"><div class="mk">${LOGO}</div><h1 aria-label="Velora">${[...'Velora'].map((c,j)=>`<i style="--j:${j}">${c}</i>`).join('')}</h1><p>Kulübün tek uygulamada.</p></div>`;
 root.append(intro);S.push({el:intro,d:INTRO,say:SAY_IN});
+/* Açılış zamanlaması: D = cümlenin süresi (ses açıkken ses dosyasının gerçek süresi, kapalıyken okuma süresi 6.5 sn).
+   Her yazı, cümlede kendi kelimesinin geçtiği anda çıkar (konuşma hızı aşağı yukarı sabit: kelimenin cümledeki yeri / uzunluk).
+   "Tek uygulama." "Hepsi tek uygulamada"da, logo "Velora"da. Sahne süresi: D + logo için 2.4 sn. */
+const IN_AT=['Antrenör','sporcu','tekne','Hepsi','Velora'].map(w=>SAY_IN.indexOf(w)/SAY_IN.length);
+function introPlan(D){const t=IN_AT.map(f=>.25+f*D),bs=[...intro.querySelectorAll('.flash b')];
+  bs.forEach((b,j)=>{b.style.setProperty('--de',t[j].toFixed(2)+'s');b.style.setProperty('--du',Math.max(.8,t[j+1]-t[j]).toFixed(2)+'s')});
+  intro.style.setProperty('--lg',t[4].toFixed(2)+'s');S[0].d=t[4]+2.4}
+introPlan(6.5);
+/* Ses açıkken: sahne bekler, ses çalmaya başlayınca o andan, sesin süresiyle başlar (ses geç ya da erken kalmaz) */
+let introBekle=false;
+function introBasla(D){if(!introBekle||cur!==0)return;introBekle=false;introPlan(isFinite(D)&&D>1?D:SAY_IN.length*.075);
+  intro.classList.remove('on');void intro.offsetWidth;intro.classList.add('on');intro.classList.remove('hold');el=0}
 
 F.forEach((f,i)=>{
   const el=document.createElement('section');el.className='sc ft';el.setAttribute('aria-label',f.k);
@@ -400,6 +415,7 @@ const apiUrl=id=>'/api/tanitim-ses?id='+encodeURIComponent(id);
 const sesUrl=id=>LISTE[id]?SES+id+'.mp3?h='+LISTE[id]:apiUrl(id);
 if(au){au.preload='auto';au.addEventListener('loadedmetadata',()=>{if(talking&&isFinite(au.duration))talkEnd=el+au.duration+.6});
   au.addEventListener('ended',()=>{talking=false;app.classList.remove('talk')});
+  au.addEventListener('playing',()=>{if(auId==='giris')introBasla(au.duration)});
   au.addEventListener('error',()=>{if(!talking||!auId)return;
     if(!auApi){auApi=true;au.src=apiUrl(auId);const id=auId;au.play().catch(e=>{if(e&&e.name!=='AbortError'&&auId===id)devSpeak(TXT[id]||'')});return}
     devSpeak(TXT[auId]||'')})}
@@ -407,7 +423,7 @@ const warm=id=>{if(NAT&&id)fetch(sesUrl(id)).catch(()=>{})};
 const TXT={};
 function devSpeak(t){auId='';if(!SS||!t){talking=false;app.classList.remove('talk');return}SS.cancel();const u=new SpeechSynthesisUtterance(t);u.lang='tr-TR';if(trVoice)u.voice=trVoice;u.rate=1.02;
   talking=true;app.classList.add('talk');talkEnd=el+t.length*.085+1.2; /* onend gelmezse yedek süre */
-  u.onend=u.onerror=()=>{if(u===cu){talking=false;app.classList.remove('talk')}};cu=u;SS.speak(u)}
+  u.onstart=()=>{if(introBekle)introBasla(t.length*.075)};u.onend=u.onerror=()=>{if(u===cu){talking=false;app.classList.remove('talk')}};cu=u;SS.speak(u)}
 function speak(t,id){if(!voice||!t)return;TXT[id]=t;
   if(au&&id){if(SS)SS.cancel();auId=id;auApi=!LISTE[id];talking=true;app.classList.add('talk');talkEnd=el+15;au.src=sesUrl(id);const p=au.play();p&&p.catch(e=>{if(e&&e.name!=='AbortError'&&auId===id)devSpeak(t)});return}
   devSpeak(t)}
@@ -427,6 +443,7 @@ function go(n){
   cur=n;const s=S[n];el=0;t0=performance.now();si=-1;
   s.el.classList.remove('on');void s.el.offsetWidth;s.el.classList.add('on');s.el.removeAttribute('aria-hidden');
   app.classList.toggle('edge',n===0||n===S.length-1);
+  if(n===0){introBekle=voice&&!paused;intro.classList.toggle('hold',introBekle);if(!introBekle)introPlan(6.5)}
   cnt.innerHTML=s.f?`<b>0${s.i+1}</b> / 0${N}`:'';
   segB.forEach((b,i)=>{b.classList.toggle('done',i+1<n);b.classList.toggle('cur',i+1===n);b.querySelector('i').style.width=i+1<n?'100%':'0'});
   glow.style.transform=s.f?`translate(${(s.i%2?-1:1)*-6}vmax,${s.i*3}vmax)`:'none';
@@ -445,6 +462,7 @@ function tick(now){
       else if(v.paused&&!v.ended&&v.readyState>2)v.play().catch(()=>{});
       segB[s.i].querySelector('i').style.width=Math.min(100,Math.max(0,(ct-f.s)/(f.e-f.s)*100))+'%';
     }else if(isFinite(s.d)){
+      if(cur===0&&introBekle&&el>4)introBasla(6.5); /* ses 4 sn içinde başlamazsa yazılar beklemesin */
       if(el>=s.d&&(!voice||quiet()))go(cur+1);
     }
   }
