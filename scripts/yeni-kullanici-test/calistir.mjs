@@ -5,7 +5,7 @@
 //  1. Velora ana hesabı (admin) kaydolur, Admin › Paketler'de havale bilgisini (IBAN, alıcı) girer.
 //  2. Yeni antrenör kaydolur: Kayıt ol › Sailing › form; tanıtım (Sessiz başla, Atla), "Velora'da ayrıca" › Başla; "Kulübün?" › Foça.
 //  3. Ana sayfa: para kutusu ve güncelleme notu yok; Ayarlar: Paketim 0 / 3, uygulamanın harcamaları yok.
-//  4. Takvim: + Plan › ad › Ekle › Sorumlusuz kaydet → günde 1 kayıt.
+//  4. Takvim: + Plan › ad › Kaydet → günde 1 kayıt.
 //  5. Sporcular: 3 sporcu eklenir; 4.'de "3 sporcu hakkın doldu"; sunucu 4.'yü reddeder (402); istemci Firestore'a doğrudan
 //     sporcu ve paket yazamaz (kurallar, 403).
 //  6. Bir sporcuya uygulama hesabı açılır; o sporcu kendi kullanıcı adı ve şifresiyle girer, sporcu karşılamasını görür.
@@ -212,8 +212,7 @@ try {
   await p.getByRole("button", { name: "+ Plan" }).click({ timeout: 60000 });
   const d = p.getByRole("dialog").last();
   await d.locator("input[type=text], input:not([type]), textarea").first().fill("Optimist antrenmanı");
-  await d.getByRole("button", { name: "Ekle", exact: true }).click();
-  await p.getByRole("button", { name: "Sorumlusuz kaydet" }).click({ timeout: 10000 }).catch(() => {});
+  await d.getByRole("button", { name: "Kaydet", exact: true }).click();
   await bekle(p, 2500);
   await p.shot("takvim");
   ok("Takvime plan eklenir", /1 KAYIT/i.test(await metin(p)) && /Optimist/.test(await metin(p)));
