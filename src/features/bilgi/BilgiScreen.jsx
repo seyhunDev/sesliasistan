@@ -755,17 +755,30 @@ function TalkTile({ ptt, now }) {
   );
 }
 
+const PEN_SAID = "sa-bilgi-pen-said";
+function penSaid(at) {
+  try {
+    if (sessionStorage.getItem(PEN_SAID) === String(at)) return true;
+    sessionStorage.setItem(PEN_SAID, String(at));
+  } catch {}
+  return false;
+}
 function PenAlert({ pen, now }) {
   const [seen, setSeen] = useState(null);
   if (pen?.at && seen?.at !== pen.at) setSeen({ at: pen.at, k: pen.k, until: now + PEN_BIG_MS });
   // Antrenör cezayı 5 sn sonra kaldırır (2026-11-26); tam ekran yine de 10 sn'sini bitirir, sonra şerit çıkmaz
   const big = seen && now < seen.until ? seen : null;
   const p = PEN[pen?.k] || (big && PEN[big.k]);
+  // Ceza gelince önce iki bip, sonra sesli (Seyhun 2026-11-28); aynı ceza bir kez okunur (sayfa yeniden açılsa da)
   useEffect(() => {
-    if (!pen?.at || !PEN[pen.k] || Date.now() - pen.at > 120e3) return;
-    const opts = { style: "asistan", timeoutMs: 5000 };
-    if (AUDIO) sayWith(AUDIO, PEN[pen.k].say, opts);
-    else sayDevice(PEN[pen.k].say, opts);
+    if (!pen?.at || !PEN[pen.k] || Date.now() - pen.at > 120e3 || penSaid(pen.at)) return;
+    beep("two");
+    const text = PEN[pen.k].say;
+    setTimeout(() => {
+      const opts = { style: "asistan", timeoutMs: 5000 };
+      if (AUDIO) sayWith(AUDIO, text, opts);
+      else sayDevice(text, opts);
+    }, 550);
   }, [pen?.at]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!p) return null;
   const left = big ? Math.ceil((big.until - now) / 1000) : 0;

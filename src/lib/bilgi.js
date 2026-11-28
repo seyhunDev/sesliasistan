@@ -54,10 +54,11 @@ export function cleanBilgi(d = {}) {
 export const PEN = {
   // name: yönetimde ve tanıtımda görünen ad, deg: yanında küçük soluk (Seyhun 2026-11-27 "360-720 yerine bir ceza dönüşü, 2 ceza dönüşü");
   // short: rozet (sporcu karesi, harita). big: sporcu ekranındaki büyük yazı
-  1: { name: "1 ceza dönüşü", deg: "360°", short: "1 dönüş", big: "360°", t: "Bir ceza dönüşü yap", say: "Bir ceza dönüşü yap" },
-  2: { name: "2 ceza dönüşü", deg: "720°", short: "2 dönüş", big: "720°", t: "İki ceza dönüşü yap", say: "İki ceza dönüşü yap" },
+  1: { name: "1 ceza dönüşü", deg: "360°", short: "1 dönüş", big: "360°", t: "Bir ceza dönüşü yap", say: "Bir ceza dönüşü" },
+  2: { name: "2 ceza dönüşü", deg: "720°", short: "2 dönüş", big: "720°", t: "İki ceza dönüşü yap", say: "İki ceza dönüşü" },
+  // Ses (Seyhun 2026-11-28): önce iki bip, sonra kısa: "Bir ceza dönüşü", "İki ceza dönüşü", "Erken start. Fodepar."
   // Faux départ = erken start (Seyhun 2026-11-27 "Fox depart değil, Faux départ diyoruz; yani erken start"): ses Türkçe okunuşla "Fodepar"
-  fd: { name: "Fodepar", deg: "Erken start", short: "FD", big: "FD", t: "Fodepar · erken start, hattın gerisine dön, yeniden başla", say: "Fodepar. Erken start. Hattın gerisine dön, yeniden başla" },
+  fd: { name: "Fodepar", deg: "Erken start", short: "FD", big: "FD", t: "Fodepar · erken start, hattın gerisine dön, yeniden başla", say: "Erken start. Fodepar." },
 };
 export const PEN_BIG_MS = 10e3;
 function cleanCeza(c) {
