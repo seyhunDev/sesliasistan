@@ -66,7 +66,7 @@ export function gunRows({ kanal = {}, log = [], boats = [] } = {}) {
     } else if (r.kind === "ses") {
       msg++;
       devs.forEach((d) => byDev(d) && byDev(d).sana++);
-      ev.push({ at: r.at, who: r.to || "Hepsi", what: r.kalip ? "Kalıp" : "Ses", det: [r.kalip ? `"${r.kalip}"` : "", mss(r.dur), st].filter(Boolean).join(" · "), by });
+      ev.push({ at: r.at, who: r.to || "Hepsi", what: r.kalip ? "Kalıp" : "Ses", det: [r.kalip ? `"${r.kalip}"` : r.yazi ? `"${r.yazi}"` : "", mss(r.dur), st].filter(Boolean).join(" · "), by });
     } else if (r.kind === "gelen") {
       msg++;
       ev.push({ at: r.at, who: `${r.from || "Sporcu"} →`, what: "Gelen ses", det: mss(r.dur), by: "" });

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { arrayUnion, collection, deleteField, doc, getDoc, getDocs, limit, onSnapshot, orderBy, query, waitForPendingWrites, where } from "firebase/firestore";
 import { addDoc, deleteDoc, setDoc, updateDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
+import { authFetch } from "@/lib/authFetch";
 import { serverNow } from "@/lib/serverClock";
 import { LIVE_MS, cleanBilgi, MSG_MAX } from "@/lib/bilgi";
 
@@ -340,6 +341,25 @@ export async function offScreen(org, b, mid) {
 }
 export const hideMsg = (org, b, r, hid = true) => Promise.all([hid ? offScreen(org, b, r.id) : null, markLog(org, r.logId, { hid })]);
 export const delLog = (org, id) => deleteDoc(doc(db, "orgs", org, "bilgiLog", id));
+
+// Sesin yazısı (Seyhun 2026-11-28 "yazıyı şimdilik sadece yönetimde ben göreceğim"): giden bas-konuş sesi gönderildikten sonra bir kez
+// yazıya çevrilir (/api/transcribe, yelken sözleri + sporcu adları ipucu); günlükte `yazi`. Sporcuya gitmez.
+export async function sesYazi(blob, names = []) {
+  const fd = new FormData();
+  fd.append("audio", blob, (blob.type || "").includes("webm") ? "ses.webm" : "ses.m4a");
+  if (names.length) fd.append("names", names.join(","));
+  const res = await authFetch("/api/transcribe", { method: "POST", body: fd, timeout: 20000 });
+  const d = await res.json().catch(() => ({}));
+  return String(d.text || "").trim();
+}
+// "Yanlış" bildirimi: ses + çeviri birlikte saklanır (sonra yapay zekâyla düzeltip çeviriyi geliştirmek için). Günlükte ayrı belge
+// { kind: "yazi-hata", ref: günlük belgesi, yazi, data (ses), type, dur, to, durum: "yeni" }; ilgili günlük satırına hata: true.
+// Gönderilenler ve gün kaydı bu türü göstermez. Kural değişmez (bilgiLog).
+export async function yaziHata(org, { logId, yazi, blob, dur, to }, ctx = {}) {
+  const data = blob ? await b64(blob) : "";
+  await logSent(org, { kind: "yazi-hata", ref: logId || "", yazi: yazi || "", data: data.length < 900000 ? data : "", type: (blob?.type || "audio/mp4").split(";")[0], dur: Math.round(dur || 0), to: to?.name || to || "", durum: "yeni" }, ctx);
+  if (logId) await markLog(org, logId, { hata: true });
+}
 
 // Kanal aç: aynı link (yalnız ilk kez yeni link) + kanal adı; ekranlar yalnız açık kanala katılarak başlar. Kapat: ekranlar durur.
 // Her kanalın kaydı orgs/{org}/bilgiKanal/{id} { name, at (açılış), end (kapanış, açıksa null) } (Seyhun 2026-11-17 "Kanallar":
