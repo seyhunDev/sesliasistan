@@ -60,7 +60,7 @@ export const saveBilgi = (org, patch) => {
   return setDoc(ref(org, "ekran"), p, { merge: true });
 };
 
-// Ceza ver / kaldır (k: "1" | "2" | "fd" | ""): tek yazma, sporcu ekranı ekran belgesinden görür
+// Ceza ver / kaldır (k: "1" | "2" | "sb" | "fd" | ""): tek yazma, sporcu ekranı ekran belgesinden görür
 // keep: Geri al ile geri gelen ceza kendiliğinden kalkmaz (antrenör elle kaldırır)
 export const setCeza = (org, dev, k, keep = false) => saveBilgi(org, { ceza: { [dev]: k ? { k, at: Date.now(), ...(keep ? { keep: true } : {}) } : deleteField() } });
 

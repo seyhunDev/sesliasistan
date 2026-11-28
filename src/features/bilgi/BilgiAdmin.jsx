@@ -715,7 +715,7 @@ function PenPage({ org, members, ceza, ctx, onDone }) {
       <div className="bzk-seg" role="radiogroup" aria-label="Ceza türü">
         {Object.entries(PEN).map(([v, p]) => (
           <button key={v} type="button" role="radio" aria-checked={k === v} data-k={v} disabled={!!cd} onClick={() => setK(v)} data-press>
-            {v === "fd" ? p.name : p.short}
+            {v === "fd" || v === "sb" ? p.name : p.short}
           </button>
         ))}
       </div>
