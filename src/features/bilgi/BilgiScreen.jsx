@@ -769,16 +769,13 @@ function PenAlert({ pen, now }) {
   // Antrenör cezayı 5 sn sonra kaldırır (2026-11-26); tam ekran yine de 10 sn'sini bitirir, sonra şerit çıkmaz
   const big = seen && now < seen.until ? seen : null;
   const p = PEN[pen?.k] || (big && PEN[big.k]);
-  // Ceza gelince önce iki bip, sonra sesli (Seyhun 2026-11-28); aynı ceza bir kez okunur (sayfa yeniden açılsa da)
+  // Ceza gelince yalnız sesli söylenir, bip yok (Seyhun 2026-11-28 "o sesi kaldır, bir ceza dönüşü demesi yeter"); aynı ceza bir kez okunur
   useEffect(() => {
     if (!pen?.at || !PEN[pen.k] || Date.now() - pen.at > 120e3 || penSaid(pen.at)) return;
-    beep("two");
     const text = PEN[pen.k].say;
-    setTimeout(() => {
-      const opts = { style: "asistan", timeoutMs: 5000 };
-      if (AUDIO) sayWith(AUDIO, text, opts);
-      else sayDevice(text, opts);
-    }, 550);
+    const opts = { style: "asistan", timeoutMs: 5000 };
+    if (AUDIO) sayWith(AUDIO, text, opts);
+    else sayDevice(text, opts);
   }, [pen?.at]); // eslint-disable-line react-hooks/exhaustive-deps
   if (!p) return null;
   const left = big ? Math.ceil((big.until - now) / 1000) : 0;
