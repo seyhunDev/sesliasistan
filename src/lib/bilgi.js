@@ -355,3 +355,12 @@ export function izAt(tr, T) {
   }
   return p[lo];
 }
+
+// Yönet sporcu kareleri (Seyhun 2026-11-28 örnek CgU1g4SzydbNPqsCtdeDcD): 1–4 sporcu iki sütun (3'te alttaki tam genişlik), 5 ve üstü üç sütun;
+// son satırda kalanlar satırı doldurur. 6'lık ızgarada her karenin genişliği (sütun sayısı) döner.
+export function kareSpans(n) {
+  const c = n <= 4 ? 2 : 3;
+  const w = 6 / c;
+  const rest = n % c;
+  return Array.from({ length: n }, (_, i) => (rest && i >= n - rest ? 6 / rest : w));
+}

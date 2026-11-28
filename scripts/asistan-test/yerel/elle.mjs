@@ -18,6 +18,14 @@ group("Sporcu paketleri")([
   ["havale", F("açıklama kodu hesaba göre sabit; IBAN boşluksuz saklanır, dörtlü gösterilir, TR + 24 rakam", () => PK.kodOf("tUs6nxsvn9") === "VLR-TUS6NX" && PK.ibanTemiz("tr12 0001 0000 0000 0000 0000 01") === "TR120001000000000000000001" && PK.ibanYazi("TR120001000000000000000001") === "TR12 0001 0000 0000 0000 0000 01" && PK.ibanGecerli("TR12 0001 0000 0000 0000 0000 01") && !PK.ibanGecerli("DE12 3456"))],
   ["kalan hak", F("11/15 → 4; dolu → 0; sınırsız → sonsuz", () => PK.kalanOf(11, 15) === 4 && PK.kalanOf(16, 15) === 0 && PK.kalanOf(5, Infinity) === Infinity)],
 ]);
+// Yönet sporcu kareleri (lib/bilgi kareSpans; Seyhun 2026-11-28)
+const BLK = await import("@/lib/bilgi");
+group("Yönet kareleri")([
+  ["sayıya göre", F("2 → iki yarım; 3 → iki yarım + tam; 4 → 2×2; 5 → üçlü + iki yarım; 6 → üçlü iki satır; 7 → son tam", () => {
+    const j = (n) => BLK.kareSpans(n).join(",");
+    return j(1) === "6" && j(2) === "3,3" && j(3) === "3,3,6" && j(4) === "3,3,3,3" && j(5) === "2,2,2,3,3" && j(6) === "2,2,2,2,2,2" && j(7) === "2,2,2,2,2,2,6";
+  })],
+]);
 const WPLANS = [{ title: "Optimist antrenmanı", date: "2026-10-05", time: "16:00", cat: "Antrenman" }, { title: "Toplantı", date: "2026-10-05", time: "16:00", cat: "Toplantı" }];
 group("Ek bildirimler")([
   ["doğum günü bugün", F("Ali Kaya, 12 yaş", () => /Ali Kaya \(12 yaşında\)/.test(NX.birthdayText([{ name: "Ali Kaya", month: 10, day: 5, year: 2014 }, { name: "Veli", month: 11, day: 5 }], "2026-10-05")?.title || ""))],
