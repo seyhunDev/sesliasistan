@@ -3689,6 +3689,30 @@ group("Anlık ses geçerliliği")([
   ["20 sn", F("az önceki çalar, 25 sn önceki ve boş çalmaz", () => SC.isLive(SC.serverNow() - 3000) && !SC.isLive(SC.serverNow() - 25e3) && !SC.isLive(0) && SC.isLive(SC.serverNow() - 25e3, 30e3))],
 ]);
 
+// Bas konuş parçaları susmada kesilir (Seyhun 2026-11-28 "2-3 saniye değil de o susma şeylerini hesaplayarak gönderelim")
+const PC = await import("@/lib/pttCut");
+// seviye dizisi (80 ms'de bir) verilir; parçaların ne zaman kesildiği ya da atıldığı döner
+const pttRun = (lv) => {
+  const s = PC.pttStart({}, 0);
+  const out = [];
+  lv.forEach((v, i) => {
+    const t = (i + 1) * 80;
+    const a = PC.pttTick(s, v, t);
+    if (a) { out.push(`${a}@${t}`); PC.pttStart(s, t); }
+  });
+  return out;
+};
+const sec = (ms, v) => Array(Math.round(ms / 80)).fill(v);
+group("Bas konuş: susmada kesme")([
+  ["kısa cümle", F("\"Hadi git\" + susma: konuşmadan ~0,65 sn sonra gider", () => { const o = pttRun([...sec(400, 0.02), ...sec(1200, 0.4), ...sec(1000, 0.02)]); return o.length === 1 && o[0].startsWith("cut@") && +o[0].slice(4) <= 2400; })],
+  ["iki cümle", F("arada susma: iki ayrı parça, cümle ortasında kesilmez", () => { const o = pttRun([...sec(2000, 0.4), ...sec(160, 0.03), ...sec(1500, 0.4), ...sec(800, 0.02), ...sec(1800, 0.4), ...sec(800, 0.02)]); return o.length === 2 && o.every((x) => x.startsWith("cut")) && +o[0].slice(4) > 3600; })],
+  ["susmadan uzun", F("9 sn'den sonra ilk kısa duraksamada kesilir", () => { const o = pttRun([...sec(9600, 0.4), ...sec(320, 0.03), ...sec(2000, 0.4)]); return o[0] && +o[0].slice(4) >= 9600 && +o[0].slice(4) <= 10000; })],
+  ["hiç durmadan", F("en geç 10,5 sn'de kesilir", () => { const o = pttRun(sec(12000, 0.4)); return o[0] === "cut@10560" || (o[0] && +o[0].slice(4) <= 10560); })],
+  ["yalnız sessizlik", F("boş parça 3 sn'de atılır, gönderilmez", () => { const o = pttRun(sec(3500, 0.02)); return o[0] === "skip@3040"; })],
+  ["uğultu", F("sürekli rüzgâr sesi bir süre sonra susma sayılır, üstündeki cümle ayrı gider", () => { const o = pttRun([...sec(6000, 0.1), ...sec(1500, 0.4), ...sec(900, 0.1)]); const l = o.at(-1); return l.startsWith("cut") && +l.slice(4) > 7500 && +l.slice(4) < 8400; })],
+  ["hemen konuşma", F("basar basmaz konuşunca ses atılmaz", () => !pttRun([...sec(1500, 0.4), ...sec(800, 0.02)]).some((x) => x.startsWith("skip")))],
+]);
+
 // Admin (Seyhun 2026-11-26): tanıtım başvurusu kontrolleri (lib/basvuru) ve kullanım kaydı (lib/kullanim)
 const BV = await import("@/lib/basvuru");
 const KU = await import("@/lib/kullanim");
