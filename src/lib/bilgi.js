@@ -56,7 +56,7 @@ export const PEN = {
   // short: rozet (sporcu karesi, harita). big: sporcu ekranındaki büyük yazı
   1: { name: "1 ceza dönüşü", deg: "360°", short: "1 dönüş", big: "360°", t: "Bir ceza dönüşü yap", say: "Bir ceza dönüşü" },
   2: { name: "2 ceza dönüşü", deg: "720°", short: "2 dönüş", big: "720°", t: "İki ceza dönüşü yap", say: "İki ceza dönüşü" },
-  // Ses (Seyhun 2026-11-28): önce iki bip, sonra kısa: "Bir ceza dönüşü", "İki ceza dönüşü", "Erken start. Fodepar."
+  // Ses (Seyhun 2026-11-28, bip kaldırıldı): yalnız kısa söz: "Bir ceza dönüşü", "İki ceza dönüşü", "Erken start. Fodepar."
   // Faux départ = erken start (Seyhun 2026-11-27 "Fox depart değil, Faux départ diyoruz; yani erken start"): ses Türkçe okunuşla "Fodepar"
   fd: { name: "Fodepar", deg: "Erken start", short: "FD", big: "FD", t: "Fodepar · erken start, hattın gerisine dön, yeniden başla", say: "Erken start. Fodepar." },
 };
