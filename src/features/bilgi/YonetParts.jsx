@@ -7,7 +7,8 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { authFetch } from "@/lib/authFetch";
 import { RecPick } from "@/features/raceMedia/RecPick";
 import { setShooting } from "@/features/raceMedia/shooting";
-import { KALIP_HAZIR, KALIP_ONERI, addYaziKalip, delKalip, openKanal, renameKalip, reopenKanal, saveKalip, sendKalip } from "./bilgiStore";
+import { KALIP_HAZIR, KALIP_ONERI, addYaziKalip, delKalip, openKanal, readSaat, renameKalip, reopenKanal, saveKalip, saveSaat, sendKalip } from "./bilgiStore";
+import { KAPAN_SAAT } from "@/lib/bilgi";
 import { sayWith } from "@/lib/speech/ttsClient";
 import { voiceType } from "@/lib/chatFile";
 import { VTAGS, myTags, rememberTag } from "./yonetVideo";
@@ -57,10 +58,11 @@ export function DayStart({ org, kanal, kanallar, names, onList, onIz, hidden = [
   const [day, setDay] = useState(today);
   const [pick, setPick] = useState(names[0] || "Antrenman");
   const [busy, setBusy] = useState(false);
+  const [saat, setSaat] = useState(readSaat);
   const have = (kanallar || []).find((k) => kanalDay(k) === day);
   const go = async () => {
     setBusy(true);
-    await (have ? reopenKanal(org, have, kanal) : openKanal(org, pick, kanal, day)).catch(() => toast("Başlatılamadı"));
+    await (have ? reopenKanal(org, have, kanal, saat) : openKanal(org, pick, kanal, day, saat)).catch(() => toast("Başlatılamadı"));
     setBusy(false);
   };
   const past = (kanallar || []).filter((k) => kanalDay(k) !== day && !k.arsiv && !hidden.includes(k.id)).slice(0, 3);
@@ -91,6 +93,16 @@ export function DayStart({ org, kanal, kanallar, names, onList, onIz, hidden = [
           ))}
         </div>
       )}
+      <div className="bzy-saat">
+        <span>Kendiliğinden kapanma</span>
+        <div className="bzy-chips" role="radiogroup" aria-label="Kendiliğinden kapanma">
+          {KAPAN_SAAT.map((v) => (
+            <button key={v} type="button" role="radio" aria-checked={saat === v} onClick={() => (setSaat(v), saveSaat(v))} data-press>
+              {v ? `${v} sa` : "Kapalı"}
+            </button>
+          ))}
+        </div>
+      </div>
       <Button full loading={busy} className="bzy-open" onClick={go}>
         {have ? "Devam et" : "Başlat"}
       </Button>

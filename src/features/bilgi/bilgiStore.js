@@ -6,7 +6,7 @@ import { addDoc, deleteDoc, setDoc, updateDoc } from "@/lib/firebase/write";
 import { db } from "@/lib/firebase/clientApp";
 import { authFetch } from "@/lib/authFetch";
 import { serverNow } from "@/lib/serverClock";
-import { LIVE_MS, cleanBilgi, MSG_MAX } from "@/lib/bilgi";
+import { KAPAN_SAAT, LIVE_MS, cleanBilgi, MSG_MAX, kapanAt } from "@/lib/bilgi";
 
 // Bilgi ekranı verisi: orgs/{org}/bilgi/ekran (sayaç, parkur, mesaj) ve orgs/{org}/bilgi/ses (son bas-konuş kaydı).
 // Ekranlar belgeyi dinler (onSnapshot): okuma yalnız belge değişince olur, kaç sporcu açarsa açsın sürekli sorma yok.
@@ -369,29 +369,45 @@ const kanalName = (name) =>
   String(name || "")
     .trim()
     .slice(0, 30) || "Antrenman";
-async function startKanal(org, id, name, prev) {
+// Kendiliğinden kapanma saati (Seyhun 2026-11-28): bu telefonda saklı, varsayılan 1 saat; 0 = kapalı
+const SAAT_KEY = "sa-kanal-saat";
+export function readSaat() {
+  try {
+    const v = localStorage.getItem(SAAT_KEY);
+    if (v != null && KAPAN_SAAT.includes(+v)) return +v;
+  } catch {}
+  return 1;
+}
+export const saveSaat = (v) => {
+  try {
+    localStorage.setItem(SAAT_KEY, String(v));
+  } catch {}
+};
+async function startKanal(org, id, name, prev, saat = 0) {
   if (prev?.open && prev.id && prev.id !== id) await updateDoc(kanalRef(org, prev.id), { end: Date.now() }).catch(() => {});
   // Link her kanalda aynı kalır (Seyhun 2026-11-23 "her açtığım kanal için link kopyalamam gerekiyor"): yalnız hiç link yoksa yenisi açılır.
   // Sporcu ekranı yeni kanalı görünce katılma kartına döner.
   if (!(await linkOf(org))) await newLink(org);
   const at = Date.now();
-  await saveBilgi(org, { kanal: { id, name, open: true, at } });
+  await saveBilgi(org, { kanal: { id, name, open: true, at, until: kapanAt(at, saat) } });
   await syncLink(org);
   return at;
 }
 // day: "YYYY-AA-GG" (Seyhun 2026-11-25 "kanal hep aynı, o günün verisi o tarihte"): Yönet "Günü başlat" gün başına bir kayıt açar;
 // aynı tarih zaten varsa reopenKanal ile o gün sürer
-export async function openKanal(org, name, prev = null, day = "") {
+export async function openKanal(org, name, prev = null, day = "", saat = readSaat()) {
   const id = newId();
   const n = kanalName(name);
-  const at = await startKanal(org, id, n, prev);
+  const at = await startKanal(org, id, n, prev, saat);
   await setDoc(kanalRef(org, id), { name: n, at, end: null, ...(day ? { day } : {}) });
 }
 // Eski kanalı tekrar aç (aynı link; izler ve kayıtlar aynı kanalda birikir)
-export async function reopenKanal(org, k, prev = null) {
-  await startKanal(org, k.id, kanalName(k.name), prev);
+export async function reopenKanal(org, k, prev = null, saat = readSaat()) {
+  await startKanal(org, k.id, kanalName(k.name), prev, saat);
   await setDoc(kanalRef(org, k.id), { name: kanalName(k.name), at: k.at || Date.now(), end: null }, { merge: true });
 }
+// Kapanmayı uzat (until + ms) ya da kapat (until null)
+export const kanalUntil = (org, until) => saveBilgi(org, { kanal: { until } });
 export async function closeKanal(org, id = "") {
   await saveBilgi(org, { kanal: { open: false } });
   if (id) await updateDoc(kanalRef(org, id), { end: Date.now() }).catch(() => {});

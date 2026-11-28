@@ -14,11 +14,12 @@ import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { chooseDur, raceStart, useTimerRun, writeTimer } from "@/features/training/Countdown";
 import { mmss } from "@/lib/raceScore";
 import { Sheet } from "@/components/ui/Sheet";
-import { LIVE_MS, PEN, PK_NAMES, PK_TYPES, SEEN_WAIT, SES_MAX_SEC, SHOW, SHOW_DEF, buildCourse, deliveryOf, isFor, fmtPt, kareSpans, markKeys, membersOf, parsePt } from "@/lib/bilgi";
+import { LIVE_MS, PEN, PK_NAMES, PK_TYPES, SEEN_WAIT, SES_MAX_SEC, SHOW, SHOW_DEF, buildCourse, deliveryOf, isFor, fmtPt, KAPAN_UYARI, kanalLeft, kareSpans, markKeys, membersOf, parsePt } from "@/lib/bilgi";
 import { Switch } from "@/features/settings/ui";
 import { MsgList } from "./BilgiMesaj";
 import {
   closeKanal,
+  kanalUntil,
   arsivKanal,
   deleteKanal,
   noteStart,
@@ -1023,6 +1024,17 @@ export function BilgiAdmin() {
   }, [org, linkKey]);
 
   const kanal = b?.kanal || null;
+  // Kendiliğinden kapanma (Seyhun 2026-11-28): süre dolunca kanal kapanır; 5 dk kala uzat/vazgeç, son 1 dk ortada geri sayım (✕ gizler)
+  const kLeft = kanalLeft(kanal, now);
+  const [kHide, setKHide] = useState({ u: 0, w: false, c: false });
+  const kh = kHide.u === kanal?.until ? kHide : { u: kanal?.until, w: false, c: false };
+  const kShut = useRef("");
+  useEffect(() => {
+    if (kLeft == null || kLeft > 0 || !kanal?.id || kShut.current === `${kanal.id}:${kanal.until}`) return;
+    kShut.current = `${kanal.id}:${kanal.until}`;
+    closeKanal(org, kanal.id).catch(() => {});
+  }, [kLeft, kanal?.id, kanal?.until, org]);
+  const kUzat = () => kanalUntil(org, (kanal.until || Date.now()) + 3600e3).catch(() => {});
   const ch = kanal?.open ? kanal.id : "";
   const ctx = { label: b?.label || "", state: b?.state || "", course: b?.course || "", ch, by: profile?.name || "" };
   // Kanallar (Seyhun 2026-11-17): liste, tekrar aç, sil (Geri al'lı, verisiyle), izi geri oynat
@@ -1559,6 +1571,34 @@ export function BilgiAdmin() {
             </section>
           </div>
         </>
+      )}
+      {open && kLeft != null && kLeft > 0 && kLeft <= KAPAN_UYARI && !(kLeft > 60e3 ? kh.w : kh.c) && (
+        <div className="bzy-kapan" role="alert" data-son={kLeft <= 60e3 ? "1" : undefined}>
+          {kLeft > 60e3 ? (
+            <>
+              <b>Gün {Math.ceil(kLeft / 60e3)} dk sonra kapanacak</b>
+              <div className="bzy-kapb">
+                <button type="button" className="on" onClick={kUzat} data-press>
+                  1 saat uzat
+                </button>
+                <button type="button" onClick={() => setKHide({ ...kh, w: true })} data-press>
+                  Vazgeç
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <button type="button" className="bzy-kapx" aria-label="Gizle" onClick={() => setKHide({ ...kh, c: true })} data-press>
+                ✕
+              </button>
+              <small>Gün kapanıyor</small>
+              <b className="num">{Math.ceil(kLeft / 1000)}</b>
+              <button type="button" className="bzy-kapu" onClick={kUzat} data-press>
+                1 saat uzat
+              </button>
+            </>
+          )}
+        </div>
       )}
       <ToolsSheet
         open={sheet === "araclar"}
