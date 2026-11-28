@@ -111,6 +111,23 @@ service cloud.firestore {
       return signedIn() && (!exists(ref) || get(ref).data.get("role", "owner") == "owner");
     }
     function veloraAdmin() { return signedIn() && request.auth.token.get("email", "") == "seyhunyildiz@gmail.com"; }
+
+    // ---- Velora Sailing (velora-sailing.netlify.app; aynı Firebase projesi) ----
+    // Ziyaret kayıtları: bir belge = bir ziyaretçinin en çok 100 olayı. Ziyaretçi giriş yapmamış olabilir (misafir),
+    // bu yüzden herkes ekler (alanlar ve boyut sınırlı); okuma ve silme yalnız Velora ana hesabı.
+    match /sailingEvents/{id} {
+      allow create: if request.resource.data.keys().hasOnly(["v", "vid", "sid", "uid", "role", "name", "at", "events"])
+                    && request.resource.data.at == request.time
+                    && request.resource.data.vid is string && request.resource.data.vid.size() <= 64
+                    && request.resource.data.events is list && request.resource.data.events.size() <= 100
+                    && (request.resource.data.uid == null || (signedIn() && request.resource.data.uid == request.auth.uid));
+      allow read, delete: if veloraAdmin();
+    }
+    // Yelken ayarı: originals herkes okur, yalnız Velora ana hesabı yazar; u_<uid> her kullanıcının kendi ayarı.
+    match /sailingTrim/{id} {
+      allow read: if id == "originals" || (signedIn() && id == "u_" + request.auth.uid) || veloraAdmin();
+      allow write: if (id == "originals" && veloraAdmin()) || (signedIn() && id == "u_" + request.auth.uid);
+    }
     match /sharedRaces/{rid} {
       function editor(d) { return d.get("by", "") == request.auth.uid || veloraAdmin(); }
       allow read: if veloraUser();
