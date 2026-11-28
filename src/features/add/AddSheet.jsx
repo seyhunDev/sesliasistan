@@ -76,7 +76,6 @@ export function AddSheet({ open, onClose, seed }) {
   const [turns, setTurns] = useState([]); // konuşma: { role: "user" | "assistant", text, chip? }
   const [whoAsk, setWhoAsk] = useState(null); // aynı adlı birden çok kişi: { said, options: [ad] } → "Hangi Ali?"
   const [ask, setAsk] = useState(null); // bekleyen soru: { idx, kind: "date" | "time" }
-  const [pickAssign, setPickAssign] = useState(null); // kaydetmeden önce sorumlu sorusu: null | seçilen uid'ler
   const orig = useRef(""); // düzenlemede açılıştaki hâl (değişiklik var mı?)
   const scrollRef = useRef(null);
   const startedFor = useRef(null); // geliştirme modunda (Strict Mode) açılış iki kez çalışmasın
@@ -201,7 +200,6 @@ export function AddSheet({ open, onClose, seed }) {
     setHeard("");
     setTurns([]);
     setAsk(null);
-    setPickAssign(null);
     setReply({ engine: "", message: "" });
     setVoice(!!seed?.voice);
     if (edit) {
@@ -225,26 +223,14 @@ export function AddSheet({ open, onClose, seed }) {
 
   const shut = () => onClose();
 
-  // Kaydet: sorumlusu olmayan kayıt varsa önce "Sorumlu eklemek ister misin?" sorulur (ana hesap, çalışan varken).
-  // Yapay zeka görevliyi anlamadıysa buradan elle seçilir.
+  // Kaydet: tek dokunuş, soru yok (Seyhun 2026-11-28 "sorumlusuz kaydet gibi bir şey olmasın, direkt kaydet"). Sorumlu seçilmediyse Genel.
   async function create() {
     if (!drafts.length) return toast("Aşağıdan ekle ya da asistana söyle");
     for (const d of drafts) {
       const e = check(d);
       if (e) return toast(e);
     }
-    if (canAssign && drafts.some((d) => !d.assignees?.length && !d._general)) {
-      setPickAssign([]);
-      navigator.vibrate?.(8);
-      return;
-    }
     finishCreate(drafts);
-  }
-
-  // pick: sorumlu sorusunda seçilenler; yalnızca sorumlusu olmayan kayıtlara eklenir
-  function saveWith(pick) {
-    setPickAssign(null);
-    finishCreate(drafts.map((d) => (!d.assignees?.length && !d._general && pick.length ? { ...d, assignees: pick } : d)));
   }
 
   async function finishCreate(list) {
@@ -347,19 +333,7 @@ export function AddSheet({ open, onClose, seed }) {
           mid
           dirty={typed}
           footer={
-            pickAssign ? (
-              <AssignAsk
-                members={members}
-                pick={pickAssign}
-                count={1}
-                total={1}
-                onPick={setPickAssign}
-                onSave={saveWith}
-                onBack={() => setPickAssign(null)}
-              />
-            ) : (
-              <SheetActions onCancel={shut} yes="Ekle" onYes={create} disabled={!d0 || !d0.title.trim() || !d0.date} />
-            )
+            <SheetActions onCancel={shut} yes="Kaydet" onYes={create} disabled={!d0 || !d0.title.trim() || !d0.date} />
           }
         >
           {d0 && <PlanForm d={d0} onChange={(p) => update(0, p)} onKind={(k) => changeType(0, k)} plans={plans} members={assign || []} />}
@@ -563,16 +537,6 @@ export function AddSheet({ open, onClose, seed }) {
             <button onClick={saveEdit} disabled={!dirty} className={`${primary} flex-1`}>
               {dirty ? "Kaydet" : "Değişiklik yok"}
             </button>
-          ) : pickAssign ? (
-            <AssignAsk
-              members={members}
-              pick={pickAssign}
-              count={drafts.filter((d) => !d.assignees?.length && !d._general).length}
-              total={drafts.length}
-              onPick={setPickAssign}
-              onSave={saveWith}
-              onBack={() => setPickAssign(null)}
-            />
           ) : (
             <button onClick={create} className={`${primary} flex-1`}>
               {drafts.length > 1 ? `Kaydet (${drafts.length})` : "Kaydet"}
@@ -582,58 +546,5 @@ export function AddSheet({ open, onClose, seed }) {
       )}
       {recDock && <div aria-hidden="true" className="shrink-0" style={{ height: "var(--rec-h, 0px)" }} />}
     </Screen>
-  );
-}
-
-// Kaydetmeden önce: "Sorumlu eklemek ister misin?" Çalışan seçilirse sorumlusu olmayan kayıtlara eklenir.
-function AssignAsk({ members, pick, count, total, onPick, onSave, onBack }) {
-  const toggle = (uid) => onPick(pick.includes(uid) ? pick.filter((u) => u !== uid) : [...pick, uid]);
-  const names = pick.map((u) => members.find((m) => m.uid === u)?.name.split(" ")[0]).filter(Boolean);
-  return (
-    <div className="animate-pop w-full">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <b className="block text-[1rem] font-semibold tracking-tight">Sorumlu eklemek ister misin?</b>
-          <small className="text-[0.8125rem] text-mut">
-            {total > 1 && count < total ? `Sorumlusu olmayan ${count} kayda eklenir.` : total > 1 ? `${total} kaydın hepsine eklenir.` : "Birden fazla kişi seçebilirsin."}
-          </small>
-        </div>
-        <button type="button" onClick={onBack} aria-label="Geri" data-press className="btn btn-icon btn-sm size-8 shrink-0 text-mut">
-          <Icon name="x" className="size-4" />
-        </button>
-      </div>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {members.map((m) => {
-          const on = pick.includes(m.uid);
-          return (
-            <button
-              key={m.uid}
-              type="button"
-              aria-pressed={on}
-              onClick={() => toggle(m.uid)}
-              className={`inline-flex items-center gap-1.5 rounded-full py-1.5 pl-1.5 pr-3.5 text-[0.9375rem] font-medium transition active:scale-95 ${on ? "bg-acc text-[var(--on-acc)]" : "bg-card text-fg ring-1 ring-line"}`}
-            >
-              <span className={`grid size-7 place-items-center rounded-full text-[0.75rem] font-semibold ${on ? "bg-white/20" : "bg-acc/10 text-acc"}`}>
-                {on ? <Icon name="check" className="size-4" /> : (m.name || "?")[0]}
-              </span>
-              {m.name}
-            </button>
-          );
-        })}
-      </div>
-      <div className="mt-4 flex gap-2.5">
-        <button type="button" onClick={() => onSave([])} data-press className="btn btn-secondary flex-1">
-          Sorumlusuz kaydet
-        </button>
-        <button
-          type="button"
-          onClick={() => onSave(pick)}
-          disabled={!pick.length}
-          data-press className="btn btn-primary min-w-0 flex-1 truncate"
-        >
-          {names.length ? `${names.join(", ")} ile kaydet` : "Kişi seç"}
-        </button>
-      </div>
-    </div>
   );
 }
