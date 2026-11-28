@@ -163,6 +163,22 @@ service cloud.firestore {
     match /{path=**}/sailTactics/{id} { allow read: if sailAdmin(); }
     match /{path=**}/sailRaces/{id} { allow read: if sailAdmin(); }
 
+    // Herkese açık taktikler (Seyhun 2026-11-28): taktiği oluşturan açar, adı görünsün mü kendisi seçer (by = ad ya da null).
+    // Giriş yapan herkes okur; yalnız sahibi yazar ve kaldırır, site sahibi de kaldırabilir. Taktik sahibin duran taktiklerinde olmalı.
+    match /sailPublic/{pid} {
+      allow read: if request.auth != null;
+      allow create, update: if sailUser() && request.resource.data.owner == request.auth.uid
+        && pid == request.auth.uid + '_' + request.resource.data.tid
+        && request.resource.data.keys().hasOnly(['v', 'owner', 'tid', 'by', 't', 'title', 'data'])
+        && request.resource.data.tid is string && request.resource.data.tid.size() <= 16
+        && (request.resource.data.by == null || (request.resource.data.by is string && request.resource.data.by.size() <= 40))
+        && request.resource.data.title is string && request.resource.data.title.size() <= 60
+        && request.resource.data.t is int
+        && request.resource.data.data is string && request.resource.data.data.size() < 200000
+        && (sailAdmin() || request.resource.data.tid in get(/databases/$(database)/documents/sailUsers/$(request.auth.uid)).data.get('tac', []));
+      allow delete: if request.auth != null && (resource.data.owner == request.auth.uid || sailAdmin());
+    }
+
     // Antrenör yarışları ve kodla paylaşılan taktikler: her Velora hesabı kendi yarışını kurar (owner = kendi uid).
     // Kodu bilen yarışı açar (get); liste yalnız kendi yarışları (site sahibi hepsi). Sporcular yarışını gönderir (runs).
     match /sailChallenges/{code} {

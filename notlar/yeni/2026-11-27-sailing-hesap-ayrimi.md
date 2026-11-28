@@ -7,3 +7,6 @@
 ## Sıradaki işler
 - Yayından sonra Sailing'de ziyaret.html → Hesaplar listesi dolmalı.
 - `/api/sailing-giris` içindeki `vs` bilgisi artık Sailing'de rol vermiyor (Sailing yalnız Seyhun'u sahip sayıyor); ileride sadeleştirilebilir.
+
+## Asistan
+- 2026-11-28: Sailing "Herkese açık taktikler" için `sailPublic/{uid}_{tid}` kuralı eklendi: giriş yapan herkes okur, yalnız sahibi yazar/kaldırır, Velora ana hesabı kaldırabilir; ad (`by`) yalnız sahibi isterse yazılır.
