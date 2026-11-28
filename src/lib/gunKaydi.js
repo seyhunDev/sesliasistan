@@ -78,7 +78,7 @@ export function gunRows({ kanal = {}, log = [], boats = [] } = {}) {
         if (one) one.pen.push(r.k);
       }
       const p = PEN[r.k];
-      ev.push({ at: r.at, who: r.to || one?.label || "Sporcu", what: r.k === "fd" ? "Fodepar" : "Ceza", tag: r.k, det: [p?.t || "", r.back ? "Geri al ile geri geldi" : ""].filter(Boolean).join(" · "), by });
+      ev.push({ at: r.at, who: r.to || one?.label || "Sporcu", what: r.k === "fd" ? "Fodepar" : r.k === "sb" ? "Sarı bayrak" : "Ceza", tag: r.k, det: [p?.t || "", r.back ? "Geri al ile geri geldi" : ""].filter(Boolean).join(" · "), by });
     } else if (r.kind === "ceza-off") {
       ev.push({ at: r.at, who: r.to || one?.label || "Sporcu", what: "Ceza kalktı", tag: "off", det: `${PEN[r.k]?.big || ""} · ${r.auto ? "5 sn sonra kendiliğinden" : "Elle kaldırıldı"}`, by: r.auto ? "" : by });
     } else if (r.kind === "not") {

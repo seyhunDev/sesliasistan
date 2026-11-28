@@ -60,9 +60,9 @@ export async function buildGunKaydiPdf(g, fonts) {
   const tag = (k, t, x, top) => {
     const s = 7.5;
     const tw = w(t, f.b, s) + 8;
-    const o = k === "fd" ? { color: FD } : k === "off" ? { color: WHITE, borderColor: rgb(0.7, 0.7, 0.72), borderWidth: 0.6 } : { color: PEN };
+    const o = k === "fd" || k === "sb" ? { color: FD } : k === "off" ? { color: WHITE, borderColor: rgb(0.7, 0.7, 0.72), borderWidth: 0.6 } : { color: PEN };
     box(x, top - 8.5, tw, 11, o);
-    text(t, x + 4, top, f.b, s, { color: k === "fd" ? INK : k === "off" ? MUT : WHITE });
+    text(t, x + 4, top, f.b, s, { color: k === "fd" || k === "sb" ? INK : k === "off" ? MUT : WHITE });
     return tw + 3;
   };
 
@@ -183,7 +183,7 @@ export async function buildGunKaydiPdf(g, fonts) {
       if (i === 2)
         return e.tag
           ? (x, top) => {
-              const t = e.tag === "off" ? "Kalktı" : e.tag === "fd" ? "FD" : e.tag === "2" ? "2 ceza dönüşü (720°)" : "1 ceza dönüşü (360°)";
+              const t = e.tag === "off" ? "Kalktı" : e.tag === "fd" ? "FD" : e.tag === "sb" ? "Sarı bayrak (720°)" : e.tag === "2" ? "2 ceza dönüşü (720°)" : "1 ceza dönüşü (360°)";
               const dx = tag(e.tag, t, x, top);
               text(e.tag === "off" ? "" : e.tag === "fd" ? "Fodepar" : "Ceza", x + dx, top, f.r, 8.5);
             }
