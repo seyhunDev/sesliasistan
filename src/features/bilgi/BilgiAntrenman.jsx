@@ -25,7 +25,7 @@ import { markKanalPlan } from "./bilgiStore";
 const dayText = (d) => new Date(`${d}T12:00:00`).toLocaleDateString("tr-TR", { weekday: "short", day: "numeric", month: "short" });
 
 // view: "ant" | "kaydet" | "" ; k: kanal kaydı { id, name, at, end, starts, plan } ; boats: bilgiTekne ; ant: Yönet'e gelinen plan id
-export function AntrenmanSheets({ org, view, onView, k, boats, ant = "" }) {
+export function AntrenmanSheets({ org, view, onView, k, boats, ant = "", onEnd = null }) {
   const { plans, updateRecord, saveDrafts, members, myUid } = useData();
   const { profile } = useAuth();
   const toast = useToast();
@@ -75,8 +75,34 @@ export function AntrenmanSheets({ org, view, onView, k, boats, ant = "" }) {
     setInner("log");
   }
 
+  // Günü bitir (Seyhun 2026-11-28): tek pencere; önce kanal kapanır, sonra kaydedilir
+  async function endSave(keep) {
+    if (busy || !onEnd) return;
+    setBusy(true);
+    const ok = await onEnd();
+    setBusy(false);
+    if (!ok) return;
+    if (keep) await save();
+    else onView("");
+  }
+
   return (
     <>
+      <Sheet
+        open={view === "bitir"}
+        onClose={() => onView("")}
+        title="Günü bitir"
+        footer={<SheetActions cancel="Yalnız bitir" onCancel={() => endSave(false)} yes="Bitir ve kaydet" onYes={() => endSave(true)} disabled={busy || !o} />}
+      >
+        <p className="mb-3 text-mut">Sporcuların ekranı durur. Antrenman, katılanlar ve start sayısıyla kaydedilir.</p>
+        {o && (
+          <RowList>
+            <Row title="Saat" right={`${o.time}–${o.endTime}`} />
+            <Row title="Katılanlar" sub={o.crew.join(", ") || "Kanala kimse katılmadı"} right={o.crew.length} />
+            <Row title="Start" right={o.starts} />
+          </RowList>
+        )}
+      </Sheet>
       <Sheet open={view === "ant"} onClose={() => onView("")} title="Antrenman" footer={<Button full onClick={() => onView("kaydet")} disabled={!k}>Antrenman olarak kaydet</Button>}>
         <p className="-mt-1 mb-2 text-[0.8125rem] text-mut">
           {dayText(day)}
