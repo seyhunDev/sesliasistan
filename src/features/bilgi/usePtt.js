@@ -123,7 +123,6 @@ export function usePtt({ send, onSent, live = null, max = SES_MAX_SEC }) {
       if (!r || r.state !== "recording" || s.ending) return;
       const a = pttTick(s, v, Date.now());
       if (!a) return;
-      r.skip = a === "skip";
       clearTimeout(s.segT);
       r.stop();
     });
@@ -144,8 +143,7 @@ export function usePtt({ send, onSent, live = null, max = SES_MAX_SEC }) {
         r.ondataavailable = (ev) => ev.data?.size && bits.push(ev.data);
         r.onstop = () => {
           const dur = (Date.now() - t0) / 1000;
-          // Yalnız sessizlik olan parça gönderilmez (son parça hariç: bitişi o bildirir)
-          if (!s.far && bits.length && !(s.ending && dur < 0.6) && !(r.skip && !s.ending)) {
+          if (!s.far && bits.length && !(s.ending && dur < 0.6)) {
             const n = s.seq++;
             s.sent.push(live.part(new Blob(bits, { type: r.mimeType || type || "audio/mp4" }), n, !!s.ending, s.id, to, dur).catch(() => false));
           }
