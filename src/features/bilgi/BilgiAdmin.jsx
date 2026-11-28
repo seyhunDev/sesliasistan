@@ -1310,11 +1310,23 @@ export function BilgiAdmin() {
       if (ok && antOn) setAntK(kanal), setSheet("kaydet");
     });
   };
+  // Günü bitir (Seyhun 2026-11-28 "çok fazla aksiyon istiyor"): üst çubukta sabit "Bitir". Antrenmanda tek pencere: özet + "Bitir ve kaydet"
+  // (2 dokunuş; eskiden ⋯ › Günü bitir › onay › Kaydet = 4). Yarış gününde Bitir + onay.
+  const endDay = () => {
+    if (!antOn) return closeAsk();
+    setAntUsed(true);
+    setSheet("bitir");
+  };
+  const endOnly = () =>
+    closeKanal(org, kanal.id).then(
+      () => true,
+      () => (toast("Kapatılamadı"), false),
+    );
   const tst = talkSt(ptt, last, dl0, now, to);
   // Antrenman (BilgiAntrenman.jsx): yarış günü değilse ya da antrenmandan gelindiyse; kanal kaydı listeden (starts, end, plan)
   const antOn = club && (!!ant || !yaris.data);
   // Sporcular (kulüp listesi) yalnız Antrenman penceresi ilk açılınca okunur; sonra iç pencereler (Yoklama, Günlük) için açık kalır
-  if (!antUsed && (sheet === "ant" || sheet === "kaydet")) setAntUsed(true);
+  if (!antUsed && (sheet === "ant" || sheet === "kaydet" || sheet === "bitir")) setAntUsed(true);
   const antBase = sheet === "kaydet" && antK ? antK : kanal;
   const antDoc = antBase?.id ? { ...antBase, ...(kanallar?.find((x) => x.id === antBase.id) || {}) } : null;
   const pickTool = (k) => {
@@ -1354,6 +1366,9 @@ export function BilgiAdmin() {
               <span className="num">
                 {dayLabel(kday)} · {members.length} kişi
               </span>
+            </button>
+            <button type="button" className="bzy-endb" onClick={endDay} data-press>
+              Bitir
             </button>
             <button type="button" className="btn btn-round bzy-fab" aria-label="Araçlar" onClick={() => setSheet("araclar")} data-press>
               <Ic n="more" />
@@ -1525,10 +1540,10 @@ export function BilgiAdmin() {
         tools={tools}
         Ic={Ic}
         onPick={pickTool}
-        onEnd={() => (setSheet(""), closeAsk())}
+        onEnd={() => (setSheet(""), endDay())}
       />
       <KalipSheets org={org} list={kaliplar} view={sheet} onView={setSheet} src={canKalip || sheet === "kyap" ? last : null} to={to} members={members.length} onSend={sendK} repeat={repeat} onSaved={() => setLast((o) => (o ? { ...o, kalip: "saved" } : o))} />
-      {antUsed && club && <AntrenmanSheets org={org} view={sheet} onView={setSheet} k={antDoc} boats={boats} ant={ant} />}
+      {antUsed && club && <AntrenmanSheets org={org} view={sheet} onView={setSheet} k={antDoc} boats={boats} ant={ant} onEnd={endOnly} />}
       <SporcuSheet org={org} id={sheet.startsWith("sp:") ? sheet.slice(3) : ""} boat={chBoats.find((x) => `sp:${x.id}` === sheet)} cur={ceza[sheet.slice(3)]} ctx={ctx} onClose={() => setSheet("")} onVideo={(bt) => shot([athTag(bt)])} onNot={(i) => setSheet(`not:${i}`)} />
       {/* Görünür giriş (Seyhun 2026-11-25 "ceza çalışmıyor"): basılı tutmayı bilmeyen için; tek sporcu seçiliyse doğrudan onun penceresi */}
       <Sheet open={sheet === "ceza"} onClose={() => setSheet("")} title="Ceza · sporcu seç">

@@ -1092,3 +1092,7 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
 .bzy-yw { flex: 1; color: var(--mut); font-size: 0.8125rem; font-weight: 600; }
 .bzy-ybad { flex: none; height: 2rem; padding: 0 0.75rem; border: 1px solid #3a3a40; border-radius: 0.625rem; background: #1f1f22; color: #ff8a7a; font-size: 0.8125rem; font-weight: 700; }
 .bzy-ybad:disabled { color: var(--mut); }
+
+/* Üst çubukta Günü bitir (Seyhun 2026-11-28): sabit, kısa adlı, kırmızı çerçeveli */
+.bzy-endb { flex: none; height: 2.75rem; padding: 0 1rem; border-radius: 1.375rem; border: 1px solid rgba(239, 68, 68, .55); background: rgba(23, 23, 26, .9); color: #f87171; font-weight: 700; font-size: 0.9375rem; -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.bzy-endb:active { transform: scale(.96); }
