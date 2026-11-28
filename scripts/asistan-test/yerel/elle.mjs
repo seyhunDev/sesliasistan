@@ -27,6 +27,7 @@ group("Yönet kareleri")([
   })],
   ["son 1 dk bip", F("60, 30, 10 sn'de tek bip; 59'da yok", () => BLK.beepOf(61, 60) === "one" && BLK.beepOf(31, 30) === "one" && BLK.beepOf(60, 59) === null)],
   ["mesaj süresi", F("15 sn", () => BLK.MSG_SHOW_MS === 15e3)],
+  ["kendiliğinden kapanma", F("1 sa sonra kapanır, kapalıda süre yok, süresi geçen kanal kapalı sayılır", () => BLK.kapanAt(1000, 1) === 1000 + 3600e3 && BLK.kapanAt(1000, 0) === null && BLK.kanalLive({ open: true, until: 5 }, 4) && !BLK.kanalLive({ open: true, until: 5 }, 5) && BLK.kanalLeft({ open: true, until: 10 }, 4) === 6 && BLK.cleanBilgi({ kanal: { id: "a", open: true, until: 9 } }).kanal.until === 9)],
   ["sarı bayrak", F("ceza türü, 720°, sesli", () => BLK.PEN.sb?.name === "Sarı bayrak" && BLK.PEN.sb.deg === "720°" && /İki ceza dönüşü/.test(BLK.PEN.sb.say))],
 ]);
 const WPLANS = [{ title: "Optimist antrenmanı", date: "2026-10-05", time: "16:00", cat: "Antrenman" }, { title: "Toplantı", date: "2026-10-05", time: "16:00", cat: "Toplantı" }];

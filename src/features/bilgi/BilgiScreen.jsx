@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/features/auth/AuthProvider";
 import { sunsetHM } from "@/lib/attRemind";
 import { isLive, syncClock } from "@/lib/serverClock";
-import { FRESH_MS, MSG_SHOW_MS, PEN, PEN_BIG_MS, SHOW_DEF, isFor, beepOf, buildCourse, dirName, normDeg, pFlag, screenMode, seqMarks, startView, declination, quatHeading, tiltHeading, windRel } from "@/lib/bilgi";
+import { FRESH_MS, MSG_SHOW_MS, PEN, kanalLive, PEN_BIG_MS, SHOW_DEF, isFor, beepOf, buildCourse, dirName, normDeg, pFlag, screenMode, seqMarks, startView, declination, quatHeading, tiltHeading, windRel } from "@/lib/bilgi";
 import { CourseMap } from "./CourseMap";
 import { deviceId, kalipSes, notSes, useNotlar, offPos, readWho, savePusula, saveTekneKim, saveWho, sendGelen, sendIz, sendPos, useBilgi, useBilgiDoc, usePublic, useTekneKim } from "./bilgiStore";
 import { usePtt } from "./usePtt";
@@ -1043,7 +1043,9 @@ export function BilgiScreen({ pub = "" }) {
   useWake(on);
   useLock();
   // Kanal: yalnız açık kanala katılınca çalışır; kanal kapanır ya da yenisi açılırsa ekran yeniden katılma kartına döner
-  const kanal = b === undefined ? undefined : b?.kanal || null;
+  // Süresi dolan kanal (kendiliğinden kapanma) Yönet kapatmasa da kapalı sayılır
+  const kanal0 = b === undefined ? undefined : b?.kanal || null;
+  const kanal = kanal0?.open && !kanalLive(kanal0, now) ? { ...kanal0, open: false } : kanal0;
   const [joined, setJoined] = useState("");
   // Bir kez katılan ekran (Seyhun 2026-11-25 "kanal hep aynı, günler ayrı") Yönet yeni günü başlatınca kendiliğinden o güne geçer
   const active = on && !!kanal?.open && !!joined;

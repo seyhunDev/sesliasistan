@@ -17,6 +17,14 @@ export const MSG_MAX = 200;
 export const SES_MAX_SEC = 20;
 // Mesaj ve ses yalnız tazeyse gösterilir/çalınır (ekran sonradan açılınca eski mesaj okunmaz)
 export const FRESH_MS = 60e3;
+// Kanal kendiliğinden kapanır (Seyhun 2026-11-28 "1 saat açık kalsın, sonra otomatik kapansın; kullanıcı 3-4 saat ayarlayabilir"):
+// kanal.until = açılış + saat. 5 dk kala "1 saat uzat / Vazgeç", son 1 dk ortada küçük geri sayım (✕ ile gizlenir), süre bitince kapanır.
+// Sporcu ekranı süresi geçmiş kanalı kapalı sayar (Yönet açık olmasa da).
+export const KAPAN_SAAT = [0, 1, 2, 3, 4];
+export const KAPAN_UYARI = 5 * 60e3;
+export const kapanAt = (at, saat) => (saat > 0 ? at + saat * 3600e3 : null);
+export const kanalLeft = (k, now) => (k?.open && k.until ? k.until - now : null);
+export const kanalLive = (k, now) => !!k?.open && !(k.until && now >= k.until);
 // Sporcu ekranında yazılı mesaj (kalıp dahil) bu kadar görünür, sonra kaybolur; sabitlenen de kalmaz (Seyhun 2026-11-28 "çok fazla durmamalı")
 export const MSG_SHOW_MS = 15e3;
 // Kime (Seyhun 2026-11-25 "hangi sporcuya tıklıyorsam onunla, hepsine tıklıyorsam onlarla"): to = cihaz kimlikleri virgülle; boşsa herkes
@@ -46,7 +54,7 @@ export function cleanBilgi(d = {}) {
     msg: m && m.id ? { id: S(m.id, 40), text: S(m.text, MSG_MAX), at: Number(m.at) || 0, to: S(m.to, TO_MAX) } : null,
     pin: d.pin && typeof d.pin === "object" && d.pin.id ? { id: S(d.pin.id, 40), text: S(d.pin.text, MSG_MAX), at: Number(d.pin.at) || 0, to: S(d.pin.to, TO_MAX) } : null,
     parkur: cleanParkur(d.parkur),
-    kanal: d.kanal && typeof d.kanal === "object" && d.kanal.id ? { id: S(d.kanal.id, 40), name: S(d.kanal.name, 30) || "Kanal", open: d.kanal.open === true } : null,
+    kanal: d.kanal && typeof d.kanal === "object" && d.kanal.id ? { id: S(d.kanal.id, 40), name: S(d.kanal.name, 30) || "Kanal", open: d.kanal.open === true, ...(Number(d.kanal.until) > 0 ? { until: Number(d.kanal.until) } : {}) } : null,
     ceza: cleanCeza(d.ceza),
   };
 }

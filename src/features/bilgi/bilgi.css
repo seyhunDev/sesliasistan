@@ -1171,3 +1171,19 @@ textarea.bzy-in { min-height: 5rem; resize: none; line-height: 1.4; }
   .bzk-g[data-c="3"] { --rh: 3rem; }
 }
 @media (prefers-reduced-motion: reduce) { .bzk-clk::before { transition: none; } }
+
+/* Kendiliğinden kapanma (Seyhun 2026-11-28): Günü başlat'ta saat seçimi; 5 dk kala ve son 1 dk ortada küçük kart */
+.bzy-saat { display: grid; gap: 0.375rem; }
+.bzy-saat > span { font-size: 0.75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--mut); }
+.bzy-saat .bzy-chips button { height: 2.25rem; padding: 0 0.75rem; font-size: 0.875rem; }
+.bzy-kapan { position: absolute; left: 50%; top: 42%; z-index: 30; transform: translate(-50%, -50%); width: min(18rem, calc(100vw - 2rem)); display: grid; justify-items: center; gap: 0.625rem;
+  padding: 1rem; border: 1px solid #2e2e33; border-radius: 1.25rem; background: rgba(17, 17, 19, .96); color: #fff; text-align: center; box-shadow: 0 12px 40px rgba(0, 0, 0, .5); }
+.bzy-kapan > b { font-size: 1rem; font-weight: 700; }
+.bzy-kapb { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; width: 100%; }
+.bzy-kapb button, .bzy-kapu { height: 2.75rem; border: 0; border-radius: 0.875rem; background: #26262b; color: #fff; font-size: 0.9375rem; font-weight: 700; }
+.bzy-kapb button.on, .bzy-kapu { background: var(--lime); color: #111; }
+.bzy-kapu { width: 100%; }
+.bzy-kapan[data-son] small { font-size: 0.75rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--mut); }
+.bzy-kapan[data-son] > b { font: 800 3.5rem/1 var(--sc); color: #ff6b6b; }
+.bzy-kapx { position: absolute; top: 0.5rem; right: 0.5rem; width: 2.25rem; height: 2.25rem; border: 0; border-radius: 50%; background: #26262b; color: #fff; font-size: 0.9375rem; font-weight: 800; }
+.bzy-saat .bzy-chips button[aria-checked="true"] { background: #fff; border-color: #fff; color: #111; }
