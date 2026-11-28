@@ -111,6 +111,108 @@ service cloud.firestore {
       return signedIn() && (!exists(ref) || get(ref).data.get("role", "owner") == "owner");
     }
     function veloraAdmin() { return signedIn() && request.auth.token.get("email", "") == "seyhunyildiz@gmail.com"; }
+
+    // ---- Velora Sailing (seyhunDev/velora-sailing, velora-sailing.netlify.app; aynı Firebase projesi) ----
+    // Kaynak: velora-sailing deposu firebase/firestore-sailing.rules. Kurallar (Seyhun 2026-11-27): her kullanıcı yalnız
+    // kendi verisini okur ve yazar; site sahibi (admin) yalnız Seyhun'un hesabı, herkesin verisini okur ama başkası adına yazmaz.
+    function sailAdmin() {
+      return request.auth != null && (request.auth.uid == 'wIfcw0kHBVVu2DVMiyg1fcSA85F3'
+        || request.auth.token.get('email', '') == 'seyhunyildiz@gmail.com');
+    }
+    // Velora hesabıyla giren (anonim değil)
+    function sailUser() {
+      return request.auth != null && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+
+    // Ziyaret kayıtları: bir belge = bir ziyaretçinin en çok 100 olayı. Herkes ekler (alanlar ve boyut sınırlı),
+    // okuma ve silme yalnız site sahibi.
+    match /sailingEvents/{id} {
+      allow create: if request.resource.data.keys().hasOnly(['v', 'vid', 'sid', 'uid', 'role', 'name', 'at', 'events'])
+        && request.resource.data.at == request.time
+        && request.resource.data.vid is string && request.resource.data.vid.size() <= 64
+        && request.resource.data.events is list && request.resource.data.events.size() <= 100
+        && (request.resource.data.uid == null || (request.auth != null && request.resource.data.uid == request.auth.uid));
+      allow read, delete: if sailAdmin();
+    }
+
+    // Yelken ayarı: originals herkes okur, yalnız site sahibi yazar; u_<uid> her kullanıcının kendi ayarı.
+    match /sailingTrim/{id} {
+      allow read: if id == 'originals' || (request.auth != null && id == 'u_' + request.auth.uid) || sailAdmin();
+      allow write: if (id == 'originals' && sailAdmin()) || (request.auth != null && id == 'u_' + request.auth.uid);
+    }
+
+    // Kullanıcının kendi verisi: profil + taktikler (sailTactics) + simülatör yarış kayıtları (sailRaces).
+    // Yalnız sahibi yazar (silme yok: silinen öğe del:true olur); sahibi ve site sahibi okur.
+    // Taktik sınırı (Seyhun 2026-11-27): profildeki tac listesi = kullanıcının duran taktikleri, en çok 10 (site sahibi sınırsız).
+    // Taktik yazmak için kimliği aynı yazımla (batch) tac listesinde olmalı; silindi işareti (del) her zaman yazılır.
+    match /sailUsers/{uid} {
+      allow read: if request.auth != null && (request.auth.uid == uid || sailAdmin());
+      allow create, update: if sailUser() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['v', 'name', 'email', 'first', 'last', 'tac'])
+        && request.resource.data.get('tac', []) is list && (sailAdmin() || request.resource.data.get('tac', []).size() <= 10)
+        && request.resource.data.get('name', '') is string && request.resource.data.get('name', '').size() <= 80
+        && request.resource.data.get('email', '') is string && request.resource.data.get('email', '').size() <= 120;
+      allow delete: if false;
+      match /{kind}/{id} {
+        allow read: if request.auth != null && (request.auth.uid == uid || sailAdmin());
+        allow create, update: if sailUser() && request.auth.uid == uid && kind in ['sailTactics', 'sailRaces']
+          && id.size() <= 64
+          && request.resource.data.keys().hasOnly(['v', 't', 'del', 'data'])
+          && request.resource.data.t is int && request.resource.data.del is bool
+          && request.resource.data.data is string && request.resource.data.data.size() < 900000
+          && (kind != 'sailTactics' || request.resource.data.del == true || sailAdmin()
+              || id in getAfter(/databases/$(database)/documents/sailUsers/$(uid)).data.get('tac', []));
+        allow delete: if false;
+      }
+    }
+    // Site sahibinin "Hesaplar" listesi: bütün kullanıcıların taktik ve kayıtları tek sorguda
+    match /{path=**}/sailTactics/{id} { allow read: if sailAdmin(); }
+    match /{path=**}/sailRaces/{id} { allow read: if sailAdmin(); }
+
+    // Herkese açık taktikler (Seyhun 2026-11-28): taktiği oluşturan açar, adı görünsün mü kendisi seçer (by = ad ya da null).
+    // Giriş yapan herkes okur; yalnız sahibi yazar ve kaldırır, site sahibi de kaldırabilir. Taktik sahibin duran taktiklerinde olmalı.
+    match /sailPublic/{pid} {
+      allow read: if request.auth != null;
+      allow create, update: if sailUser() && request.resource.data.owner == request.auth.uid
+        && pid == request.auth.uid + '_' + request.resource.data.tid
+        && request.resource.data.keys().hasOnly(['v', 'owner', 'tid', 'by', 't', 'title', 'data'])
+        && request.resource.data.tid is string && request.resource.data.tid.size() <= 16
+        && (request.resource.data.by == null || (request.resource.data.by is string && request.resource.data.by.size() <= 40))
+        && request.resource.data.title is string && request.resource.data.title.size() <= 60
+        && request.resource.data.t is int
+        && request.resource.data.data is string && request.resource.data.data.size() < 200000
+        && (sailAdmin() || request.resource.data.tid in get(/databases/$(database)/documents/sailUsers/$(request.auth.uid)).data.get('tac', []));
+      allow delete: if request.auth != null && (resource.data.owner == request.auth.uid || sailAdmin());
+    }
+
+    // Antrenör yarışları ve kodla paylaşılan taktikler: her Velora hesabı kendi yarışını kurar (owner = kendi uid).
+    // Kodu bilen yarışı açar (get); liste yalnız kendi yarışları (site sahibi hepsi). Sporcular yarışını gönderir (runs).
+    match /sailChallenges/{code} {
+      function ch() { return get(/databases/$(database)/documents/sailChallenges/$(code)).data; }
+      allow get: if true;
+      allow list: if request.auth != null && (resource.data.owner == request.auth.uid || sailAdmin());
+      allow create: if sailUser() && request.resource.data.owner == request.auth.uid
+        && code.matches('[A-Z0-9]{6}') && request.resource.data.setup is string && request.resource.data.setup.size() < 300000;
+      allow update: if request.auth != null && resource.data.owner == request.auth.uid
+        && request.resource.data.owner == resource.data.owner && request.resource.data.setup == resource.data.setup;
+      allow delete: if request.auth != null && resource.data.owner == request.auth.uid;
+      match /runs/{rid} {
+        allow create: if request.auth != null
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.n is int && request.resource.data.n >= 1
+          && rid == request.auth.uid + '_' + string(request.resource.data.n)
+          && (ch().tries == 0 || request.resource.data.n <= ch().tries)
+          && ch().state == 'open' && (ch().due == 0 || request.time.toMillis() < ch().due)
+          && request.resource.data.name is string && request.resource.data.name.size() <= 24
+          && request.resource.data.rec is string && request.resource.data.rec.size() < 900000;
+        allow read: if request.auth != null && (resource.data.uid == request.auth.uid || ch().owner == request.auth.uid
+          || sailAdmin() || ch().vis == 'all'
+          || (ch().vis == 'after' && exists(/databases/$(database)/documents/sailChallenges/$(code)/runs/$(request.auth.uid + '_1'))));
+        allow delete: if request.auth != null && ch().owner == request.auth.uid;
+      }
+    }
+    // ---- Velora Sailing sonu ----
+
     match /sharedRaces/{rid} {
       function editor(d) { return d.get("by", "") == request.auth.uid || veloraAdmin(); }
       allow read: if veloraUser();
