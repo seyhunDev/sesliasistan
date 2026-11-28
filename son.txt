@@ -1,8 +1,8 @@
-Commit: f182cab · Admin › Açılış: açılış öncesi kontrol sayfası uygulamada (#1683)
-Zaman: 2026-11-28-0110 (İstanbul)
-Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/46072523306
+Commit: bf4d0a1 · Kaydırırken yanlışlıkla tıklanma: kayan dokunuş tıklama sayılmaz, gerçek dokunuşta hafif titreşim (#1687)
+Zaman: 2026-11-28-0845 (İstanbul)
+Çalıştırma: https://github.com/seyhunDev/sesliasistan/actions/runs/46111815579
 
-TAM TEST · 28.11.2026 00:47:31
+TAM TEST · 28.11.2026 08:23:02
 Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 
 1/4 Birim testleri çalışıyor…
@@ -21,7 +21,7 @@ Sesli asistan ve uygulama, baştan sona. Gerçek veriye dokunulmaz.
 4/4 Gerçek yapay zeka (küçük örnek, ~16 istek)…
 
 ======================================================================
-SONUÇ: 1286/1315 geçti · 29 kalan · 1387 sn
+SONUÇ: 1286/1315 geçti · 29 kalan · 1364 sn
 ======================================================================
 
 1. BİRİM TESTLERİ: 0/1
