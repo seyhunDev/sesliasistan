@@ -14,7 +14,7 @@ import { useConfirm } from "@/components/ui/ConfirmProvider";
 import { chooseDur, raceStart, useTimerRun, writeTimer } from "@/features/training/Countdown";
 import { mmss } from "@/lib/raceScore";
 import { Sheet } from "@/components/ui/Sheet";
-import { LIVE_MS, PEN, PK_NAMES, PK_TYPES, SEEN_WAIT, SES_MAX_SEC, SHOW, SHOW_DEF, buildCourse, deliveryOf, isFor, fmtPt, markKeys, membersOf, parsePt } from "@/lib/bilgi";
+import { LIVE_MS, PEN, PK_NAMES, PK_TYPES, SEEN_WAIT, SES_MAX_SEC, SHOW, SHOW_DEF, buildCourse, deliveryOf, isFor, fmtPt, kareSpans, markKeys, membersOf, parsePt } from "@/lib/bilgi";
 import { Switch } from "@/features/settings/ui";
 import { MsgList } from "./BilgiMesaj";
 import {
@@ -216,52 +216,50 @@ function Tekneler({ boats: all, ch, now }) {
 // Süre paneli (Seyhun 2026-11-22 örnek "Yönet alt kısım 2" onaylandı "Yap"): konuşmadan ayrı, en altta. Start öncesi büyük süre + küçük "4 dk"
 // (dokununca 5·4·2·1 açılır, seçince kapanır) ve en altta boydan boya Başlat. Geri sayımda mavi süre + 5·4·1·0, aynı yerde içi süreyle boşalan
 // Bitir. Start sonrası akan süre, start saati ve Bitir.
-const DURS = [300, 240, 120, 60];
-function PanelClock({ org }) {
+// Süre kutusu (Seyhun 2026-11-28 örnek "Yönet yeni düzen 2" "Yap": çok sık kullanılır, büyük): solda büyük süre, sağda büyük BAŞLAT
+// (işlerken DURDUR), altında 1–5 dk tek dokunuşla. Geri sayımda 5·4·1·0, start sonrası start saati.
+const DURS = [60, 120, 180, 240, 300];
+function PanelClock({ org, mini = false }) {
   const { t, now, running, rem, up } = useTimerRun();
-  const [pick, setPick] = useState(false);
   const time = up ? `+${mmss(Math.max(0, Math.floor((now - t.end) / 1000)))}` : mmss(Math.max(0, running ? rem : (t.left ?? t.dur)));
   const stop = () => writeTimer({ dur: t.dur, end: null, left: null, zero: up ? t.end : t.zero, own: "", where: "" });
   const go = () => raceStart({ onStart: (end) => noteStart(org, end) }, "start", "Bilgi ekranı", "/bilgi/yonet");
   const flag = rem > 240 ? "5" : rem > 60 ? "4" : "1";
   const left = up || !running ? 0 : Math.max(0, Math.min(100, (rem / (t.dur || 1)) * 100));
-  // Süre kutusu (Seyhun 2026-11-25 "süre ile konuşma aynı yükseklikte, uyumlu; başlatma büyük"): kutunun tamamı Başlat / Bitir
+  if (mini)
+    return (
+      <button type="button" className="bzk-mclk" data-run={running ? "1" : undefined} onClick={running ? stop : go} data-press>
+        <b className="num">{running && !up ? `−${time}` : time}</b>
+        <small>{running ? "Durdur" : "Başlat"}</small>
+      </button>
+    );
   return (
-    <div className="bzy-sure" data-run={running ? "1" : undefined} data-up={up ? "1" : undefined} style={{ "--p": `${left}%` }}>
-      <div className="bzy-sh">
-        {/* Sayarken "Süre" yazısı yok (Seyhun 2026-11-27 telefonda "Sü…" kalıyordu): yer 5·4·1·0'a ve start saatine */}
-        {running ? null : <span>Süre</span>}
-        {!running ? (
-          <button type="button" className="bzy-dur" aria-expanded={pick} onClick={() => setPick((x) => !x)} data-press>
-            {Math.round(t.dur / 60)} dk
-            <Ic n={pick ? "chev" : "up"} />
-          </button>
-        ) : up ? (
-          <span className="num">Start {hhmm(t.end)}</span>
-        ) : t.dur === 300 ? (
-          <span className="bzy-lad" aria-hidden="true">
-            {["5", "4", "1", "0"].map((x) => (
-              <i key={x} data-on={x === flag ? "1" : undefined}>
-                {x}
-              </i>
-            ))}
-          </span>
-        ) : null}
+    <div className="bzk-clk" data-run={running ? "1" : undefined} data-up={up ? "1" : undefined} style={{ "--p": `${left}%` }}>
+      <div className="bzk-clt">
+        <b className="num">{running && !up ? `−${time}` : time}</b>
+        <button type="button" className="bzk-go" data-stop={running ? "1" : undefined} onClick={running ? stop : go} data-press>
+          {running ? "Durdur" : "Başlat"}
+        </button>
       </div>
-      {pick ? (
-        <div className="bzy-durs" role="group" aria-label="Süre">
+      {!running ? (
+        <div className="bzk-durs" role="group" aria-label="Süre (dakika)">
           {DURS.map((d) => (
-            <button key={d} type="button" aria-pressed={t.dur === d} onClick={() => (chooseDur(d), setPick(false))} data-press>
+            <button key={d} type="button" aria-pressed={t.dur === d} onClick={() => chooseDur(d)} data-press>
               {d / 60}
             </button>
           ))}
         </div>
-      ) : (
-        <button type="button" className="bzy-sgo" onClick={running ? stop : go} data-press>
-          <b className="num" style={{ "--n": (running && !up ? `−${time}` : time).length }}>{running && !up ? `−${time}` : time}</b>
-          <span>{running ? "Bitir" : "Başlat"}</span>
-        </button>
-      )}
+      ) : up ? (
+        <small className="bzk-cls num">Start {hhmm(t.end)}</small>
+      ) : t.dur === 300 ? (
+        <span className="bzy-lad bzk-lad" aria-hidden="true">
+          {["5", "4", "1", "0"].map((x) => (
+            <i key={x} data-on={x === flag ? "1" : undefined}>
+              {x}
+            </i>
+          ))}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -627,109 +625,122 @@ function KanalInfo({ kanal, link, count, onList }) {
   );
 }
 
-// Bas konuş kutusu (Seyhun 2026-11-25 örnek "Yönet bas-konuş köşesi"): süre kutusuyla aynı boyda, sağ altta. Basılı tut, konuş, bırak: gider; Aç/kapa (2026-11-25): dokun başlasın, tekrar dokun gönder; 60 sn sınır.
-// uzağa kaydırınca iptal. Üstünde kime gideceği büyük yazar; kayıtta beyaz olur, süre ve ses seviyesi görünür.
-function PttTile({ to, ptt, now }) {
-  const rec = ptt.rec;
-  const st = rec ? (rec.cancel ? "cancel" : "rec") : ptt.arm ? "arm" : "";
-  const sec = rec ? Math.max(0, Math.floor((now - rec.t0) / 1000)) : 0;
-  const name = to?.name || "Hepsi";
+// Sporcu kareleri (Seyhun 2026-11-28 "Hangisine basarsam onunla konuşurum", örnek 2 "Yap"): sayıya göre alttan dolar (kareSpans,
+// 6 sütunlu ızgara), en çok 3 satır görünür, fazlası kaydırılır. Kayıttaki kare kırmızı; basılı tutunca sporcu penceresi.
+const sailNo = (m) => String(m?.sail || "").match(/\d+/)?.[0] || (m?.name || "?").slice(0, 3);
+function Kareler({ list, ceza, hot, cd, stOf, hold, onTap }) {
+  const sp = kareSpans(list.length);
   return (
-    <div className="bzy-ptw">
+    <div className="bzk-g" data-c={list.length <= 4 ? "2" : "3"}>
+      {list.map((m, i) => {
+        const st = stOf?.(m);
+        return (
+          <button
+            key={m.id}
+            type="button"
+            className="bzk-k"
+            style={{ gridColumn: `span ${sp[i]}` }}
+            data-hot={hot?.key === m.id ? hot.st : undefined}
+            data-cd={cd === m.id ? "1" : undefined}
+            aria-label={`${m.sail || ""} ${m.name || ""}`.trim() || "Sporcu"}
+            onPointerDown={hold ? () => hold.on(m.id) : undefined}
+            onPointerUp={hold?.off}
+            onPointerLeave={hold?.off}
+            onPointerCancel={hold?.off}
+            onContextMenu={(e) => e.preventDefault()}
+            onClick={(e) => onTap(e, m)}
+            data-press
+          >
+            <b className="num">{sailNo(m)}</b>
+            <small>{m.name || m.sail || "Sporcu"}</small>
+            {st && <i data-k={st.k} aria-label={st.t} />}
+            {ceza[m.id] ? <em data-k={ceza[m.id].k}>{PEN[ceza[m.id].k].short}</em> : null}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+// Konuşurken üstte kırmızı şerit: kime, süre, Vazgeç (gönderilmeden kapanır). Göndermek için aynı kareye bir daha dokunulur.
+function RecBar({ ptt, name, now }) {
+  const rec = ptt.rec;
+  const sec = rec ? Math.max(0, Math.floor((now - rec.t0) / 1000)) : 0;
+  return (
+    <div className="bzk-rec" data-st={rec ? (rec.cancel ? "cancel" : "rec") : "arm"} aria-live="polite">
+      <span>
+        {rec ? `● ${name} · ${Math.floor(sec / 60)}:${pad(sec % 60)}${ptt.max - sec <= 10 ? ` · ${ptt.max - sec} sn kaldı` : ""}` : `${name} · mikrofon açılıyor…`}
+      </span>
       {rec && (
-        <button type="button" className="bzy-ptx" onClick={ptt.cancel} aria-label="Vazgeç" data-press>
-          ✕<span> Vazgeç</span>
+        <button type="button" onClick={ptt.cancel} data-press>
+          Vazgeç
         </button>
       )}
-      <button
-      type="button"
-      className="bzy-pt bzy-ptt"
-      data-st={st || undefined}
-      aria-label={rec ? `Bitir ve gönder · ${name}` : `Konuş · ${name}`}
-      aria-pressed={!!rec}
-      onPointerDown={(e) => ptt.flip(e, "big", to)}
-      onContextMenu={(e) => e.preventDefault()}
-    >
-      <small aria-live="polite">
-        {rec ? `Konuşuyor · ${Math.floor(sec / 60)}:${pad(sec % 60)}${ptt.max - sec <= 10 ? ` · ${ptt.max - sec} sn kaldı` : ""}` : st === "arm" ? "Mikrofon açılıyor" : "Dokun, konuş"}
-      </small>
-      <b>{name}</b>
-      {rec ? (
-        <span className="bzy-tkl" aria-hidden="true">
-          {[0.5, 0.85, 1, 0.75, 0.55].map((f, i) => (
-            <i key={i} style={{ height: `${0.375 + Math.min(1, ptt.lvl * f * 1.6) * 1.25}rem` }} />
-          ))}
-        </span>
-      ) : (
-        <Ic n="mic" />
-      )}
-      {rec && (
-        <span className="bzy-go" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M3.4 20.4 21 12 3.4 3.6v6.6L15 12 3.4 13.8z" />
-          </svg>
-        </span>
-      )}
-    </button>
     </div>
   );
 }
 // Sporcu penceresi (Seyhun 2026-11-25 örnek "Yönet Ceza Uyarısı"): adına basılı tutunca açılır. Ceza: 360° / 720° / FD (faux départ);
 // sporcunun ekranında 10 sn tam ekran, sonra şerit; buradan "Cezayı kaldır" ile kalkar. Haritada noktası renkli, adının yanında rozet.
 const sailName = (bt) => [bt?.sail, bt?.name].filter(Boolean).join(" · ");
-// Ceza sayfası (Seyhun 2026-11-26 örnek "Ceza ve Kalıp sayfası" 1–4): alt panel o an yalnız ceza için; önce sporcu (büyük kareler),
-// sonra 360° / 720° / FD. Gönderince panel eski haline döner. Cezası olana "Kaldır" da çıkar.
-function PenPage({ org, members, ceza, ctx, pick, onPick, onDone }) {
+// Ceza sayfası (Seyhun 2026-11-28 "Ceza ver bastığımda yine aynı kare formatta sporcular çıkar… 3 saniye geri sayımdan sonra gönderilir…
+// iptal edebilirim"): üstte ceza türü (1 dönüş seçili), altta aynı kareler; kareye dokununca 3 sn, İptal ile durur, süre bitince gider.
+// Cezası olan kareye dokununca aynı 3 sn ile kaldırılır.
+function PenPage({ org, members, ceza, ctx, onDone }) {
   const toast = useToast();
-  const [busy, setBusy] = useState(false);
-  const m = members.find((x) => x.id === pick);
-  const cur = m ? ceza[m.id] : null;
-  const run = async (v) => {
-    if (busy || !m) return;
-    setBusy(true);
-    try {
-      await setCeza(org, m.id, v);
-      if (v || cur?.k) logEv(org, v ? { kind: "ceza", k: v, to: sailName(m), dev: m.id } : { kind: "ceza-off", k: cur.k, to: sailName(m), dev: m.id }, ctx);
-      toast(v ? `${sailName(m) || "Sporcu"} · ${PEN[v].name} gönderildi` : "Ceza kaldırıldı");
-      onDone();
-    } catch {
-      toast("Gönderilemedi, tekrar dene.");
-    }
-    setBusy(false);
-  };
-  if (!m)
-    return (
-      <div className="bzy-pga">
-        {members.map((x) => (
-          <button key={x.id} type="button" className="bzy-sqb" onClick={() => onPick(x.id)} data-press>
-            <small>{x.sail ? String(x.sail).replace(/\d+/g, "").trim() || "No" : "Sporcu"}</small>
-            <b>{String(x.sail || "").match(/\d+/)?.[0] || (x.name || "?").slice(0, 3)}</b>
-            <span>{x.name || x.sail || "Sporcu"}</span>
-            {ceza[x.id] ? <em data-k={ceza[x.id].k}>{PEN[ceza[x.id].k].short}</em> : null}
-          </button>
-        ))}
-      </div>
-    );
+  const [k, setK] = useState(Object.keys(PEN)[0]);
+  const [cd, setCd] = useState(null); // { id, v, end }
+  const [tk, setTk] = useState(0);
+  useEffect(() => {
+    if (!cd) return;
+    const iv = setInterval(() => setTk(Date.now()), 200);
+    const to = setTimeout(async () => {
+      const m = members.find((x) => x.id === cd.id);
+      const cur = ceza[cd.id];
+      setCd(null);
+      try {
+        await setCeza(org, cd.id, cd.v);
+        if (cd.v || cur?.k) logEv(org, cd.v ? { kind: "ceza", k: cd.v, to: sailName(m), dev: cd.id } : { kind: "ceza-off", k: cur.k, to: sailName(m), dev: cd.id }, ctx);
+        toast(cd.v ? `${sailName(m) || "Sporcu"} · ${PEN[cd.v].name} gönderildi` : "Ceza kaldırıldı");
+        onDone();
+      } catch {
+        toast("Gönderilemedi, tekrar dene.");
+      }
+    }, Math.max(0, cd.end - Date.now()));
+    return () => (clearInterval(iv), clearTimeout(to));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cd]);
+  const left = cd ? Math.max(1, Math.ceil((cd.end - tk) / 1000)) : 0;
+  const cm = cd && members.find((x) => x.id === cd.id);
   return (
     <>
-      <button type="button" className="bzy-pgw" onClick={() => onPick("")} data-press>
-        <b>{String(m.sail || "").match(/\d+/)?.[0] || ""}</b>
-        <span>{m.name || m.sail || "Sporcu"}</span>
-        <u>Değiştir</u>
-      </button>
-      <div className="bzy-pgp">
+      <div className="bzk-seg" role="radiogroup" aria-label="Ceza türü">
         {Object.entries(PEN).map(([v, p]) => (
-          <button key={v} type="button" className="bzy-sqb bzy-pn" data-k={v} disabled={busy || cur?.k === v} onClick={() => run(v)} data-press>
-            <small>{p.deg}</small>
-            <b>{p.name}</b>
+          <button key={v} type="button" role="radio" aria-checked={k === v} data-k={v} disabled={!!cd} onClick={() => setK(v)} data-press>
+            {v === "fd" ? p.name : p.short}
           </button>
         ))}
       </div>
-      {cur && (
-        <button type="button" className="bzy-pgoff" disabled={busy} onClick={() => run("")} data-press>
-          {PEN[cur.k].name} kaldır
-        </button>
-      )}
+      {cd ? (
+        <div className="bzk-cd" data-k={cd.v || "off"} aria-live="polite">
+          <b className="num">{left}</b>
+          <span>
+            {cm?.name || cm?.sail || "Sporcu"} · {cd.v ? PEN[cd.v].name : "ceza kaldırılıyor"}
+          </span>
+          <button type="button" onClick={() => setCd(null)} data-press>
+            İptal
+          </button>
+        </div>
+      ) : null}
+      <Kareler
+        list={members}
+        ceza={ceza}
+        cd={cd?.id}
+        onTap={(e, m) => {
+          if (cd) return;
+          const t = Date.now();
+          setTk(t);
+          setCd({ id: m.id, v: ceza[m.id]?.k === k ? "" : k, end: t + 3000 });
+        }}
+      />
     </>
   );
 }
@@ -1094,7 +1105,6 @@ export function BilgiAdmin() {
   const sel = members.filter((m) => toSel.includes(m.id));
   const nm = (m) => m.name || m.sail || "Sporcu";
   const to = sel.length ? { dev: sel.map((m) => m.id).join(","), name: sel.length > 2 ? `${sel.length} kişi` : sel.map(nm).join(", ") } : null;
-  const pickTo = (id) => setToSel((x) => (!id ? [] : x.includes(id) ? x.filter((y) => y !== id) : [...x.filter((y) => members.some((m) => m.id === y)), id]));
   const talk = useGelenPlay(org, ctx, () => reload());
   // Parça parça (Seyhun 2026-11-25): konuşurken 2,5 sn'de bir gider, sporcu ekranı sırayla çalar
   const ptt = usePtt({
@@ -1202,6 +1212,15 @@ export function BilgiAdmin() {
       }, 550);
   };
   const holdOff = () => clearTimeout(holdT.current.t);
+  // Kareye dokun: kayıt başlar (kare kırmızı); bir daha dokun: gider. Kayıt sürerken hangi kareye dokunulursa dokunulsun kayıt biter ve gider.
+  const hot = ptt.rec ? { key: ptt.rec.key, st: ptt.rec.cancel ? "cancel" : "rec" } : ptt.arm ? { key: ptt.arm.key, st: "arm" } : null;
+  const hotName = !hot || hot.key === "all" ? "Hepsi" : nm(members.find((m) => m.id === hot.key) || {});
+  const talkTo = (e, m) => {
+    if (holdT.current.fired) return void (holdT.current.fired = false);
+    if (ptt.rec || ptt.arm) return ptt.flip(e, m ? m.id : "all", null);
+    setToSel(m ? [m.id] : []);
+    ptt.flip(e, m ? m.id : "all", m ? { dev: m.id, name: nm(m) } : null);
+  };
   // Cezayı tek dokunuşla kaldır (Seyhun 2026-11-25 "2-3 adımda kaldırabiliyorum"): panel düğmesi ya da haritadaki rozet; 5 sn Geri al
   const unPen = (id, auto = false) => {
     const c = ceza[id];
@@ -1235,10 +1254,9 @@ export function BilgiAdmin() {
   // Hazır kalıplar kapalı durur (Seyhun 2026-11-26 "el dokunabiliyor, bir anda gidilebiliyor"): "Kalıplar" ile açılır,
   // birini gönderince ya da 10 sn dokunulmazsa kapanır (tekrar sürüyorsa açık kalır)
   const [kOpen, setKOpen] = useState(0);
-  // Alt panel sayfası: "" | "ceza" | "kalip" (Seyhun 2026-11-26 "o an zaten sadece ceza vereceğiz"); penFor: cezası verilecek sporcu
+  // Alt panel sayfası: "" | "ceza" | "kalip" (Seyhun 2026-11-26 "o an zaten sadece ceza vereceğiz")
   const [pg, setPg] = useState("");
-  const [penFor, setPenFor] = useState("");
-  const openPg = (p) => (setMini(false), setTyping(false), setKOpen(0), setPenFor(p === "ceza" && sel.length === 1 ? sel[0].id : ""), setPg(p));
+  const openPg = (p) => (setMini(false), setTyping(false), setKOpen(0), setPg(p));
 
   const repeat = useRepeat(org, kaliplar, ctx, got);
   const kShow = !!repeat.rep;
@@ -1391,6 +1409,9 @@ export function BilgiAdmin() {
                 <Ic n="minus" />
               </button>
             </div>
+            <button type="button" className="btn btn-round bzy-fab" aria-label={mini ? "Haritayı küçült" : "Haritayı büyüt"} onClick={() => (setMini((x) => !x), setPg(""))} data-press>
+              {mini ? "⤡" : "⤢"}
+            </button>
             <button type="button" className="btn btn-round bzy-fab" aria-label="Tekneleri sığdır" onClick={() => mapApi.current?.fit()} data-press>
               <Ic n="fit" />
             </button>
@@ -1412,8 +1433,8 @@ export function BilgiAdmin() {
               {pg && !mini && (
                 <div className="bzy-pgh">
                   <h3 data-k={pg}>
-                    <small>{pg === "ceza" ? (penFor ? sailName(members.find((x) => x.id === penFor)) || "Sporcu" : "Kime") : `Hazır · ${to?.name || "Hepsi"}`}</small>
-                    {pg === "ceza" ? "Ceza" : "Kalıp"}
+                    <small>{pg === "ceza" ? "Sporcuya dokun · 3 sn" : `Hazır · ${to?.name || "Hepsi"}`}</small>
+                    {pg === "ceza" ? "Ceza ver" : "Kalıp"}
                   </h3>
                   <button type="button" className="bzy-pgx" onClick={() => setPg("")} aria-label="Kapat" data-press>
                     ✕
@@ -1430,7 +1451,8 @@ export function BilgiAdmin() {
                   )}
                 </div>
               )}
-              {!pg && <div className="bzy-kl">
+              {!pg && !mini && (ptt.rec || ptt.arm) && <RecBar ptt={ptt} name={hotName} now={now} />}
+              {!pg && !(ptt.rec || ptt.arm) && <div className="bzy-kl">
                 {tst ? (
                   <span className="bzy-tst" data-k={tst[0] || undefined} aria-live="polite">
                     {tst[1]}
@@ -1444,33 +1466,6 @@ export function BilgiAdmin() {
                   </button>
                 )}
               </div>}
-              {!mini && pg !== "ceza" && (
-                <div className="bzy-who" aria-label="Kime">
-                  {[{ id: "", label: "Hepsi", st: !last?.to ? allSt(dl0, last) : null }, ...members.map((m) => ({ id: m.id, no: m.sail || "", label: m.name || m.sail || "Sporcu", st: rowSt(last, m, now) }))].map((m) => (
-                    <button
-                      key={m.id || "hepsi"}
-                      type="button"
-                      aria-pressed={m.id ? toSel.includes(m.id) : !sel.length}
-                      onPointerDown={() => holdOn(m.id)}
-                      onPointerUp={holdOff}
-                      onPointerLeave={holdOff}
-                      onPointerCancel={holdOff}
-                      onContextMenu={(e) => e.preventDefault()}
-                      onClick={() => (holdT.current.fired ? (holdT.current.fired = false) : pickTo(m.id))}
-                      data-press
-                    >
-                      {m.no && m.label !== m.no ? <u className="num">{m.no}</u> : null}
-                      {m.label}
-                      {m.id && ceza[m.id] ? (
-                        <em className="bzy-pen" data-k={ceza[m.id].k}>
-                          {PEN[ceza[m.id].k].short}
-                        </em>
-                      ) : null}
-                      {m.st && <i data-k={m.st.k} aria-label={m.st.t} />}
-                    </button>
-                  ))}
-                </div>
-              )}
               {!mini && !pg && typing && (
                 <form
                   className="bzy-typ"
@@ -1497,13 +1492,44 @@ export function BilgiAdmin() {
                   </button>
                 </form>
               )}
-              {!(pg && !mini) && (
-                <div className="bzy-two" data-n="2">
-                  <PanelClock org={org} />
-                  <PttTile to={to} ptt={ptt} now={now} />
+              {/* Yeni düzen (Seyhun 2026-11-28 örnek 2 "Yap"): büyük Süre, Hepsi, sayıya göre sporcu kareleri; küçültünce tek sıra */}
+              {mini ? (
+                <div className="bzk-mini">
+                  <PanelClock org={org} mini />
+                  <div className="bzk-strip">
+                    <button type="button" className="bzk-k bzk-all" data-hot={hot?.key === "all" ? hot.st : undefined} onClick={(e) => talkTo(e, null)} data-press>
+                      <b>Hepsi</b>
+                    </button>
+                    {members.map((m) => (
+                      <button key={m.id} type="button" className="bzk-k" data-hot={hot?.key === m.id ? hot.st : undefined} onClick={(e) => talkTo(e, m)} data-press>
+                        <b className="num">{sailNo(m)}</b>
+                        <small>{m.name || m.sail || "Sporcu"}</small>
+                      </button>
+                    ))}
+                  </div>
                 </div>
+              ) : (
+                !pg && (
+                  <>
+                    <PanelClock org={org} />
+                    <button
+                      type="button"
+                      className="bzk-hep"
+                      data-hot={hot?.key === "all" ? hot.st : undefined}
+                      aria-label={hot?.key === "all" ? "Bitir ve gönder · Hepsi" : "Konuş · Hepsi"}
+                      onClick={(e) => talkTo(e, null)}
+                      data-press
+                    >
+                      {hot?.key === "all" ? (hot.st === "arm" ? "Mikrofon açılıyor" : "Gönder · Hepsi") : "Hepsi · konuş"}
+                      {allSt(dl0, last) && !last?.to ? <i data-k={allSt(dl0, last).k} /> : null}
+                    </button>
+                    {members.length ? (
+                      <Kareler list={members} ceza={ceza} hot={hot} stOf={(m) => rowSt(last, m, now)} hold={{ on: holdOn, off: holdOff }} onTap={talkTo} />
+                    ) : null}
+                  </>
+                )
               )}
-              {pg === "ceza" && !mini && <PenPage org={org} members={members} ceza={ceza} ctx={ctx} pick={penFor} onPick={setPenFor} onDone={() => setPg("")} />}
+              {pg === "ceza" && !mini && <PenPage org={org} members={members} ceza={ceza} ctx={ctx} onDone={() => setPg("")} />}
               {pg === "kalip" && !mini && (
                 <KalipRow page list={kaliplar} rep={repeat.rep} now={now} onSend={(k) => (setPg(""), sendK(k))} onHold={(k) => setSheet(`ktek:${k.id}`)} onStop={repeat.stop} onAll={() => setSheet("kkayit")} />
               )}
