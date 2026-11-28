@@ -1,6 +1,7 @@
 "use client";
 
 import "./sporcu.css";
+import "./pano.css";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -19,9 +20,7 @@ import { SkyIcon, WindArrow, WindChart, rainText, useObsRows } from "@/features/
 import { useNow } from "@/hooks/useNow";
 import { invoiceTile } from "@/lib/invoices";
 import { isFit } from "@/lib/fitness/model";
-import { bilgiOrg, canReceipts } from "@/lib/kinds";
-import { membersOf } from "@/lib/bilgi";
-import { useBilgi, useTekneler } from "@/features/bilgi/bilgiStore";
+import { canReceipts } from "@/lib/kinds";
 import { attHref, clubDues, dayPlans, dayWeather, duesLive, fitDays, fitWeek, lastTraining, liveRace, planTone, readSum, saveSum } from "@/lib/homeTiles";
 import { isTraining } from "@/lib/trainingLog";
 import { todayStr } from "@/lib/utils/format";
@@ -31,12 +30,16 @@ import { loadAthletes } from "@/features/athletes/data";
 import { useMoney } from "./TeamMoney";
 import { FitWide, useTodayFit } from "./SporcuHome";
 import { ADDS, BIG, SahneTop, SporcuAdd, SporcuMenu } from "./SporcuMenu";
+import { Vitrin } from "./Vitrin";
+import { useAdd } from "@/features/add/AddProvider";
 
 // ANA HESAP ve NORMAL KULLANICI ana sayfası · "Sahne" (Seyhun 2026-11-25 "benim ana sayfamı da normal kullanıcınınkini de bu sporcu gibi yapalım,
 // selamlama olmasın"; örnek velora-tarama/ana-normal-sahne.html). Sporcu sayfasıyla aynı koyu dil (sporcu.css), aynı üst çubuk, menü ve + Ekle.
 // Üstte Hava (dev rüzgâr, limon ölçülen, beyaz kesik tahmin, 3 saatlik aralıklar, yağış satırı), küçük gün şeridi, seçili günün planları.
 // Ana hesapta altında Kulüp kokpiti (yarış, yoklama, fitness, aidat, hesaplar, Tekne ekranı, Velora Sailing) ve Bekleyen;
 // normal kullanıcıda antrenörse Yönet kartı, fitness yatay kart, Bekleyen. Asistan küresi alt çubukta / sol menüde, olduğu gibi.
+// YÖNETİM PANELİ (Seyhun 2026-11-28, örnek yonetim-paneli/ornek.html): main.sh.pro (pano.css) lacivert + tek mavi vurgu, üstte özet kutuları (Ozet),
+// Velora Sailing ve Yönet görselli vitrin kartı (Vitrin.jsx; kulüp kutularından çıktı). Sporcu sayfası değişmedi.
 // Telefon tek sütun; dik iPad'de hava tam genişlik, altında iki sütun; yatay iPad'de solda hava, günler, planlar, sağda kulüp (sporcu.css .sh-g3).
 const pad = (n) => String(n).padStart(2, "0");
 const ymd = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -66,13 +69,13 @@ function SahneFrame({ big, children }) {
     window.history.replaceState(null, "", "/");
   }, [setSheet]);
   useEffect(() => {
-    document.body.classList.add("sh-body");
-    return () => document.body.classList.remove("sh-body");
+    document.body.classList.add("sh-body", "sh-pro");
+    return () => document.body.classList.remove("sh-body", "sh-pro");
   }, []);
   const onInbox = () => setSheet(true);
   return (
     <>
-      <main data-theme="dark" className={`sh ${liveHead.variable}`} data-home-sahne>
+      <main data-theme="dark" className={`sh pro ${liveHead.variable}`} data-home-sahne>
         <SahneTop inbox={inbox} onInbox={onInbox} onMenu={() => setMenu(true)} onAdd={() => setAdd(true)} />
         {children(inbox, onInbox)}
       </main>
@@ -87,7 +90,7 @@ function SahneFrame({ big, children }) {
 // iPad düzeni (Seyhun 2026-11-25 "yap", örnek velora-tarama/ana-ipad-duzen.html): telefonda hava, günler, planlar, sağ sütun, Bekleyen;
 // dik iPad'de hava ve 7 gün tam genişlik, altında solda planlar + Bekleyen, sağda kartlar; yatayda solda hava, günler, planlar, sağda kartlar + Bekleyen.
 // Bekleyen iki yerde çizilir, ekran genişliğine göre biri görünür (sporcu.css .sh-wl / .sh-wr).
-function Layout({ side, inbox, onInbox }) {
+function Layout({ side, inbox, onInbox, vitrin }) {
   const now = useNow(30000);
   const today = todayStr();
   const [sel, setSel] = useState(today);
@@ -103,6 +106,10 @@ function Layout({ side, inbox, onInbox }) {
   const nowH = now.getHours() + now.getMinutes() / 60;
   return (
     <div className="sh-g3">
+      <div className="sh-o">
+        <Ozet today={today} inbox={inbox} />
+      </div>
+      <div className="sh-f">{vitrin}</div>
       <div className="sh-a">
         <SahneHava date={date} today={today} nowH={nowH} />
       </div>
@@ -122,6 +129,40 @@ function Layout({ side, inbox, onInbox }) {
           <Waiting inbox={inbox} onAll={onInbox} />
         </div>
       </div>
+    </div>
+  );
+}
+
+// ÖZET (yönetim paneli, Seyhun 2026-11-28 örnek yonetim-paneli/ornek.html): bugünkü plan sayısı, bekleyen iş, sıradaki yarışa kalan gün.
+// Telefonda yalnız ana hesapta ilk ikisi (pano.css); bilgisi olmayan kutu çizilmez (yarış yalnız sporcusu olan hesapta).
+function Ozet({ today, inbox }) {
+  const { plans } = useData();
+  const h = useHesap();
+  const race = useRaceHome();
+  const n = dayPlans(plans, today).length;
+  const wait = inbox.list?.length || 0;
+  const r = h.athletes ? (race.open || []).filter((x) => x?.startDate && (x.endDate || x.startDate) >= today).sort((a, b) => a.startDate.localeCompare(b.startDate))[0] : null;
+  const left = r ? Math.max(0, Math.round((Date.parse(`${r.startDate}T12:00`) - Date.parse(`${today}T12:00`)) / 864e5)) : null;
+  return (
+    <div className={`sh-oz ${h.owner ? "sh-oz-own" : ""}`}>
+      <span className="sh-ozk">
+        <small>Bugün</small>
+        <b className="num">
+          {n} <em>plan</em>
+        </b>
+      </span>
+      {r && (
+        <Link href={`/athletes/races/${r.id}`} className="sh-ozk sh-ozk-on">
+          <small>Yaklaşan yarış</small>
+          <b className="num">{left === 0 ? "Bugün" : <>{left} <em>gün</em></>}</b>
+        </Link>
+      )}
+      <span className="sh-ozk">
+        <small>Bekleyen</small>
+        <b className="num">
+          {wait} <em>iş</em>
+        </b>
+      </span>
     </div>
   );
 }
@@ -235,13 +276,22 @@ function Days({ days, date, today, onSel }) {
 function Plans({ date, nowH }) {
   const { plans } = useData();
   const { open: openPlan } = usePlanOpen();
+  const { openAdd } = useAdd();
   const { owner } = useHesap();
   const router = useRouter();
   const open = (p) => (owner && isFit(p) ? router.push(`/fitness?sporcular=1&gun=${date}`) : openPlan(p));
   const list = dayPlans(plans, date);
   const end = (p) => Math.max(hOf(p.endTime) ?? hOf(p.time) + (p.durationMin ? p.durationMin / 60 : isTraining(p) ? 2 : 1), hOf(p.time) + 0.5);
   const live = (p) => nowH != null && hOf(p.time) != null && nowH >= hOf(p.time) && nowH < end(p);
-  if (!list.length) return <p className="sh-noplan">Plan yok</p>;
+  if (!list.length)
+    return (
+      <p className="sh-noplan">
+        Plan yok
+        <button type="button" data-press onClick={() => openAdd({ type: "plan" })} className="sh-noplan-add">
+          + Plan
+        </button>
+      </p>
+    );
   return (
     <div className="sh-plans">
       {list.map((p) => {
@@ -289,14 +339,14 @@ export function OwnerSahne() {
   return (
     <SahneFrame big={OWNER_BIG(h.athletes)}>
       {(inbox, onInbox) => (
-        <Layout inbox={inbox} onInbox={onInbox} side={<Kokpit />} />
+        <Layout inbox={inbox} onInbox={onInbox} side={<Kokpit />} vitrin={<Vitrin yonet={h.owner || h.coach} profile={h.profile} />} />
       )}
     </SahneFrame>
   );
 }
 
-// Kulüp kokpiti: süren yarış (canlı satır) ya da sıradaki yarışın geri sayımı; kutular: yoklama, fitness bu hafta, aidat, hesaplar, Yönet,
-// Velora Sailing. Bilgisi olmayan kutu çizilmez (Yönet ve Velora Sailing her zaman).
+// Kulüp kokpiti: süren yarış (canlı satır) ya da sıradaki yarışın geri sayımı; kutular: yoklama, fitness bu hafta, aidat, hesaplar.
+// Bilgisi olmayan kutu çizilmez; hiç kutu yoksa KULÜP başlığı da görünmez (pano.css). Yönet ve Velora Sailing üstte vitrin kartı (Vitrin.jsx, 2026-11-28).
 function Kokpit() {
   const h = useHesap();
   const { plans, members, fitOthers } = useData();
@@ -325,43 +375,8 @@ function Kokpit() {
         )}
         {sport && <DuesTile />}
         {isVeloraAdmin(h.profile?.email) && <MoneyTile />}
-        {(h.owner || h.coach) && <YonetTile profile={h.profile} />}
-        <SailingTile />
       </div>
     </>
-  );
-}
-
-// Velora Sailing kutusu (ana hesap ve normal kullanıcı aynı); /sailing tam ekran, kendi Velora hesabıyla girer
-function SailingTile() {
-  return (
-    <Link href="/sailing" data-press className="sh-tile sh-sailing">
-      <span className="sh-k">Velora Sailing</span>
-      <b className="sh-t">Aç</b>
-    </Link>
-  );
-}
-
-// Yönet kutusu (Seyhun 2026-11-25 örnek C): Tekne ekranı "Aç" düğmesi kalktı (ekran yalnız sporcu için), tüm kutu Yönet'i açar.
-// Kanal açıkken altında "Açık · 5 tekne" (son 90 sn'de konum veren tekneler); tekneler yalnız kanal açıkken dinlenir.
-function YonetTile({ profile }) {
-  const org = bilgiOrg(profile);
-  const b = useBilgi(org);
-  const k = b?.kanal?.open ? b.kanal : null;
-  const boats = useTekneler(k ? org : "");
-  const now = useNow(30000).getTime();
-  const n = k ? membersOf(boats, k.id, now).length : 0;
-  return (
-    <Link href="/bilgi/yonet" data-press className="sh-tile sh-yonk">
-      <span className="sh-k">Antrenman</span>
-      <b className="sh-c sh-kn">Yönet</b>
-      {k && (
-        <span className="sh-wx-live">
-          <i />
-          {n ? `Açık · ${n} tekne` : "Açık"}
-        </span>
-      )}
-    </Link>
   );
 }
 
@@ -473,8 +488,7 @@ function MoneyTile() {
 }
 
 // ─── NORMAL KULLANICI ───
-// Kulüp (Seyhun 2026-11-27, örnek velora-tarama/normal-ana-alt-cubuk.html): ana hesaptaki gibi kutular, çalışanda Yönet (kendi alanı, YonetTile)
-// ve herkeste Velora Sailing. Fitness varsa yatay kart, Bekleyen, ödeme.
+// Vitrin (2026-11-28): herkeste Velora Sailing, çalışanda Yönet (kendi alanı) görselli kart. Fitness varsa yatay kart, Bekleyen.
 export function NormalSahne() {
   const h = useHesap();
   const fit = useTodayFit();
@@ -482,16 +496,8 @@ export function NormalSahne() {
     <SahneFrame big={NORMAL_BIG(h.coach)}>
       {(inbox, onInbox) => (
         <Layout
-          side={
-            <>
-              <span className="sh-sec">KULÜP</span>
-              <div className="sh-tiles">
-                {h.coach && <YonetTile profile={h.profile} />}
-                <SailingTile />
-              </div>
-              {fit && <FitWide fit={fit} />}
-            </>
-          }
+          side={fit ? <FitWide fit={fit} /> : null}
+          vitrin={<Vitrin yonet={h.coach} profile={h.profile} />}
           inbox={inbox}
           onInbox={onInbox}
         />
