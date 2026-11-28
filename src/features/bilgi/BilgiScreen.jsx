@@ -782,7 +782,7 @@ function PenAlert({ pen, now }) {
   if (left > 0)
     return (
       <button type="button" className="bz-penb" data-k={big.k} onClick={() => setSeen((x) => x && { ...x, until: 0 })} aria-live="assertive">
-        <small>Antrenör · ceza</small>
+        <small>Antrenör</small>
         {/* "1 ceza dönüşü" büyük, derece yanında soluk (Seyhun 2026-11-27); faux départ'ta büyük FD ve ne yapılacağı */}
         {big.k === "fd" ? (
           <>
