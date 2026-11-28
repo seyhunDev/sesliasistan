@@ -46,6 +46,8 @@ import {
   setCeza,
   sendNot,
   logEv,
+  sesYazi,
+  yaziHata,
   loadGunKaydi,
 } from "./bilgiStore";
 import { DayStart, KalipKayit, KalipRow, KalipSheets, kalipEntry, ToolsSheet, VideoTags, VideoTile, dayKey, dayLabel, kanalDay, useRepeat } from "./YonetParts";
@@ -118,7 +120,7 @@ function SentList({ rows }) {
             <div className="min-w-0 flex-1">
               <b>
                 {r.kind === "gelen" ? `${r.from || "Sporcu"} · Gelen ses · ${r.dur || 0} sn` : r.to ? `${r.to} · ` : ""}
-                {r.kind === "gelen" ? "" : r.kind === "ses" ? `Ses · ${r.dur || 0} sn` : r.text}
+                {r.kind === "gelen" ? "" : r.kind === "ses" ? (r.yazi ? `“${r.yazi}”` : `Ses · ${r.dur || 0} sn`) : r.text}
               </b>
               {(r.label || r.state) && <span>{[r.label, r.state].filter(Boolean).join(" · ")}</span>}
             </div>
@@ -1108,6 +1110,28 @@ export function BilgiAdmin() {
   const got = (x) => {
     setLast((o) => ({ ...(o && o.at === x.at ? o : {}), ...x }));
     if (x.ok != null) reload();
+    if (x.kind === "ses" && x.ok && x.blob && x.logId && !x.kalip) yaziOf(x);
+  };
+  // Giden sesin yazısı (Seyhun 2026-11-28): yalnız burada görünür; "Yanlış" ile ses + yazı bildirilir
+  const yaziDone = useRef(new Set());
+  const yaziOf = (x) => {
+    if (yaziDone.current.has(x.logId)) return;
+    yaziDone.current.add(x.logId);
+    const put = (patch) => setLast((o) => (o && o.logId === x.logId ? { ...o, ...patch } : o));
+    put({ yazi: null });
+    sesYazi(x.blob, members.map((m) => m.name).filter(Boolean)).then(
+      (t) => (put({ yazi: t || "" }), t && markLog(org, x.logId, { yazi: t }).then(reload)),
+      () => put({ yazi: "" }),
+    );
+  };
+  const yaziBad = () => {
+    const x = last;
+    if (!x?.logId || x.hata) return;
+    setLast((o) => (o && o.logId === x.logId ? { ...o, hata: true } : o));
+    yaziHata(org, { logId: x.logId, yazi: x.yazi, blob: x.blob, dur: x.dur, to: x.to }, ctx).then(
+      () => toast("Bildirildi · ses ve yazı kaydedildi"),
+      () => (setLast((o) => (o && o.logId === x.logId ? { ...o, hata: false } : o)), toast("Bildirilemedi, tekrar dene.")),
+    );
   };
   const sendText = async (t, dest) => {
     const at = clock();
@@ -1379,6 +1403,16 @@ export function BilgiAdmin() {
                   <button type="button" className="bzy-pgx" onClick={() => setPg("")} aria-label="Kapat" data-press>
                     ✕
                   </button>
+                </div>
+              )}
+              {!pg && !mini && last?.kind === "ses" && last.yazi !== undefined && now - (last.at || 0) < 120e3 && (
+                <div className="bzy-yazi" aria-live="polite">
+                  {last.yazi === null ? <span className="bzy-yw">Yazıya çevriliyor…</span> : last.yazi ? <q>{last.yazi}</q> : <span className="bzy-yw">Yazıya çevrilemedi</span>}
+                  {last.yazi !== null && (
+                    <button type="button" className="bzy-ybad" disabled={!!last.hata} onClick={yaziBad} data-press>
+                      {last.hata ? "Bildirildi" : "Yanlış"}
+                    </button>
+                  )}
                 </div>
               )}
               {!pg && <div className="bzy-kl">
