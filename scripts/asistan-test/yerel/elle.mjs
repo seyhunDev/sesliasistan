@@ -25,6 +25,8 @@ group("Yönet kareleri")([
     const j = (n) => BLK.kareSpans(n).join(",");
     return j(1) === "6" && j(2) === "3,3" && j(3) === "3,3,6" && j(4) === "3,3,3,3" && j(5) === "2,2,2,3,3" && j(6) === "2,2,2,2,2,2" && j(7) === "2,2,2,2,2,2,6";
   })],
+  ["son 1 dk bip", F("60, 30, 10 sn'de tek bip; 59'da yok", () => BLK.beepOf(61, 60) === "one" && BLK.beepOf(31, 30) === "one" && BLK.beepOf(60, 59) === null)],
+  ["mesaj süresi", F("15 sn", () => BLK.MSG_SHOW_MS === 15e3)],
 ]);
 const WPLANS = [{ title: "Optimist antrenmanı", date: "2026-10-05", time: "16:00", cat: "Antrenman" }, { title: "Toplantı", date: "2026-10-05", time: "16:00", cat: "Toplantı" }];
 group("Ek bildirimler")([

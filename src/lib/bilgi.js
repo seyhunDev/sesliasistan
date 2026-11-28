@@ -17,6 +17,8 @@ export const MSG_MAX = 200;
 export const SES_MAX_SEC = 20;
 // Mesaj ve ses yalnız tazeyse gösterilir/çalınır (ekran sonradan açılınca eski mesaj okunmaz)
 export const FRESH_MS = 60e3;
+// Sporcu ekranında yazılı mesaj (kalıp dahil) bu kadar görünür, sonra kaybolur; sabitlenen de kalmaz (Seyhun 2026-11-28 "çok fazla durmamalı")
+export const MSG_SHOW_MS = 15e3;
 // Kime (Seyhun 2026-11-25 "hangi sporcuya tıklıyorsam onunla, hepsine tıklıyorsam onlarla"): to = cihaz kimlikleri virgülle; boşsa herkes
 export const TO_MAX = 600;
 export const toList = (to) => String(to || "").split(",").filter(Boolean);
@@ -127,7 +129,8 @@ export function beepOf(prev, left) {
   if (prev == null || left == null || left === prev || left > prev || prev - left > 2) return null;
   if (left === 0) return "long";
   if (left <= 5) return "two";
-  if (left === 30 || left === 10) return "one";
+  // Son 1 dakika da bir bip (Seyhun 2026-11-28 "son 30 saniyede çalan 1 dakikada da çalmalı")
+  if (left === 60 || left === 30 || left === 10) return "one";
   return null;
 }
 
