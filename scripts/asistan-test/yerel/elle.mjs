@@ -3708,9 +3708,9 @@ group("Bas konuş: susmada kesme")([
   ["iki cümle", F("arada susma: iki ayrı parça, cümle ortasında kesilmez", () => { const o = pttRun([...sec(2000, 0.4), ...sec(160, 0.03), ...sec(1500, 0.4), ...sec(800, 0.02), ...sec(1800, 0.4), ...sec(800, 0.02)]); return o.length === 2 && o.every((x) => x.startsWith("cut")) && +o[0].slice(4) > 3600; })],
   ["susmadan uzun", F("9 sn'den sonra ilk kısa duraksamada kesilir", () => { const o = pttRun([...sec(9600, 0.4), ...sec(320, 0.03), ...sec(2000, 0.4)]); return o[0] && +o[0].slice(4) >= 9600 && +o[0].slice(4) <= 10000; })],
   ["hiç durmadan", F("en geç 10,5 sn'de kesilir", () => { const o = pttRun(sec(12000, 0.4)); return o[0] === "cut@10560" || (o[0] && +o[0].slice(4) <= 10560); })],
-  ["yalnız sessizlik", F("boş parça 3 sn'de atılır, gönderilmez", () => { const o = pttRun(sec(3500, 0.02)); return o[0] === "skip@3040"; })],
+  ["ölçer çalışmıyor", F("seviye hep 0: hiçbir parça atılmaz, eskisi gibi 2,5 sn'de bir gider", () => { const o = pttRun(sec(8000, 0)); return o.length === 3 && o.every((x) => x.startsWith("cut")) && o[0] === "cut@2560"; })],
   ["uğultu", F("sürekli rüzgâr sesi bir süre sonra susma sayılır, üstündeki cümle ayrı gider", () => { const o = pttRun([...sec(6000, 0.1), ...sec(1500, 0.4), ...sec(900, 0.1)]); const l = o.at(-1); return l.startsWith("cut") && +l.slice(4) > 7500 && +l.slice(4) < 8400; })],
-  ["hemen konuşma", F("basar basmaz konuşunca ses atılmaz", () => !pttRun([...sec(1500, 0.4), ...sec(800, 0.02)]).some((x) => x.startsWith("skip")))],
+  ["hiç atma yok", F("hangi seviye olursa olsun parça atılmaz", () => ![0, 0.02, 0.1, 0.4].some((v) => pttRun(sec(12000, v)).some((x) => !x.startsWith("cut"))))],
 ]);
 
 // Admin (Seyhun 2026-11-26): tanıtım başvurusu kontrolleri (lib/basvuru) ve kullanım kaydı (lib/kullanim)
