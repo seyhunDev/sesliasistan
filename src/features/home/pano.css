@@ -1,0 +1,82 @@
+/* YÖNETİM PANELİ · ana hesap ve normal kullanıcı ana sayfası (SahneHome.jsx main.sh.pro; Seyhun 2026-11-28 "profesyonel bir yönetim sayfası gibi",
+   örnek /mnt/project-files/yonetim-paneli/ornek.html v2). Sporcu Sahne'si (sporcu.css) değişmez; buradaki her kural .pro altında.
+   Lacivert zemin, tek vurgu elektrik mavisi (sporcudaki limonun yerine --sh-lime), her blok aynı lacivert panel.
+   Sıra: telefonda özet, hava, günler, bugün, vitrin (Velora Sailing + Yönet), kulüp; iPad'de özet ve vitrin üstte. */
+body.sh-pro { background: #070b16; }
+.sh.pro {
+  --sh-lime: #3d8bff; --sh-line: #1d2943; --sh-tile: #101829; --sh-mut: #8792ab;
+  --pn: #101829; --pn-line: #1d2943; --pn-soft: rgba(61, 139, 255, .14);
+  background: #070b16;
+}
+/* Mavi üstünde yazı beyaz (sporcuda limon üstünde siyahtı) */
+.pro .sh-me, .pro .sh-badge, .pro .sh-mini-on, .pro .sh-go { color: #fff; }
+.pro .sh-rb { background: var(--pn); border-color: var(--pn-line); }
+/* Üst satır: tarih solda, okunur */
+.pro .sh-date { text-align: left; text-transform: none; letter-spacing: 0; font-size: 1.05rem; color: #e9edf7; padding-left: .2rem; }
+@media (min-width: 64rem) { body[data-side] .pro .sh-date { padding-left: 0; } }
+
+/* Paneller */
+.pro .sh-wxp { background: linear-gradient(180deg, #0f1a30, #0b1222); border-color: var(--pn-line); --wx-obs: #6aa6ff; --wx-line: #1d2943; --wx-grid: #1d2943; }
+.pro .sh-wx-rain { border-top-color: var(--pn-line); }
+.pro .sh-plans, .pro .sh-day, .pro .sh-tile, .pro .sh-race { background: var(--pn); border-color: var(--pn-line); }
+.pro .sh-pl { border-top-color: var(--pn-line); }
+.pro .sh-pl-now { background: var(--pn-soft); }
+.pro .sh-day-w i { background: #33415e; }
+.pro .sh-tiles:not(:has(> .sh-tile, > .sh-span > *)), .pro .sh-sec:has(+ .sh-tiles:not(:has(> .sh-tile, > .sh-span > *))) { display: none; }
+/* Boş gün: tek "+ Plan" */
+.pro .sh-noplan { display: flex; align-items: center; justify-content: space-between; gap: .6rem; background: var(--pn); border: 1px solid var(--pn-line); border-radius: 1.2rem; padding: .6rem .6rem .6rem 1rem; }
+.sh-noplan-add { background: var(--sh-lime); color: #fff; border-radius: .7rem; padding: .45rem .9rem; font-size: .82rem; font-weight: 700; }
+
+/* Özet kutuları */
+.sh-o, .sh-f { min-width: 0; }
+.sh-o:not(:has(.sh-ozk)) { display: none; }
+.sh-oz { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: .6rem; }
+.sh-ozk { background: var(--pn); border: 1px solid var(--pn-line); border-radius: .9rem; padding: .65rem .85rem; display: flex; flex-direction: column; gap: .15rem; min-width: 0; color: #e9edf7; }
+.sh-ozk small { font-size: .72rem; color: var(--sh-mut); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sh-ozk b { font-size: 1.3rem; font-weight: 600; white-space: nowrap; }
+.sh-ozk em { font-style: normal; font-size: .78rem; color: var(--sh-mut); font-weight: 500; }
+.sh-ozk-on b { color: var(--sh-lime); }
+/* Telefonda: normal kullanıcıda yok, ana hesapta ilk ikisi */
+@media (max-width: 47.99rem) {
+  .sh-oz:not(.sh-oz-own) { display: none; }
+  .sh-o:has(.sh-oz:not(.sh-oz-own)) { display: none; }
+  .sh-oz > :nth-child(n + 3) { display: none; }
+}
+
+/* Vitrin kartları (Vitrin.jsx) */
+.vt-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: .8rem; }
+.vt { position: relative; isolation: isolate; overflow: hidden; border-radius: 1.2rem; border: 1px solid var(--pn-line); min-height: 11rem;
+  display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; padding: 1rem 1.1rem; color: #fff; text-align: left; }
+.vt-sail { background: #06243a; }
+.vt-yon { background: #0a1124; }
+.vt-bg { position: absolute; inset: 0; width: 100%; height: 100%; z-index: -2; }
+.vt::after { content: ""; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, rgba(6, 10, 22, .92) 0%, rgba(6, 10, 22, .55) 45%, rgba(6, 10, 22, 0) 75%); }
+.vt-top { font-size: .6875rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: #9cc2ff; }
+.vt-t { font-size: 1.65rem; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; margin: .15rem 0 .2rem; }
+.vt-l { font-size: .85rem; color: #c3cbe0; max-width: 22ch; margin-bottom: .75rem; }
+.vt-ft { display: flex; align-items: center; gap: .6rem; }
+.vt-go { background: var(--sh-lime); color: #fff; border-radius: .7rem; padding: .5rem 1.1rem; font-size: .85rem; font-weight: 700; }
+.vt-live { font-style: normal; font-size: .75rem; font-weight: 600; color: #9cc2ff; display: inline-flex; align-items: center; gap: .35rem; }
+.vt-live::before { content: ""; width: .45rem; height: .45rem; border-radius: 50%; background: #22c55e; }
+
+/* Yerleşim */
+.pro .sh-g3 { grid-template-areas: "o" "a" "d" "b" "f" "c"; }
+.pro .sh-o { grid-area: o; }
+.pro .sh-f { grid-area: f; }
+@media (min-width: 48rem) {
+  .pro .sh-g3 { grid-template-areas: "o" "f" "a" "d" "b" "c"; }
+  .pro .sh-b { background: var(--pn); border-color: var(--pn-line); }
+  .pro .sh-wl { border-color: var(--pn-line); }
+  .pro .sh-b > .sh-noplan { background: none; border: 0; padding: .2rem 0; }
+  .vt { min-height: 12.5rem; }
+  .vt-t { font-size: 2rem; }
+}
+@media (min-width: 64rem) {
+  .pro .sh-g3 { grid-template-areas: "o o" "f f" "a b" "d d" "c c"; }
+}
+/* Telefon yatay: iki kart ekranı doldurur */
+@media (orientation: landscape) and (max-height: 32rem) {
+  .pro .sh-g3 { grid-template-areas: "f" "o" "a" "d" "b" "c"; }
+  .vt { min-height: calc(100dvh - 10rem); }
+  .vt-t { font-size: 2.3rem; }
+}
